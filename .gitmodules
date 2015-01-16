@@ -1,3 +1,6 @@
 [submodule "grobb"]
 	path = grobb
 	url = git@github.com:mrdooz/grobb.git
+[submodule "bristol"]
+	path = bristol
+	url = git@github.com:mrdooz/bristol.git
