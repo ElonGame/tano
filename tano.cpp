@@ -3,6 +3,10 @@
 #include "demo_engine.hpp"
 #include "graphics.hpp"
 #include "deferred_context.hpp"
+#include "init_sequence.hpp"
+#include "protocol/app.parse.hpp"
+#include "protocol/input_buffer.hpp"
+#include "protocol/app.types.hpp"
 
 //------------------------------------------------------------------------------
 using namespace tano;
@@ -50,7 +54,6 @@ App::App()
   , _channel(nullptr)
 #endif
 {
-  FindAppRoot();
 }
 
 //------------------------------------------------------------------------------
@@ -58,6 +61,7 @@ bool App::Create()
 {
   if (!_instance)
     _instance = new App();
+
   return true;
 }
 
@@ -90,26 +94,32 @@ App& App::Instance()
 //------------------------------------------------------------------------------
 bool App::Init(HINSTANCE hinstance)
 {
-  if (_appRootFilename.empty())
+  BEGIN_INIT_SEQUENCE();
+
+#if WITH_UNPACKED_RESOUCES
+  INIT(FindAppRoot("app.gb"));
+#else
+  INIT(FindAppRoot("resource.dat"));
+#endif
+
+  if (_appRoot.empty())
   {
     MessageBoxA(0, "Unable to find app root", "Error", MB_ICONEXCLAMATION);
     return false;
   }
 
-  _hinstance = hinstance;
-  if (!ResourceManager::Create("resources.txt"))
-    return false;
+  INIT(LoadSettings());
 
-  if (!Graphics::Create(_hinstance))
-    return false;
+  _hinstance = hinstance;
+  INIT(ResourceManager::Create("resources.txt"));
+  INIT(Graphics::Create(_hinstance));
 
   int width = GetSystemMetrics(SM_CXFULLSCREEN);
   int height = GetSystemMetrics(SM_CYFULLSCREEN);
 
   GRAPHICS.CreateDefaultSwapChain(3 * width / 4, 3 * height / 4, DXGI_FORMAT_R16G16B16A16_FLOAT, WndProc, hinstance);
 
-  if (!DemoEngine::Create())
-    return false;
+  INIT(DemoEngine::Create());
 
 /*
   DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Particle, ParticleTest::Create);
@@ -118,7 +128,6 @@ bool App::Init(HINSTANCE hinstance)
   DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Plexus, PlexusTest::Create);
 */
 
-  LoadSettings();
 
   if (!DEMO_ENGINE.Init("config/demo.pb", hinstance))
   {
@@ -157,7 +166,7 @@ bool App::Init(HINSTANCE hinstance)
   FMOD_CHECKED(_system->createStream("Distance.mp3", FMOD_HARDWARE | FMOD_LOOP_NORMAL | FMOD_2D, 0, &_sound));
 #endif
 
-  return true;
+  END_INIT_SEQUENCE();
 }
 
 //------------------------------------------------------------------------------
@@ -203,18 +212,39 @@ bool App::Run()
 }
 
 //------------------------------------------------------------------------------
-void App::LoadSettings()
+string PathJoin(const char* root, const char* child)
 {
-  if (_appRootFilename.empty())
-    return;
+  string res(root);
+  if (res.size() > 0)
+  {
+    char ch = res.back();
+    if (ch != '\\' && ch != '/')
+      res.append("\\");
+  }
+
+  res.append(child);
+  return res;
 }
 
+//------------------------------------------------------------------------------
+bool App::LoadSettings()
+{
+  vector<char> buf;
+  if (!LoadFile(PathJoin(_appRoot.c_str(), "app.gb").c_str(), &buf))
+    return false;
+
+  AppConfig config;
+  ParseAppConfig(InputBuffer(buf.data(), buf.size()), &config);
+  return true;
+//   if (_appRootFilename.empty())
+//     return;
+}
 
 //------------------------------------------------------------------------------
 void App::SaveSettings()
 {
-  if (_appRootFilename.empty())
-    return;
+//   if (_appRootFilename.empty())
+//     return;
 }
 
 //------------------------------------------------------------------------------
@@ -340,44 +370,38 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 //------------------------------------------------------------------------------
-void App::FindAppRoot()
+bool App::FindAppRoot(const char* filename)
 {
   char starting_dir[MAX_PATH];
   _getcwd(starting_dir, MAX_PATH);
 
-  // keep going up directory levels until we find "app.json", or we hit the bottom..
+  // keep going up directory levels until we find @filename, or we hit the bottom..
   char prev_dir[MAX_PATH], cur_dir[MAX_PATH];
   ZeroMemory(prev_dir, sizeof(prev_dir));
 
-  while (true) {
+  while (true)
+  {
     _getcwd(cur_dir, MAX_PATH);
     // check if we haven't moved
     if (!strcmp(cur_dir, prev_dir))
-      break;
+      return false;
 
     memcpy(prev_dir, cur_dir, MAX_PATH);
 
-#if WITH_UNPACKED_RESOUCES
-    if (FileExists("app.pb"))
+    if (FileExists(filename))
     {
       _appRoot = cur_dir;
-      _appRootFilename = "app.json";
-      return;
+      return true;
     }
-#else
-    if (FileExists("resources.dat"))
-    {
-      _appRoot = cur_dir;
-      _appRootFilename = "app.json";
-      return;
-    }
-#endif
+
     if (_chdir("..") == -1)
       break;
   }
   _appRoot = starting_dir;
+  return false;
 }
 
+//------------------------------------------------------------------------------
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int cmd_show)
 {
   srand(1337);

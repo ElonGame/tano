@@ -17,8 +17,8 @@ namespace tano
   private:
     App();
 
-    void FindAppRoot();
-    void LoadSettings();
+    bool FindAppRoot(const char* filename);
+    bool LoadSettings();
     void SaveSettings();
 
     static LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -32,7 +32,6 @@ namespace tano
     FMOD::Channel *_channel;
 #endif
 
-    string _appRootFilename;
     string _appRoot;
 
     bristol::LogSinkApp _logSinkApp;
