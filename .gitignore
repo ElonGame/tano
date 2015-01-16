@@ -1,0 +1,6 @@
+_win32/Debug/*
+_win32/x64/Debug/*
+*.sdf
+*.suo
+*.opensdf
+*.aps
