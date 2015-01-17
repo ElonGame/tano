@@ -13,6 +13,7 @@ namespace tano
     void BeginFrame();
     void EndFrame();
 
+    void SetSwapChain(ObjectHandle h, const Color& clearColor);
     void SetSwapChain(ObjectHandle h, const float* clearColor);
     void SetRenderTarget(ObjectHandle render_target, const Color* clearTarget);
     void SetRenderTargets(ObjectHandle *render_targets, const Color* clearTarget, int num_render_targets);
@@ -39,7 +40,7 @@ namespace tano
     template <typename T>
     void SetCBuffer(const ConstantBuffer<T>& buffer, ShaderType shaderType, u32 slot)
     {
-      return SetCBuffer(buffer.handle, &buffer.data, sizeof(T), shaderType, slot);
+      return SetCBuffer(buffer.handle, &buffer, sizeof(T), shaderType, slot);
     }
 
     void SetCBuffer(ObjectHandle h, const void* buf, size_t len, ShaderType shaderType, u32 slot);
@@ -55,8 +56,10 @@ namespace tano
     void Draw(int vertexCount, int startVertexLocation);
     void Dispatch(int threadGroupCountX, int threadGroupCountY, int threadGroupCountZ);
 
+    template <typename T>
+    T* MapWriteDiscard(ObjectHandle h);
     bool Map(ObjectHandle h, UINT sub, D3D11_MAP type, UINT flags, D3D11_MAPPED_SUBRESOURCE *res);
-    void Unmap(ObjectHandle h, UINT sub);
+    void Unmap(ObjectHandle h, UINT sub = 0);
     void CopyToBuffer(ObjectHandle h, UINT sub, D3D11_MAP type, UINT flags, const void* data, u32 len);
     void CopyToBuffer(ObjectHandle h, const void* data, u32 len);
 
@@ -72,4 +75,15 @@ namespace tano
 
     bool _is_immediate_context;
   };
+
+  template <typename T>
+  T* DeferredContext::MapWriteDiscard(ObjectHandle h)
+  {
+    D3D11_MAPPED_SUBRESOURCE res;
+    if (!Map(h, 0, D3D11_MAP_WRITE_DISCARD, 0, &res))
+      return nullptr;
+
+    return (T*)res.pData;
+  }
+
 }

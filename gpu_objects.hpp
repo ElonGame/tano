@@ -23,7 +23,7 @@ namespace tano
     bool CreateDynamicVb(u32 vbSize, u32 vbElemSize, const  void* vbData = nullptr);
     bool CreateDynamicIb(u32 ibSize, DXGI_FORMAT ibFormat, const  void* ibData = nullptr);
 
-    bool LoadShadersFromFile(const  char* filename, const  char* vsEntry, const  char* psEntry, u32 flags);
+    bool LoadShadersFromFile(const  char* filename, const  char* vsEntry, const  char* psEntry, u32 flags = 0);
 
     ObjectHandle _vs;
     ObjectHandle _ps;
@@ -40,7 +40,7 @@ namespace tano
 
   //------------------------------------------------------------------------------
   template <typename T>
-  struct ConstantBuffer
+  struct ConstantBuffer : public T
   {
     bool Create()
     {
@@ -48,7 +48,6 @@ namespace tano
       return handle.IsValid();
     }
 
-    T data;
     ObjectHandle handle;
   };
 

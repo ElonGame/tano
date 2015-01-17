@@ -203,6 +203,7 @@
     <ClInclude Include="..\init_sequence.hpp" />
     <ClInclude Include="..\object_handle.hpp" />
     <ClInclude Include="..\precompiled.hpp" />
+    <ClInclude Include="..\render_queue.hpp" />
     <ClInclude Include="..\resource_manager.hpp" />
     <ClInclude Include="..\sync\base.h" />
     <ClInclude Include="..\sync\data.h" />

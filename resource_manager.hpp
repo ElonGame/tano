@@ -38,14 +38,14 @@ namespace tano
 
     void AddPath(const string &path);
 
-    void AddFileWatch(
+    FileWatcher::WatchId AddFileWatch(
         const string& filename, 
         void* token,
         bool initial_callback,
         bool* initial_result,
         const cbFileChanged& cb);
 
-    void RemoveFileWatch(const cbFileChanged &cb);
+    void RemoveFileWatch(FileWatcher::WatchId id);
 
     void Tick();
 

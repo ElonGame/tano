@@ -50,7 +50,7 @@ bool GpuObjects::LoadShadersFromFile(
       vsEntry ? &_vs : nullptr, 
       psEntry ? &_ps : nullptr, 
       vsEntry ? &_layout : nullptr, 
-      VF_POS | VF_NORMAL,
+      flags ? flags : VF_POS | VF_NORMAL,
       vsEntry,
       psEntry);
 }

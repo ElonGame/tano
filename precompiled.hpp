@@ -122,6 +122,7 @@ namespace tano
 
   using DirectX::XMFLOAT3;
   using DirectX::BoundingSphere;
+  using DirectX::XMConvertToRadians;
   using DirectX::SimpleMath::Color;
   using DirectX::SimpleMath::Vector2;
   using DirectX::SimpleMath::Vector3;

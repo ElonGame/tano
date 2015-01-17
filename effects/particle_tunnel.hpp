@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../effect.hpp"
+#include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
 
 namespace tano
@@ -13,8 +14,6 @@ namespace tano
 
     ParticleTunnel(const string &name, u32 id);
     ~ParticleTunnel();
-    virtual bool Show() override;
-    virtual bool Hide() override;
     virtual bool Init(const char* configFile) override;
     virtual bool Update(const UpdateState& state) override;
     virtual bool Render() override;
@@ -27,12 +26,21 @@ namespace tano
     static void Register();
 
   private:
+
+    struct CBufferPerFrame
+    {
+      Matrix world;
+      Matrix viewProj;
+    };
+
     string _configName;
+    ObjectHandle _particleTexture;
+
+    GpuObjects _gpuObjects;
+
     ObjectHandle _texture;
-    ObjectHandle _vs;
-    ObjectHandle _ps;
     ObjectHandle _samplerState;
-    ObjectHandle _cbuffer;
+    ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 
     ParticleTunnelSettings _settings;
   };

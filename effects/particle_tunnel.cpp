@@ -9,14 +9,8 @@
 #include "../generated/input_buffer.hpp"
 
 using namespace tano;
+using namespace bristol;
 
-namespace
-{
-  struct CBufferPerFrame
-  {
-    Vector4 col;
-  };
-}
 //------------------------------------------------------------------------------
 ParticleTunnel::ParticleTunnel(const string &name, u32 id)
   : Effect(name, id)
@@ -26,18 +20,6 @@ ParticleTunnel::ParticleTunnel(const string &name, u32 id)
 //------------------------------------------------------------------------------
 ParticleTunnel::~ParticleTunnel()
 {
-}
-
-//------------------------------------------------------------------------------
-bool ParticleTunnel::Show()
-{
-  return true;
-}
-
-//------------------------------------------------------------------------------
-bool ParticleTunnel::Hide()
-{
-  return true;
 }
 
 //------------------------------------------------------------------------------
@@ -51,12 +33,27 @@ bool ParticleTunnel::Init(const char* configFile)
 
 //  _config = config.particle_config();
 
-  INIT_RESOURCE(_texture, RESOURCE_MANAGER.LoadTexture("gfx/Abstract_BG_Texture2.jpg"));
-  INIT(GRAPHICS.LoadShadersFromFile("shaders/fullscreen", &_vs, &_ps, nullptr, 0));
+  FileWatcher& watcher = DEMO_ENGINE.GetFileWatcher();
 
-  CD3D11_SAMPLER_DESC sampler = CD3D11_SAMPLER_DESC(CD3D11_DEFAULT());
-  INIT_RESOURCE(_samplerState, GRAPHICS.CreateSamplerState(sampler));
-  INIT_RESOURCE(_cbuffer, GRAPHICS.CreateBuffer(D3D11_BIND_CONSTANT_BUFFER, sizeof(CBufferPerFrame), true));
+  bool res = true;
+  watcher.AddFileWatch(_settings.texture, nullptr, true, &res, [this](const string& filename, void* ctx) {
+    _particleTexture = RESOURCE_MANAGER.LoadTexture(filename.c_str());
+    return _particleTexture.IsValid();
+  });
+
+  u32 vertexFlags = VertexFlags::VF_POS | VertexFlags::VF_COLOR;
+  INIT(_particleTexture.IsValid())
+  INIT(_gpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsMain", "PsMain", vertexFlags));
+  INIT(_gpuObjects.CreateDynamicVb(128 * 1024, sizeof(PosCol)));
+
+  INIT_RESOURCE(_samplerState, GRAPHICS.CreateSamplerState(CD3D11_SAMPLER_DESC(CD3D11_DEFAULT())));
+  INIT(_cbPerFrame.Create());
+
+  _cbPerFrame.world = Matrix::Identity();
+  Matrix view = Matrix::CreateLookAt(Vector3(0, 0, -500), Vector3(0, 0, 0), Vector3(0, 1, 0));
+  Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 1000.f);
+  Matrix viewProj = view * proj;
+  _cbPerFrame.viewProj = viewProj.Transpose();
 
   END_INIT_SEQUENCE();
 }
@@ -64,102 +61,27 @@ bool ParticleTunnel::Init(const char* configFile)
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
+  PosCol* vtx = _ctx->MapWriteDiscard<PosCol>(_gpuObjects._vb);
+  if (!vtx)
+    return false;
+
+  vtx[1].pos = Vector3(-100, -100, 0);
+  vtx[0].pos = Vector3(+200, -100, 0);
+  vtx[2].pos = Vector3(0, 100, 0);
+
+  _ctx->Unmap(_gpuObjects._vb);
   return true;
 }
-
-struct CommandBase
-{
-  u8* data = nullptr;
-  CommandBase* next = nullptr;
-};
-
-struct SetSwapChain : CommandBase
-{
-  SetSwapChain(ObjectHandle h, const Color& color) : handle(h), clearColor(color) {}
-  ObjectHandle handle;
-  Color clearColor;
-};
-
-struct SetConstantBuffer : CommandBase
-{
-  ObjectHandle handle;
-  ShaderType shader;
-};
-
-struct RenderQueue
-{
-  static const u32 INITIAL_MEMORY_SIZE = 128 * 1024 * 1024;
-
-  RenderQueue() : _memory(INITIAL_MEMORY_SIZE) {}
-
-  void FrameStart();
-
-  template <typename T, typename... Args>
-  T* AllocateCommand(u32 dataSize, Args&&... args)
-  {
-    T* cmd = new (AllocChunk(sizeof(T)))T(forward<Args>(args)...);
-    _memoryOfs += sizeof(T);
-
-    if (dataSize)
-      cmd->data = AllocChunk(dataSize);
-
-    return cmd;
-  }
-
-  template <typename T, typename... Args>
-  T* AppendCommand(CommandBase* parent, u32 dataSize, Args&&... args)
-  {
-    T* cmd = new (AllocChunk(sizeof(T)))T(forward<Args>(args)...);
-    _memoryOfs += sizeof(T);
-
-    if (parent)
-      parent->next = cmd;
-
-    if (dataSize)
-      cmd->data = AllocChunk(dataSize);
-
-    return cmd;
-  }
-
-  u8* AllocChunk(u32 size)
-  {
-    u8* tmp = &_memory[_memoryOfs];
-    _memoryOfs += size;
-    return tmp;
-  }
-
-  vector<u8> _memory;
-  u32 _memoryOfs = 0;
-};
-
-void RenderQueue::FrameStart()
-{
-  // reset the render queue
-  _memoryOfs = 0;
-}
-
-
-RenderQueue renderQueue;
 
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Render()
 {
-  SetSwapChain* setSwapChain = renderQueue.AllocateCommand<SetSwapChain>(0, GRAPHICS.DefaultSwapChain(), Color(0,0,0,0));
-  SetConstantBuffer* setConstantBuffer = renderQueue.AppendCommand<SetConstantBuffer>(setSwapChain, 0);
-
-  float black[] ={ 0, 0, 0, 0 };
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
+  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
   _ctx->BeginFrame();
 
-  CBufferPerFrame cb;
-  //::boba::common::FromProtocol(_config.bb_col4f(), &cb.col);
-  _ctx->SetCBuffer(_cbuffer, &cb, sizeof(cb), ShaderType::PixelShader, 0);
+  _ctx->SetCBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+  _ctx->SetGpuObjects(_gpuObjects);
 
-  _ctx->SetVS(_vs);
-  _ctx->SetPS(_ps);
-  _ctx->SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-  _ctx->SetShaderResource(_texture, ShaderType::PixelShader);
-  _ctx->SetSamplerState(_samplerState, 0, ShaderType::PixelShader);
   _ctx->Draw(3,0);
 
   _ctx->EndFrame();

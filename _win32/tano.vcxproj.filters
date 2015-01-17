@@ -165,6 +165,9 @@
     <ClInclude Include="..\effects\particle_tunnel.hpp">
       <Filter>effects</Filter>
     </ClInclude>
+    <ClInclude Include="..\render_queue.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="tano.rc">

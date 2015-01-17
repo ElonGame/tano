@@ -214,20 +214,20 @@ string ResourceManager::ResolveFilename(const char* filename, bool fullPath)
 }
 
 //------------------------------------------------------------------------------
-void ResourceManager::AddFileWatch(
+FileWatcher::WatchId ResourceManager::AddFileWatch(
     const string& filename,
     void* token,
     bool initialCallback,
     bool* initialResult,
     const cbFileChanged &cb)
 {
-  _fileWatcher.AddFileWatch(filename, token, initialCallback, initialResult, cb);
+  return _fileWatcher.AddFileWatch(filename, token, initialCallback, initialResult, cb);
 }
 
 //------------------------------------------------------------------------------
-void ResourceManager::RemoveFileWatch(const cbFileChanged &cb)
+void ResourceManager::RemoveFileWatch(FileWatcher::WatchId id)
 {
-  _fileWatcher.RemoveFileWatch(cb);
+  _fileWatcher.RemoveFileWatch(id);
 }
 
 //------------------------------------------------------------------------------

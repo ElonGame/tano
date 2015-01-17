@@ -37,10 +37,10 @@ namespace tano
 
     static bool IsInitialized() { return _instance != nullptr; }
 
-    void ProcessPayload(const void* payload, u32 size);
-    void Connected();
+    FileWatcher& GetFileWatcher() { return _fileWatcher; }
 
   private:
+
     DemoEngine();
     ~DemoEngine();
     static DemoEngine* _instance;
@@ -49,6 +49,7 @@ namespace tano
     void KillEffects();
 
     Effect* FindEffectByName(const string &name);
+    bool ApplySettingsChange(const DemoSettings& settings);
 
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -65,6 +66,8 @@ namespace tano
     DemoSettings _settings;
     unordered_map<string, EffectFactory> _effectFactories;
     u32 _nextEffectId;
+
+    FileWatcher _fileWatcher;
   };
 
 #define DEMO_ENGINE DemoEngine::Instance()

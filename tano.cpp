@@ -130,27 +130,7 @@ bool App::Init(HINSTANCE hinstance)
   DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Plexus, PlexusTest::Create);
 */
 
-
-  if (!DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance))
-  {
-    DeferredContext* ctx = GRAPHICS.CreateDeferredContext(true);
-
-    float black[] ={ 0, 0, 0, 0 };
-    ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
-    // If we get this far, then the graphics are initialized, so just spin displaying an
-    // error message
-    while (true)
-    {
-      if (GetAsyncKeyState(VK_ESCAPE) & (1 << 15))
-        break;
-
-      GRAPHICS.Present();
-    }
-
-    GRAPHICS.DestroyDeferredContext(ctx);
-
-    return false;
-  }
+  INIT(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
 
 #if WITH_MUSIC
   FMOD_CHECKED(FMOD::System_Create(&_system));

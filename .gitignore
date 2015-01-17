@@ -1,5 +1,7 @@
 _win32/Debug/*
 _win32/x64/Debug/*
+_win32/Release/*
+_win32/x64/Release/*
 *.sdf
 *.suo
 *.opensdf
@@ -7,3 +9,4 @@ _win32/x64/Debug/*
 *.user
 *.mp3
 generated/*
+shaders/*.[pv]s?

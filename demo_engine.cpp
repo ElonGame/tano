@@ -12,6 +12,9 @@ using namespace tano;
 using namespace bristol;
 
 //------------------------------------------------------------------------------
+DemoEngine *DemoEngine::_instance = NULL;
+
+//------------------------------------------------------------------------------
 float TimeDurationToFloat(TimeDuration t)
 {
   return t.TotalMicroseconds() / 1e6f;
@@ -28,9 +31,6 @@ namespace
     return e;
   }
 }
-
-//------------------------------------------------------------------------------
-DemoEngine *DemoEngine::_instance = NULL;
 
 //------------------------------------------------------------------------------
 DemoEngine& DemoEngine::Instance()
@@ -123,8 +123,7 @@ void DemoEngine::ReclassifyEffects()
 {
   TimeDuration currentTime = _timer.Elapsed(nullptr);
 
-  sort(_effects.begin(), _effects.end(),
-      [](const Effect *a, const Effect *b) { return a->StartTime() < b->StartTime(); });
+  sort(_effects.begin(), _effects.end(), [](const Effect* a, const Effect* b) { return a->StartTime() < b->StartTime(); });
 
   _expiredEffects.clear();
   _inactiveEffects.clear();
@@ -147,6 +146,8 @@ void DemoEngine::ReclassifyEffects()
 //------------------------------------------------------------------------------
 bool DemoEngine::Tick()
 {
+  _fileWatcher.Tick();
+
   TimeDuration delta, current;
   current = _timer.Elapsed(&delta);
 
@@ -233,15 +234,11 @@ void DemoEngine::WndProc(UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 //------------------------------------------------------------------------------
-bool DemoEngine::Init(const char* config, HINSTANCE instance)
+bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
 {
   BEGIN_INIT_SEQUENCE();
 
-  vector<char> buf;
-  INIT(RESOURCE_MANAGER.LoadFile(config, &buf));
-  INIT(ParseDemoSettings(InputBuffer(buf), &_settings));
-
-  for (auto& e : _settings.effects)
+  for (auto& e : settings.effects)
   {
     // Look up the factory
     auto it = _effectFactories.find(e.factory);
@@ -254,48 +251,45 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
     // Create and init the effect
     EffectFactory factory = it->second;
     Effect* effect = factory(e.name.c_str(), _nextEffectId++);
+    _effects.push_back(effect);
 
-    effect->SetDuration(TimeDuration::Milliseconds(e.start_time), TimeDuration::Milliseconds(e.end_time));
+    TimeDuration start = TimeDuration::Milliseconds(e.start_time);
+    TimeDuration end = TimeDuration::Milliseconds(e.end_time);
+    effect->SetDuration(start, end);
     INIT(effect->Init(e.settings.c_str()));
-
-    int a = 10;
   }
 
-/*
-  _configFile = config;
+  // If we get this far, apply the new settings
+  // Ok, we can't actually roll out of anything bad..
+  _settings = settings;
 
-  INIT_FATAL(LoadProto(config, &_config));
+  END_INIT_SEQUENCE();
+}
 
-  for (const protocol::effect::EffectSetting& effect : _config.effect_setting())
+//------------------------------------------------------------------------------
+bool DemoEngine::Init(const char* config, HINSTANCE instance)
+{
+  bool res = true;
+
+  _fileWatcher.AddFileWatch(config, nullptr, true, &res, [this](const string& filename, void* token)
   {
-    // Look up the factory
-    effect::EffectSetting::Type type = effect::EffectSetting::Type::Particle; // (effect::EffectSetting::Type)effect.type();
-    auto factoryIt = _effectFactories.find(type);
-    if (factoryIt != _effectFactories.end())
-    {
-      const char* name = effect.name().c_str();
-      EffectFactory factory = factoryIt->second;
-      Effect* newEffect = factory(name, _nextEffectId++);
-      newEffect->SetDuration(TimeDuration::Milliseconds(effect.start_time()), TimeDuration::Milliseconds(effect.end_time()));
-
-      switch (type)
-      {
-        case effect::EffectSetting::Type::Generator: INIT(newEffect->Init(effect)); break;
-        case effect::EffectSetting::Type::Particle: INIT(newEffect->Init(effect)); break;
-        case effect::EffectSetting::Type::Plexus: INIT(newEffect->Init(effect)); break;
-      }
-      _effects.push_back(newEffect);
-    }
-    else
-    {
-      LOG_WARN("Unknown effect class");
+    vector<char> buf;
+    if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
       return false;
-    }
-  }
+
+    DemoSettings settings;
+    if (!ParseDemoSettings(InputBuffer(buf), &settings))
+      return false;
+
+    if (!ApplySettingsChange(settings))
+      return false;
+
+    return true;
+  });
 
   ReclassifyEffects();
-*/
-  END_INIT_SEQUENCE();
+
+  return res;
 }
 
 //------------------------------------------------------------------------------
@@ -323,51 +317,4 @@ void DemoEngine::SaveSettings()
 //   {
 //     effect->SaveSettings();
 //   }
-}
-
-//------------------------------------------------------------------------------
-void DemoEngine::Connected()
-{
-/*
-  // send current config to the editor
-  for (const Effect* effect : _effects)
-  {
-    protocol::effect::EffectSetting* setting = _config.add_effect_setting();
-    setting->set_id(effect->GetId());
-    effect->ToProtocol(setting);
-  }
-
-  string str = _config.SerializeAsString();
-  APP.SendWebsocketFrame((const u8*)str.data(), (int)str.size());
-*/
-}
-
-//------------------------------------------------------------------------------
-void DemoEngine::ProcessPayload(const void* payload, u32 size)
-{
-/*
-  if (_config.ParseFromArray(payload, size))
-  {
-    for (const protocol::effect::EffectSetting& setting : _config.effect_setting())
-    {
-      u32 id = setting.id();
-
-      if (setting.id() == 0)
-      {
-        // if the effect has id 0, it's a new effect
-      }
-      else
-      {
-        // find effect with the given id
-        auto it = find_if(_effects.begin(), _effects.end(), [=](const Effect* e) { return e->GetId() == id; });
-        if (it != _effects.end())
-        {
-          // TODO:
-          //(*it)->FromProtocol(setting.config_msg());
-        }
-      }
-    }
-
-  }
-*/
 }

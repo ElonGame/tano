@@ -72,6 +72,12 @@ void DeferredContext::SetRenderTargets(
 }
 
 //------------------------------------------------------------------------------
+void DeferredContext::SetSwapChain(ObjectHandle h, const Color& clearColor)
+{
+  SetSwapChain(h, (const float*)clearColor);
+}
+
+//------------------------------------------------------------------------------
 void DeferredContext::SetSwapChain(ObjectHandle h, const float* clearColor)
 {
   auto swapChain  = GRAPHICS._swapChains.Get(h);
