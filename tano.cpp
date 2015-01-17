@@ -4,9 +4,9 @@
 #include "graphics.hpp"
 #include "deferred_context.hpp"
 #include "init_sequence.hpp"
-#include "protocol/app.parse.hpp"
-#include "protocol/input_buffer.hpp"
-#include "protocol/app.types.hpp"
+#include "generated/app.parse.hpp"
+#include "generated/input_buffer.hpp"
+#include "effects/particle_tunnel.hpp"
 
 //------------------------------------------------------------------------------
 using namespace tano;
@@ -94,6 +94,8 @@ App& App::Instance()
 //------------------------------------------------------------------------------
 bool App::Init(HINSTANCE hinstance)
 {
+  _hinstance = hinstance;
+
   BEGIN_INIT_SEQUENCE();
 
 #if WITH_UNPACKED_RESOUCES
@@ -108,10 +110,9 @@ bool App::Init(HINSTANCE hinstance)
     return false;
   }
 
+  INIT(ResourceManager::Create("resources.txt"));
   INIT(LoadSettings());
 
-  _hinstance = hinstance;
-  INIT(ResourceManager::Create("resources.txt"));
   INIT(Graphics::Create(_hinstance));
 
   int width = GetSystemMetrics(SM_CXFULLSCREEN);
@@ -120,16 +121,17 @@ bool App::Init(HINSTANCE hinstance)
   GRAPHICS.CreateDefaultSwapChain(3 * width / 4, 3 * height / 4, DXGI_FORMAT_R16G16B16A16_FLOAT, WndProc, hinstance);
 
   INIT(DemoEngine::Create());
+  ParticleTunnel::Register();
 
 /*
-  DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Particle, ParticleTest::Create);
+  DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Particle, ParticleTunnel::Create);
   //DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Particle, SceneTest::Create);
   DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Generator, GeneratorTest::Create);
   DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Plexus, PlexusTest::Create);
 */
 
 
-  if (!DEMO_ENGINE.Init("config/demo.pb", hinstance))
+  if (!DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance))
   {
     DeferredContext* ctx = GRAPHICS.CreateDeferredContext(true);
 
@@ -212,32 +214,15 @@ bool App::Run()
 }
 
 //------------------------------------------------------------------------------
-string PathJoin(const char* root, const char* child)
-{
-  string res(root);
-  if (res.size() > 0)
-  {
-    char ch = res.back();
-    if (ch != '\\' && ch != '/')
-      res.append("\\");
-  }
-
-  res.append(child);
-  return res;
-}
-
-//------------------------------------------------------------------------------
 bool App::LoadSettings()
 {
-  vector<char> buf;
-  if (!LoadFile(PathJoin(_appRoot.c_str(), "app.gb").c_str(), &buf))
-    return false;
+  BEGIN_INIT_SEQUENCE();
 
-  AppConfig config;
-  ParseAppConfig(InputBuffer(buf.data(), buf.size()), &config);
-  return true;
-//   if (_appRootFilename.empty())
-//     return;
+  vector<char> buf;
+  INIT(RESOURCE_MANAGER.LoadFile(PathJoin(_appRoot.c_str(), "app.gb").c_str(), &buf));
+
+  INIT(ParseAppSettings(InputBuffer(buf.data(), buf.size()), &_settings));
+  END_INIT_SEQUENCE();
 }
 
 //------------------------------------------------------------------------------

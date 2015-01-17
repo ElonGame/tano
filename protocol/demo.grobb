@@ -1,0 +1,19 @@
+struct demo_settings
+{
+  string soundtrack;
+  effect_settings[] effects;
+};
+
+struct effect_settings
+{
+  string factory;
+  string name;
+  int start_time;
+  int end_time;
+  string settings;
+};
+
+struct particle_tunnel_settings
+{
+  string texture;
+};

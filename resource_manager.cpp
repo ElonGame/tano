@@ -7,7 +7,7 @@ using namespace bristol;
 #if WITH_UNPACKED_RESOUCES
 
 //------------------------------------------------------------------------------
-static bool FileExists(const char *filename)
+static bool FileExists(const char* filename)
 {
   if (_access(filename, 0) != 0)
     return false;
@@ -37,7 +37,7 @@ static string NormalizePath(const string &path, bool addTrailingSlash)
 }
 //------------------------------------------------------------------------------
 
-static ResourceManager *g_instance;
+static ResourceManager* g_instance;
 
 //------------------------------------------------------------------------------
 ResourceManager &ResourceManager::Instance()
@@ -46,7 +46,7 @@ ResourceManager &ResourceManager::Instance()
 }
 
 //------------------------------------------------------------------------------
-bool ResourceManager::Create(const char *outputFilename)
+bool ResourceManager::Create(const char* outputFilename)
 {
   g_instance = new ResourceManager(outputFilename);
   return true;
@@ -60,7 +60,7 @@ bool ResourceManager::Destroy()
 }
 
 //------------------------------------------------------------------------------
-ResourceManager::ResourceManager(const char *outputFilename)
+ResourceManager::ResourceManager(const char* outputFilename)
   : _outputFilename(outputFilename)
 {
   _paths.push_back("./");
@@ -71,7 +71,7 @@ ResourceManager::~ResourceManager()
 {
   if (!_outputFilename.empty())
   {
-    FILE *f = fopen(_outputFilename.c_str(), "wt");
+    FILE* f = fopen(_outputFilename.c_str(), "wt");
     for (auto it = begin(_readFiles); it != end(_readFiles); ++it)
     {
       fprintf(f, "%s\t%s\n", it->orgName.c_str(), it->resolvedName.c_str());
@@ -87,7 +87,7 @@ void ResourceManager::AddPath(const string& path)
 }
 
 //------------------------------------------------------------------------------
-bool ResourceManager::LoadFile(const char *filename, vector<char> *buf)
+bool ResourceManager::LoadFile(const char* filename, vector<char>* buf)
 {
   const string& fullPath = ResolveFilename(filename, true);
   if (fullPath.empty())
@@ -100,8 +100,8 @@ bool ResourceManager::LoadFile(const char *filename, vector<char> *buf)
 //------------------------------------------------------------------------------
 bool ResourceManager::LoadPartial(
     const char* filename,
-    size_t ofs,
-    size_t len,
+    u32 ofs,
+    u32 len,
     vector<char>* buf)
 {
   buf->resize(len);
@@ -111,8 +111,8 @@ bool ResourceManager::LoadPartial(
 //------------------------------------------------------------------------------
 bool ResourceManager::LoadInplace(
     const char* filename,
-    size_t ofs,
-    size_t len,
+    u32 ofs,
+    u32 len,
     void* buf)
 {
   const string& fullPath = ResolveFilename(filename, true);
@@ -142,13 +142,13 @@ bool ResourceManager::LoadInplace(
 }
 
 //------------------------------------------------------------------------------
-bool ResourceManager::FileExists(const char *filename)
+bool ResourceManager::FileExists(const char* filename)
 {
   return !ResolveFilename(filename, false).empty();
 }
 
 //------------------------------------------------------------------------------
-__time64_t ResourceManager::ModifiedDate(const char *filename)
+__time64_t ResourceManager::ModifiedDate(const char* filename)
 {
   struct _stat s;
   _stat(filename, &s);
@@ -252,7 +252,7 @@ ObjectHandle ResourceManager::LoadTexture(
 //------------------------------------------------------------------------------
 ObjectHandle ResourceManager::LoadTextureFromMemory(
     const char* buf,
-    size_t len,
+    u32 len,
     const char* friendlyName,
     bool srgb,
     D3DX11_IMAGE_INFO* info)
@@ -267,10 +267,10 @@ ObjectHandle ResourceManager::LoadTextureFromMemory(
 using namespace std::tr1::placeholders;
 using namespace std;
 
-static PackedResourceManager *g_instance;
-static const int cMaxFileBufferSize = 16 * 1024 * 1024;
+static PackedResourceManager* g_instance;
+static const int cMaxFileBufferSize = 16*  1024*  1024;
 
-static uint32 FnvHash(uint32 d, const char *str) {
+static uint32 FnvHash(uint32 d, const char* str) {
   if (d == 0)
     d = 0x01000193;
 
@@ -278,7 +278,7 @@ static uint32 FnvHash(uint32 d, const char *str) {
     char c = *str++;
     if (!c)
       return d;
-    d = ((d * 0x01000193) ^ c) & 0xffffffff;
+    d = ((d*  0x01000193) ^ c) & 0xffffffff;
   }
 }
 
@@ -289,10 +289,10 @@ struct PackedHeader {
 
 PackedResourceManager &PackedResourceManager::instance() {
   KASSERT(g_instance);
-  return *g_instance;
+  return* g_instance;
 }
 
-bool PackedResourceManager::create(const char *outputFilename) {
+bool PackedResourceManager::create(const char* outputFilename) {
   KASSERT(!g_instance);
   g_instance = new PackedResourceManager(outputFilename);
   return true;
@@ -303,10 +303,10 @@ bool PackedResourceManager::close() {
   return true;
 }
 
-PackedResourceManager::PackedResourceManager(const char *resourceFile) 
+PackedResourceManager::PackedResourceManager(const char* resourceFile) 
   : _resourceFile(resourceFile)
 {
-  FILE *f = fopen(resourceFile, "rb");
+  FILE* f = fopen(resourceFile, "rb");
   LOG_ERROR_COND_LN(f, "Unable to open resource file: %s", resourceFile);
   DEFER([&]{ fclose(f); });
 
@@ -335,19 +335,19 @@ PackedResourceManager::PackedResourceManager(const char *resourceFile)
 PackedResourceManager::~PackedResourceManager() {
 }
 
-int PackedResourceManager::hashLookup(const char *key) {
+int PackedResourceManager::hashLookup(const char* key) {
   int d = _intermediateHash[FnvHash(0, key) % _intermediateHash.size()];
   return d < 0 ? _finalHash[-d-1] : _finalHash[FnvHash(d, key) % _finalHash.size()];
 }
 
-bool PackedResourceManager::loadPackedFile(const char *filename, vector<char> *buf) {
-  PackedFileInfo *p = &_fileInfo[hashLookup(filename)];
+bool PackedResourceManager::loadPackedFile(const char* filename, vector<char>* buf) {
+  PackedFileInfo* p = &_fileInfo[hashLookup(filename)];
   buf->resize(p->finalSize);
   int res = LZ4_uncompress(&_fileBuffer[p->offset], buf->data(), p->finalSize);
   return res == p->compressedSize;
 }
 
-bool PackedResourceManager::loadPackedInplace(const char *filename, size_t ofs, size_t len, void *buf) {
+bool PackedResourceManager::loadPackedInplace(const char* filename, size_t ofs, size_t len, void* buf) {
   vector<char> tmp;
   if (!loadPackedFile(filename, &tmp))
     return false;
@@ -356,12 +356,12 @@ bool PackedResourceManager::loadPackedInplace(const char *filename, size_t ofs, 
   return true;
 }
 
-bool PackedResourceManager::load_file(const char *filename, vector<char> *buf) {
+bool PackedResourceManager::load_file(const char* filename, vector<char>* buf) {
   return loadPackedFile(filename, buf);
 }
 
 
-bool PackedResourceManager::load_partial(const char *filename, size_t ofs, size_t len, vector<char> *buf) {
+bool PackedResourceManager::load_partial(const char* filename, size_t ofs, size_t len, vector<char>* buf) {
   // this is kinda cheesy..
   vector<char> tmp;
   if (!loadPackedFile(filename, &tmp))
@@ -371,18 +371,18 @@ bool PackedResourceManager::load_partial(const char *filename, size_t ofs, size_
   return true;
 }
 
-bool PackedResourceManager::load_inplace(const char *filename, size_t ofs, size_t len, void *buf) {
+bool PackedResourceManager::load_inplace(const char* filename, size_t ofs, size_t len, void* buf) {
   return loadPackedInplace(filename, ofs, len, buf);
 }
 
-ObjectHandle PackedResourceManager::LoadTexture(const char *filename, const char *friendly_name, bool srgb, D3DX11_IMAGE_INFO *info) {
+ObjectHandle PackedResourceManager::LoadTexture(const char* filename, const char* friendly_name, bool srgb, D3DX11_IMAGE_INFO* info) {
   vector<char> tmp;
   loadPackedFile(filename, &tmp);
   return GRAPHICS.LoadTextureFromMemory(tmp.data(), tmp.size(), friendly_name, srgb, info);
 }
 
 ObjectHandle PackedResourceManager::LoadTextureFromMemory(
-  const char *buf, size_t len, const char *friendly_name, bool srgb, D3DX11_IMAGE_INFO *info)
+  const char* buf, size_t len, const char* friendly_name, bool srgb, D3DX11_IMAGE_INFO* info)
 {
   return GRAPHICS.LoadTextureFromMemory(buf, len, friendly_name, srgb, info);
 }

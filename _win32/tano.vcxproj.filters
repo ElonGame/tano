@@ -19,6 +19,13 @@
     <Filter Include="protocol">
       <UniqueIdentifier>{946f3bd4-86ba-46c3-8b97-cf3a8e8909ad}</UniqueIdentifier>
     </Filter>
+    <Filter Include="generated">
+      <UniqueIdentifier>{896590c8-c25f-4525-b6fd-2c11cf955f66}</UniqueIdentifier>
+      <Extensions>*.cpp; *.hpp</Extensions>
+    </Filter>
+    <Filter Include="effects">
+      <UniqueIdentifier>{bc0007da-a6bf-4607-9e6e-60cb53e90b32}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tano.cpp">
@@ -60,17 +67,23 @@
     <ClCompile Include="..\sync\track.c">
       <Filter>sync</Filter>
     </ClCompile>
-    <ClCompile Include="..\protocol\app.parse.cpp">
-      <Filter>protocol</Filter>
+    <ClCompile Include="..\generated\input_buffer.cpp">
+      <Filter>generated</Filter>
     </ClCompile>
-    <ClCompile Include="..\protocol\input_buffer.cpp">
-      <Filter>protocol</Filter>
+    <ClCompile Include="..\generated\output_buffer.cpp">
+      <Filter>generated</Filter>
     </ClCompile>
-    <ClCompile Include="..\protocol\output_buffer.cpp">
-      <Filter>protocol</Filter>
+    <ClCompile Include="..\generated\parse_base.cpp">
+      <Filter>generated</Filter>
     </ClCompile>
-    <ClCompile Include="..\protocol\parse_base.cpp">
-      <Filter>protocol</Filter>
+    <ClCompile Include="..\generated\demo.parse.cpp">
+      <Filter>generated</Filter>
+    </ClCompile>
+    <ClCompile Include="..\generated\app.parse.cpp">
+      <Filter>generated</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\particle_tunnel.cpp">
+      <Filter>effects</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -128,20 +141,29 @@
     <ClInclude Include="..\sync\track.h">
       <Filter>sync</Filter>
     </ClInclude>
-    <ClInclude Include="..\protocol\app.parse.hpp">
-      <Filter>protocol</Filter>
+    <ClInclude Include="..\generated\input_buffer.hpp">
+      <Filter>generated</Filter>
     </ClInclude>
-    <ClInclude Include="..\protocol\app.types.hpp">
-      <Filter>protocol</Filter>
+    <ClInclude Include="..\generated\output_buffer.hpp">
+      <Filter>generated</Filter>
     </ClInclude>
-    <ClInclude Include="..\protocol\input_buffer.hpp">
-      <Filter>protocol</Filter>
+    <ClInclude Include="..\generated\parse_base.hpp">
+      <Filter>generated</Filter>
     </ClInclude>
-    <ClInclude Include="..\protocol\output_buffer.hpp">
-      <Filter>protocol</Filter>
+    <ClInclude Include="..\generated\demo.parse.hpp">
+      <Filter>generated</Filter>
     </ClInclude>
-    <ClInclude Include="..\protocol\parse_base.hpp">
-      <Filter>protocol</Filter>
+    <ClInclude Include="..\generated\demo.types.hpp">
+      <Filter>generated</Filter>
+    </ClInclude>
+    <ClInclude Include="..\generated\app.parse.hpp">
+      <Filter>generated</Filter>
+    </ClInclude>
+    <ClInclude Include="..\generated\app.types.hpp">
+      <Filter>generated</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\particle_tunnel.hpp">
+      <Filter>effects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -150,6 +172,9 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\protocol\demo.grobb">
+      <Filter>protocol</Filter>
+    </None>
     <None Include="..\protocol\app.grobb">
       <Filter>protocol</Filter>
     </None>

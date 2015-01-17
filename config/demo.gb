@@ -1,0 +1,11 @@
+{
+  soundtrack: 'distance.mp3';
+  
+  effects: [{
+    name: 'intro';
+    factory: 'particle_tunnel';
+    start_time: 0;
+    end_time: 30000;
+    settings: 'config/particle_tunnel.gb';
+  }];
+}

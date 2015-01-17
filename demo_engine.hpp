@@ -2,22 +2,12 @@
 
 #include "graphics.hpp"
 #include "timer.hpp"
+#include "generated/demo.types.hpp"
 
 namespace tano
 {
-  namespace effect
-  {
-    struct EffectSetting
-    {
-      enum Type
-      {
 
-      };
-    };
-  }
   class Effect;
-  struct AnimationManager;
-
   typedef function<Effect*(const char*, u32)> EffectFactory;
 
   class DemoEngine
@@ -28,7 +18,7 @@ namespace tano
     static bool Destroy();
 
     bool Init(const char* config, HINSTANCE instance);
-    void RegisterFactory(effect::EffectSetting::Type type, const EffectFactory& factory);
+    void RegisterFactory(const string& type, const EffectFactory& factory);
 
     void SaveSettings();
 
@@ -50,7 +40,7 @@ namespace tano
     void ProcessPayload(const void* payload, u32 size);
     void Connected();
 
-//  private:
+  private:
     DemoEngine();
     ~DemoEngine();
     static DemoEngine* _instance;
@@ -72,8 +62,8 @@ namespace tano
     Timer _timer;
 
     string _configFile;
-    //protocol::effect::EffectSettings _config;
-    unordered_map<effect::EffectSetting::Type, EffectFactory> _effectFactories;
+    DemoSettings _settings;
+    unordered_map<string, EffectFactory> _effectFactories;
     u32 _nextEffectId;
   };
 

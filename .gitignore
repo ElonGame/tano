@@ -4,4 +4,6 @@ _win32/x64/Debug/*
 *.suo
 *.opensdf
 *.aps
+*.user
+*.mp3
 generated/*

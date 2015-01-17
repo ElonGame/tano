@@ -2,14 +2,6 @@
 
 #include "object_handle.hpp"
 
-namespace protocol
-{
-  namespace effect
-  {
-    class EffectSetting;
-  }
-}
-
 namespace tano
 {
   class DeferredContext;
@@ -31,18 +23,14 @@ namespace tano
 
     Effect(const string& name, u32 id);
     virtual ~Effect();
+    virtual bool Init(const char* configFile);
     virtual bool Show();
     virtual bool Hide();
-    virtual bool Init(const protocol::effect::EffectSetting& config);
     virtual bool Update(const UpdateState& state);
     virtual bool SaveSettings();
     virtual bool Render();
     virtual bool Close();
     virtual bool Reset();
-    virtual void ToProtocol(protocol::effect::EffectSetting* settings) const {}
-    virtual void FromProtocol(const string& str) {}
-
-    virtual void WndProc(UINT message, WPARAM wParam, LPARAM lParam);
 
     const string& Name() const { return _name; }
     TimeDuration StartTime() const { return _startTime; }
@@ -59,17 +47,10 @@ namespace tano
     string _name;
     u32 _id;
 
-    int _mouse_horiz;
-    int _mouse_vert;
-    bool _mouse_lbutton;
-    bool _mouse_rbutton;
-    DWORD _mouse_pos_prev;
-    int _keystate[256];
-
     TimeDuration _startTime, _endTime;
     bool _running;
 
     DeferredContext* _ctx;
-    bool _first_tick;
+    bool _firstTick;
   };
 }

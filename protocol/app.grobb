@@ -1,5 +1,4 @@
-struct app_config
+struct app_settings
 {
-  string soundtrack;
+  string demo_config;
 };
-

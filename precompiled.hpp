@@ -10,6 +10,10 @@
 
 #define WITH_ROCKET 1
 
+#if !WITH_ROCKET
+#define SYNC_PLAYER 1
+#endif
+
 #ifdef _DEBUG
   #ifndef WITH_UNPACKED_RESOUCES 
     #define WITH_UNPACKED_RESOUCES 1

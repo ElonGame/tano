@@ -1,4 +1,5 @@
 #pragma once
+#include "generated/app.types.hpp"
 
 namespace tano
 {
@@ -33,6 +34,7 @@ namespace tano
 #endif
 
     string _appRoot;
+    AppSettings _settings;
 
     bristol::LogSinkApp _logSinkApp;
     bristol::LogSinkConsole _logSinkConsole;

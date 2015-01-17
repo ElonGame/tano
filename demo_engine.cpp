@@ -4,6 +4,9 @@
 #include "resource_manager.hpp"
 #include "tano.hpp"
 #include "init_sequence.hpp"
+#include "generated/input_buffer.hpp"
+#include "generated/demo.parse.hpp"
+#include "generated/demo.types.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -227,16 +230,37 @@ Effect *DemoEngine::FindEffectByName(const string &name)
 //------------------------------------------------------------------------------
 void DemoEngine::WndProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
-  for (size_t i = 0; i < _activeEffects.size(); ++i)
-  {
-    _activeEffects[i]->WndProc(message, wParam, lParam);
-  }
 }
 
 //------------------------------------------------------------------------------
 bool DemoEngine::Init(const char* config, HINSTANCE instance)
 {
   BEGIN_INIT_SEQUENCE();
+
+  vector<char> buf;
+  INIT(RESOURCE_MANAGER.LoadFile(config, &buf));
+  INIT(ParseDemoSettings(InputBuffer(buf), &_settings));
+
+  for (auto& e : _settings.effects)
+  {
+    // Look up the factory
+    auto it = _effectFactories.find(e.factory);
+    if (it == _effectFactories.end())
+    {
+      INJECT_ERROR(ToString("Unable to find factory: %s", e.factory.c_str()).c_str());
+      continue;
+    }
+
+    // Create and init the effect
+    EffectFactory factory = it->second;
+    Effect* effect = factory(e.name.c_str(), _nextEffectId++);
+
+    effect->SetDuration(TimeDuration::Milliseconds(e.start_time), TimeDuration::Milliseconds(e.end_time));
+    INIT(effect->Init(e.settings.c_str()));
+
+    int a = 10;
+  }
+
 /*
   _configFile = config;
 
@@ -275,7 +299,7 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
 }
 
 //------------------------------------------------------------------------------
-void DemoEngine::RegisterFactory(effect::EffectSetting::Type type, const EffectFactory& factory)
+void DemoEngine::RegisterFactory(const string& type, const EffectFactory& factory)
 {
   _effectFactories[type] = factory;
 }
