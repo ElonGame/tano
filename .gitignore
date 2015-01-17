@@ -4,4 +4,4 @@ _win32/x64/Debug/*
 *.suo
 *.opensdf
 *.aps
-protocol/generated/*
+generated/*

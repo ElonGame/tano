@@ -2,3 +2,4 @@ struct app_config
 {
   string soundtrack;
 };
+

@@ -1,1 +1,1 @@
-python ../grobb/grobb_parse.py --generate_lib --namespace test --out_dir generated --basic_types *.grobb
+python ../grobb/grobb_parse.py --generate_lib --namespace test --out_dir ../generated --basic_types *.grobb
