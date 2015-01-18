@@ -311,6 +311,8 @@ namespace tano
 
   private:
 
+    ObjectHandle ReserveObjectHandle(const string& id, ObjectHandle::Type type);
+
     bool CreateDevice();
 
     bool Init(HINSTANCE hInstance);

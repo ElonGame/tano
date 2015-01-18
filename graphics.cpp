@@ -100,7 +100,7 @@ void Graphics::SwapChain::Present()
 }
 
 //------------------------------------------------------------------------------
-static ObjectHandle emptyGoh;
+static ObjectHandle emptyHandle;
 Graphics* Graphics::_instance;
 
 #if WITH_DXGI_DEBUG
@@ -464,7 +464,7 @@ ObjectHandle Graphics::CreateBuffer(
       //LOG_ERROR_LN("Implement me!");
     }
   }
-  return emptyGoh;
+  return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -616,7 +616,7 @@ ObjectHandle Graphics::CreateStructuredBuffer(
   sbDesc.ByteWidth            = elemSize * numElems;
   sbDesc.Usage                = D3D11_USAGE_DEFAULT;
   if (FAILED(_device->CreateBuffer(&sbDesc, NULL, &sb->buffer.resource)))
-    return emptyGoh;
+    return emptyHandle;
 
   auto buf = sb->buffer.resource.p;
 
@@ -628,7 +628,7 @@ ObjectHandle Graphics::CreateStructuredBuffer(
   sbUAVDesc.Format                    = DXGI_FORMAT_UNKNOWN;
   sbUAVDesc.ViewDimension             = D3D11_UAV_DIMENSION_BUFFER;
   if (FAILED(_device->CreateUnorderedAccessView(buf, &sbUAVDesc, &sb->uav.resource)))
-    return emptyGoh;
+    return emptyHandle;
 
   if (createSrv)
   {
@@ -641,7 +641,7 @@ ObjectHandle Graphics::CreateStructuredBuffer(
     sbSRVDesc.Format                        = DXGI_FORMAT_UNKNOWN;
     sbSRVDesc.ViewDimension                 = D3D11_SRV_DIMENSION_BUFFER;
     if (FAILED(_device->CreateShaderResourceView(buf, &sbSRVDesc, &sb->srv.resource)))
-      return emptyGoh;
+      return emptyHandle;
   }
 
   return MakeObjectHandle(
@@ -665,7 +665,7 @@ ObjectHandle Graphics::CreateRenderTarget(
       : _renderTargets.Insert(name, data.release());
     return MakeObjectHandle(ObjectHandle::kRenderTarget, idx);
   }
-  return emptyGoh;
+  return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -782,14 +782,14 @@ ObjectHandle Graphics::LoadTexture(
 {
   D3DX11_IMAGE_INFO imageInfo;
   if (FAILED(D3DX11GetImageInfoFromFileA(filename, NULL, &imageInfo, NULL)))
-    return emptyGoh;
+    return emptyHandle;
 
   if (info)
     *info = imageInfo;
 
   auto data = unique_ptr<SimpleResource>(new SimpleResource());
   if (FAILED(D3DX11CreateTextureFromFileA(_device, filename, NULL, NULL, &data->resource, NULL)))
-    return emptyGoh;
+    return emptyHandle;
 
   // TODO: allow for srgb loading
   auto fmt = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -797,7 +797,7 @@ ObjectHandle Graphics::LoadTexture(
   auto dim = imageInfo.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE ? D3D11_SRV_DIMENSION_TEXTURECUBE : D3D11_SRV_DIMENSION_TEXTURE2D;
   auto desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(dim, fmt);
   if (FAILED(_device->CreateShaderResourceView(data->resource, &desc, &data->view.resource)))
-    return emptyGoh;
+    return emptyHandle;
 
   return MakeObjectHandle(ObjectHandle::kResource, 
     _resources.Insert(friendlyName ? friendlyName : filename, data.release()));
@@ -813,18 +813,18 @@ ObjectHandle Graphics::LoadTextureFromMemory(
 {
   HRESULT hr;
   if (info && FAILED(D3DX11GetImageInfoFromMemory(buf, len, NULL, info, &hr)))
-    return emptyGoh;
+    return emptyHandle;
 
   auto data = unique_ptr<SimpleResource>(new SimpleResource());
   if (FAILED(D3DX11CreateTextureFromMemory(_device, buf, len, NULL, NULL, &data->resource, &hr)))
   {
-    return emptyGoh;
+    return emptyHandle;
   }
 
   // TODO: allow for srgb loading
   auto desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, DXGI_FORMAT_R8G8B8A8_UNORM);
   if (FAILED(_device->CreateShaderResourceView(data->resource, &desc, &data->view.resource)))
-    return emptyGoh;
+    return emptyHandle;
 
   return MakeObjectHandle(
       ObjectHandle::kResource, _resources.Insert(friendlyName, data.release()));
@@ -848,7 +848,7 @@ ObjectHandle Graphics::CreateTexture(
   if (!CreateTexture(desc, data))
   {
     delete exch_null(data);
-    return emptyGoh;
+    return emptyHandle;
   }
   return InsertTexture(data, name);
 }
@@ -891,7 +891,7 @@ ObjectHandle Graphics::CreateTexture(
   if (!CreateTexture(width, height, fmt, data_bits, data_width, data_height, data_pitch, data))
   {
     delete exch_null(data);
-    return emptyGoh;
+    return emptyHandle;
   }
   return InsertTexture(data, friendlyName);
 }
@@ -979,7 +979,7 @@ ObjectHandle Graphics::CreateInputLayout(
   if (FAILED(_device->CreateInputLayout(&desc[0], (u32)desc.size(), &shader_bytecode[0], shader_bytecode.size(), &layout)))
   {
     LOG_WARN("Error creating input layout");
-    return emptyGoh;
+    return emptyHandle;
   }
 
   return ObjectHandle(ObjectHandle::kInputLayout, _inputLayouts.Insert(layout));
@@ -997,6 +997,18 @@ ObjectHandle AddShader(
 }
 
 //------------------------------------------------------------------------------
+ObjectHandle Graphics::ReserveObjectHandle(const string& id, ObjectHandle::Type type)
+{
+  switch (type)
+  {
+    case ObjectHandle::kVertexShader: return AddShader<ID3D11VertexShader>(_vertexShaders, nullptr, id, type);
+    case ObjectHandle::kPixelShader: return AddShader<ID3D11PixelShader>(_pixelShaders, nullptr, id, type);
+  }
+
+  return emptyHandle;
+}
+
+//------------------------------------------------------------------------------
 ObjectHandle Graphics::CreateVertexShader(
     const vector<char> &shader_bytecode,
     const string &id)
@@ -1006,7 +1018,7 @@ ObjectHandle Graphics::CreateVertexShader(
   {
     return AddShader(_vertexShaders, vs, id, ObjectHandle::kVertexShader);
   }
-  return emptyGoh;
+  return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -1019,7 +1031,7 @@ ObjectHandle Graphics::CreatePixelShader(
   {
     return AddShader(_pixelShaders, ps, id, ObjectHandle::kPixelShader);
   }
-  return emptyGoh;
+  return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -1032,7 +1044,7 @@ ObjectHandle Graphics::CreateComputeShader(
   {
     return AddShader(_computeShaders, cs, id, ObjectHandle::kComputeShader);
   }
-  return emptyGoh;
+  return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -1045,7 +1057,7 @@ ObjectHandle Graphics::CreateGeometryShader(
   {
     return AddShader(_geometryShaders, cs, id, ObjectHandle::kGeometryShader);
   }
-  return emptyGoh;
+  return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -1061,7 +1073,7 @@ ObjectHandle Graphics::CreateRasterizerState(
           ? _rasterizerStates.Insert(name, rs)
           : _rasterizerStates.Insert(rs));
   }
-  return emptyGoh;
+  return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -1077,7 +1089,7 @@ ObjectHandle Graphics::CreateBlendState(
           ? _blendStates.Insert(name, bs)
           : _blendStates.Insert(bs));
   }
-  return emptyGoh;
+  return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -1093,7 +1105,7 @@ ObjectHandle Graphics::CreateDepthStencilState(
           ? _depthStencilStates.Insert(name, dss)
           : _depthStencilStates.Insert(dss));
   }
-  return emptyGoh;
+  return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -1109,7 +1121,7 @@ ObjectHandle Graphics::CreateSamplerState(
         ? _sampler_states.Insert(name, ss)
         : _sampler_states.Insert(ss));
   }
-  return emptyGoh;
+  return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -1133,7 +1145,7 @@ ObjectHandle Graphics::CreateSwapChain(
 
   if (!RegisterClassEx(&wcex))
   {
-    return emptyGoh;
+    return emptyHandle;
   }
 
   const UINT windowStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
@@ -1163,7 +1175,7 @@ ObjectHandle Graphics::CreateSwapChain(
 
   if (FAILED(_curSetup.dxgi_factory->CreateSwapChain(_device, &swapChainDesc, &sc)))
   {
-    return emptyGoh;
+    return emptyHandle;
   }
 
   SwapChain* swapChain = new SwapChain(name);
@@ -1175,7 +1187,7 @@ ObjectHandle Graphics::CreateSwapChain(
     return ObjectHandle(
       ObjectHandle::kSwapChain, _swapChains.Insert(swapChain));
   }
-  return emptyGoh;
+  return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -1233,7 +1245,7 @@ ObjectHandle Graphics::MakeObjectHandle(
     int idx,
     int data)
 {
-  return idx != -1 ? ObjectHandle(type, idx, data) : emptyGoh;
+  return idx != -1 ? ObjectHandle(type, idx, data) : emptyHandle;
 }
 
 //------------------------------------------------------------------------------
@@ -1442,10 +1454,13 @@ bool Graphics::LoadShadersFromFile(
   string psSuffix = ToString("_%s.pso", psEntry);
 #endif
 
+  bool res = true;
   if (vs)
   {
-    // todo: preallocate the shader handle to avoid writing to a pointer like this..
-    bool res;
+    string vsId = filenameBase + vsEntry;
+    ObjectHandle vsHandle = ReserveObjectHandle(vsId, ObjectHandle::kVertexShader);
+    *vs = vsHandle;
+
     RESOURCE_MANAGER.AddFileWatch((filenameBase + vsSuffix).c_str(), nullptr, true, &res,
       [=](const string& filename, void* token)
       {
@@ -1457,15 +1472,14 @@ bool Graphics::LoadShadersFromFile(
           return false;
         }
 
-        ObjectHandle h = GRAPHICS.CreateVertexShader(buf, vsEntry);
-        if (!h.IsValid())
+        ID3D11VertexShader *vs = nullptr;
+        if (!SUCCEEDED(_device->CreateVertexShader(buf.data(), buf.size(), NULL, &vs)))
         {
           LOG_WARN("Unable to create vertex shader" << LogKeyValue("filename", filename));
           return false;
         }
 
-        *vs = h;
-
+        _vertexShaders.Update(vsHandle, vs);
         if (inputLayout)
         {
           vector<D3D11_INPUT_ELEMENT_DESC> desc;
@@ -1500,14 +1514,17 @@ bool Graphics::LoadShadersFromFile(
         }
         return true;
       });
-
-    if (!res)
-      return false;
   }
+
+  if (!res)
+    return false;
 
   if (ps)
   {
-    bool res;
+    string psId = filenameBase + psEntry;
+    ObjectHandle psHandle = ReserveObjectHandle(psId, ObjectHandle::kPixelShader);
+    *ps = psHandle;
+
     RESOURCE_MANAGER.AddFileWatch((filenameBase + psSuffix).c_str(), nullptr, true, &res,
       [=](const string& filename, void* token)
     {
@@ -1518,19 +1535,18 @@ bool Graphics::LoadShadersFromFile(
         return false;
       }
 
-      *ps = GRAPHICS.CreatePixelShader(buf, psEntry);
-      if (!ps->IsValid())
+      ID3D11PixelShader *ps = nullptr;
+      if (!SUCCEEDED(_device->CreatePixelShader(buf.data(), buf.size(), NULL, &ps)))
       {
         LOG_WARN("Unable to create pixel shader" << LogKeyValue("filename", filename));
         return false;
       }
 
+      _pixelShaders.Update(psHandle, ps);
       return true;
     });
 
-    if (!res)
-      return false;
   }
 
-  return true;
+  return res;
 }

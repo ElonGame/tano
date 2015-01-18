@@ -27,6 +27,6 @@ VsOut VsMain(VsIn v)
 
 float4 PsMain(VsOut p) : SV_Target
 {
-  return 1;
+  return float4(1,1,0.1f,0);
   return p.color;
 }
