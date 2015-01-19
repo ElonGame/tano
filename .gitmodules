@@ -4,3 +4,6 @@
 [submodule "bristol"]
 	path = bristol
 	url = git@github.com:mrdooz/bristol.git
+[submodule "imgui"]
+	path = imgui
+	url = git@github.com:ocornut/imgui.git

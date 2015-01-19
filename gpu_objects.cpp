@@ -57,13 +57,18 @@ bool GpuObjects::LoadShadersFromFile(
 
 //------------------------------------------------------------------------------
 bool GpuState::Create(
-  const D3D11_DEPTH_STENCIL_DESC& dssDesc,
-  const D3D11_BLEND_DESC& blendDesc,
-  const D3D11_RASTERIZER_DESC& rasterizerDesc)
+  const D3D11_DEPTH_STENCIL_DESC* dssDesc,
+  const D3D11_BLEND_DESC* blendDesc,
+  const D3D11_RASTERIZER_DESC* rasterizerDesc)
 {
-  _depthStencilState = GRAPHICS.CreateDepthStencilState(dssDesc);
-  _blendState = GRAPHICS.CreateBlendState(blendDesc);
-  _rasterizerState = GRAPHICS.CreateRasterizerState(rasterizerDesc);
+  _depthStencilState = GRAPHICS.CreateDepthStencilState(
+    dssDesc ? *dssDesc : CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT()));
+
+  _blendState = GRAPHICS.CreateBlendState(
+    blendDesc ? *blendDesc : CD3D11_BLEND_DESC(CD3D11_DEFAULT()));
+
+  _rasterizerState = GRAPHICS.CreateRasterizerState(
+    rasterizerDesc ? *rasterizerDesc : CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT()));
 
   CD3D11_SAMPLER_DESC samplerDesc = CD3D11_SAMPLER_DESC(CD3D11_DEFAULT());
   _samplers[Linear] = GRAPHICS.CreateSamplerState(samplerDesc);
@@ -81,13 +86,4 @@ bool GpuState::Create(
   return
     _depthStencilState.IsValid() && _blendState.IsValid() && _rasterizerState.IsValid() &&
     _samplers[0].IsValid() && _samplers[1].IsValid() && _samplers[2].IsValid() && _samplers[3].IsValid();
-}
-
-//------------------------------------------------------------------------------
-bool GpuState::Create()
-{
-  return Create(
-    CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT()),
-    CD3D11_BLEND_DESC(CD3D11_DEFAULT()),
-    CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT()));
 }

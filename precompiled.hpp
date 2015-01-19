@@ -1,6 +1,7 @@
 #pragma once
+#pragma warning(disable: 4005)
 
-#define WITH_DXGI_DEBUG 0
+#define WITH_DXGI_DEBUG 1
 #define WITH_DEBUG_SHADERS 1
 
 #define WITH_CONFIG_DLG 0
@@ -9,6 +10,8 @@
 #define WITH_MUSIC 1
 
 #define WITH_ROCKET 1
+
+#define WITH_IMGUI 1
 
 #if !WITH_ROCKET
 #define SYNC_PLAYER 1
@@ -38,6 +41,10 @@
 
 #if !defined(NOMINMAX)
 #define NOMINMAX
+#endif
+
+#ifdef WITH_IMGUI
+#include "imgui/imgui.h"
 #endif
 
 #include <sys/types.h>
@@ -85,6 +92,7 @@
 #include <bristol/file_watcher.hpp>
 #include <bristol/dx/graphics_utils.hpp>
 #include <bristol/dx/vertex_types.hpp>
+
 
 typedef uint8_t u8;
 typedef uint16_t u16;

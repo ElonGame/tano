@@ -443,7 +443,7 @@ void DeferredContext::SetSamplers(
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetCBuffer(
+void DeferredContext::SetConstantBuffer(
     ObjectHandle h,
     const void* buf,
     size_t len,
@@ -478,13 +478,13 @@ void DeferredContext::SetGpuObjects(const GpuObjects& obj)
   if (obj._vb.IsValid()) SetVB(obj._vb);
   if (obj._ib.IsValid()) SetIB(obj._ib);
 
-  SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+  SetPrimitiveTopology(obj._topology);
 }
 
 //------------------------------------------------------------------------------
 void DeferredContext::SetGpuState(const GpuState& state)
 {
-  float blendFactor[4] ={ 1, 1, 1, 1 };
+  static float blendFactor[4] = { 1, 1, 1, 1 };
   SetRasterizerState(state._rasterizerState);
   SetBlendState(state._blendState, blendFactor, 0xffffffff);
   SetDepthStencilState(state._depthStencilState, 0);
@@ -497,8 +497,14 @@ void DeferredContext::SetGpuStateSamplers(const GpuState& state, ShaderType shad
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetViewports(const D3D11_VIEWPORT& viewport, u32 numViewports)
+void DeferredContext::SetViewports(u32 numViewports, const D3D11_VIEWPORT& viewport)
 {
   vector<D3D11_VIEWPORT> viewports(numViewports, viewport);
   _ctx->RSSetViewports(numViewports, viewports.data());
+}
+
+//------------------------------------------------------------------------------
+void DeferredContext::SetScissorRect(u32 numRects, const D3D11_RECT* rects)
+{
+  _ctx->RSSetScissorRects(numRects, rects);
 }

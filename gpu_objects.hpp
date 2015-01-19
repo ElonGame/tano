@@ -25,6 +25,8 @@ namespace tano
 
     bool LoadShadersFromFile(const  char* filename, const  char* vsEntry, const  char* psEntry, u32 flags = 0);
 
+    D3D11_PRIMITIVE_TOPOLOGY _topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
     ObjectHandle _vs;
     ObjectHandle _ps;
     ObjectHandle _layout;
@@ -54,11 +56,11 @@ namespace tano
   //------------------------------------------------------------------------------
   struct GpuState
   {
-    bool Create();
+    // Passing 0 uses the default settings
     bool Create(
-        const  D3D11_DEPTH_STENCIL_DESC& dssDesc,
-        const  D3D11_BLEND_DESC& blendDesc,
-        const  D3D11_RASTERIZER_DESC& rasterizerDesc);
+        const  D3D11_DEPTH_STENCIL_DESC* dssDesc = nullptr,
+        const  D3D11_BLEND_DESC* blendDesc = nullptr,
+        const  D3D11_RASTERIZER_DESC* rasterizerDesc = nullptr);
 
     ObjectHandle _depthStencilState;
     ObjectHandle _blendState;

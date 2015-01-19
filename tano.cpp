@@ -8,6 +8,10 @@
 #include "generated/input_buffer.hpp"
 #include "effects/particle_tunnel.hpp"
 
+#if WITH_IMGUI
+#include "imgui_helpers.hpp"
+#endif
+
 //------------------------------------------------------------------------------
 using namespace tano;
 using namespace bristol;
@@ -120,6 +124,10 @@ bool App::Init(HINSTANCE hinstance)
 
   GRAPHICS.CreateDefaultSwapChain(3 * width / 4, 3 * height / 4, DXGI_FORMAT_R16G16B16A16_FLOAT, WndProc, hinstance);
 
+#if WITH_IMGUI
+  INIT(InitImGui());
+#endif
+
   INIT(DemoEngine::Create());
   ParticleTunnel::Register();
 
@@ -168,20 +176,27 @@ bool App::Run()
     {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
+      continue;
     }
-    else
-    {
-      DEMO_ENGINE.Tick();
+
+#if WITH_IMGUI
+    UpdateImGui();
+#endif
+
+    DEMO_ENGINE.Tick();
 
 #if WITH_UNPACKED_RESOUCES
-      RESOURCE_MANAGER.Tick();
+    RESOURCE_MANAGER.Tick();
 #endif
 
 #if WITH_MUSIC
-      _system->update();
+    _system->update();
 #endif
-      GRAPHICS.Present();
-    }
+
+#if WITH_IMGUI
+    ImGui::Render();
+#endif
+    GRAPHICS.Present();
   }
 
 #if WITH_MUSIC
@@ -215,12 +230,12 @@ void App::SaveSettings()
 //------------------------------------------------------------------------------
 LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-#if WITH_ANT_TWEAK_BAR
-  if (TwEventWin(hWnd, message, wParam, lParam))
-  {
+
+#if WITH_IMGUI
+  if (ImGuiWndProc(hWnd, message, wParam, lParam))
     return 0;
-  }
 #endif
+
   switch (message)
   {
     case WM_SIZE:

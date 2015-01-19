@@ -27,24 +27,26 @@ bool ParticleTunnel::Init(const char* configFile)
 {
   BEGIN_INIT_SEQUENCE();
 
-  vector<char> buf;
-  INIT(RESOURCE_MANAGER.LoadFile(configFile, &buf));
-  INIT(ParseParticleTunnelSettings(InputBuffer(buf), &_settings));
-
-//  _config = config.particle_config();
-
-  FileWatcher& watcher = DEMO_ENGINE.GetFileWatcher();
-
   bool res = true;
+  FileWatcher& watcher = DEMO_ENGINE.GetFileWatcher();
+  vector<char> buf;
+  if (!RESOURCE_MANAGER.LoadFile(configFile, &buf))
+    return false;
+
+  if (!ParseParticleTunnelSettings(InputBuffer(buf), &_settings))
+    return false;
+
+  INIT(res);
+
   watcher.AddFileWatch(_settings.texture, nullptr, true, &res, [this](const string& filename, void* ctx) {
     _particleTexture = RESOURCE_MANAGER.LoadTexture(filename.c_str());
     return _particleTexture.IsValid();
   });
 
-  u32 vertexFlags = VertexFlags::VF_POS | VertexFlags::VF_COLOR;
+  u32 vertexFlags = VertexFlags::VF_POS | VertexFlags::VF_TEX0;
   INIT(_particleTexture.IsValid())
   INIT(_gpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsMain", "PsMain", vertexFlags));
-  INIT(_gpuObjects.CreateDynamicVb(128 * 1024, sizeof(PosCol)));
+  INIT(_gpuObjects.CreateDynamicVb(128 * 1024, sizeof(PosTex)));
 
   INIT_RESOURCE(_samplerState, GRAPHICS.CreateSamplerState(CD3D11_SAMPLER_DESC(CD3D11_DEFAULT())));
   INIT(_cbPerFrame.Create());
@@ -61,13 +63,27 @@ bool ParticleTunnel::Init(const char* configFile)
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
-  PosCol* vtx = _ctx->MapWriteDiscard<PosCol>(_gpuObjects._vb);
+  PosTex* vtx = _ctx->MapWriteDiscard<PosTex>(_gpuObjects._vb);
   if (!vtx)
     return false;
 
-  vtx[1].pos = Vector3(-100, -100, 0);
-  vtx[0].pos = Vector3(+200, -100, 0);
-  vtx[2].pos = Vector3(0, 100, 0);
+  float s = 50;
+  // 0--1
+  // 2--3
+  PosTex v0 ={ Vector3(-s, +s, 0), Vector2(0, 0) };
+  PosTex v1 ={ Vector3(+s, +s, 0), Vector2(1, 0) };
+  PosTex v2 ={ Vector3(-s, -s, 0), Vector2(0, 1) };
+  PosTex v3 ={ Vector3(+s, -s, 0), Vector2(1, 1) };
+
+  // 0, 1, 2
+  // 2, 1, 3
+  vtx[0] = v0;
+  vtx[1] = v1;
+  vtx[2] = v2;
+
+  vtx[3] = v2;
+  vtx[4] = v1;
+  vtx[5] = v3;
 
   _ctx->Unmap(_gpuObjects._vb);
   return true;
@@ -79,10 +95,21 @@ bool ParticleTunnel::Render()
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
   _ctx->BeginFrame();
 
-  _ctx->SetCBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+//  static bool show = true;
+//  ImGui::ShowTestWindow(&show);
+
+  ImGui::Text("elloooooe: %d", 42);
+  ImGui::Text("lloooooee: %d", 42);
+  ImGui::Text("Hellooooo: %d", 42);
+  ImGui::Text("uuuuuuuuu: %d", 42);
+
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
   _ctx->SetGpuObjects(_gpuObjects);
 
-  _ctx->Draw(3,0);
+  _ctx->SetSamplerState(_samplerState, 0, ShaderType::PixelShader);
+  _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
+
+  _ctx->Draw(6,0);
 
   _ctx->EndFrame();
 

@@ -38,16 +38,17 @@ namespace tano
     void SetSamplerState(ObjectHandle h, u32 slot, ShaderType shaderType);
     void SetSamplers(const ObjectHandle* h, u32 slot, u32 numSamplers, ShaderType shaderType);
     template <typename T>
-    void SetCBuffer(const ConstantBuffer<T>& buffer, ShaderType shaderType, u32 slot)
+    void SetConstantBuffer(const ConstantBuffer<T>& buffer, ShaderType shaderType, u32 slot)
     {
-      return SetCBuffer(buffer.handle, &buffer, sizeof(T), shaderType, slot);
+      return SetConstantBuffer(buffer.handle, &buffer, sizeof(T), shaderType, slot);
     }
 
-    void SetCBuffer(ObjectHandle h, const void* buf, size_t len, ShaderType shaderType, u32 slot);
+    void SetConstantBuffer(ObjectHandle h, const void* buf, size_t len, ShaderType shaderType, u32 slot);
     void SetGpuObjects(const GpuObjects& obj);
     void SetGpuState(const GpuState& state);
     void SetGpuStateSamplers(const GpuState& state, ShaderType shaderType);
-    void SetViewports(const D3D11_VIEWPORT& viewport, u32 numViewports);
+    void SetViewports(u32 numViewports, const D3D11_VIEWPORT& viewport);
+    void SetScissorRect(u32 numRects, const D3D11_RECT* rects);
 
     void UnsetSRVs(u32 first, u32 count, ShaderType shaderType);
     void UnsetUAVs(int first, int count);

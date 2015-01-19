@@ -1,3 +1,10 @@
+/*
+  repeat after me: 
+    directx is left-handed.
+    z goes into the screen.
+    clockwise winding order.
+*/
+
 #pragma once
 #include "object_handle.hpp"
 #include "id_buffer.hpp"
@@ -5,11 +12,6 @@
 namespace tano
 {
   Vector3 ScreenToViewSpace(const Matrix& proj, u32 x, u32 y);
-
-  class Shader;
-  class Material;
-
-  enum FileEvent;
 
   enum class ShaderType
   {
@@ -66,12 +68,6 @@ namespace tano
       int multisampleCount;
       bool windowed;
       int width, height;
-    };
-
-    enum PredefinedGeometry
-    {
-      kGeomFsQuadPos,
-      kGeomFsQuadPosTex,
     };
 
     template<class Resource, class Desc>
@@ -160,6 +156,8 @@ namespace tano
       return *_instance;
     }
 
+    HWND GetHwnd() { return _hwnd; }
+
     ObjectHandle LoadTexture(
         const char* filename,
         const char* friendlyName = nullptr,
@@ -174,19 +172,6 @@ namespace tano
         D3DX11_IMAGE_INFO* info = nullptr);
 
     const Setup& CurSetup() const { return _curSetup; }
-
-    const char *vs_profile() const { return _vsProfile; }
-    const char *ps_profile() const { return _psProfile; }
-    const char *cs_profile() const { return _csProfile; }
-    const char *gs_profile() const { return _gsProfile; }
-
-    void GetPredefinedGeometry(
-        PredefinedGeometry geom,
-        ObjectHandle *vb,
-        int *vertex_size,
-        ObjectHandle *ib,
-        DXGI_FORMAT *index_format,
-        int *index_count);
 
     ObjectHandle CreateInputLayout(
         const vector<D3D11_INPUT_ELEMENT_DESC> &desc,
@@ -244,10 +229,10 @@ namespace tano
     // Create a texture, and fill it with data
     bool CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int data_width, int data_height, int data_pitch, TextureResource *out);
     ObjectHandle CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int data_width, int data_height, int data_pitch, const char *friendlyName);
+    ObjectHandle CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int pitch);
 
     SwapChain* GetSwapChain(ObjectHandle h);
 
-    ObjectHandle FindTechnique(const string &name);
     ObjectHandle FindResource(const string &name);
     ObjectHandle FindSampler(const string &name);
     ObjectHandle FindBlendState(const string &name);
@@ -267,8 +252,6 @@ namespace tano
 
     bool VSync() const { return _vsync; }
     void SetVSync(bool value) { _vsync = value; }
-
-    static ObjectHandle MakeObjectHandle(ObjectHandle::Type type, int idx, int data = 0);
 
     void SetDisplayAllModes(bool value) { _displayAllModes = value; }
     bool DisplayAllModes() const { return _displayAllModes; }
@@ -306,8 +289,7 @@ namespace tano
         ObjectHandle* shader,
         const char* entry = "CsMain");
 
-    void AddText(const char* text, const char* font, float size, float x, float y, u32 color);
-    void AddText(const wchar_t* text, const char* font, float size, float x, float y, u32 color);
+    static ObjectHandle MakeObjectHandle(ObjectHandle::Type type, int idx, int data = 0);
 
   private:
 
@@ -327,40 +309,17 @@ namespace tano
         RenderTargetResource *out);
     bool CreateTexture(const D3D11_TEXTURE2D_DESC &desc, TextureResource *out);
 
-    bool CreateDefaultGeometry();
-
     ID3D11ShaderResourceView* GetShaderResourceView(ObjectHandle h);
 
     // given texture data and a name, insert it into the GOH chain
-    ObjectHandle InsertTexture(TextureResource *data, const char *friendlyName);
+    ObjectHandle InsertTexture(TextureResource* data, const char* friendlyName = nullptr);
 
     static INT_PTR CALLBACK dialogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
     static bool EnumerateDisplayModes(HWND hWnd);
 
-#if WITH_FONT_RENDERING 
-    struct TextElement
-    {
-      TextElement(const wstring& str, IFW1FontWrapper* font, float size, float x, float y, u32 color)
-          : str(str)
-          , font(font)
-          , size(size)
-          , x(x)
-          , y(y)
-          , color(color)
-      {
-      }
-
-      wstring str;
-      IFW1FontWrapper* font;
-      float size;
-      float x, y;
-      u32 color;
-    };
-#endif
     Setup _curSetup;
 
     CComPtr<ID3D11Device> _device;
-
     CComPtr<ID3D11DeviceContext> _immediateContext;
 
 #if WITH_DXGI_DEBUG
@@ -413,20 +372,11 @@ namespace tano
     bool _vsync;
     int _totalBytesAllocated;
 
-    map<PredefinedGeometry, pair<ObjectHandle, ObjectHandle> > _predefinedGeometry;
-
     ObjectHandle _swapChain;
 
     HWND _hwnd;
     HINSTANCE _hInstance;
     bool _displayAllModes;
-
-#if WITH_FONT_RENDERING
-    CComPtr<IFW1Factory> _fw1Factory;
-    CComPtr<IFW1FontWrapper> _fw1FontWrapper;
-    vector<TextElement> _textElements;
-#endif
-
   };
 
 #define GRAPHICS Graphics::Instance()
@@ -450,6 +400,4 @@ namespace tano
 
     ObjectHandle h;
   };
-
-
 }

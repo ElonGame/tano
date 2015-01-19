@@ -8,6 +8,72 @@ extern const TCHAR* g_AppWindowTitle;
 using namespace tano;
 using namespace bristol;
 
+//------------------------------------------------------------------------------
+void VertexFlagsToLayoutDesc(u32 vertexFlags, vector<D3D11_INPUT_ELEMENT_DESC>* desc)
+{
+  u32 ofs = 0;
+  if (vertexFlags & VF_POS)
+  {
+    desc->push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+    ofs += 12;
+  }
+
+  if (vertexFlags & VF_POS_XY)
+  {
+    desc->push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+    ofs += 8;
+  }
+
+  if (vertexFlags & VF_NORMAL)
+  {
+    desc->push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+    ofs += 12;
+  }
+
+  // check the ordering flag, to see if uvs or col should be added first
+  if (vertexFlags & VF_ORDER_TEX_COL)
+  {
+    // uv before col
+    if (vertexFlags & VF_TEX0)
+    {
+      desc->push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+      ofs += 8;
+    }
+
+    if (vertexFlags & VF_COLOR)
+    {
+      desc->push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+      ofs += 16;
+    }
+
+    if (vertexFlags & VF_COLOR_U32)
+    {
+      desc->push_back({ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+      ofs += 4;
+    }
+  }
+  else
+  {
+    // col before uv
+    if (vertexFlags & VF_COLOR)
+    {
+      desc->push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+      ofs += 16;
+    }
+
+    if (vertexFlags & VF_COLOR_U32)
+    {
+      desc->push_back({ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+      ofs += 4;
+    }
+
+    if (vertexFlags & VF_TEX0)
+    {
+      desc->push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+      ofs += 8;
+    }
+  }
+}
 
 //------------------------------------------------------------------------------
 Vector3 tano::ScreenToViewSpace(const Matrix& proj, u32 x, u32 y)
@@ -361,8 +427,6 @@ bool Graphics::Init(HINSTANCE hInstance)
   _defaultRasterizerState = CreateRasterizerState(CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT()));
   _defaultBlendState = CreateBlendState(CD3D11_BLEND_DESC(CD3D11_DEFAULT()));
 
-  CreateDefaultGeometry();
-
   // Create a dummy texture
   DWORD black = 0;
   _dummyTexture = CreateTexture(1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, &black, 1, 1, 1, "dummy_texture");
@@ -370,11 +434,6 @@ bool Graphics::Init(HINSTANCE hInstance)
 
   for (int i = 0; i < 4; ++i)
     _defaultBlendFactors[i] = 1.0f;
-
-#if WITH_FONT_RENDERING
-  HRESULT hResult = FW1CreateFactory(FW1_VERSION, &_fw1Factory);
-  hResult = _fw1Factory->CreateFontWrapper(_device, L"Arial", &_fw1FontWrapper);
-#endif
 
    return true;
 }
@@ -479,15 +538,26 @@ bool Graphics::CreateBufferInner(
     dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT, 
     dynamic ? D3D11_CPU_ACCESS_WRITE : 0);
 
-  D3D11_SUBRESOURCE_DATA init_data;
-  ZeroMemory(&init_data, sizeof(init_data));
-  init_data.pSysMem = data;
-  HRESULT hr = _device->CreateBuffer(&desc, data ? &init_data : NULL, buffer);
+  HRESULT hr;
+  if (data)
+  {
+    D3D11_SUBRESOURCE_DATA init_data;
+    ZeroMemory(&init_data, sizeof(init_data));
+    init_data.pSysMem = data;
+    hr = _device->CreateBuffer(&desc, &init_data, buffer);
+  }
+  else
+  {
+    hr = _device->CreateBuffer(&desc, nullptr, buffer);
+  }
+
   if (SUCCEEDED(hr))
   {
     _totalBytesAllocated += size;
+    return true;
   }
-  return SUCCEEDED(hr);
+
+  return false;
 }
 
 //------------------------------------------------------------------------------
@@ -833,10 +903,11 @@ ObjectHandle Graphics::LoadTextureFromMemory(
 //------------------------------------------------------------------------------
 ObjectHandle Graphics::InsertTexture(
     TextureResource *data,
-    const char *friendlyName)
+    const char* friendlyName)
 {
-  return MakeObjectHandle(
-      ObjectHandle::kTexture, _textures.Insert(friendlyName, data));
+  return friendlyName 
+    ? MakeObjectHandle(ObjectHandle::kTexture, _textures.Insert(friendlyName, data))
+    : MakeObjectHandle(ObjectHandle::kTexture, _textures.Insert(data));
 }
 
 //------------------------------------------------------------------------------
@@ -877,6 +948,19 @@ bool Graphics::CreateTexture(
 }
 
 //------------------------------------------------------------------------------
+ObjectHandle Graphics::CreateTexture(int width, int height, DXGI_FORMAT fmt, void* data, int pitch)
+{
+  TextureResource* resource = new TextureResource();
+  if (!CreateTexture(width, height, fmt, data, width, height, pitch, resource))
+  {
+    delete exch_null(resource);
+    return emptyHandle;
+  }
+
+  return InsertTexture(resource);
+}
+
+//------------------------------------------------------------------------------
 ObjectHandle Graphics::CreateTexture(
     int width,
     int height,
@@ -887,7 +971,7 @@ ObjectHandle Graphics::CreateTexture(
     int data_pitch,
     const char *friendlyName)
 {
-  TextureResource *data = new TextureResource;
+  TextureResource *data = new TextureResource();
   if (!CreateTexture(width, height, fmt, data_bits, data_width, data_height, data_pitch, data))
   {
     delete exch_null(data);
@@ -925,48 +1009,6 @@ bool Graphics::CreateTexture(
     dst += resource.RowPitch;
   }
   _immediateContext->Unmap(out->texture.resource, 0);
-  return true;
-}
-
-//------------------------------------------------------------------------------
-bool Graphics::CreateDefaultGeometry()
-{
-  static const u16 quadIndices[] =
-  {
-    0, 1, 2,
-    2, 1, 3
-  };
-
-  {
-    // fullscreen pos/tex quad
-    static const float verts[] =
-    {
-      -1, +1, +1, +1, +0, +0,
-      +1, +1, +1, +1, +1, +0,
-      -1, -1, +1, +1, +0, +1,
-      +1, -1, +1, +1, +1, +1
-    };
-
-    auto vb = CreateBuffer(D3D11_BIND_VERTEX_BUFFER, sizeof(verts), false, verts, sizeof(Pos4Tex));
-    auto ib = CreateBuffer(D3D11_BIND_INDEX_BUFFER, sizeof(quadIndices), false, quadIndices, DXGI_FORMAT_R16_UINT);
-    _predefinedGeometry.insert(make_pair(kGeomFsQuadPosTex, make_pair(vb, ib)));
-  }
-
-  // fullscreen pos quad
-  {
-    static const float verts[] =
-    {
-      -1, +1, +1, 1,
-      +1, +1, +1, 1,
-      -1, -1, +1, 1,
-      +1, -1, +1, 1,
-    };
-
-    auto vb = CreateBuffer(D3D11_BIND_VERTEX_BUFFER, sizeof(verts), false, verts, sizeof(Vector4));
-    auto ib = CreateBuffer(D3D11_BIND_INDEX_BUFFER, sizeof(quadIndices), false, quadIndices, DXGI_FORMAT_R16_UINT);
-    _predefinedGeometry.insert(make_pair(kGeomFsQuadPos, make_pair(vb, ib)));
-  }
-
   return true;
 }
 
@@ -1142,6 +1184,7 @@ ObjectHandle Graphics::CreateSwapChain(
   wcex.hInstance      = instance;
   wcex.hbrBackground  = 0;
   wcex.lpszClassName  = name;
+  wcex.hCursor        = LoadCursor(NULL, IDC_ARROW);
 
   if (!RegisterClassEx(&wcex))
   {
@@ -1151,12 +1194,12 @@ ObjectHandle Graphics::CreateSwapChain(
   const UINT windowStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
 
   // Create/resize the window
-  HWND hwnd = CreateWindow(name, g_AppWindowTitle, windowStyle,
+  _hwnd = CreateWindow(name, g_AppWindowTitle, windowStyle,
     CW_USEDEFAULT, CW_USEDEFAULT, width, height, NULL, NULL,
     instance, NULL);
 
-  SetClientSize(hwnd, width, height);
-  ShowWindow(hwnd, SW_SHOW);
+  SetClientSize(_hwnd, width, height);
+  ShowWindow(_hwnd, SW_SHOW);
 
   // Create the swap chain
   DXGI_SWAP_CHAIN_DESC swapChainDesc;
@@ -1168,7 +1211,7 @@ ObjectHandle Graphics::CreateSwapChain(
   swapChainDesc.BufferDesc.Format      = format;
   swapChainDesc.BufferDesc.RefreshRate = SelectedDisplayMode().RefreshRate;
   swapChainDesc.BufferUsage            = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-  swapChainDesc.OutputWindow           = hwnd;
+  swapChainDesc.OutputWindow           = _hwnd;
   swapChainDesc.SampleDesc.Count       = _curSetup.multisampleCount;
   swapChainDesc.SampleDesc.Quality     = 0;
   swapChainDesc.Windowed               = _curSetup.windowed;
@@ -1179,7 +1222,7 @@ ObjectHandle Graphics::CreateSwapChain(
   }
 
   SwapChain* swapChain = new SwapChain(name);
-  swapChain->_hwnd = hwnd;
+  swapChain->_hwnd = _hwnd;
   swapChain->_desc = swapChainDesc;
   swapChain->_swapChain = sc;
   if (swapChain->CreateBackBuffers(width, height, format))
@@ -1273,36 +1316,6 @@ DeferredContext* Graphics::CreateDeferredContext(bool canUseImmediate)
 }
 
 //------------------------------------------------------------------------------
-void Graphics::GetPredefinedGeometry(
-    PredefinedGeometry geom,
-    ObjectHandle *vb,
-    int *vertex_size,
-    ObjectHandle *ib, 
-    DXGI_FORMAT *index_format,
-    int *index_count)
-{
-  *index_format = DXGI_FORMAT_R16_UINT;
-  assert(_predefinedGeometry.find(geom) != _predefinedGeometry.end());
-
-  switch (geom)
-  {
-    case kGeomFsQuadPos:
-      *vb = _predefinedGeometry[kGeomFsQuadPos].first;
-      *ib = _predefinedGeometry[kGeomFsQuadPos].second;
-      *vertex_size = sizeof(Vector4);
-      *index_count = 6;
-      break;
-
-    case kGeomFsQuadPosTex:
-      *vb = _predefinedGeometry[kGeomFsQuadPosTex].first;
-      *ib = _predefinedGeometry[kGeomFsQuadPosTex].second;
-      *vertex_size = sizeof(Pos4Tex);
-      *index_count = 6;
-      break;
-  }
-}
-
-//------------------------------------------------------------------------------
 void Graphics::AddCommandList(ID3D11CommandList *cmd_list)
 {
   _immediateContext->ExecuteCommandList(cmd_list, FALSE);
@@ -1323,16 +1336,6 @@ void Graphics::CreateDefaultSwapChain(
 //------------------------------------------------------------------------------
 void Graphics::Present()
 {
-#if WITH_FONT_RENDERING
-  for (const TextElement& text : _textElements)
-  {
-    _fw1FontWrapper->DrawString(
-        _immediateContext, text.str.c_str(), text.size, text.x, text.y, text.color, FW1_RESTORESTATE);
-  }
-
-  _textElements.clear();
-#endif
-
   _swapChains.Get(_swapChain)->Present();
 }
 
@@ -1348,34 +1351,6 @@ void Graphics::GetBackBufferSize(int* width, int* height)
 ObjectHandle Graphics::DefaultSwapChain()
 {
   return _swapChain;
-}
-
-//------------------------------------------------------------------------------
-void Graphics::AddText(
-    const char* text,
-    const char* font,
-    float size,
-    float x,
-    float y,
-    u32 color)
-{
-#if WITH_FONT_RENDERING
-  _textElements.emplace_back(utf8_to_wide(text), _fw1FontWrapper, size, x, y, color);
-#endif
-}
-
-//------------------------------------------------------------------------------
-void Graphics::AddText(
-    const wchar_t* text,
-    const char* font,
-    float size,
-    float x,
-    float y,
-    u32 color)
-{
-#if WITH_FONT_RENDERING
-  _textElements.emplace_back(text, _fw1FontWrapper, size, x, y, color);
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -1483,31 +1458,7 @@ bool Graphics::LoadShadersFromFile(
         if (inputLayout)
         {
           vector<D3D11_INPUT_ELEMENT_DESC> desc;
-          u32 ofs = 0;
-          if (vertexFlags & VF_POS)
-          {
-            D3D11_INPUT_ELEMENT_DESC element =
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 };
-            desc.push_back(element);
-            ofs += 12;
-          }
-
-          if (vertexFlags & VF_NORMAL)
-          {
-            D3D11_INPUT_ELEMENT_DESC element =
-            { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 };
-            desc.push_back(element);
-            ofs += 12;
-          }
-
-          if (vertexFlags & VF_COLOR)
-          {
-            D3D11_INPUT_ELEMENT_DESC element =
-            { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 };
-            desc.push_back(element);
-            ofs += 16;
-          }
-
+          VertexFlagsToLayoutDesc(vertexFlags, &desc);
           *inputLayout = GRAPHICS.CreateInputLayout(desc, buf);
           if (!inputLayout->IsValid())
             return false;
@@ -1545,7 +1496,6 @@ bool Graphics::LoadShadersFromFile(
       _pixelShaders.Update(psHandle, ps);
       return true;
     });
-
   }
 
   return res;

@@ -5,7 +5,7 @@
     name: 'intro';
     factory: 'particle_tunnel';
     start_time: 0;
-    end_time: 30000;
+    end_time: 300000;
     settings: 'config/particle_tunnel.gb';
   }];
 }
