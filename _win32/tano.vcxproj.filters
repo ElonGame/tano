@@ -97,6 +97,9 @@
     <ClCompile Include="..\property_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\graphics_extra.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -202,6 +205,9 @@
       <Filter>imgui</Filter>
     </ClInclude>
     <ClInclude Include="..\property_manager.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\graphics_extra.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -8,142 +8,19 @@
 #pragma once
 #include "object_handle.hpp"
 #include "id_buffer.hpp"
+#include "graphics_extra.hpp"
 
 namespace tano
 {
-  Vector3 ScreenToViewSpace(const Matrix& proj, u32 x, u32 y);
-
-  enum class ShaderType
-  {
-    VertexShader,
-    PixelShader,
-    GeometryShader,
-    ComputeShader,
-  };
-
-  struct BufferFlag
-  {
-    enum Enum
-    {
-      CreateMipMaps        = 1 << 0,
-      CreateDepthBuffer    = 1 << 1,
-      CreateSrv            = 1 << 2,
-      CreateUav            = 1 << 3,
-    };
-
-    struct Bits
-    {
-      u32 mipMaps : 1;
-      u32 depthBuffer : 1;
-      u32 srv : 1;
-      u32 uav : 1;
-    };
-  };
-
-  typedef Flags<BufferFlag> BufferFlags;
-
   class Graphics
   {
     friend class DeferredContext;
     friend class PackedResourceManager;
     friend class ResourceManager;
+    friend struct SwapChain;
+    friend bool EnumerateDisplayModes(HWND hWnd);
+    friend INT_PTR CALLBACK dialogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
   public:
-
-    struct VideoAdapter
-    {
-      CComPtr<IDXGIAdapter> adapter;
-      DXGI_ADAPTER_DESC desc;
-      vector<DXGI_MODE_DESC> displayModes;
-    };
-
-    struct Setup
-    {
-      Setup() : selectedAdapter(-1), SelectedDisplayMode(-1), multisampleCount(-1), selectedAspectRatio(-1), windowed(false) {}
-
-      CComPtr<IDXGIFactory> dxgi_factory;
-      vector<VideoAdapter> videoAdapters;
-      int selectedAdapter;
-      int SelectedDisplayMode;
-      int selectedAspectRatio;
-      int multisampleCount;
-      bool windowed;
-      int width, height;
-    };
-
-    template<class Resource, class Desc>
-    struct ResourceAndDesc
-    {
-      void release() {
-        resource.Release();
-      }
-      CComPtr<Resource> resource;
-      Desc desc;
-    };
-
-    struct RenderTargetResource
-    {
-      RenderTargetResource() : in_use(true) {
-        reset();
-      }
-
-      void reset() {
-        texture.release();
-        depth_stencil.release();
-        rtv.release();
-        dsv.release();
-        srv.release();
-        uav.release();
-      }
-
-      bool in_use;
-      ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
-      ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> depth_stencil;
-      ResourceAndDesc<ID3D11RenderTargetView, D3D11_RENDER_TARGET_VIEW_DESC> rtv;
-      ResourceAndDesc<ID3D11DepthStencilView, D3D11_DEPTH_STENCIL_VIEW_DESC> dsv;
-      ResourceAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> srv;
-      ResourceAndDesc<ID3D11UnorderedAccessView, D3D11_UNORDERED_ACCESS_VIEW_DESC> uav;
-    };
-
-    struct TextureResource
-    {
-      void reset() {
-        texture.release();
-        view.release();
-      }
-      ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
-      ResourceAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> view;
-    };
-
-    struct SimpleResource
-    {
-      void reset() {
-        resource.Release();
-        view.release();
-      }
-      CComPtr<ID3D11Resource> resource;
-      ResourceAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> view;
-    };
-
-    struct StructuredBuffer
-    {
-      ResourceAndDesc<ID3D11Buffer, D3D11_BUFFER_DESC> buffer;
-      ResourceAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> srv;
-      ResourceAndDesc<ID3D11UnorderedAccessView, D3D11_UNORDERED_ACCESS_VIEW_DESC> uav;
-    };
-
-    struct SwapChain
-    {
-      SwapChain(const char* name) : _name(name) {}
-      bool CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format);
-      void Present();
-
-      string _name;
-      HWND _hwnd;
-      CComPtr<IDXGISwapChain> _swapChain;
-      DXGI_SWAP_CHAIN_DESC _desc;
-      ObjectHandle _renderTarget;
-      CD3D11_VIEWPORT _viewport;
-    };
 
     Graphics();
     ~Graphics();
@@ -151,11 +28,7 @@ namespace tano
     static bool Create(HINSTANCE hInstance);
     static bool Destroy();
 
-    inline static Graphics& Instance()
-    {
-      return *_instance;
-    }
-
+    static Graphics& Instance();
     HWND GetHwnd() { return _hwnd; }
 
     ObjectHandle LoadTexture(
@@ -193,32 +66,16 @@ namespace tano
     ObjectHandle CreateBlendState(const D3D11_BLEND_DESC &desc, const char *name = nullptr);
     ObjectHandle CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC &desc, const char *name = nullptr);
     ObjectHandle CreateSamplerState(const D3D11_SAMPLER_DESC &desc, const char *name = nullptr);
-    ObjectHandle CreateSwapChain(
-        const TCHAR* name,
-        u32 width,
-        u32 height,
-        DXGI_FORMAT format,
-        WNDPROC wndProc,
-        HINSTANCE instance);
+    ObjectHandle CreateSwapChain(const TCHAR* name, u32 width, u32 height, DXGI_FORMAT format, WNDPROC wndProc, HINSTANCE instance);
     ObjectHandle RenderTargetForSwapChain(ObjectHandle h);
 
     D3D_FEATURE_LEVEL FeatureLevel() const { return _featureLevel; }
 
     bool GetTextureSize(ObjectHandle h, u32* x, u32* y);
-    ObjectHandle GetTempRenderTarget(
-        int width,
-        int height,
-        DXGI_FORMAT format,
-        const BufferFlags& bufferFlags);
-
+    ObjectHandle GetTempRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags);
     void ReleaseTempRenderTarget(ObjectHandle h);
 
-    ObjectHandle CreateRenderTarget(
-        int width,
-        int height,
-        DXGI_FORMAT format,
-        const BufferFlags& bufferFlags,
-        const string& name = "");
+    ObjectHandle CreateRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags, const string& name = "");
 
     ObjectHandle CreateStructuredBuffer(int elemSize, int numElems, bool createSrv);
     ObjectHandle CreateTexture(const D3D11_TEXTURE2D_DESC &desc, const char *name);
@@ -258,16 +115,11 @@ namespace tano
 
     void GetRenderTargetTextureDesc(ObjectHandle handle, D3D11_TEXTURE2D_DESC* desc);
 
-    const DXGI_MODE_DESC &SelectedDisplayMode() const;
+    const DXGI_MODE_DESC& SelectedDisplayMode() const;
 
     ID3D11Device* Device() { return _device.p; }
 
-    void CreateDefaultSwapChain(
-        u32 width,
-        u32 height,
-        DXGI_FORMAT format,
-        WNDPROC wndProc,
-        HINSTANCE instance);
+    void CreateDefaultSwapChain(u32 width, u32 height, DXGI_FORMAT format, WNDPROC wndProc, HINSTANCE instance);
 
     void ClearRenderTarget(ObjectHandle h);
     void Present();
@@ -313,9 +165,6 @@ namespace tano
 
     // given texture data and a name, insert it into the GOH chain
     ObjectHandle InsertTexture(TextureResource* data, const char* friendlyName = nullptr);
-
-    static INT_PTR CALLBACK dialogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-    static bool EnumerateDisplayModes(HWND hWnd);
 
     Setup _curSetup;
 
@@ -372,7 +221,8 @@ namespace tano
     bool _vsync;
     int _totalBytesAllocated;
 
-    ObjectHandle _swapChain;
+    ObjectHandle _defaultSwapChainHandle;
+    SwapChain* _defaultSwapChain = nullptr;
 
     HWND _hwnd;
     HINSTANCE _hInstance;
@@ -380,24 +230,6 @@ namespace tano
   };
 
 #define GRAPHICS Graphics::Instance()
-
 #define GFX_CreateBuffer(bind, size, dynamic, buf, data) GRAPHICS.CreateBuffer(bind, size, dynamic, buf, data);
 
-  struct ScopedRenderTarget
-  {
-    ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags)
-    {
-      h = GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags);
-    }
-
-    ~ScopedRenderTarget()
-    {
-      if (h.IsValid())
-      {
-        GRAPHICS.ReleaseTempRenderTarget(h);
-      }
-    }
-
-    ObjectHandle h;
-  };
 }

@@ -69,6 +69,9 @@ bool ParticleTunnel::Init(const char* configFile)
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
+
+  //GRAPHICS.GetTempRenderTarget()
+
   PosTex* vtx = _ctx->MapWriteDiscard<PosTex>(_gpuObjects._vb);
   if (!vtx)
     return false;
@@ -98,11 +101,6 @@ bool ParticleTunnel::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 void ParticleTunnel::RenderParameterSet()
 {
-  ImGui::Text("elloooooe: %d", 42);
-  ImGui::Text("lloooooee: %d", 42);
-  ImGui::Text("Hellooooo: %d", 42);
-  ImGui::Text("uuuuuuuuu: %d", 42);
-
   if (ImGui::ColorEdit4("Tint", &_settings.tint.x))
     _cbPerFrame.tint = _settings.tint;
 }
@@ -124,9 +122,6 @@ bool ParticleTunnel::Render()
 {
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
   _ctx->BeginFrame();
-
-//  static bool show = true;
-//  ImGui::ShowTestWindow(&show);
 
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);

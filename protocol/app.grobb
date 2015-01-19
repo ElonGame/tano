@@ -3,4 +3,6 @@ import 'base.grobb';
 struct app_settings
 {
   string demo_config;
+  string rocket_host;
+  int rocket_port;
 };

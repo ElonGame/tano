@@ -192,7 +192,7 @@ static void ImImpl_RenderDrawLists(ImDrawList** const cmd_lists, int cmd_lists_c
   }
 
   // reset to full screen scissor rect
-  Graphics::SwapChain* swapChain = GRAPHICS.GetSwapChain(GRAPHICS.DefaultSwapChain());
+  SwapChain* swapChain = GRAPHICS.GetSwapChain(GRAPHICS.DefaultSwapChain());
   CD3D11_RECT rect = CD3D11_RECT(
     (LONG)swapChain->_viewport.TopLeftX,
     (LONG)swapChain->_viewport.TopLeftY,

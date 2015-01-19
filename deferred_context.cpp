@@ -49,7 +49,7 @@ void DeferredContext::SetRenderTargets(
   {
     ObjectHandle h = renderTargets[i];
     assert(h.IsValid());
-    Graphics::RenderTargetResource* rt = GRAPHICS._renderTargets.Get(h);
+    RenderTargetResource* rt = GRAPHICS._renderTargets.Get(h);
     texture_desc = rt->texture.desc;
     if (!dsv && rt->dsv.resource)
     {
@@ -383,12 +383,12 @@ void DeferredContext::SetUAV(ObjectHandle h, Color* clearColor)
   ID3D11UnorderedAccessView* view = nullptr;
   if (type == ObjectHandle::kStructuredBuffer)
   {
-    Graphics::StructuredBuffer* buf = GRAPHICS._structuredBuffers.Get(h);
+    StructuredBuffer* buf = GRAPHICS._structuredBuffers.Get(h);
     view = buf->uav.resource;
   }
   else if (type == ObjectHandle::kRenderTarget)
   {
-    Graphics::RenderTargetResource* res = GRAPHICS._renderTargets.Get(h);
+    RenderTargetResource* res = GRAPHICS._renderTargets.Get(h);
     view = res->uav.resource;
 
     if (clearColor)

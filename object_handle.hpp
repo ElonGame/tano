@@ -40,7 +40,7 @@ namespace tano
 
   private:
     friend class Graphics;
-    friend struct AnimationManager;
+    friend struct SwapChain;
     enum
     { 
       cTypeBits = 8,
