@@ -27,7 +27,6 @@ namespace tano
     virtual bool Show();
     virtual bool Hide();
     virtual bool Update(const UpdateState& state);
-    virtual bool SaveSettings();
     virtual bool Render();
     virtual bool Close();
     virtual bool Reset();

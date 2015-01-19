@@ -222,12 +222,16 @@ void LoadFontsTexture()
   unsigned char* pixels;
   int width, height;
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-
   g_texture = GRAPHICS.LoadTexture("gfx/font1.png");
+  //g_texture = GRAPHICS.CreateTexture(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, pixels, width*4);
+
+  //io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
+  //g_texture = GRAPHICS.CreateTexture(width, height, DXGI_FORMAT_A8_UNORM, pixels, width);
+
 
   // there seems to be a bug in IMGUI wrt 64-bit when creating textures, so
   // for now I'm just going to load one from disk
-  //g_texture = GRAPHICS.CreateTexture(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, pixels, width*4);
+  //g_texture = GRAPHICS.CreateTexture(width, height, DXGI_FORMAT_A8_UNORM, pixels, width);
 
   // Store our identifier
   //io.Fonts->TexID = (void *)*(u32*)&h;

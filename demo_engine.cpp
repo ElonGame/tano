@@ -147,6 +147,7 @@ void DemoEngine::ReclassifyEffects()
 bool DemoEngine::Tick()
 {
   _fileWatcher.Tick();
+  _propertyManager.Tick();
 
   TimeDuration delta, current;
   current = _timer.Elapsed(&delta);
@@ -302,19 +303,4 @@ void DemoEngine::RegisterFactory(const string& type, const EffectFactory& factor
 LRESULT DemoEngine::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
   return DefWindowProc(hWnd, message, wParam, lParam);
-}
-
-//------------------------------------------------------------------------------
-void DemoEngine::SaveSettings()
-{
-  if (FILE* f = fopen("config/config.tmp", "wt"))
-  {
-//    fprintf(f, "%s", _config.DebugString().c_str());
-    fclose(f);
-  }
-
-//   for (Effect* effect : _effects)
-//   {
-//     effect->SaveSettings();
-//   }
 }

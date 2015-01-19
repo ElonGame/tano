@@ -275,8 +275,6 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           if (GetKeyState(VK_CONTROL) & (1 << 15))
           {
             TANO.SaveSettings();
-            DEMO_ENGINE.SaveSettings();
-            //App.AddMessage(MessageType::Info, "Settings saved");
           }
 #endif
           break;

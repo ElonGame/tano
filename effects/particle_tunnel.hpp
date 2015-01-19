@@ -19,18 +19,20 @@ namespace tano
     virtual bool Render() override;
     virtual bool Close() override;
 
-    virtual bool SaveSettings() override;
-
     static const char* Name();
     static Effect* Create(const char* name, u32 id);
     static void Register();
 
   private:
 
+    void RenderParameterSet();
+    void SaveParameterSet();
+
     struct CBufferPerFrame
     {
       Matrix world;
       Matrix viewProj;
+      Color tint;
     };
 
     string _configName;

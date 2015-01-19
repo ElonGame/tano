@@ -2,6 +2,7 @@
 
 #include "graphics.hpp"
 #include "timer.hpp"
+#include "property_manager.hpp"
 #include "generated/demo.types.hpp"
 
 namespace tano
@@ -20,8 +21,6 @@ namespace tano
     bool Init(const char* config, HINSTANCE instance);
     void RegisterFactory(const string& type, const EffectFactory& factory);
 
-    void SaveSettings();
-
     bool Start();
     void SetPaused(bool pause);
     bool Paused() const;
@@ -38,6 +37,7 @@ namespace tano
     static bool IsInitialized() { return _instance != nullptr; }
 
     FileWatcher& GetFileWatcher() { return _fileWatcher; }
+    PropertyManager& GetPropertyManager() { return _propertyManager; }
 
   private:
 
@@ -68,8 +68,10 @@ namespace tano
     u32 _nextEffectId;
 
     FileWatcher _fileWatcher;
+    PropertyManager _propertyManager;
   };
 
 #define DEMO_ENGINE DemoEngine::Instance()
+#define PROPERTIES DemoEngine::Instance().GetPropertyManager()
 
 }

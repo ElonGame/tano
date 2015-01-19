@@ -5,6 +5,7 @@ cbuffer PerFrame : register(b0)
 {
   matrix world;
   matrix viewProj;
+  float4 tint;
 };
 
 struct VsIn
@@ -31,8 +32,10 @@ VsOut VsMain(VsIn v)
 float4 PsMain(VsOut p) : SV_Target
 {
 //  return p.tex.y;
-  float3 col = Texture0.Sample(PointSampler, p.tex).rgb;
-  return float4(col, 1);
+  float4 col = Texture0.Sample(PointSampler, p.tex);
+//  return tint.r;
+  return tint * col;
+//  return float4(col, 1);
 
   float s = sin(p.pos.x/100);
   float c = cos(p.pos.x/100);

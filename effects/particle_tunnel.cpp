@@ -7,6 +7,7 @@
 #include "../init_sequence.hpp"
 #include "../generated/demo.parse.hpp"
 #include "../generated/input_buffer.hpp"
+#include "../generated/output_buffer.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -15,6 +16,9 @@ using namespace bristol;
 ParticleTunnel::ParticleTunnel(const string &name, u32 id)
   : Effect(name, id)
 {
+  PROPERTIES.Register("particle tunnel", 
+    bind(&ParticleTunnel::RenderParameterSet, this),
+    bind(&ParticleTunnel::SaveParameterSet, this));
 }
 
 //------------------------------------------------------------------------------
@@ -27,6 +31,7 @@ bool ParticleTunnel::Init(const char* configFile)
 {
   BEGIN_INIT_SEQUENCE();
 
+  _configName = configFile;
   bool res = true;
   FileWatcher& watcher = DEMO_ENGINE.GetFileWatcher();
   vector<char> buf;
@@ -56,6 +61,7 @@ bool ParticleTunnel::Init(const char* configFile)
   Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 1000.f);
   Matrix viewProj = view * proj;
   _cbPerFrame.viewProj = viewProj.Transpose();
+  _cbPerFrame.tint = _settings.tint;
 
   END_INIT_SEQUENCE();
 }
@@ -90,6 +96,30 @@ bool ParticleTunnel::Update(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
+void ParticleTunnel::RenderParameterSet()
+{
+  ImGui::Text("elloooooe: %d", 42);
+  ImGui::Text("lloooooee: %d", 42);
+  ImGui::Text("Hellooooo: %d", 42);
+  ImGui::Text("uuuuuuuuu: %d", 42);
+
+  if (ImGui::ColorEdit4("Tint", &_settings.tint.x))
+    _cbPerFrame.tint = _settings.tint;
+}
+
+//------------------------------------------------------------------------------
+void ParticleTunnel::SaveParameterSet()
+{
+  OutputBuffer buf;
+  Serialize(buf, _settings);
+  if (FILE* f = fopen(_configName.c_str(), "wt"))
+  {
+    fwrite(buf._buf.data(), 1, buf._ofs, f);
+    fclose(f);
+  }
+}
+
+//------------------------------------------------------------------------------
 bool ParticleTunnel::Render()
 {
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
@@ -98,12 +128,8 @@ bool ParticleTunnel::Render()
 //  static bool show = true;
 //  ImGui::ShowTestWindow(&show);
 
-  ImGui::Text("elloooooe: %d", 42);
-  ImGui::Text("lloooooee: %d", 42);
-  ImGui::Text("Hellooooo: %d", 42);
-  ImGui::Text("uuuuuuuuu: %d", 42);
-
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
   _ctx->SetGpuObjects(_gpuObjects);
 
   _ctx->SetSamplerState(_samplerState, 0, ShaderType::PixelShader);
@@ -119,17 +145,6 @@ bool ParticleTunnel::Render()
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Close()
 {
-  return true;
-}
-
-//------------------------------------------------------------------------------
-bool ParticleTunnel::SaveSettings()
-{
-  if (FILE* f = fopen(_configName.c_str() ,"wt"))
-  {
-    //fprintf(f, "%s", _config.DebugString().c_str());
-    fclose(f);
-  }
   return true;
 }
 

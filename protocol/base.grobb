@@ -1,0 +1,4 @@
+alias vec2 = Vector2;
+alias vec3 = Vector3;
+alias vec4 = Vector4;
+alias color = Color;

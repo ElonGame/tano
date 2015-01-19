@@ -1,3 +1,5 @@
+import 'base.grobb';
+
 struct app_settings
 {
   string demo_config;

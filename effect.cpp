@@ -38,12 +38,6 @@ bool Effect::Init(const char* configFile)
 }
 
 //------------------------------------------------------------------------------
-bool Effect::SaveSettings()
-{
-  return true;
-}
-
-//------------------------------------------------------------------------------
 bool Effect::Reset()
 {
   return true; 
