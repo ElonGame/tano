@@ -141,12 +141,14 @@ namespace tano
     DXGI_SWAP_CHAIN_DESC _desc;
     ObjectHandle _renderTarget;
     CD3D11_VIEWPORT _viewport;
+    u32 _width, _height;
   };
 
   //------------------------------------------------------------------------------
   struct ScopedRenderTarget
   {
     ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags);
+    ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags);
     ~ScopedRenderTarget();
 
     ObjectHandle h;

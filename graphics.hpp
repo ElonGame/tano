@@ -23,13 +23,12 @@ namespace tano
   public:
 
     Graphics();
-    ~Graphics();
 
     static bool Create(HINSTANCE hInstance);
     static bool Destroy();
-
     static Graphics& Instance();
-    HWND GetHwnd() { return _hwnd; }
+
+    HWND GetHwnd() const { return _hwnd; }
 
     ObjectHandle LoadTexture(
         const char* filename,
@@ -43,8 +42,6 @@ namespace tano
         const char* friendlyName = nullptr,
         bool srgb = false,
         D3DX11_IMAGE_INFO* info = nullptr);
-
-    const Setup& CurSetup() const { return _curSetup; }
 
     ObjectHandle CreateInputLayout(
         const vector<D3D11_INPUT_ELEMENT_DESC> &desc,
@@ -73,6 +70,7 @@ namespace tano
 
     bool GetTextureSize(ObjectHandle h, u32* x, u32* y);
     ObjectHandle GetTempRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags);
+    ObjectHandle GetTempRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags);
     void ReleaseTempRenderTarget(ObjectHandle h);
 
     ObjectHandle CreateRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags, const string& name = "");
@@ -96,25 +94,20 @@ namespace tano
     ObjectHandle FindRasterizerState(const string &name);
     ObjectHandle FindDepthStencilState(const string &name);
 
-    ObjectHandle DefaultRasterizerState() const { return _defaultRasterizerState; }
-    ObjectHandle DefaultDepthStencilState() const { return _defaultDepthStencilState; }
-    uint32_t DefaultStencilRef() const { return 0; }
-    ObjectHandle  DefaultBlendState() const { return _defaultBlendState; }
-    const float *DefaultBlendFactors() const { return _defaultBlendFactors; }
-    uint32_t DefaultSampleMask() const { return 0xffffffff; }
-
-    DeferredContext *CreateDeferredContext(bool canUseImmediate);
+    // TODO: I want to phase out DeferredContexts, as they are a bad idea, but
+    // that will have to wait..
+    DeferredContext *CreateDeferredContext();
     void DestroyDeferredContext(DeferredContext *ctx);
     void AddCommandList(ID3D11CommandList *cmd_list);
 
     bool VSync() const { return _vsync; }
     void SetVSync(bool value) { _vsync = value; }
 
-    void SetDisplayAllModes(bool value) { _displayAllModes = value; }
-    bool DisplayAllModes() const { return _displayAllModes; }
-
     void GetRenderTargetTextureDesc(ObjectHandle handle, D3D11_TEXTURE2D_DESC* desc);
 
+    const Setup& CurSetup() const { return _curSetup; }
+    void SetDisplayAllModes(bool value) { _displayAllModes = value; }
+    bool DisplayAllModes() const { return _displayAllModes; }
     const DXGI_MODE_DESC& SelectedDisplayMode() const;
 
     ID3D11Device* Device() { return _device.p; }
@@ -207,26 +200,15 @@ namespace tano
     ObjectHandle _defaultRenderTarget;
     ObjectHandle _dummyTexture;
 
-    ObjectHandle _defaultRasterizerState;
-    ObjectHandle _defaultDepthStencilState;
-    CComPtr<ID3D11SamplerState> _defaultSamplerState;
-    float _defaultBlendFactors[4];
-    ObjectHandle _defaultBlendState;
-
-    const char *_vsProfile;
-    const char *_psProfile;
-    const char *_csProfile;
-    const char *_gsProfile;
-
-    bool _vsync;
-    int _totalBytesAllocated;
+    bool _vsync = true;
+    int _totalBytesAllocated = 0;
 
     ObjectHandle _defaultSwapChainHandle;
     SwapChain* _defaultSwapChain = nullptr;
 
     HWND _hwnd;
     HINSTANCE _hInstance;
-    bool _displayAllModes;
+    bool _displayAllModes = false;
   };
 
 #define GRAPHICS Graphics::Instance()

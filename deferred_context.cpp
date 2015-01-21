@@ -10,11 +10,10 @@ using namespace tano;
 //------------------------------------------------------------------------------
 DeferredContext::DeferredContext() 
   : _ctx(nullptr)
-  , _is_immediate_context(false)
+  , _default_stencil_ref(0)
+  , _default_sample_mask(0xffffffff)
 {
-    _default_stencil_ref = GRAPHICS.DefaultStencilRef();
-    memcpy(_default_blend_factors, GRAPHICS.DefaultBlendFactors(), sizeof(_default_blend_factors));
-    _default_sample_mask = GRAPHICS.DefaultSampleMask();
+    _default_blend_factors[0] = _default_blend_factors[1] = _default_blend_factors[2] = _default_blend_factors[3] = 1;
 }
 
 //------------------------------------------------------------------------------
@@ -304,22 +303,6 @@ void DeferredContext::Draw(int vertexCount, int startVertexLocation)
 void DeferredContext::Dispatch(int threadGroupCountX, int threadGroupCountY, int threadGroupCountZ)
 {
   _ctx->Dispatch(threadGroupCountX, threadGroupCountY, threadGroupCountZ);
-}
-
-//------------------------------------------------------------------------------
-void DeferredContext::BeginFrame()
-{
-}
-
-//------------------------------------------------------------------------------
-void DeferredContext::EndFrame()
-{
-  if (!_is_immediate_context)
-  {
-    ID3D11CommandList *cmd_list;
-    if (SUCCEEDED(_ctx->FinishCommandList(FALSE, &cmd_list)))
-      GRAPHICS.AddCommandList(cmd_list);
-  }
 }
 
 //------------------------------------------------------------------------------

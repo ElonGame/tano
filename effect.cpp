@@ -8,7 +8,7 @@ Effect::Effect(const string& name, u32 id)
   : _name(name)
   , _id(id)
   , _running(false)
-  , _ctx(GRAPHICS.CreateDeferredContext(true))
+  , _ctx(GRAPHICS.CreateDeferredContext())
   , _firstTick(true)
 {
 }

@@ -49,8 +49,8 @@ bool GpuObjects::LoadShadersFromFile(
   return GRAPHICS.LoadShadersFromFile(filename, 
       vsEntry ? &_vs : nullptr, 
       psEntry ? &_ps : nullptr, 
-      vsEntry ? &_layout : nullptr, 
-      flags ? flags : VF_POS | VF_NORMAL,
+      flags ? &_layout : nullptr, 
+      flags,
       vsEntry,
       psEntry);
 }

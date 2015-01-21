@@ -282,6 +282,9 @@ namespace tano
 //------------------------------------------------------------------------------
 bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
 {
+  _width = width;
+  _height = height;
+
   Graphics& g = GRAPHICS;
 
   // Reset the buffers if the swap chain is already registered
@@ -344,6 +347,12 @@ void SwapChain::Present()
 ScopedRenderTarget::ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags)
 {
   h = GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags);
+}
+
+//------------------------------------------------------------------------------
+ScopedRenderTarget::ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags)
+{
+  h = GRAPHICS.GetTempRenderTarget(format, bufferFlags);
 }
 
 //------------------------------------------------------------------------------

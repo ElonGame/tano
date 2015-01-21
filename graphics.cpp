@@ -25,11 +25,7 @@ Graphics& Graphics::Instance()
 
 //------------------------------------------------------------------------------
 Graphics::Graphics()
-  : _vsProfile("vs_4_0")
-  , _psProfile("ps_4_0")
-  , _csProfile("cs_4_0")
-  , _gsProfile("gs_4_0")
-  , _vertexShaders(ReleaseObj<ID3D11VertexShader *>)
+  : _vertexShaders(ReleaseObj<ID3D11VertexShader *>)
   , _pixelShaders(ReleaseObj<ID3D11PixelShader *>)
   , _computeShaders(ReleaseObj<ID3D11ComputeShader *>)
   , _geometryShaders(ReleaseObj<ID3D11GeometryShader *>)
@@ -47,14 +43,6 @@ Graphics::Graphics()
   , _resources(DeleteObj<SimpleResource *>)
   , _structuredBuffers(DeleteObj<StructuredBuffer *>)
   , _swapChains(DeleteObj<SwapChain*>)
-  , _vsync(true)
-  , _totalBytesAllocated(0)
-  , _displayAllModes(false)
-{
-}
-
-//------------------------------------------------------------------------------
-Graphics::~Graphics()
 {
 }
 
@@ -86,17 +74,10 @@ bool Graphics::Init(HINSTANCE hInstance)
   INIT(InitConfigDialog(hInstance));
   INIT(CreateDevice());
 
-  INIT_RESOURCE(_defaultDepthStencilState, CreateDepthStencilState(CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT())));
-  INIT_RESOURCE(_defaultRasterizerState, CreateRasterizerState(CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT())));
-  INIT_RESOURCE(_defaultBlendState, CreateBlendState(CD3D11_BLEND_DESC(CD3D11_DEFAULT())));
-
   // Create a dummy texture
   DWORD black = 0;
   INIT_RESOURCE(_dummyTexture, CreateTexture(1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, &black, 1, 1, 1, "dummy_texture"));
   _immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-  for (int i = 0; i < 4; ++i)
-    _defaultBlendFactors[i] = 1.0f;
 
   END_INIT_SEQUENCE();
 }
@@ -288,6 +269,16 @@ bool Graphics::GetTextureSize(ObjectHandle h, u32* x, u32* y)
   }
 
   return false;
+}
+
+//------------------------------------------------------------------------------
+ObjectHandle Graphics::GetTempRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags)
+{
+  // Return a temp render target with the same dimensions as the back buffer
+  return GetTempRenderTarget(
+    _defaultSwapChain->_width, 
+    _defaultSwapChain->_height, 
+    format, bufferFlags);
 }
 
 //------------------------------------------------------------------------------
@@ -668,7 +659,7 @@ bool Graphics::CreateTexture(
   const int h = std::min<int>(height, data_height);
   for (int i = 0; i < h; ++i)
   {
-    memcpy(dst, src, w);
+    memcpy(dst, src, data_pitch);
     src += data_pitch;
     dst += resource.RowPitch;
   }
@@ -954,24 +945,14 @@ void Graphics::DestroyDeferredContext(DeferredContext *ctx)
 {
   if (!ctx)
     return;
-  if (!ctx->_is_immediate_context)
-    ctx->_ctx->Release();
   delete exch_null(ctx);
 }
 
 //------------------------------------------------------------------------------
-DeferredContext* Graphics::CreateDeferredContext(bool canUseImmediate)
+DeferredContext* Graphics::CreateDeferredContext()
 {
   DeferredContext *dc = new DeferredContext;
-  if (canUseImmediate)
-  {
-    dc->_is_immediate_context = true;
-    dc->_ctx = _immediateContext;
-  } 
-  else
-  {
-    _device->CreateDeferredContext(0, &dc->_ctx);
-  }
+  dc->_ctx = _immediateContext;
   return dc;
 }
 

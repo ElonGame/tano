@@ -151,17 +151,17 @@ static void ImImpl_RenderDrawLists(ImDrawList** const cmd_lists, int cmd_lists_c
   }
 
   // Setup viewport
-    {
-      D3D11_VIEWPORT vp;
-      memset(&vp, 0, sizeof(D3D11_VIEWPORT));
-      vp.Width = ImGui::GetIO().DisplaySize.x;
-      vp.Height = ImGui::GetIO().DisplaySize.y;
-      vp.MinDepth = 0.0f;
-      vp.MaxDepth = 1.0f;
-      vp.TopLeftX = 0;
-      vp.TopLeftY = 0;
-      g_ctx->SetViewports(1, vp);
-    }
+  {
+    D3D11_VIEWPORT vp;
+    memset(&vp, 0, sizeof(D3D11_VIEWPORT));
+    vp.Width = ImGui::GetIO().DisplaySize.x;
+    vp.Height = ImGui::GetIO().DisplaySize.y;
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    vp.TopLeftX = 0;
+    vp.TopLeftY = 0;
+    g_ctx->SetViewports(1, vp);
+  }
 
   // Bind shader and vertex buffers
   unsigned int stride = sizeof(CUSTOMVERTEX);
@@ -199,13 +199,7 @@ static void ImImpl_RenderDrawLists(ImDrawList** const cmd_lists, int cmd_lists_c
     (LONG)(swapChain->_viewport.TopLeftX + swapChain->_viewport.Width),
     (LONG)(swapChain->_viewport.TopLeftY + swapChain->_viewport.Height));
   g_ctx->SetScissorRect(1, &rect);
-
-  // Restore modified state
-  //g_pd3dDeviceImmediateContext->IASetInputLayout(NULL);
-  //g_pd3dDeviceImmediateContext->PSSetShader(NULL, NULL, 0);
-  //g_pd3dDeviceImmediateContext->VSSetShader(NULL, NULL, 0);
 }
-
 
 //------------------------------------------------------------------------------
 void LoadFontsTexture()
@@ -214,7 +208,7 @@ void LoadFontsTexture()
   ImGuiIO& io = ImGui::GetIO();
   //ImFont* my_font1 = io.Fonts->AddFontDefault();
   //ImFont* my_font2 = io.Fonts->AddFontFromFileTTF("extra_fonts/Karla-Regular.ttf", 15.0f);
-  //ImFont* my_font3 = io.Fonts->AddFontFromFileTTF("imgui/extra_fonts/ProggyClean.ttf", 13.0f); my_font3->DisplayOffset.y += 1;
+  ImFont* my_font3 = io.Fonts->AddFontFromFileTTF("imgui/extra_fonts/ProggyClean.ttf", 13.0f); my_font3->DisplayOffset.y += 1;
   //ImFont* my_font4 = io.Fonts->AddFontFromFileTTF("imgui/extra_fonts/ProggyTiny.ttf", 10.0f); my_font4->DisplayOffset.y += 1;
   //ImFont* my_font5 = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 20.0f, io.Fonts->GetGlyphRangesJapanese());
 
@@ -222,16 +216,7 @@ void LoadFontsTexture()
   unsigned char* pixels;
   int width, height;
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-  g_texture = GRAPHICS.LoadTexture("gfx/font1.png");
-  //g_texture = GRAPHICS.CreateTexture(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, pixels, width*4);
-
-  //io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
-  //g_texture = GRAPHICS.CreateTexture(width, height, DXGI_FORMAT_A8_UNORM, pixels, width);
-
-
-  // there seems to be a bug in IMGUI wrt 64-bit when creating textures, so
-  // for now I'm just going to load one from disk
-  //g_texture = GRAPHICS.CreateTexture(width, height, DXGI_FORMAT_A8_UNORM, pixels, width);
+  g_texture = GRAPHICS.CreateTexture(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, pixels, width*4);
 
   // Store our identifier
   //io.Fonts->TexID = (void *)*(u32*)&h;
@@ -305,7 +290,7 @@ namespace tano
   //------------------------------------------------------------------------------
   bool InitImGui()
   {
-    g_ctx = GRAPHICS.CreateDeferredContext(true);
+    g_ctx = GRAPHICS.CreateDeferredContext();
     InitDeviceD3D();
 
     HWND hwnd = GRAPHICS.GetHwnd();

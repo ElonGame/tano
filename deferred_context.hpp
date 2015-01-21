@@ -10,9 +10,6 @@ namespace tano
     friend class Graphics;
   public:
 
-    void BeginFrame();
-    void EndFrame();
-
     void SetSwapChain(ObjectHandle h, const Color& clearColor);
     void SetSwapChain(ObjectHandle h, const float* clearColor);
     void SetRenderTarget(ObjectHandle render_target, const Color* clearTarget);
@@ -74,7 +71,6 @@ namespace tano
     float _default_blend_factors[4];
     u32 _default_sample_mask;
 
-    bool _is_immediate_context;
   };
 
   template <typename T>

@@ -50,11 +50,41 @@ bool ParticleTunnel::Init(const char* configFile)
 
   u32 vertexFlags = VertexFlags::VF_POS | VertexFlags::VF_TEX0;
   INIT(_particleTexture.IsValid())
-  INIT(_gpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsMain", "PsMain", vertexFlags));
-  INIT(_gpuObjects.CreateDynamicVb(128 * 1024, sizeof(PosTex)));
+  INIT(_particleGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsMain", "PsMain", vertexFlags));
+  INIT(_particleGpuObjects.CreateDynamicVb(16 * 1024 * 1024, sizeof(PosTex)));
+
+  INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsBackground", "PsBackground"));
+  INIT(_backgroundState.Create());
+
+  {
+    CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
+    rssDesc.CullMode = D3D11_CULL_NONE;
+
+    CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
+    dsDesc.DepthEnable = FALSE;
+
+    CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+
+    // pre-multiplied alpha
+    D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
+    b.BlendEnable = TRUE;
+    b.BlendOp = D3D11_BLEND_OP_ADD;
+    b.SrcBlend = D3D11_BLEND_ONE;
+    b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    b.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+    b.SrcBlendAlpha = D3D11_BLEND_ONE;
+    b.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+    INIT(_particleState.Create(&dsDesc, &blendDesc, &rssDesc));
+  }
 
   INIT_RESOURCE(_samplerState, GRAPHICS.CreateSamplerState(CD3D11_SAMPLER_DESC(CD3D11_DEFAULT())));
   INIT(_cbPerFrame.Create());
+
+  _particles.resize(_settings.num_particles);
+  for (int i = 0; i < _settings.num_particles; ++i)
+  {
+    _particles[i].pos = Vector3(randf(-100.f, 100.f), randf(-100.f, 100.f), randf(-100.f, 100.f));
+  }
 
   _cbPerFrame.world = Matrix::Identity();
   Matrix view = Matrix::CreateLookAt(Vector3(0, 0, -500), Vector3(0, 0, 0), Vector3(0, 1, 0));
@@ -62,6 +92,8 @@ bool ParticleTunnel::Init(const char* configFile)
   Matrix viewProj = view * proj;
   _cbPerFrame.viewProj = viewProj.Transpose();
   _cbPerFrame.tint = _settings.tint;
+  _cbPerFrame.inner = _settings.inner_color;
+  _cbPerFrame.outer = _settings.outer_color;
 
   END_INIT_SEQUENCE();
 }
@@ -69,40 +101,82 @@ bool ParticleTunnel::Init(const char* configFile)
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
-
-  //GRAPHICS.GetTempRenderTarget()
-
-  PosTex* vtx = _ctx->MapWriteDiscard<PosTex>(_gpuObjects._vb);
+  PosTex* vtx = _ctx->MapWriteDiscard<PosTex>(_particleGpuObjects._vb);
   if (!vtx)
     return false;
 
-  float s = 50;
-  // 0--1
-  // 2--3
-  PosTex v0 ={ Vector3(-s, +s, 0), Vector2(0, 0) };
-  PosTex v1 ={ Vector3(+s, +s, 0), Vector2(1, 0) };
-  PosTex v2 ={ Vector3(-s, -s, 0), Vector2(0, 1) };
-  PosTex v3 ={ Vector3(+s, -s, 0), Vector2(1, 1) };
+  for (int i = 0; i < _settings.num_particles; ++i)
+  {
+    float s = i / 100.f;
 
-  // 0, 1, 2
-  // 2, 1, 3
-  vtx[0] = v0;
-  vtx[1] = v1;
-  vtx[2] = v2;
+    // 0--1
+    // 2--3
+    PosTex v0 ={ Vector3(-s, +s, s), Vector2(0, 0) };
+    PosTex v1 ={ Vector3(+s, +s, s), Vector2(1, 0) };
+    PosTex v2 ={ Vector3(-s, -s, s), Vector2(0, 1) };
+    PosTex v3 ={ Vector3(+s, -s, s), Vector2(1, 1) };
 
-  vtx[3] = v2;
-  vtx[4] = v1;
-  vtx[5] = v3;
+    v0.pos += _particles[i].pos;
+    v1.pos += _particles[i].pos;
+    v2.pos += _particles[i].pos;
+    v3.pos += _particles[i].pos;
 
-  _ctx->Unmap(_gpuObjects._vb);
+    // 0, 1, 2
+    // 2, 1, 3
+    vtx[0] = v0;
+    vtx[1] = v1;
+    vtx[2] = v2;
+
+    vtx[3] = v2;
+    vtx[4] = v1;
+    vtx[5] = v3;
+
+    vtx += 6;
+  }
+
+  _ctx->Unmap(_particleGpuObjects._vb);
+  return true;
+}
+
+//------------------------------------------------------------------------------
+bool ParticleTunnel::Render()
+{
+  static Color black(0,0,0,0);
+  //ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags());
+  //_ctx->SetRenderTarget(rt.h, &black);
+  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
+
+  // Render the background
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
+  _ctx->SetGpuObjects(_backgroundGpuObjects);
+  _ctx->SetGpuState(_backgroundState);
+  _ctx->Draw(3, 0);
+
+  // Render particles
+
+  // do funky stuff!
+
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
+  _ctx->SetGpuObjects(_particleGpuObjects);
+  _ctx->SetGpuState(_particleState);
+
+  _ctx->SetSamplerState(_samplerState, 0, ShaderType::PixelShader);
+  _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
+
+  _ctx->Draw(6 * _settings.num_particles, 0);
+
   return true;
 }
 
 //------------------------------------------------------------------------------
 void ParticleTunnel::RenderParameterSet()
 {
-  if (ImGui::ColorEdit4("Tint", &_settings.tint.x))
-    _cbPerFrame.tint = _settings.tint;
+  if (ImGui::ColorEdit4("Tint", &_settings.tint.x)) _cbPerFrame.tint = _settings.tint;
+  if (ImGui::ColorEdit4("Inner", &_settings.inner_color.x)) _cbPerFrame.inner = _settings.inner_color;
+  if (ImGui::ColorEdit4("Outer", &_settings.outer_color.x)) _cbPerFrame.outer = _settings.outer_color;
+  ImGui::Separator();
+  ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
 }
 
 //------------------------------------------------------------------------------
@@ -115,26 +189,6 @@ void ParticleTunnel::SaveParameterSet()
     fwrite(buf._buf.data(), 1, buf._ofs, f);
     fclose(f);
   }
-}
-
-//------------------------------------------------------------------------------
-bool ParticleTunnel::Render()
-{
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
-  _ctx->BeginFrame();
-
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
-  _ctx->SetGpuObjects(_gpuObjects);
-
-  _ctx->SetSamplerState(_samplerState, 0, ShaderType::PixelShader);
-  _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
-
-  _ctx->Draw(6,0);
-
-  _ctx->EndFrame();
-
-  return true;
 }
 
 //------------------------------------------------------------------------------

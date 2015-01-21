@@ -28,17 +28,29 @@ namespace tano
     void RenderParameterSet();
     void SaveParameterSet();
 
+    struct Particle
+    {
+      Vector3 pos;
+    };
+
+    vector<Particle> _particles;
+
     struct CBufferPerFrame
     {
       Matrix world;
       Matrix viewProj;
       Color tint;
+      Color inner;
+      Color outer;
     };
 
     string _configName;
     ObjectHandle _particleTexture;
+    GpuState _particleState;
+    GpuState _backgroundState;
 
-    GpuObjects _gpuObjects;
+    GpuObjects _backgroundGpuObjects;
+    GpuObjects _particleGpuObjects;
 
     ObjectHandle _texture;
     ObjectHandle _samplerState;
