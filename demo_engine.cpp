@@ -146,6 +146,8 @@ void DemoEngine::ReclassifyEffects()
 //------------------------------------------------------------------------------
 bool DemoEngine::Tick()
 {
+  rmt_ScopedCPUSample(DemoEngine_Tick);
+
   _fileWatcher.Tick();
   _propertyManager.Tick();
 

@@ -7,3 +7,6 @@
 [submodule "imgui"]
 	path = imgui
 	url = git@github.com:ocornut/imgui.git
+[submodule "Remotery"]
+	path = Remotery
+	url = git@github.com:Celtoys/Remotery.git

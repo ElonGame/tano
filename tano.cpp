@@ -21,6 +21,10 @@ static const int WM_APP_CLOSE = WM_APP + 2;
 const TCHAR* g_AppWindowClass = _T("TanoClass");
 const TCHAR* g_AppWindowTitle = _T("tano - neurotica e.f.s");
 
+#if WITH_REMOTERY
+Remotery* g_rmt;
+#endif
+
 App* App::_instance;
 
 //------------------------------------------------------------------------------
@@ -72,9 +76,13 @@ bool App::Create()
 //------------------------------------------------------------------------------
 bool App::Destroy()
 {
-#if WITH_ANT_TWEAK_BAR
-  TwTerminate();
+  BEGIN_INIT_SEQUENCE();
+
+#if WITH_REMOTERY
+  rmt_DestroyGlobalInstance(g_rmt);
+  g_rmt = nullptr;
 #endif
+
 
   if (!ResourceManager::Destroy())
     return false;
@@ -86,7 +94,8 @@ bool App::Destroy()
     return false;
 
   delete exch_null(_instance);
-  return true;
+
+  END_INIT_SEQUENCE();
 }
 
 //------------------------------------------------------------------------------
@@ -122,10 +131,14 @@ bool App::Init(HINSTANCE hinstance)
   int width = GetSystemMetrics(SM_CXFULLSCREEN);
   int height = GetSystemMetrics(SM_CYFULLSCREEN);
 
-  GRAPHICS.CreateDefaultSwapChain(0.75f * width, 0.75f * height, DXGI_FORMAT_R16G16B16A16_FLOAT, WndProc, hinstance);
+  GRAPHICS.CreateDefaultSwapChain((int)(0.75f * width), (int)(0.75f * height), DXGI_FORMAT_R16G16B16A16_FLOAT, WndProc, hinstance);
 
 #if WITH_IMGUI
   INIT(InitImGui());
+#endif
+
+#if WITH_REMOTERY
+  rmt_CreateGlobalInstance(&g_rmt);
 #endif
 
   INIT(DemoEngine::Create());
@@ -178,6 +191,7 @@ bool App::Run()
       DispatchMessage(&msg);
       continue;
     }
+    rmt_ScopedCPUSample(App_Run);
 
 #if WITH_IMGUI
     UpdateImGui();

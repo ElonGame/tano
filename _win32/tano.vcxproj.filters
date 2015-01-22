@@ -38,6 +38,9 @@
     <Filter Include="bristol\dx\directxtk">
       <UniqueIdentifier>{0c75b133-5052-40be-a9e1-4bcb30007a03}</UniqueIdentifier>
     </Filter>
+    <Filter Include="remotery">
+      <UniqueIdentifier>{341c806c-144b-485d-afe0-6003cedb2f6a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tano.cpp">
@@ -129,6 +132,12 @@
     </ClCompile>
     <ClCompile Include="..\bristol\dx\graphics_utils.cpp">
       <Filter>bristol\dx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mesh_loader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Remotery\lib\Remotery.c">
+      <Filter>remotery</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -272,6 +281,12 @@
     </ClInclude>
     <ClInclude Include="..\bristol\dx\DirectXTK\SimpleMath.h">
       <Filter>bristol\dx\directxtk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mesh_loader.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Remotery\lib\Remotery.h">
+      <Filter>remotery</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

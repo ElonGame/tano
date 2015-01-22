@@ -13,9 +13,9 @@ using namespace tano;
 using namespace bristol;
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::Particles::Create(int numParticles)
+void ParticleTunnel::Particles::Create(int num)
 {
-  this->numParticles = numParticles;
+  numParticles = num;
   x = new float[numParticles];
   y = new float[numParticles];
   z = new float[numParticles];
@@ -26,6 +26,7 @@ void ParticleTunnel::Particles::Create(int numParticles)
 
   lifetime = new Lifetime[numParticles];
   scale = new float[numParticles];
+  deadParticles = new int[numParticles];
 
   float s = 100;
   for (int i = 0; i < numParticles; ++i)
@@ -62,24 +63,48 @@ void ParticleTunnel::Particles::Destroy()
   SAFE_ADELETE(x);  SAFE_ADELETE(y);  SAFE_ADELETE(z);
   SAFE_ADELETE(vx); SAFE_ADELETE(vy); SAFE_ADELETE(vz);
   SAFE_ADELETE(lifetime);
+  SAFE_ADELETE(scale);
+  SAFE_ADELETE(deadParticles);
 }
 
 //------------------------------------------------------------------------------
 void ParticleTunnel::Particles::Update(float dt)
 {
+
+  float* xx = x;
+  float* yy = y;
+  float* zz = z;
+
+  float *vvx = vx;
+  float *vvy = vy;
+  float *vvz = vz;
+
+  Lifetime* ll = lifetime;
+
+  int numDead = 0;
+  int* dead = deadParticles;
+
   float s = 100;
-  for (int i = 0; i < numParticles; ++i)
+  for (int i = 0, e = numParticles; i < e; ++i)
   {
-    x[i] += dt * vx[i];
-    y[i] += dt * vy[i];
-    z[i] += dt * vz[i];
+    *xx += dt * *vvx;
+    *yy += dt * *vvy;
+    *zz += dt * *vvz;
+    --ll->left;
 
-    --lifetime[i].left;
-
-    if (/*--lifetime[i].left <= 0  || */ z[i] < -500)
+    if (*zz < -500)
     {
-      CreateParticle(i, s);
+      dead[numDead++] = i;
     }
+
+    xx++; yy++; zz++;
+    vvx++; vvy++; vvz++;
+    ll++;
+  }
+
+  for (int i = 0; i < numDead; ++i)
+  {
+    CreateParticle(deadParticles[i], s);
   }
 }
 
@@ -111,7 +136,7 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(ParseParticleTunnelSettings(InputBuffer(buf), &_settings));
 
   // Background state setup
-  INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsBackground", "PsBackground"));
+  INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsQuad", "PsBackground"));
   INIT(_backgroundState.Create());
 
   // Particle state setup
@@ -167,57 +192,72 @@ bool ParticleTunnel::Init(const char* configFile)
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
+  rmt_ScopedCPUSample(ParticleTunnel_Update);
+
   if (state.numTicks == 0)
     return true;
 
-  float dt = 1.f / state.frequency;
-  for (int tick = 0; tick < state.numTicks; ++tick)
   {
-    _particles.Update(dt);
+    rmt_ScopedCPUSample(Particles_Update);
+
+    float dt = 1.f / state.frequency;
+    for (int tick = 0; tick < state.numTicks; ++tick)
+    {
+      _particles.Update(dt);
+    }
   }
 
-  PosTex3* vtx = _ctx->MapWriteDiscard<PosTex3>(_particleGpuObjects._vb);
-  if (!vtx)
-    return false;
-
-
-  for (int i = 0; i < _settings.num_particles; ++i)
   {
-    float s = 10.f * _particles.scale[i];
+    rmt_ScopedCPUSample(MapWriteDiscard);
 
-    // 0--1
-    // 2--3
+    PosTex3* vtx = _ctx->MapWriteDiscard<PosTex3>(_particleGpuObjects._vb);
+    if (!vtx)
+      return false;
 
-    float lifetime = (float)_particles.lifetime[i].left / _particles.lifetime[i].total;
+    float* xx = _particles.x;
+    float* yy = _particles.y;
+    float* zz = _particles.z;
 
-    PosTex3 v0 ={ Vector3(-s, +s, s), Vector3(0, 0, lifetime) };
-    PosTex3 v1 ={ Vector3(+s, +s, s), Vector3(1, 0, lifetime) };
-    PosTex3 v2 ={ Vector3(-s, -s, s), Vector3(0, 1, lifetime) };
-    PosTex3 v3 ={ Vector3(+s, -s, s), Vector3(1, 1, lifetime) };
+    float* ss = _particles.scale;
+    Particles::Lifetime* ll = _particles.lifetime;
 
-    float x = _particles.x[i];
-    float y = _particles.y[i];
-    float z = _particles.z[i];
+    for (int i = 0, e = _settings.num_particles; i < e; ++i)
+    {
+      float s = 10.f * ss[i];
 
-    v0.pos.x += x; v0.pos.y += y; v0.pos.z += z;
-    v1.pos.x += x; v1.pos.y += y; v1.pos.z += z;
-    v2.pos.x += x; v2.pos.y += y; v2.pos.z += z;
-    v3.pos.x += x; v3.pos.y += y; v3.pos.z += z;
+      // 0--1
+      // 2--3
 
-    // 0, 1, 2
-    // 2, 1, 3
-    vtx[0] = v0;
-    vtx[1] = v1;
-    vtx[2] = v2;
+      float lifetime = (float)ll[i].left / ll[i].total;
 
-    vtx[3] = v2;
-    vtx[4] = v1;
-    vtx[5] = v3;
+      PosTex3 v0 = { Vector3(-s, +s, s), Vector3(0, 0, lifetime) };
+      PosTex3 v1 = { Vector3(+s, +s, s), Vector3(1, 0, lifetime) };
+      PosTex3 v2 = { Vector3(-s, -s, s), Vector3(0, 1, lifetime) };
+      PosTex3 v3 = { Vector3(+s, -s, s), Vector3(1, 1, lifetime) };
 
-    vtx += 6;
+      Vector3 v(xx[i], yy[i], zz[i]);
+
+      v0.pos += v;
+      v1.pos += v;
+      v2.pos += v;
+      v3.pos += v;
+
+      // 0, 1, 2
+      // 2, 1, 3
+      vtx[0] = v0;
+      vtx[1] = v1;
+      vtx[2] = v2;
+
+      vtx[3] = v2;
+      vtx[4] = v1;
+      vtx[5] = v3;
+
+      vtx += 6;
+    }
+
+    _ctx->Unmap(_particleGpuObjects._vb);
   }
 
-  _ctx->Unmap(_particleGpuObjects._vb);
   return true;
 }
 

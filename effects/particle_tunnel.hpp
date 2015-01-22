@@ -52,6 +52,9 @@ namespace tano
         int left;
       };
       Lifetime* lifetime = nullptr;
+
+      int* deadParticles = nullptr;
+
       int numParticles = 0;
     };
 

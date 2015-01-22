@@ -1,13 +1,15 @@
 #pragma once
 #pragma warning(disable: 4005)
 
+#define WITH_REMOTERY 1
+
 #define WITH_DXGI_DEBUG 1
 #define WITH_DEBUG_SHADERS 1
 
 #define WITH_CONFIG_DLG 0
 #define WITH_UNPACKED_RESOUCES 1
 
-#define WITH_MUSIC 1
+#define WITH_MUSIC 0
 
 #define WITH_ROCKET 1
 
@@ -81,6 +83,10 @@
 #if WITH_MUSIC
 #include <fmod.hpp>
 #include <fmod_errors.h>
+#endif
+
+#if WITH_REMOTERY
+#include "Remotery/lib/Remotery.h"
 #endif
 
 #include "bristol/string_utils.hpp"

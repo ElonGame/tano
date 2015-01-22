@@ -1,0 +1,53 @@
+#pragma once
+
+namespace tano
+{
+
+  struct Mesh;
+
+#pragma pack(push, 1)
+  struct MeshLoader
+  {
+    enum class SceneElement
+    {
+      Mesh,
+      Camera,
+      Light,
+      NumElements
+    };
+
+    struct ElementChunk
+    {
+      u32 numElements;
+#pragma warning(suppress: 4200)
+      char data[0];
+    };
+
+    struct MeshElement
+    {
+      const char* name;
+      u32 numVerts;
+      u32 numIndices;
+      float* verts;
+      float* normals;
+      float* uv;
+      u32* indices;
+      // bounding sphere
+      float bx, by, bz, br;
+    };
+
+    struct Scene
+    {
+      char id[4];
+      u32 fixupOffset;
+      u32 elementOffset[SceneElement::NumElements];
+    };
+
+    bool Load(const char* filename);
+    void ProcessFixups(u32 fixupOffset);
+
+    vector<MeshElement*> meshes;
+    vector<char> buf;
+  };
+#pragma pack(pop)
+}

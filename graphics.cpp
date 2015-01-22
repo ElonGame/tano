@@ -130,6 +130,10 @@ bool Graphics::CreateDevice()
     return false;
 #endif
 
+#if WITH_REMOTERY
+  rmt_BindD3D11(_device, _immediateContext);
+#endif
+
   return true;
 }
 
