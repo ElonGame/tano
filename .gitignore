@@ -8,5 +8,9 @@ _win32/x64/Release/*
 *.aps
 *.user
 *.mp3
+*.psess
+*.vsp
 generated/*
 shaders/*.[pv]s?
+_win32/My Advisor*
+_win32/My Inspector*

@@ -29,6 +29,15 @@
     <Filter Include="imgui">
       <UniqueIdentifier>{a8f1f197-ab6e-453a-b7ef-54b46a1d555d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="bristol">
+      <UniqueIdentifier>{7c505794-c8dc-4dd7-ac5f-26afe953add2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="bristol\dx">
+      <UniqueIdentifier>{aca57c52-e77c-4e43-8784-a22926ae5e8d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="bristol\dx\directxtk">
+      <UniqueIdentifier>{0c75b133-5052-40be-a9e1-4bcb30007a03}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tano.cpp">
@@ -99,6 +108,27 @@
     </ClCompile>
     <ClCompile Include="..\graphics_extra.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bristol\error.cpp">
+      <Filter>bristol</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bristol\file_utils.cpp">
+      <Filter>bristol</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bristol\file_watcher.cpp">
+      <Filter>bristol</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bristol\string_utils.cpp">
+      <Filter>bristol</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bristol\time_utils.cpp">
+      <Filter>bristol</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bristol\utils.cpp">
+      <Filter>bristol</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bristol\dx\graphics_utils.cpp">
+      <Filter>bristol\dx</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -210,6 +240,39 @@
     <ClInclude Include="..\graphics_extra.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\bristol\bristol.hpp">
+      <Filter>bristol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\error.hpp">
+      <Filter>bristol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\file_utils.hpp">
+      <Filter>bristol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\file_watcher.hpp">
+      <Filter>bristol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\flags.hpp">
+      <Filter>bristol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\string_utils.hpp">
+      <Filter>bristol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\time_utils.hpp">
+      <Filter>bristol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\utils.hpp">
+      <Filter>bristol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\dx\graphics_utils.hpp">
+      <Filter>bristol\dx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\dx\vertex_types.hpp">
+      <Filter>bristol\dx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\dx\DirectXTK\SimpleMath.h">
+      <Filter>bristol\dx\directxtk</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="tano.rc">
@@ -222,6 +285,9 @@
     </None>
     <None Include="..\protocol\app.grobb">
       <Filter>protocol</Filter>
+    </None>
+    <None Include="..\bristol\dx\DirectXTK\SimpleMath.inl">
+      <Filter>bristol\dx\directxtk</Filter>
     </None>
   </ItemGroup>
 </Project>

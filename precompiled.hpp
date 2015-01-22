@@ -83,16 +83,15 @@
 #include <fmod_errors.h>
 #endif
 
-#include <bristol/string_utils.hpp>
-#include <bristol/flags.hpp>
-#include <bristol/utils.hpp>
-#include <bristol/error.hpp>
-#include <bristol/file_utils.hpp>
-#include <bristol/time_utils.hpp>
-#include <bristol/file_watcher.hpp>
-#include <bristol/dx/graphics_utils.hpp>
-#include <bristol/dx/vertex_types.hpp>
-
+#include "bristol/string_utils.hpp"
+#include "bristol/flags.hpp"
+#include "bristol/utils.hpp"
+#include "bristol/error.hpp"
+#include "bristol/file_utils.hpp"
+#include "bristol/time_utils.hpp"
+#include "bristol/file_watcher.hpp"
+#include "bristol/dx/graphics_utils.hpp"
+#include "bristol/dx/vertex_types.hpp"
 
 typedef uint8_t u8;
 typedef uint16_t u16;
