@@ -236,10 +236,16 @@ namespace tano
     if (vertexFlags & VF_ORDER_TEX_COL)
     {
       // uv before col
-      if (vertexFlags & VF_TEX0)
+      if (vertexFlags & VF_TEX2_0)
       {
         desc->push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
         ofs += 8;
+      }
+
+      if (vertexFlags & VF_TEX3_0)
+      {
+        desc->push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+        ofs += 12;
       }
 
       if (vertexFlags & VF_COLOR)
@@ -269,11 +275,18 @@ namespace tano
         ofs += 4;
       }
 
-      if (vertexFlags & VF_TEX0)
+      if (vertexFlags & VF_TEX2_0)
       {
         desc->push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
         ofs += 8;
       }
+
+      if (vertexFlags & VF_TEX3_0)
+      {
+        desc->push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+        ofs += 12;
+      }
+
     }
   }
 }

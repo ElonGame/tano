@@ -28,12 +28,34 @@ namespace tano
     void RenderParameterSet();
     void SaveParameterSet();
 
-    struct Particle
+    // SOA style
+    struct Particles
     {
-      Vector3 pos;
+      void Create(int numParticles);
+      void Destroy();
+      void Update(float dt);
+      void CreateParticle(int idx, float s);
+
+      // TODO: test speed diff if these are double buffered, to avoid LHS
+      float* x = nullptr;
+      float* y = nullptr;
+      float* z = nullptr;
+      float* vx = nullptr;
+      float* vy = nullptr;
+      float* vz = nullptr;
+
+      float* scale = nullptr;
+
+      struct Lifetime
+      {
+        int total;
+        int left;
+      };
+      Lifetime* lifetime = nullptr;
+      int numParticles = 0;
     };
 
-    vector<Particle> _particles;
+    Particles _particles;
 
     struct CBufferPerFrame
     {

@@ -90,7 +90,7 @@ bool InitDeviceD3D()
 #endif
 
   // Create shaders
-  u32 vertexFlags = VertexFlags::VF_POS_XY | VertexFlags::VF_COLOR_U32 | VertexFlags::VF_TEX0 | VertexFlags::VF_ORDER_TEX_COL;
+  u32 vertexFlags = VertexFlags::VF_POS_XY | VertexFlags::VF_COLOR_U32 | VertexFlags::VF_TEX2_0 | VertexFlags::VF_ORDER_TEX_COL;
   INIT(g_gpuObjects.LoadShadersFromFile("shaders/imgui", "VsMain", "PsMain", vertexFlags));
 
   // Create the constant buffer

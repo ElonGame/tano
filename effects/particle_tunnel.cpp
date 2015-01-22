@@ -13,6 +13,77 @@ using namespace tano;
 using namespace bristol;
 
 //------------------------------------------------------------------------------
+void ParticleTunnel::Particles::Create(int numParticles)
+{
+  this->numParticles = numParticles;
+  x = new float[numParticles];
+  y = new float[numParticles];
+  z = new float[numParticles];
+
+  vx = new float[numParticles];
+  vy = new float[numParticles];
+  vz = new float[numParticles];
+
+  lifetime = new Lifetime[numParticles];
+  scale = new float[numParticles];
+
+  float s = 100;
+  for (int i = 0; i < numParticles; ++i)
+  {
+    CreateParticle(i, s);
+  }
+
+  for (int i = 0; i < 1000; ++i)
+  {
+    Update(0.01f);
+  }
+}
+
+//------------------------------------------------------------------------------
+void ParticleTunnel::Particles::CreateParticle(int idx, float s)
+{
+  x[idx] = randf(-s, s);
+  y[idx] = randf(-s, s);
+  z[idx] = randf(1500.f, 2000.f);
+
+  vx[idx] = randf(-s, s);
+  vy[idx] = randf(-s, s);
+  vz[idx] = -randf(10.f, 200.f);
+
+  int ll = randf(2000, 3000);
+  lifetime[idx].left = ll;
+  lifetime[idx].total = ll;
+  scale[idx] = randf(1.f, 5.f);
+}
+
+//------------------------------------------------------------------------------
+void ParticleTunnel::Particles::Destroy()
+{
+  SAFE_ADELETE(x);  SAFE_ADELETE(y);  SAFE_ADELETE(z);
+  SAFE_ADELETE(vx); SAFE_ADELETE(vy); SAFE_ADELETE(vz);
+  SAFE_ADELETE(lifetime);
+}
+
+//------------------------------------------------------------------------------
+void ParticleTunnel::Particles::Update(float dt)
+{
+  float s = 100;
+  for (int i = 0; i < numParticles; ++i)
+  {
+    x[i] += dt * vx[i];
+    y[i] += dt * vy[i];
+    z[i] += dt * vz[i];
+
+    --lifetime[i].left;
+
+    if (/*--lifetime[i].left <= 0  || */ z[i] < -500)
+    {
+      CreateParticle(i, s);
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
 ParticleTunnel::ParticleTunnel(const string &name, u32 id)
   : Effect(name, id)
 {
@@ -24,6 +95,7 @@ ParticleTunnel::ParticleTunnel(const string &name, u32 id)
 //------------------------------------------------------------------------------
 ParticleTunnel::~ParticleTunnel()
 {
+  _particles.Destroy();
 }
 
 //------------------------------------------------------------------------------
@@ -48,10 +120,10 @@ bool ParticleTunnel::Init(const char* configFile)
     return _particleTexture.IsValid();
   });
 
-  u32 vertexFlags = VertexFlags::VF_POS | VertexFlags::VF_TEX0;
+  u32 vertexFlags = VertexFlags::VF_POS | VertexFlags::VF_TEX3_0;
   INIT(_particleTexture.IsValid())
   INIT(_particleGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsMain", "PsMain", vertexFlags));
-  INIT(_particleGpuObjects.CreateDynamicVb(16 * 1024 * 1024, sizeof(PosTex)));
+  INIT(_particleGpuObjects.CreateDynamicVb(16 * 1024 * 1024, sizeof(PosTex3)));
 
   INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsBackground", "PsBackground"));
   INIT(_backgroundState.Create());
@@ -80,15 +152,11 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT_RESOURCE(_samplerState, GRAPHICS.CreateSamplerState(CD3D11_SAMPLER_DESC(CD3D11_DEFAULT())));
   INIT(_cbPerFrame.Create());
 
-  _particles.resize(_settings.num_particles);
-  for (int i = 0; i < _settings.num_particles; ++i)
-  {
-    _particles[i].pos = Vector3(randf(-100.f, 100.f), randf(-100.f, 100.f), randf(-100.f, 100.f));
-  }
+  _particles.Create(_settings.num_particles);
 
   _cbPerFrame.world = Matrix::Identity();
   Matrix view = Matrix::CreateLookAt(Vector3(0, 0, -500), Vector3(0, 0, 0), Vector3(0, 1, 0));
-  Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 1000.f);
+  Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 2000.f);
   Matrix viewProj = view * proj;
   _cbPerFrame.viewProj = viewProj.Transpose();
   _cbPerFrame.tint = _settings.tint;
@@ -101,25 +169,42 @@ bool ParticleTunnel::Init(const char* configFile)
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
-  PosTex* vtx = _ctx->MapWriteDiscard<PosTex>(_particleGpuObjects._vb);
+  if (state.numTicks == 0)
+    return true;
+
+  float dt = 1.f / state.frequency;
+  for (int tick = 0; tick < state.numTicks; ++tick)
+  {
+    _particles.Update(dt);
+  }
+
+  PosTex3* vtx = _ctx->MapWriteDiscard<PosTex3>(_particleGpuObjects._vb);
   if (!vtx)
     return false;
 
+
   for (int i = 0; i < _settings.num_particles; ++i)
   {
-    float s = i / 100.f;
+    float s = 10.f * _particles.scale[i];
 
     // 0--1
     // 2--3
-    PosTex v0 ={ Vector3(-s, +s, s), Vector2(0, 0) };
-    PosTex v1 ={ Vector3(+s, +s, s), Vector2(1, 0) };
-    PosTex v2 ={ Vector3(-s, -s, s), Vector2(0, 1) };
-    PosTex v3 ={ Vector3(+s, -s, s), Vector2(1, 1) };
 
-    v0.pos += _particles[i].pos;
-    v1.pos += _particles[i].pos;
-    v2.pos += _particles[i].pos;
-    v3.pos += _particles[i].pos;
+    float lifetime = (float)_particles.lifetime[i].left / _particles.lifetime[i].total;
+
+    PosTex3 v0 ={ Vector3(-s, +s, s), Vector3(0, 0, lifetime) };
+    PosTex3 v1 ={ Vector3(+s, +s, s), Vector3(1, 0, lifetime) };
+    PosTex3 v2 ={ Vector3(-s, -s, s), Vector3(0, 1, lifetime) };
+    PosTex3 v3 ={ Vector3(+s, -s, s), Vector3(1, 1, lifetime) };
+
+    float x = _particles.x[i];
+    float y = _particles.y[i];
+    float z = _particles.z[i];
+
+    v0.pos.x += x; v0.pos.y += y; v0.pos.z += z;
+    v1.pos.x += x; v1.pos.y += y; v1.pos.z += z;
+    v2.pos.x += x; v2.pos.y += y; v2.pos.z += z;
+    v3.pos.x += x; v3.pos.y += y; v3.pos.z += z;
 
     // 0, 1, 2
     // 2, 1, 3

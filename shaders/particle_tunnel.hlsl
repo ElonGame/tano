@@ -14,13 +14,13 @@ cbuffer PerFrame : register(b0)
 struct VsIn
 {
   float3 pos : Position;
-  float2 tex : TexCoord;
+  float3 tex : TexCoord;
 };
 
 struct VsOut
 {
   float4 pos : SV_Position;
-  float2 tex : TexCoord;
+  float3 tex : TexCoord;
 };
 
 VsOut VsMain(VsIn v)
@@ -34,8 +34,9 @@ VsOut VsMain(VsIn v)
 
 float4 PsMain(VsOut p) : SV_Target
 {
-  float4 col = Texture0.Sample(PointSampler, p.tex);
-  return float4(col.rgb, col.g);
+  float2 uv = p.tex.xy;
+  float4 col = Texture0.Sample(PointSampler, uv);
+  return (1 - p.tex.z) * float4(col.rgb, col.g);
 }
 
 //------------------------------------------------------
