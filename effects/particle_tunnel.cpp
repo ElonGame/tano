@@ -104,29 +104,22 @@ bool ParticleTunnel::Init(const char* configFile)
   BEGIN_INIT_SEQUENCE();
 
   _configName = configFile;
-  bool res = true;
-  FileWatcher& watcher = DEMO_ENGINE.GetFileWatcher();
   vector<char> buf;
   if (!RESOURCE_MANAGER.LoadFile(configFile, &buf))
     return false;
 
-  if (!ParseParticleTunnelSettings(InputBuffer(buf), &_settings))
-    return false;
+  INIT(ParseParticleTunnelSettings(InputBuffer(buf), &_settings));
 
-  INIT(res);
+  // Background state setup
+  INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsBackground", "PsBackground"));
+  INIT(_backgroundState.Create());
 
-  watcher.AddFileWatch(_settings.texture, nullptr, true, &res, [this](const string& filename, void* ctx) {
-    _particleTexture = RESOURCE_MANAGER.LoadTexture(filename.c_str());
-    return _particleTexture.IsValid();
-  });
-
+  // Particle state setup
+  INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
   u32 vertexFlags = VertexFlags::VF_POS | VertexFlags::VF_TEX3_0;
   INIT(_particleTexture.IsValid())
   INIT(_particleGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsMain", "PsMain", vertexFlags));
   INIT(_particleGpuObjects.CreateDynamicVb(16 * 1024 * 1024, sizeof(PosTex3)));
-
-  INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsBackground", "PsBackground"));
-  INIT(_backgroundState.Create());
 
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
@@ -149,12 +142,17 @@ bool ParticleTunnel::Init(const char* configFile)
     INIT(_particleState.Create(&dsDesc, &blendDesc, &rssDesc));
   }
 
-  INIT_RESOURCE(_samplerState, GRAPHICS.CreateSamplerState(CD3D11_SAMPLER_DESC(CD3D11_DEFAULT())));
-  INIT(_cbPerFrame.Create());
+  INIT_RESOURCE(_particleSamplerState, GRAPHICS.CreateSamplerState(CD3D11_SAMPLER_DESC(CD3D11_DEFAULT())));
 
   _particles.Create(_settings.num_particles);
 
-  _cbPerFrame.world = Matrix::Identity();
+  // Composite state setup
+  INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsQuad", "PsComposite"));
+  INIT(_compositeState.Create());
+
+  // Generic setup
+  INIT(_cbPerFrame.Create());
+    _cbPerFrame.world = Matrix::Identity();
   Matrix view = Matrix::CreateLookAt(Vector3(0, 0, -500), Vector3(0, 0, 0), Vector3(0, 1, 0));
   Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 2000.f);
   Matrix viewProj = view * proj;
@@ -227,9 +225,9 @@ bool ParticleTunnel::Update(const UpdateState& state)
 bool ParticleTunnel::Render()
 {
   static Color black(0,0,0,0);
-  //ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags());
-  //_ctx->SetRenderTarget(rt.h, &black);
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
+  ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  _ctx->SetRenderTarget(rt.h, &black);
+  //_ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
 
   // Render the background
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
@@ -238,18 +236,24 @@ bool ParticleTunnel::Render()
   _ctx->Draw(3, 0);
 
   // Render particles
-
-  // do funky stuff!
-
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
   _ctx->SetGpuObjects(_particleGpuObjects);
   _ctx->SetGpuState(_particleState);
 
-  _ctx->SetSamplerState(_samplerState, 0, ShaderType::PixelShader);
+  _ctx->SetSamplerState(_particleSamplerState, 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
-
   _ctx->Draw(6 * _settings.num_particles, 0);
+
+  // do funky stuff!
+
+  // compose final image on default swap chain
+  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
+
+  _ctx->SetSamplerState(_particleSamplerState, 0, ShaderType::PixelShader);
+  _ctx->SetShaderResource(rt.h, ShaderType::PixelShader);
+  _ctx->SetGpuObjects(_compositeGpuObjects);
+  _ctx->SetGpuState(_compositeState);
+  _ctx->Draw(3, 0);
 
   return true;
 }

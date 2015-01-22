@@ -5,6 +5,8 @@ gfx/particle1_pre.png	d:/projects/tano/gfx/particle1_pre.png
 shaders/imgui_PsMainD.pso	d:/projects/tano/shaders/imgui_PsMainD.pso
 shaders/imgui_VsMainD.vso	d:/projects/tano/shaders/imgui_VsMainD.vso
 shaders/particle_tunnel_PsBackgroundD.pso	d:/projects/tano/shaders/particle_tunnel_PsBackgroundD.pso
+shaders/particle_tunnel_PsCompositeD.pso	d:/projects/tano/shaders/particle_tunnel_PsCompositeD.pso
 shaders/particle_tunnel_PsMainD.pso	d:/projects/tano/shaders/particle_tunnel_PsMainD.pso
 shaders/particle_tunnel_VsBackgroundD.vso	d:/projects/tano/shaders/particle_tunnel_VsBackgroundD.vso
 shaders/particle_tunnel_VsMainD.vso	d:/projects/tano/shaders/particle_tunnel_VsMainD.vso
+shaders/particle_tunnel_VsQuadD.vso	d:/projects/tano/shaders/particle_tunnel_VsQuadD.vso

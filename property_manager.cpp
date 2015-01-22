@@ -26,6 +26,13 @@ void PropertyManager::Tick()
   if (_callbacks.empty())
     return;
 
+  if (!ImGui::Begin("Properties", &_windowOpened))
+  {
+    // FIXME: this path is never taken
+    ImGui::End();
+    return;
+  }
+
   // draw the combo box, and invoke the selected effects renderer
   ImGui::Combo("parameter set", &_curItem, _comboString.data());
   ImGui::Separator();
@@ -33,4 +40,6 @@ void PropertyManager::Tick()
   ImGui::Separator();
   if (ImGui::Button("save"))
     _callbacks[_curItem].save();
+
+  ImGui::End();
 }

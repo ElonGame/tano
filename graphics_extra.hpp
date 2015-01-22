@@ -147,8 +147,8 @@ namespace tano
   //------------------------------------------------------------------------------
   struct ScopedRenderTarget
   {
-    ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags);
-    ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags);
+    ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
+    ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ~ScopedRenderTarget();
 
     ObjectHandle h;

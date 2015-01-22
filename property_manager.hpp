@@ -22,6 +22,7 @@ namespace tano
     int _curItem = 0;
     vector<Callbacks> _callbacks;
     vector<char> _comboString;
+    bool _windowOpened = true;
   };
 
 }

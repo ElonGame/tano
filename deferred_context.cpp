@@ -343,7 +343,10 @@ void DeferredContext::SetShaderResource(ObjectHandle h, ShaderType shaderType)
   ID3D11ShaderResourceView* view = view = GRAPHICS.GetShaderResourceView(h);
   view = GRAPHICS.GetShaderResourceView(h);
   if (!view)
+  {
+    LOG_ERROR("Unable to get shader resource view");
     return;
+  }
 
   if (shaderType == ShaderType::VertexShader)
     _ctx->VSSetShaderResources(0, 1, &view);

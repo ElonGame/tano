@@ -14,41 +14,48 @@ cbuffer PerFrame : register(b0)
 struct VsIn
 {
   float3 pos : Position;
-  float3 tex : TexCoord;
+  float3 uv : TexCoord;
 };
 
 struct VsOut
 {
   float4 pos : SV_Position;
-  float3 tex : TexCoord;
+  float3 uv : TexCoord;
 };
 
-VsOut VsMain(VsIn v)
-{
-  VsOut res;
-  matrix worldViewProj = mul(world, viewProj);
-  res.pos = mul(float4(v.pos, 1), worldViewProj);
-  res.tex = v.tex;
-  return res;
-}
-
-float4 PsMain(VsOut p) : SV_Target
-{
-  float2 uv = p.tex.xy;
-  float4 col = Texture0.Sample(PointSampler, uv);
-  return (1 - p.tex.z) * float4(col.rgb, col.g);
-}
-
-//------------------------------------------------------
 struct VSQuadOut
 {
     float4 pos : SV_Position;
     float2 uv: TexCoord;
 };
 
+//------------------------------------------------------
+// particles
+//------------------------------------------------------
+
+VsOut VsMain(VsIn v)
+{
+  VsOut res;
+  matrix worldViewProj = mul(world, viewProj);
+  res.pos = mul(float4(v.pos, 1), worldViewProj);
+  res.uv = v.uv;
+  return res;
+}
+
+float4 PsMain(VsOut p) : SV_Target
+{
+  float2 uv = p.uv.xy;
+  float4 col = Texture0.Sample(PointSampler, uv);
+  return (1 - p.uv.z) * float4(col.rgb, col.g);
+}
+
+//------------------------------------------------------
+// background
+//------------------------------------------------------
+
 // outputs a full screen triangle with screen-space coordinates
 // input: three empty vertices
-VSQuadOut VsBackground(uint vertexID : SV_VertexID)
+VSQuadOut VsQuad(uint vertexID : SV_VertexID)
 {
     VSQuadOut result;
   // ID=0 -> Pos=[-1,-1], Tex=[0,0]
@@ -66,4 +73,17 @@ float4 PsBackground(VSQuadOut input) : SV_TARGET
     return lerp(outer, inner, 2 * (t-0.5f));
 
   return lerp(inner, outer, 2 * t);
+}
+
+//------------------------------------------------------
+// composite
+//------------------------------------------------------
+float4 PsComposite(VSQuadOut p) : SV_Target
+{
+  float2 uv = p.uv.xy;
+  float4 col = Texture0.Sample(PointSampler, uv);
+  float2 xx = -1 + 2 * uv;
+  float r = 0.5 + 0.9 - sqrt(xx.x*xx.x + xx.y*xx.y);
+  return r * col;
+  return col;
 }

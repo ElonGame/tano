@@ -122,7 +122,7 @@ bool App::Init(HINSTANCE hinstance)
   int width = GetSystemMetrics(SM_CXFULLSCREEN);
   int height = GetSystemMetrics(SM_CYFULLSCREEN);
 
-  GRAPHICS.CreateDefaultSwapChain(width, height, DXGI_FORMAT_R16G16B16A16_FLOAT, WndProc, hinstance);
+  GRAPHICS.CreateDefaultSwapChain(0.75f * width, 0.75f * height, DXGI_FORMAT_R16G16B16A16_FLOAT, WndProc, hinstance);
 
 #if WITH_IMGUI
   INIT(InitImGui());

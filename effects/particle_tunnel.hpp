@@ -67,16 +67,19 @@ namespace tano
     };
 
     string _configName;
+
+    GpuState _backgroundState;
+    GpuObjects _backgroundGpuObjects;
+
     ObjectHandle _particleTexture;
     GpuState _particleState;
-    GpuState _backgroundState;
-
-    GpuObjects _backgroundGpuObjects;
     GpuObjects _particleGpuObjects;
+    ObjectHandle _particleSamplerState;
 
-    ObjectHandle _texture;
-    ObjectHandle _samplerState;
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
+
+    GpuState _compositeState;
+    GpuObjects _compositeGpuObjects;
 
     ParticleTunnelSettings _settings;
   };
