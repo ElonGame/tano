@@ -109,8 +109,69 @@ void ParticleTunnel::Particles::Update(float dt)
 }
 
 //------------------------------------------------------------------------------
+void ParticleTunnel::TextParticles::Create(const vector<Vector3>& verts, float targetTime)
+{
+  numParticles = (int)verts.size();
+  if (!x)
+  {
+    x = new float[numParticles];
+    y = new float[numParticles];
+    z = new float[numParticles];
+
+    vx = new float[numParticles];
+    vy = new float[numParticles];
+    vz = new float[numParticles];
+  }
+
+  float minSpeed = settings.text_speed_min;
+  float maxSpeed = settings.text_speed_max;
+
+  // project each vertex outwards along the hemisphere in the z-plane
+  for (int i = 0; i < numParticles; ++i)
+  {
+    Vector3 dir(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(0.f, 1.f));
+    dir.Normalize();
+
+    vx[i] = randf(minSpeed, maxSpeed) * dir.x;
+    vy[i] = randf(minSpeed, maxSpeed) * dir.y;
+    vz[i] = randf(minSpeed, maxSpeed) * dir.z;
+
+    x[i] = verts[i].x - vx[i] * targetTime;
+    y[i] = verts[i].y - vy[i] * targetTime;
+    z[i] = verts[i].z - vz[i] * targetTime;
+  }
+}
+
+//------------------------------------------------------------------------------
+void ParticleTunnel::TextParticles::Destroy()
+{
+  SAFE_ADELETE(x);  SAFE_ADELETE(y);  SAFE_ADELETE(z);
+  SAFE_ADELETE(vx); SAFE_ADELETE(vy); SAFE_ADELETE(vz);
+}
+
+//------------------------------------------------------------------------------
+void ParticleTunnel::TextParticles::Update(float dt)
+{
+  float* xx = x;
+  float* yy = y;
+  float* zz = z;
+
+  float *vvx = vx;
+  float *vvy = vy;
+  float *vvz = vz;
+
+  for (int i = 0, e = numParticles; i < e; ++i)
+  {
+    xx[i] += dt * vvx[i];
+    yy[i] += dt * vvy[i];
+    zz[i] += dt * vvz[i];
+  }
+}
+
+//------------------------------------------------------------------------------
 ParticleTunnel::ParticleTunnel(const string &name, u32 id)
   : Effect(name, id)
+  , _textParticles(_settings)
 {
   PROPERTIES.Register("particle tunnel", 
     bind(&ParticleTunnel::RenderParameterSet, this),
@@ -172,15 +233,26 @@ bool ParticleTunnel::Init(const char* configFile)
 
   // Text setup
   INIT(_textWriter.Init("gfx/text1.boba"));
-  //_textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
   _textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
+  _textParticles.Create(_neuroticaTris, 5.f);
   {
-    CD3D11_RASTERIZER_DESC rast = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
-    //rast.CullMode = D3D11_CULL_NONE;
-    INIT(_textState.Create(nullptr, nullptr, &rast));
+    CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
+    rssDesc.CullMode = D3D11_CULL_NONE;
+
+    CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
+    dsDesc.DepthEnable = FALSE;
+
+    CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+
+    // pre-multiplied alpha
+    D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
+    b.BlendEnable = TRUE;
+    b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    b.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+
+    INIT(_textState.Create(&dsDesc, &blendDesc, &rssDesc));
   }
-  INIT(_textGpuObjects.CreateDynamicVb(
-    (u32)_neuroticaTris.size() * sizeof(Vector3), sizeof(Vector3), _neuroticaTris.data()));
+  INIT(_textGpuObjects.CreateDynamicVb((u32)_neuroticaTris.size() * sizeof(Vector3), sizeof(Vector3)));
   INIT(_textGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsText", "PsText", VertexFlags::VF_POS));
 
   // Generic setup
@@ -194,7 +266,6 @@ bool ParticleTunnel::Init(const char* configFile)
   _cbPerFrame.inner = _settings.inner_color;
   _cbPerFrame.outer = _settings.outer_color;
 
-
   END_INIT_SEQUENCE();
 }
 
@@ -206,14 +277,41 @@ bool ParticleTunnel::Update(const UpdateState& state)
   if (state.numTicks == 0)
     return true;
 
+  float dt = 1.f / state.frequency;
   {
     rmt_ScopedCPUSample(Particles_Update);
-
-    float dt = 1.f / state.frequency;
     for (int tick = 0; tick < state.numTicks; ++tick)
     {
       _particles.Update(dt);
     }
+  }
+
+  {
+    rmt_ScopedCPUSample(TextParticles_Update);
+    for (int tick = 0; tick < state.numTicks; ++tick)
+    {
+      _textParticles.Update(dt);
+    }
+  }
+
+  {
+    rmt_ScopedCPUSample(TextParticle_Map);
+
+    float* xx = _textParticles.x;
+    float* yy = _textParticles.y;
+    float* zz = _textParticles.z;
+
+    Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_textGpuObjects._vb);
+    for (int i = 0, e = _textParticles.numParticles; i < e; ++i)
+    {
+      vtx->x = *xx;
+      vtx->y = *yy;
+      vtx->z = *zz;
+
+      vtx++;
+      ++xx; ++yy; ++zz;
+    }
+    _ctx->Unmap(_textGpuObjects._vb);
   }
 
   // TODO: all this is pretty stupid. we should store as much static data as
@@ -321,6 +419,12 @@ void ParticleTunnel::RenderParameterSet()
   if (ImGui::ColorEdit4("Outer", &_settings.outer_color.x)) _cbPerFrame.outer = _settings.outer_color;
   ImGui::Separator();
   ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
+
+  if (ImGui::SliderFloat("min speed", &_settings.text_speed_min, 1, 50)) Reset();
+  if (ImGui::SliderFloat("max speed", &_settings.text_speed_max, 1, 50)) Reset();
+
+  if (ImGui::Button("Reset"))
+    Reset();
 }
 
 //------------------------------------------------------------------------------
@@ -333,6 +437,12 @@ void ParticleTunnel::SaveParameterSet()
     fwrite(buf._buf.data(), 1, buf._ofs, f);
     fclose(f);
   }
+}
+
+//------------------------------------------------------------------------------
+void ParticleTunnel::Reset()
+{
+  _textParticles.Create(_neuroticaTris, 5.f);
 }
 
 //------------------------------------------------------------------------------

@@ -11,6 +11,9 @@ namespace tano
 
     struct Letter
     {
+      void CalcBounds();
+      float width = 0;
+      float height = 0;
       MeshLoader::MeshElement* outline = nullptr;
       MeshLoader::MeshElement* cap1 = nullptr;
       MeshLoader::MeshElement* cap2 = nullptr;

@@ -4,4 +4,6 @@
   inner_color: { 0.098039, 0.058824, 0.133333, 1.000000 };
   outer_color: { 0.188235, 0.278431, 0.486275, 1.000000 };
   num_particles: 5000;
+  text_speed_min: 5;
+  text_speed_max: 20;
 };

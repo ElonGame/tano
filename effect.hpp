@@ -29,7 +29,6 @@ namespace tano
     virtual bool Update(const UpdateState& state);
     virtual bool Render();
     virtual bool Close();
-    virtual bool Reset();
 
     const string& Name() const { return _name; }
     TimeDuration StartTime() const { return _startTime; }

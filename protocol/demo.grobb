@@ -22,4 +22,6 @@ struct particle_tunnel_settings
   color inner_color;
   color outer_color;
   int num_particles;
+  float text_speed_min;
+  float text_speed_max;
 };

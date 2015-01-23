@@ -25,18 +25,20 @@ struct VsParticleOut
 
 struct VsTextIn
 {
-  float3 pos : Position;
+  float3 pos  : Position;
+  uint idx    : SV_VertexId;
 };
 
 struct VsTextOut
 {
   float4 pos : SV_Position;
+  noperspective float3 dist : COLOR;
 };
 
 struct VSQuadOut
 {
-    float4 pos : SV_Position;
-    float2 uv: TexCoord;
+  float4 pos : SV_Position;
+  float2 uv: TexCoord;
 };
 
 //------------------------------------------------------
@@ -94,12 +96,21 @@ VsTextOut VsText(VsTextIn v)
   VsTextOut res;
   matrix worldViewProj = mul(world, viewProj);
   res.pos = mul(float4(v.pos, 1), worldViewProj);
+
+  switch (v.idx % 3)
+  {
+    case 0: res.dist = float3(0,0,1); break;
+    case 1: res.dist = float3(0,1,0); break;
+    case 2: res.dist = float3(1,0,0); break;
+  }
+
   return res;
 }
 
 float4 PsText(VsTextOut p) : SV_Target
 {
-  return 1;
+  float d = min(p.dist.x, min(p.dist.y, p.dist.z));
+  return d < 0.02 ? float4(1,1,1,0.1) : float4(0,0,0,0.5);
 }
 
 //------------------------------------------------------

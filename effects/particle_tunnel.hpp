@@ -26,6 +26,7 @@ namespace tano
 
   private:
 
+    void Reset();
     void RenderParameterSet();
     void SaveParameterSet();
 
@@ -57,6 +58,24 @@ namespace tano
       int* deadParticles = nullptr;
 
       int numParticles = 0;
+    };
+
+    struct TextParticles
+    {
+      TextParticles(const ParticleTunnelSettings& settings) : settings(settings) {}
+      void Create(const vector<Vector3>& verts, float targetTime);
+      void Destroy();
+      void Update(float dt);
+
+      float* x = nullptr;
+      float* y = nullptr;
+      float* z = nullptr;
+      float* vx = nullptr;
+      float* vy = nullptr;
+      float* vz = nullptr;
+
+      int numParticles = 0;
+      const ParticleTunnelSettings& settings;
     };
 
     Particles _particles;
@@ -91,5 +110,6 @@ namespace tano
 
     TextWriter _textWriter;
     vector<Vector3> _neuroticaTris;
+    TextParticles _textParticles;
   };
 }
