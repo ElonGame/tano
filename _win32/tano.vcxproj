@@ -299,6 +299,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
+    <ClCompile Include="..\text_writer.cpp" />
     <ClCompile Include="..\timer.cpp">
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
@@ -352,6 +353,7 @@
     <ClInclude Include="..\sync\sync.h" />
     <ClInclude Include="..\sync\track.h" />
     <ClInclude Include="..\tano.hpp" />
+    <ClInclude Include="..\text_writer.hpp" />
     <ClInclude Include="..\timer.hpp" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

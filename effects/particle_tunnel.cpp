@@ -8,6 +8,7 @@
 #include "../generated/demo.parse.hpp"
 #include "../generated/input_buffer.hpp"
 #include "../generated/output_buffer.hpp"
+#include "../mesh_loader.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -70,7 +71,6 @@ void ParticleTunnel::Particles::Destroy()
 //------------------------------------------------------------------------------
 void ParticleTunnel::Particles::Update(float dt)
 {
-
   float* xx = x;
   float* yy = y;
   float* zz = z;
@@ -141,10 +141,9 @@ bool ParticleTunnel::Init(const char* configFile)
 
   // Particle state setup
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
-  u32 vertexFlags = VertexFlags::VF_POS | VertexFlags::VF_TEX3_0;
-  INIT(_particleTexture.IsValid())
-  INIT(_particleGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsMain", "PsMain", vertexFlags));
-  INIT(_particleGpuObjects.CreateDynamicVb(16 * 1024 * 1024, sizeof(PosTex3)));
+  INIT(_particleGpuObjects.LoadShadersFromFile(
+    "shaders/particle_tunnel", "VsParticle", "PsParticle", VertexFlags::VF_POS | VertexFlags::VF_TEX3_0));
+  INIT(_particleGpuObjects.CreateDynamicVb(sizeof(PosTex3) * 6 * _settings.num_particles, sizeof(PosTex3)));
 
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
@@ -158,11 +157,7 @@ bool ParticleTunnel::Init(const char* configFile)
     // pre-multiplied alpha
     D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
     b.BlendEnable = TRUE;
-    b.BlendOp = D3D11_BLEND_OP_ADD;
-    b.SrcBlend = D3D11_BLEND_ONE;
     b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    b.BlendOpAlpha = D3D11_BLEND_OP_ADD;
-    b.SrcBlendAlpha = D3D11_BLEND_ONE;
     b.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
     INIT(_particleState.Create(&dsDesc, &blendDesc, &rssDesc));
   }
@@ -175,9 +170,22 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsQuad", "PsComposite"));
   INIT(_compositeState.Create());
 
+  // Text setup
+  INIT(_textWriter.Init("gfx/text1.boba"));
+  //_textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
+  _textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
+  {
+    CD3D11_RASTERIZER_DESC rast = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
+    //rast.CullMode = D3D11_CULL_NONE;
+    INIT(_textState.Create(nullptr, nullptr, &rast));
+  }
+  INIT(_textGpuObjects.CreateDynamicVb(
+    (u32)_neuroticaTris.size() * sizeof(Vector3), sizeof(Vector3), _neuroticaTris.data()));
+  INIT(_textGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsText", "PsText", VertexFlags::VF_POS));
+
   // Generic setup
   INIT(_cbPerFrame.Create());
-    _cbPerFrame.world = Matrix::Identity();
+  _cbPerFrame.world = Matrix::Identity();
   Matrix view = Matrix::CreateLookAt(Vector3(0, 0, -500), Vector3(0, 0, 0), Vector3(0, 1, 0));
   Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 2000.f);
   Matrix viewProj = view * proj;
@@ -185,6 +193,7 @@ bool ParticleTunnel::Init(const char* configFile)
   _cbPerFrame.tint = _settings.tint;
   _cbPerFrame.inner = _settings.inner_color;
   _cbPerFrame.outer = _settings.outer_color;
+
 
   END_INIT_SEQUENCE();
 }
@@ -207,6 +216,9 @@ bool ParticleTunnel::Update(const UpdateState& state)
     }
   }
 
+  // TODO: all this is pretty stupid. we should store as much static data as
+  // possible, and do a big memcpy. also, texture coords can be created in the VS,
+  // and we should be using indexed tris.
   {
     rmt_ScopedCPUSample(MapWriteDiscard);
 
@@ -284,7 +296,10 @@ bool ParticleTunnel::Render()
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
   _ctx->Draw(6 * _settings.num_particles, 0);
 
-  // do funky stuff!
+  // text
+  _ctx->SetGpuObjects(_textGpuObjects);
+  _ctx->SetGpuState(_textState);
+  _ctx->Draw((u32)_neuroticaTris.size(), 0);
 
   // compose final image on default swap chain
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));

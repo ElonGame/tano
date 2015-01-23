@@ -216,13 +216,13 @@ namespace tano
     u32 ofs = 0;
     if (vertexFlags & VF_POS)
     {
-      desc->push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+      desc->push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 });
       ofs += 12;
     }
 
     if (vertexFlags & VF_POS_XY)
     {
-      desc->push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+      desc->push_back({ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 });
       ofs += 8;
     }
 

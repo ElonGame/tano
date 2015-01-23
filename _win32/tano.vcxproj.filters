@@ -139,6 +139,9 @@
     <ClCompile Include="..\Remotery\lib\Remotery.c">
       <Filter>remotery</Filter>
     </ClCompile>
+    <ClCompile Include="..\text_writer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -287,6 +290,9 @@
     </ClInclude>
     <ClInclude Include="..\Remotery\lib\Remotery.h">
       <Filter>remotery</Filter>
+    </ClInclude>
+    <ClInclude Include="..\text_writer.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -3,6 +3,7 @@
 #include "../effect.hpp"
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
+#include "../text_writer.hpp"
 
 namespace tano
 {
@@ -79,11 +80,16 @@ namespace tano
     GpuObjects _particleGpuObjects;
     ObjectHandle _particleSamplerState;
 
-    ConstantBuffer<CBufferPerFrame> _cbPerFrame;
+    GpuState _textState;
+    GpuObjects _textGpuObjects;
 
     GpuState _compositeState;
     GpuObjects _compositeGpuObjects;
 
+    ConstantBuffer<CBufferPerFrame> _cbPerFrame;
     ParticleTunnelSettings _settings;
+
+    TextWriter _textWriter;
+    vector<Vector3> _neuroticaTris;
   };
 }

@@ -18,8 +18,8 @@ ps_data = { 'shaders': ps, 'profile': 'ps', 'obj_ext': 'pso', 'asm_ext': 'psa' }
 cs_data = { 'shaders': cs, 'profile': 'cs', 'obj_ext': 'cso', 'asm_ext': 'csa' }
 
 ## shaders 
-vs['particle_tunnel'] = ['VsMain', 'VsQuad']
-ps['particle_tunnel'] = ['PsMain', 'PsBackground', 'PsComposite']
+vs['particle_tunnel'] = ['VsParticle', 'VsQuad', 'VsText']
+ps['particle_tunnel'] = ['PsParticle', 'PsBackground', 'PsText', 'PsComposite']
 
 vs['imgui'] = ['VsMain']
 ps['imgui'] = ['PsMain']

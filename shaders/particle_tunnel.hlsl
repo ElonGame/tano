@@ -11,16 +11,26 @@ cbuffer PerFrame : register(b0)
 };
 
 //------------------------------------------------------
-struct VsIn
+struct VsParticleIn
 {
   float3 pos : Position;
   float3 uv : TexCoord;
 };
 
-struct VsOut
+struct VsParticleOut
 {
   float4 pos : SV_Position;
   float3 uv : TexCoord;
+};
+
+struct VsTextIn
+{
+  float3 pos : Position;
+};
+
+struct VsTextOut
+{
+  float4 pos : SV_Position;
 };
 
 struct VSQuadOut
@@ -33,16 +43,16 @@ struct VSQuadOut
 // particles
 //------------------------------------------------------
 
-VsOut VsMain(VsIn v)
+VsParticleOut VsParticle(VsParticleIn v)
 {
-  VsOut res;
+  VsParticleOut res;
   matrix worldViewProj = mul(world, viewProj);
   res.pos = mul(float4(v.pos, 1), worldViewProj);
   res.uv = v.uv;
   return res;
 }
 
-float4 PsMain(VsOut p) : SV_Target
+float4 PsParticle(VsParticleOut p) : SV_Target
 {
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
@@ -73,6 +83,23 @@ float4 PsBackground(VSQuadOut input) : SV_TARGET
     return lerp(outer, inner, 2 * (t-0.5f));
 
   return lerp(inner, outer, 2 * t);
+}
+
+//------------------------------------------------------
+// text
+//------------------------------------------------------
+
+VsTextOut VsText(VsTextIn v)
+{
+  VsTextOut res;
+  matrix worldViewProj = mul(world, viewProj);
+  res.pos = mul(float4(v.pos, 1), worldViewProj);
+  return res;
+}
+
+float4 PsText(VsTextOut p) : SV_Target
+{
+  return 1;
 }
 
 //------------------------------------------------------
