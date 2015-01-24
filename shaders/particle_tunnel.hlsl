@@ -110,7 +110,8 @@ VsTextOut VsText(VsTextIn v)
 float4 PsText(VsTextOut p) : SV_Target
 {
   float d = min(p.dist.x, min(p.dist.y, p.dist.z));
-  return d < 0.02 ? float4(1,1,1,0.1) : float4(0,0,0,0.5);
+  float f = 0.3;
+  return d < 0.02 ? float4(f, f, f, f) : float4(0.1,0.1,0.2,0.1);
 }
 
 //------------------------------------------------------

@@ -123,8 +123,7 @@ void ParticleTunnel::TextParticles::Create(const vector<Vector3>& verts, float t
     vz = new float[numParticles];
   }
 
-  float minSpeed = settings.text_speed_min;
-  float maxSpeed = settings.text_speed_max;
+  float dist = randf(settings.text_min_dist, settings.text_max_dist);
 
   // project each vertex outwards along the hemisphere in the z-plane
   for (int i = 0; i < numParticles; ++i)
@@ -132,14 +131,24 @@ void ParticleTunnel::TextParticles::Create(const vector<Vector3>& verts, float t
     Vector3 dir(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(0.f, 1.f));
     dir.Normalize();
 
-    vx[i] = randf(minSpeed, maxSpeed) * dir.x;
-    vy[i] = randf(minSpeed, maxSpeed) * dir.y;
-    vz[i] = randf(minSpeed, maxSpeed) * dir.z;
+    vx[i] = dist * dir.x / targetTime;
+    vy[i] = dist * dir.y / targetTime;
+    vz[i] = dist * dir.z / targetTime;
 
-    x[i] = verts[i].x - vx[i] * targetTime;
-    y[i] = verts[i].y - vy[i] * targetTime;
-    z[i] = verts[i].z - vz[i] * targetTime;
+    x[i] = verts[i].x - dir.x * dist;
+    y[i] = verts[i].y - dir.y * dist;
+    z[i] = verts[i].z - dir.z * dist;
   }
+
+  selectedTris.clear();
+  selectedTris.reserve(verts.size());
+  for (int i = 0; i < verts.size(); ++i)
+  {
+    float p = randf(0.f, 1.f);
+    if (p > settings.text_triangle_prob)
+      selectedTris.push_back(i);
+  }
+
 }
 
 //------------------------------------------------------------------------------
@@ -302,14 +311,18 @@ bool ParticleTunnel::Update(const UpdateState& state)
     float* zz = _textParticles.z;
 
     Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_textGpuObjects._vb);
-    for (int i = 0, e = _textParticles.numParticles; i < e; ++i)
-    {
-      vtx->x = *xx;
-      vtx->y = *yy;
-      vtx->z = *zz;
 
-      vtx++;
-      ++xx; ++yy; ++zz;
+    for (int i = 0, e = (int)_textParticles.selectedTris.size(); i < e; ++i)
+    {
+      int triIdx = _textParticles.selectedTris[i];
+      for (int j = 0; j < 3; ++j)
+      {
+        vtx->x = xx[3 * triIdx + j];
+        vtx->y = yy[3 * triIdx + j];
+        vtx->z = zz[3 * triIdx + j];
+
+        vtx++;
+      }
     }
     _ctx->Unmap(_textGpuObjects._vb);
   }
@@ -397,7 +410,8 @@ bool ParticleTunnel::Render()
   // text
   _ctx->SetGpuObjects(_textGpuObjects);
   _ctx->SetGpuState(_textState);
-  _ctx->Draw((u32)_neuroticaTris.size(), 0);
+//  _ctx->Draw((u32)_neuroticaTris.size(), 0);
+  _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
 
   // compose final image on default swap chain
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
@@ -420,8 +434,9 @@ void ParticleTunnel::RenderParameterSet()
   ImGui::Separator();
   ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
 
-  if (ImGui::SliderFloat("min speed", &_settings.text_speed_min, 1, 50)) Reset();
-  if (ImGui::SliderFloat("max speed", &_settings.text_speed_max, 1, 50)) Reset();
+  if (ImGui::SliderFloat("min dist", &_settings.text_min_dist, 1, 100)) Reset();
+  if (ImGui::SliderFloat("max dist", &_settings.text_max_dist, 100, 2000)) Reset();
+  if (ImGui::SliderFloat("triangle prob", &_settings.text_triangle_prob, 0.f, 1.f)) Reset();
 
   if (ImGui::Button("Reset"))
     Reset();

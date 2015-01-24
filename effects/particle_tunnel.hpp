@@ -76,6 +76,7 @@ namespace tano
 
       int numParticles = 0;
       const ParticleTunnelSettings& settings;
+      vector<int> selectedTris;
     };
 
     Particles _particles;

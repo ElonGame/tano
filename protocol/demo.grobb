@@ -22,6 +22,7 @@ struct particle_tunnel_settings
   color inner_color;
   color outer_color;
   int num_particles;
-  float text_speed_min;
-  float text_speed_max;
+  float text_min_dist;
+  float text_max_dist;
+  float text_triangle_prob;
 };

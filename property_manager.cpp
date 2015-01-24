@@ -1,4 +1,5 @@
 #include "property_manager.hpp"
+#include "demo_engine.hpp"
 
 using namespace tano;
 
@@ -40,6 +41,14 @@ void PropertyManager::Tick()
   ImGui::Separator();
   if (ImGui::Button("save"))
     _callbacks[_curItem].save();
+
+  if (ImGui::Button("pause"))
+    DEMO_ENGINE.SetPaused(!DEMO_ENGINE.Paused());
+  ImGui::SameLine();
+
+  if (ImGui::Button("reset"))
+    DEMO_ENGINE.SetDuration(TimeDuration());
+  ImGui::SameLine();
 
   ImGui::End();
 }
