@@ -206,13 +206,13 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(ParseParticleTunnelSettings(InputBuffer(buf), &_settings));
 
   // Background state setup
-  INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsQuad", "PsBackground"));
+  INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsQuad", nullptr, "PsBackground"));
   INIT(_backgroundState.Create());
 
   // Particle state setup
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
   INIT(_particleGpuObjects.LoadShadersFromFile(
-    "shaders/particle_tunnel", "VsParticle", "PsParticle", VertexFlags::VF_POS | VertexFlags::VF_TEX3_0));
+    "shaders/particle_tunnel", "VsParticle", nullptr, "PsParticle", VertexFlags::VF_POS | VertexFlags::VF_TEX3_0));
   INIT(_particleGpuObjects.CreateDynamicVb(sizeof(PosTex3) * 6 * _settings.num_particles, sizeof(PosTex3)));
 
   {
@@ -237,7 +237,7 @@ bool ParticleTunnel::Init(const char* configFile)
   _particles.Create(_settings.num_particles);
 
   // Composite state setup
-  INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsQuad", "PsComposite"));
+  INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsQuad", nullptr, "PsComposite"));
   INIT(_compositeState.Create());
 
   // Text setup
@@ -262,7 +262,28 @@ bool ParticleTunnel::Init(const char* configFile)
     INIT(_textState.Create(&dsDesc, &blendDesc, &rssDesc));
   }
   INIT(_textGpuObjects.CreateDynamicVb((u32)_neuroticaTris.size() * sizeof(Vector3), sizeof(Vector3)));
-  INIT(_textGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsText", "PsText", VertexFlags::VF_POS));
+  INIT(_textGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsText", nullptr, "PsText", VertexFlags::VF_POS));
+
+  {
+    CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
+    rssDesc.CullMode = D3D11_CULL_NONE;
+
+    CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
+    dsDesc.DepthEnable = FALSE;
+
+    CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+
+    // pre-multiplied alpha
+    D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
+    b.BlendEnable = TRUE;
+    b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    b.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+
+    INIT(_linesState.Create(&dsDesc, &blendDesc, &rssDesc));
+  }
+  INIT(_linesGpuObjects.CreateDynamicVb((u32)_neuroticaTris.size() * sizeof(Vector3) * 3 * 2, sizeof(Vector3)));
+  INIT(_linesGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsLines", "GsLines", "PsLines", VertexFlags::VF_POS));
+  _linesGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 
   // Generic setup
   INIT(_cbPerFrame.Create());
@@ -274,6 +295,11 @@ bool ParticleTunnel::Init(const char* configFile)
   _cbPerFrame.tint = _settings.tint;
   _cbPerFrame.inner = _settings.inner_color;
   _cbPerFrame.outer = _settings.outer_color;
+
+  int w, h;
+  GRAPHICS.GetBackBufferSize(&w, &h);
+  _cbPerFrame.dim.x = (float)w;
+  _cbPerFrame.dim.y = (float)h;
 
   END_INIT_SEQUENCE();
 }
@@ -304,6 +330,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
   }
 
   {
+    // Blit text
     rmt_ScopedCPUSample(TextParticle_Map);
 
     float* xx = _textParticles.x;
@@ -325,6 +352,37 @@ bool ParticleTunnel::Update(const UpdateState& state)
       }
     }
     _ctx->Unmap(_textGpuObjects._vb);
+  }
+
+  {
+    // Blit lines
+
+    float* xx = _textParticles.x;
+    float* yy = _textParticles.y;
+    float* zz = _textParticles.z;
+
+    Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_linesGpuObjects._vb);
+    for (int i = 0, e = (int)_textParticles.selectedTris.size(); i < e; ++i)
+    {
+      int triIdx = _textParticles.selectedTris[i];
+      for (int j = 0; j < 3; ++j)
+      {
+        int idx0 = 3 * triIdx + j;
+        int idx1 = 3 * triIdx + (j + 1) % 3;
+
+        vtx->x = xx[idx0];
+        vtx->y = yy[idx0];
+        vtx->z = zz[idx0];
+        vtx++;
+
+        vtx->x = xx[idx1];
+        vtx->y = yy[idx1];
+        vtx->z = zz[idx1];
+        vtx++;
+      }
+    }
+
+    _ctx->Unmap(_linesGpuObjects._vb);
   }
 
   // TODO: all this is pretty stupid. we should store as much static data as
@@ -390,16 +448,17 @@ bool ParticleTunnel::Render()
   static Color black(0,0,0,0);
   ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
   _ctx->SetRenderTarget(rt.h, &black);
-  //_ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
+
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
   // Render the background
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
   _ctx->SetGpuObjects(_backgroundGpuObjects);
   _ctx->SetGpuState(_backgroundState);
   _ctx->Draw(3, 0);
 
   // Render particles
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
   _ctx->SetGpuObjects(_particleGpuObjects);
   _ctx->SetGpuState(_particleState);
 
@@ -408,10 +467,14 @@ bool ParticleTunnel::Render()
   _ctx->Draw(6 * _settings.num_particles, 0);
 
   // text
-  _ctx->SetGpuObjects(_textGpuObjects);
-  _ctx->SetGpuState(_textState);
-//  _ctx->Draw((u32)_neuroticaTris.size(), 0);
-  _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
+//   _ctx->SetGpuObjects(_textGpuObjects);
+//   _ctx->SetGpuState(_textState);
+//   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
+
+  // lines
+  _ctx->SetGpuObjects(_linesGpuObjects);
+  _ctx->SetGpuState(_linesState);
+  _ctx->Draw(_textParticles.selectedTris.size(), 0);
 
   // compose final image on default swap chain
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));

@@ -88,6 +88,7 @@ namespace tano
       Color tint;
       Color inner;
       Color outer;
+      Vector2 dim;
     };
 
     string _configName;
@@ -102,6 +103,9 @@ namespace tano
 
     GpuState _textState;
     GpuObjects _textGpuObjects;
+
+    GpuState _linesState;
+    GpuObjects _linesGpuObjects;
 
     GpuState _compositeState;
     GpuObjects _compositeGpuObjects;

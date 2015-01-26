@@ -91,7 +91,7 @@ bool InitDeviceD3D()
 
   // Create shaders
   u32 vertexFlags = VertexFlags::VF_POS_XY | VertexFlags::VF_COLOR_U32 | VertexFlags::VF_TEX2_0 | VertexFlags::VF_ORDER_TEX_COL;
-  INIT(g_gpuObjects.LoadShadersFromFile("shaders/imgui", "VsMain", "PsMain", vertexFlags));
+  INIT(g_gpuObjects.LoadShadersFromFile("shaders/imgui", "VsMain", nullptr, "PsMain", vertexFlags));
 
   // Create the constant buffer
   INIT(g_cb.Create());

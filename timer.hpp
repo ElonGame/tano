@@ -10,6 +10,7 @@ namespace tano
     void Start();
     void Stop();
     void SetElapsed(TimeDuration t);
+    TimeDuration Peek();
     TimeDuration Elapsed(TimeDuration* delta);
     bool IsRunning() const;
     void Reset();

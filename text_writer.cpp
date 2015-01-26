@@ -47,14 +47,9 @@ bool TextWriter::Init(const char* filename)
     else if (strcmp(e->name, "Cap 1") == 0)
     {
       if (curLetter)
-      {
         curLetter->cap1 = e;
-        curLetter->CalcBounds();
-      }
       else
-      {
         LOG_WARN("Cap found without matching letter!");
-      }
     }
     else if (strcmp(e->name, "Cap 2") == 0)
     {
@@ -63,6 +58,11 @@ bool TextWriter::Init(const char* filename)
       else
         LOG_WARN("Cap found without matching letter!");
     }
+  }
+
+  for (size_t i = 0; i < _letters.size(); ++i)
+  {
+    _letters[i].CalcBounds();
   }
 
   return true;
@@ -95,7 +95,7 @@ void TextWriter::GenerateTris(const char* str, vector<Vector3>* tris)
 
     // Copy vertices to @tris
     // The actual mesh data uses indices, so we expand those here
-    MeshLoader::MeshElement* elem = letter.cap1;
+    MeshLoader::MeshElement* elem = letter.outline;
     u32 numIndices = elem->numIndices;
     tris->resize(tris->size() + numIndices);
     for (u32 j = 0; j < numIndices; ++j)

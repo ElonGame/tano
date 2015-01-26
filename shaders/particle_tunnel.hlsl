@@ -8,6 +8,7 @@ cbuffer PerFrame : register(b0)
   float4 tint;
   float4 inner;
   float4 outer;
+  float2 dim;
 };
 
 //------------------------------------------------------
@@ -33,6 +34,23 @@ struct VsTextOut
 {
   float4 pos : SV_Position;
   noperspective float3 dist : COLOR;
+};
+
+struct VsLinesIn
+{
+  float3 pos : Position;
+};
+
+struct VsLinesOut
+{
+  float3 pos : Position;
+};
+
+struct GsLinesOut
+{
+  float4 pos : SV_Position;
+  float4 a : PointA;
+  float4 b : PointB;
 };
 
 struct VSQuadOut
@@ -85,6 +103,76 @@ float4 PsBackground(VSQuadOut input) : SV_TARGET
     return lerp(outer, inner, 2 * (t-0.5f));
 
   return lerp(inner, outer, 2 * t);
+}
+
+//------------------------------------------------------
+// lines
+//------------------------------------------------------
+
+VsLinesOut VsLines(VsLinesIn v)
+{
+  VsLinesOut res;
+  res.pos = v.pos;
+  return res;
+}
+
+void OutputVtx(float3 v, float3 a, float3 b, inout TriangleStream<GsLinesOut> stream)
+{
+  GsLinesOut res;
+  res.pos = mul(float4(v, 1), viewProj);
+  res.a = mul(float4(a, 1), viewProj);
+  res.b = mul(float4(b, 1), viewProj);
+  res.a /= res.a.w;
+  res.b /= res.b.w;
+  stream.Append(res);
+}
+
+[maxvertexcount(4)]
+void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
+{
+  // output a triangle strip for the current line
+  float3 a = input[0].pos;
+  float3 b = input[1].pos;
+  float3 dir = normalize(b-a);
+  float3 up = float3(0,1,0);
+  float3 right = cross(up, dir);
+
+  float h = 5;
+
+  OutputVtx(a - h * up, a, b, stream);
+  OutputVtx(a + h * up, a, b, stream);
+  OutputVtx(b - h * up, a, b, stream);
+  OutputVtx(b + h * up, a, b, stream);
+}
+
+// Return distance from point 'p' to line segment 'a b':
+float line_distance(float2 p, float2 a, float2 b)
+{
+    float dist = distance(a,b);
+    float2 v = normalize(b-a);
+    float t = dot(v,p-a);
+    float2 spinePoint;
+    if (t > dist) spinePoint = b;
+    else if (t > 0.0) spinePoint = a + t*v;
+    else spinePoint = a;
+    return distance(p,spinePoint);
+}
+
+float4 PsLines(GsLinesOut input) : Sv_Target
+{
+  float2 a = input.a.xy;
+  float2 b = input.b.xy;
+  // convert from [-1..1][-1..1] to [0..w][h..0]
+  a.x = (1 + a.x) / 2 * dim.x; 
+  a.y = (1 - (1 + a.y) / 2) * dim.y;
+  b.x = (1 + b.x) / 2 * dim.x; 
+  b.y = (1 - (1 + b.y) / 2) * dim.y;
+
+  float d = line_distance(input.pos.xy, a, b);
+  float t = 1.0 - 12 / d;
+  return float4(t, t, t, 1);
+  return t;
+  return float4(t, t, t, 1);
 }
 
 //------------------------------------------------------

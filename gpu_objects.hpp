@@ -23,11 +23,18 @@ namespace tano
     bool CreateDynamicVb(u32 vbSize, u32 vbElemSize, const  void* vbData = nullptr);
     bool CreateDynamicIb(u32 ibSize, DXGI_FORMAT ibFormat, const  void* ibData = nullptr);
 
-    bool LoadShadersFromFile(const  char* filename, const  char* vsEntry, const  char* psEntry, u32 flags = 0);
+    // TODO: replace the flags with a list of semnatic/format tuples
+    bool LoadShadersFromFile(
+      const char* filename,
+      const char* vsEntry,
+      const char* gsEntry,
+      const char* psEntry,
+      u32 flags = 0);
 
     D3D11_PRIMITIVE_TOPOLOGY _topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
     ObjectHandle _vs;
+    ObjectHandle _gs;
     ObjectHandle _ps;
     ObjectHandle _layout;
 

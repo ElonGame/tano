@@ -10,16 +10,19 @@ import subprocess
 import collections
 
 vs = collections.defaultdict(list)
+gs = collections.defaultdict(list)
 ps = collections.defaultdict(list)
 cs = collections.defaultdict(list)
 
 vs_data = { 'shaders': vs, 'profile': 'vs', 'obj_ext': 'vso', 'asm_ext': 'vsa' }
+gs_data = { 'shaders': gs, 'profile': 'gs', 'obj_ext': 'gso', 'asm_ext': 'gsa' }
 ps_data = { 'shaders': ps, 'profile': 'ps', 'obj_ext': 'pso', 'asm_ext': 'psa' }
 cs_data = { 'shaders': cs, 'profile': 'cs', 'obj_ext': 'cso', 'asm_ext': 'csa' }
 
 ## shaders 
-vs['particle_tunnel'] = ['VsParticle', 'VsQuad', 'VsText']
-ps['particle_tunnel'] = ['PsParticle', 'PsBackground', 'PsText', 'PsComposite']
+vs['particle_tunnel'] = ['VsParticle', 'VsQuad', 'VsText', 'VsLines']
+ps['particle_tunnel'] = ['PsParticle', 'PsBackground', 'PsText', 'PsComposite', 'PsLines']
+gs['particle_tunnel'] = ['GsLines']
 
 vs['imgui'] = ['VsMain']
 ps['imgui'] = ['PsMain']
@@ -92,6 +95,7 @@ def compile(data):
 
 while True:
     compile(vs_data)
+    compile(gs_data)
     compile(ps_data)
     compile(cs_data)
     time.sleep(1)

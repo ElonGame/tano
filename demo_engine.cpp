@@ -102,7 +102,7 @@ void DemoEngine::SetPos(TimeDuration pos)
 //------------------------------------------------------------------------------
 TimeDuration DemoEngine::Pos()
 {
-  return _timer.Elapsed(nullptr);
+  return _timer.Peek();
 }
 
 //------------------------------------------------------------------------------

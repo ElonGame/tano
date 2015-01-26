@@ -95,55 +95,53 @@ void DeferredContext::SetSwapChain(ObjectHandle h, const float* clearColor)
 void DeferredContext::SetVS(ObjectHandle vs)
 {
   assert(vs.type() == ObjectHandle::kVertexShader || !vs.IsValid());
-  assert(GRAPHICS._vertexShaders.Get(vs));
-  _ctx->VSSetShader(GRAPHICS._vertexShaders.Get(vs), NULL, 0);
+  _ctx->VSSetShader(vs.IsValid() ? GRAPHICS._vertexShaders.Get(vs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
 void DeferredContext::SetCS(ObjectHandle cs)
 {
   assert(cs.type() == ObjectHandle::kComputeShader || !cs.IsValid());
-  _ctx->CSSetShader(cs.IsValid() ? GRAPHICS._computeShaders.Get(cs) : NULL, NULL, 0);
+  _ctx->CSSetShader(cs.IsValid() ? GRAPHICS._computeShaders.Get(cs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
 void DeferredContext::SetGS(ObjectHandle gs)
 {
   assert(gs.type() == ObjectHandle::kGeometryShader || !gs.IsValid());
-  _ctx->GSSetShader(gs.IsValid() ? GRAPHICS._geometryShaders.Get(gs) : NULL, NULL, 0);
+  _ctx->GSSetShader(gs.IsValid() ? GRAPHICS._geometryShaders.Get(gs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
 void DeferredContext::SetPS(ObjectHandle ps)
 {
   assert(ps.type() == ObjectHandle::kPixelShader || !ps.IsValid());
-  assert(GRAPHICS._pixelShaders.Get(ps));
-  _ctx->PSSetShader(ps.IsValid() ? GRAPHICS._pixelShaders.Get(ps) : NULL, NULL, 0);
+  _ctx->PSSetShader(ps.IsValid() ? GRAPHICS._pixelShaders.Get(ps) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
 void DeferredContext::SetLayout(ObjectHandle layout)
 {
-  if (layout.IsValid())
-    _ctx->IASetInputLayout(GRAPHICS._inputLayouts.Get(layout));
-  else
-    _ctx->IASetInputLayout(nullptr);
+  _ctx->IASetInputLayout(layout.IsValid() ? GRAPHICS._inputLayouts.Get(layout) : nullptr);
 }
 
 //------------------------------------------------------------------------------
 void DeferredContext::SetIB(ObjectHandle ib)
 {
-  _ctx->IASetIndexBuffer(GRAPHICS._indexBuffers.Get(ib), (DXGI_FORMAT)ib.data(), 0);
+  if (ib.IsValid())
+    SetIB(GRAPHICS._indexBuffers.Get(ib), (DXGI_FORMAT)ib.data());
+  else
+    SetIB(nullptr, DXGI_FORMAT_UNKNOWN);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetIB(ID3D11Buffer *buf, DXGI_FORMAT format)
+void DeferredContext::SetIB(ID3D11Buffer* buf, DXGI_FORMAT format)
 {
   _ctx->IASetIndexBuffer(buf, format, 0);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetVB(ID3D11Buffer *buf, u32 stride)
+void DeferredContext::SetVB(ID3D11Buffer* buf, u32 stride)
 {
   UINT ofs[] = { 0 };
   ID3D11Buffer* bufs[] = { buf };
@@ -154,7 +152,10 @@ void DeferredContext::SetVB(ID3D11Buffer *buf, u32 stride)
 //------------------------------------------------------------------------------
 void DeferredContext::SetVB(ObjectHandle vb) 
 {
-  SetVB(GRAPHICS._vertexBuffers.Get(vb), vb.data());
+  if (vb.IsValid())
+    SetVB(GRAPHICS._vertexBuffers.Get(vb), vb.data());
+  else
+    SetVB(nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
@@ -457,13 +458,14 @@ void DeferredContext::SetConstantBuffer(
 //------------------------------------------------------------------------------
 void DeferredContext::SetGpuObjects(const GpuObjects& obj)
 {
-  if (obj._vs.IsValid()) SetVS(obj._vs);
-  if (obj._ps.IsValid()) SetPS(obj._ps);
-
-  if (obj._layout.IsValid()) SetLayout(obj._layout);
-  if (obj._vb.IsValid()) SetVB(obj._vb);
-  if (obj._ib.IsValid()) SetIB(obj._ib);
-
+  // NOTE: We don't check for handle validity here, as setting an invalid (uninitialized)
+  // handle is the same as setting NULL, ie unbinding
+  SetVS(obj._vs);
+  SetGS(obj._gs);
+  SetPS(obj._ps);
+  SetLayout(obj._layout);
+  SetVB(obj._vb);
+  SetIB(obj._ib);
   SetPrimitiveTopology(obj._topology);
 }
 

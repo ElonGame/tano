@@ -34,6 +34,8 @@ void PropertyManager::Tick()
     return;
   }
 
+  ImGui::LabelText("Time", "%f", DEMO_ENGINE.Pos().TotalMilliseconds() / 1000.f);
+
   // draw the combo box, and invoke the selected effects renderer
   ImGui::Combo("parameter set", &_curItem, _comboString.data());
   ImGui::Separator();

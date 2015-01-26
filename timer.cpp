@@ -46,6 +46,12 @@ void Timer::SetElapsed(TimeDuration us)
 }
 
 //------------------------------------------------------------------------------
+TimeDuration Timer::Peek()
+{
+  return (_running ? TimeStamp::Now() : _curTime) - _startTime;
+}
+
+//------------------------------------------------------------------------------
 TimeDuration Timer::Elapsed(TimeDuration* delta)
 {
   TimeStamp prev = _curTime;

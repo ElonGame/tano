@@ -703,7 +703,10 @@ ObjectHandle Graphics::ReserveObjectHandle(const string& id, ObjectHandle::Type 
   switch (type)
   {
     case ObjectHandle::kVertexShader: return AddShader<ID3D11VertexShader>(_vertexShaders, nullptr, id, type);
+    case ObjectHandle::kGeometryShader: return AddShader<ID3D11GeometryShader>(_geometryShaders, nullptr, id, type);
     case ObjectHandle::kPixelShader: return AddShader<ID3D11PixelShader>(_pixelShaders, nullptr, id, type);
+    case ObjectHandle::kComputeShader: return AddShader<ID3D11ComputeShader>(_computeShaders, nullptr, id, type);
+    default: assert("Unsupported object type");
   }
 
   return emptyHandle;
@@ -1060,24 +1063,31 @@ bool Graphics::LoadComputeShadersFromFile(
 bool Graphics::LoadShadersFromFile(
     const string& filenameBase,
     ObjectHandle* vs,
+    ObjectHandle* gs,
     ObjectHandle* ps,
     ObjectHandle* inputLayout,
     u32 vertexFlags,
     const char* vsEntry,
+    const char* gsEntry,
     const char* psEntry)
 {
 #if WITH_DEBUG_SHADERS
-  string vsSuffix = ToString("_%sD.vso", vsEntry);
-  string psSuffix = ToString("_%sD.pso", psEntry);
+  string vsSuffix = vs ? ToString("_%sD.vso", vsEntry) : string();
+  string gsSuffix = gs ? ToString("_%sD.gso", gsEntry) : string();
+  string psSuffix = ps ? ToString("_%sD.pso", psEntry) : string();
 #else
-  string vsSuffix = ToString("_%s.vso", vsEntry);
-  string psSuffix = ToString("_%s.pso", psEntry);
+  string vsSuffix = vs ? ToString("_%s.vso", vsEntry) : string();
+  string gsSuffix = gs ? ToString("_%s.gso", gsEntry) : string();
+  string psSuffix = ps ? ToString("_%s.pso", psEntry) : string();
 #endif
+
+  string vsId = vs ? filenameBase + vsEntry : string();
+  string gsId = gs ? filenameBase + gsEntry : string();
+  string psId = ps ? filenameBase + psEntry : string();
 
   bool res = true;
   if (vs)
   {
-    string vsId = filenameBase + vsEntry;
     ObjectHandle vsHandle = ReserveObjectHandle(vsId, ObjectHandle::kVertexShader);
     *vs = vsHandle;
 
@@ -1085,39 +1095,58 @@ bool Graphics::LoadShadersFromFile(
       [=](const string& filename, void* token)
       {
         vector<char> buf;
-
-        if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
-        {
-          LOG_WARN("Unable to load vertex shader" << LogKeyValue("filename", filename));
-          return false;
-        }
-
         ID3D11VertexShader *vs = nullptr;
-        if (!SUCCEEDED(_device->CreateVertexShader(buf.data(), buf.size(), NULL, &vs)))
+
+        if (
+          RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf) &&
+          SUCCEEDED(_device->CreateVertexShader(buf.data(), buf.size(), NULL, &vs)))
         {
-          LOG_WARN("Unable to create vertex shader" << LogKeyValue("filename", filename));
-          return false;
+          _vertexShaders.Update(vsHandle, vs);
+          if (inputLayout)
+          {
+            vector<D3D11_INPUT_ELEMENT_DESC> desc;
+            VertexFlagsToLayoutDesc(vertexFlags, &desc);
+            *inputLayout = GRAPHICS.CreateInputLayout(desc, buf);
+            if (!inputLayout->IsValid())
+              return false;
+          }
+          return true;
         }
 
-        _vertexShaders.Update(vsHandle, vs);
-        if (inputLayout)
-        {
-          vector<D3D11_INPUT_ELEMENT_DESC> desc;
-          VertexFlagsToLayoutDesc(vertexFlags, &desc);
-          *inputLayout = GRAPHICS.CreateInputLayout(desc, buf);
-          if (!inputLayout->IsValid())
-            return false;
-        }
-        return true;
+        LOG_WARN(ToString("Unable to %s vertex shader", buf.empty() ? "load" : "create").c_str()
+          << LogKeyValue("filename", filename));
+        return false;
       });
   }
 
   if (!res)
     return false;
 
+  if (gs)
+  {
+    ObjectHandle gsHandle = ReserveObjectHandle(gsId, ObjectHandle::kGeometryShader);
+    *gs = gsHandle;
+
+    RESOURCE_MANAGER.AddFileWatch((filenameBase + gsSuffix).c_str(), nullptr, true, &res,
+      [=](const string& filename, void* token)
+    {
+      vector<char> buf;
+      ID3D11GeometryShader* gs = nullptr;
+      if (
+        RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf) && 
+        SUCCEEDED(_device->CreateGeometryShader(buf.data(), buf.size(), NULL, &gs)))
+      {
+        _geometryShaders.Update(gsHandle, gs);
+        return true;
+      }
+      LOG_WARN(ToString("Unable to %s geometry shader", buf.empty() ? "load" : "create").c_str()
+        << LogKeyValue("filename", filename));
+      return false;
+    });
+  }
+
   if (ps)
   {
-    string psId = filenameBase + psEntry;
     ObjectHandle psHandle = ReserveObjectHandle(psId, ObjectHandle::kPixelShader);
     *ps = psHandle;
 
@@ -1125,21 +1154,19 @@ bool Graphics::LoadShadersFromFile(
       [=](const string& filename, void* token)
     {
       vector<char> buf;
-      if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
-      {
-        LOG_WARN("Unable to load pixel shader" << LogKeyValue("filename", filename));
-        return false;
-      }
-
       ID3D11PixelShader *ps = nullptr;
-      if (!SUCCEEDED(_device->CreatePixelShader(buf.data(), buf.size(), NULL, &ps)))
+
+      if (
+        RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf) &&
+        SUCCEEDED(_device->CreatePixelShader(buf.data(), buf.size(), NULL, &ps)))
       {
-        LOG_WARN("Unable to create pixel shader" << LogKeyValue("filename", filename));
-        return false;
+        _pixelShaders.Update(psHandle, ps);
+        return true;
       }
 
-      _pixelShaders.Update(psHandle, ps);
-      return true;
+      LOG_WARN(ToString("Unable to %s pixel shader", buf.empty() ? "load" : "create").c_str()
+        << LogKeyValue("filename", filename));
+      return false;
     });
   }
 

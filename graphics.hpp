@@ -123,10 +123,12 @@ namespace tano
     bool LoadShadersFromFile(
         const string& filenameBase,
         ObjectHandle* vs,
+        ObjectHandle* gs,
         ObjectHandle* ps,
         ObjectHandle* inputLayout,
         u32 vertexFlags,
         const char* vsEntry = "VsMain",
+        const char* gsEntry = "GsMain",
         const char* psEntry = "PsMain");
 
     bool LoadComputeShadersFromFile(

@@ -43,15 +43,18 @@ bool GpuObjects::CreateDynamicIb(u32 ibSize, DXGI_FORMAT ibFormat, const void* i
 bool GpuObjects::LoadShadersFromFile(
     const char* filename,
     const char* vsEntry,
+    const char* gsEntry,
     const char* psEntry,
     u32 flags)
 {
   return GRAPHICS.LoadShadersFromFile(filename, 
       vsEntry ? &_vs : nullptr, 
+      gsEntry ? &_gs : nullptr,
       psEntry ? &_ps : nullptr, 
       flags ? &_layout : nullptr, 
       flags,
       vsEntry,
+      gsEntry,
       psEntry);
 }
 
