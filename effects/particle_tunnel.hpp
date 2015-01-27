@@ -7,8 +7,6 @@
 
 namespace tano
 {
-  class DeferredContext;
-
   class ParticleTunnel : public Effect
   {
   public:

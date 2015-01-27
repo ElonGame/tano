@@ -7,6 +7,7 @@
 #include "generated/app.parse.hpp"
 #include "generated/input_buffer.hpp"
 #include "effects/particle_tunnel.hpp"
+#include "effects/raymarcher.hpp"
 
 #if WITH_IMGUI
 #include "imgui_helpers.hpp"
@@ -143,13 +144,7 @@ bool App::Init(HINSTANCE hinstance)
 
   INIT(DemoEngine::Create());
   ParticleTunnel::Register();
-
-/*
-  DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Particle, ParticleTunnel::Create);
-  //DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Particle, SceneTest::Create);
-  DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Generator, GeneratorTest::Create);
-  DEMO_ENGINE.RegisterFactory(effect::EffectSetting::Type::Plexus, PlexusTest::Create);
-*/
+  RayMarcher::Register();
 
   INIT(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
 

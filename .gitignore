@@ -11,6 +11,6 @@ _win32/x64/Release/*
 *.psess
 *.vsp
 generated/*
-shaders/*.[pv]s?
+shaders/*.[pvg]s[oa]
 _win32/My Advisor*
 _win32/My Inspector*

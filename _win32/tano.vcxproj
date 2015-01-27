@@ -88,6 +88,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\effects\raymarcher.cpp" />
     <ClCompile Include="..\mesh_loader.cpp" />
     <ClCompile Include="..\bristol\dx\graphics_utils.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
@@ -306,6 +307,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\effects\raymarcher.hpp" />
     <ClInclude Include="..\mesh_loader.hpp" />
     <ClInclude Include="..\bristol\bristol.hpp" />
     <ClInclude Include="..\bristol\dx\DirectXTK\SimpleMath.h" />

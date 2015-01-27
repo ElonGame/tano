@@ -25,7 +25,7 @@ bool InitSequence::EndSequence()
   LOG_WARN_NAKED("** INIT FAILURES **");
   for (const InitFailure& f : _failures)
   {
-    LOG_WARN_NAKED(ToString("%s(%d): %s", f.file, f.line, f.str).c_str());
+    LOG_WARN_NAKED(ToString("%s(%d): %s", f.file, f.line, f.str.c_str()).c_str());
   }
 
   return false;

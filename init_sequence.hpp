@@ -12,7 +12,7 @@ namespace tano
     {
       const char* file;
       int line;
-      const char* str;
+      string str;
     };
 
     vector<InitFailure> _failures;

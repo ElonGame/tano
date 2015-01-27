@@ -24,6 +24,9 @@ vs['particle_tunnel'] = ['VsParticle', 'VsQuad', 'VsText', 'VsLines']
 ps['particle_tunnel'] = ['PsParticle', 'PsBackground', 'PsText', 'PsComposite', 'PsLines']
 gs['particle_tunnel'] = ['GsLines']
 
+vs['raymarcher'] = ['VsQuad']
+ps['raymarcher'] = ['PsRaymarcher']
+
 vs['imgui'] = ['VsMain']
 ps['imgui'] = ['PsMain']
 
