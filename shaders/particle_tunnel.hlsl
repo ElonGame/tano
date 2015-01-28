@@ -52,8 +52,6 @@ struct GsLinesOut
 {
   float4 pos : SV_Position;
   float2 tex : TexCoord;
-  //float4 a : PointA;
-  //float4 b : PointB;
 };
 
 //------------------------------------------------------
@@ -104,13 +102,7 @@ void OutputVtx(float4 v, float2 tex, inout TriangleStream<GsLinesOut> stream)
 {
   GsLinesOut res;
   res.pos = v;
-/*  
-  res.pos = mul(float4(v, 1), viewProj);
-  res.a = mul(float4(a, 1), viewProj);
-  res.b = mul(float4(b, 1), viewProj);
-  res.a /= res.a.w;
-  res.b /= res.b.w;
-*/  
+  res.tex = tex;
   stream.Append(res);
 }
 
@@ -132,12 +124,15 @@ void OutputQuad(float4 a, float2 dir, float2 up, float2 tex[4], inout TriangleSt
   v3.xy += dir.xy * float2(+1,0);
   v3.xy += up.xy  * float2(0,+1);
 
-  OutputVtx(v0, stream);
-  OutputVtx(v1, stream);
-  OutputVtx(v2, stream);
-  OutputVtx(v3, stream);
+  OutputVtx(v0, tex[0], stream);
+  OutputVtx(v1, tex[1], stream);
+  OutputVtx(v2, tex[2], stream);
+  OutputVtx(v3, tex[3], stream);
  
 }
+
+static float2 texA[4] = { float2(0, 1),    float2(0, 0),   float2(0.5, 1), float2(0.5, 0) };
+static float2 texB[4] = { float2(0.5, 1),  float2(0.5, 0), float2(1, 1),   float2(1, 0) };
 
 [maxvertexcount(8)]
 void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
@@ -162,49 +157,8 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
 
   float2 up = dir.yx;
 
-  // output a triangle strip for the current line
-/*  
-  float3 a = input[0].pos;
-  float3 b = input[1].pos;
-  float3 dir = normalize(b-a);
-  float3 up = float3(0,1,0);
-  float3 right = cross(up, dir);
-
-*/
-
-/*
-  float2 ofs[4] = { float2(-1, -1), float2(-1, +1), float2(+1, -1), float2(+1, +1) };
-  float4 aPoints[4];
-  for (int i = 0; i < 4; ++i)
-  {
-    float4 tmp = a;
-    tmp.xy += dir.xy * ofs[4] float2(1,0);
-    tmp.xy += up.xy * float2(0,-1);
-  }
-  
-  float4 v0 = a;
-  v0.xy += dir.xy * float2(-1,0);
-  v0.xy += up.xy  * float2(0,-1);
-
-  float4 v1 = a;
-  v1.xy += dir.xy * float2(-1,0);
-  v1.xy += up.xy  * float2(0,+1);
-
-  float4 v2 = a;
-  v2.xy += dir.xy * float2(+1,0);
-  v2.xy += up.xy  * float2(0,-1);
-
-  float4 v3 = a;
-  v3.xy += dir.xy * float2(+1,0);
-  v3.xy += up.xy  * float2(0,+1);
-
-  OutputVtx(v0, stream);
-  OutputVtx(v1, stream);
-  OutputVtx(v2, stream);
-  OutputVtx(v3, stream);
-*/
-  OutputQuad(a, dir, up, stream);
-  OutputQuad(b, dir, up, stream);
+  OutputQuad(a, dir, up, texA, stream);
+  OutputQuad(b, dir, up, texB, stream);
 }
 
 // Return distance from point 'p' to line segment 'a b':
@@ -222,7 +176,9 @@ float line_distance(float2 p, float2 a, float2 b)
 
 float4 PsLines(GsLinesOut input) : Sv_Target
 {
-  return 1;
+  float4 col = Texture0.Sample(PointSampler, input.tex);
+  return col;
+
 /*  
   float2 a = input.a.xy;
   float2 b = input.b.xy;

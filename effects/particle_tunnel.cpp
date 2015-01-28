@@ -232,8 +232,6 @@ bool ParticleTunnel::Init(const char* configFile)
     INIT(_particleState.Create(&dsDesc, &blendDesc, &rssDesc));
   }
 
-  INIT_RESOURCE(_particleSamplerState, GRAPHICS.CreateSamplerState(CD3D11_SAMPLER_DESC(CD3D11_DEFAULT())));
-
   _particles.Create(_settings.num_particles);
 
   // Composite state setup
@@ -282,6 +280,7 @@ bool ParticleTunnel::Init(const char* configFile)
 
     INIT(_linesState.Create(&dsDesc, &blendDesc, &rssDesc));
   }
+  INIT_RESOURCE(_lineTexture, RESOURCE_MANAGER.LoadTexture("gfx/line.png"));
   INIT(_linesGpuObjects.CreateDynamicVb((u32)_neuroticaTris.size() * sizeof(Vector3) * 3 * 2, sizeof(Vector3)));
   INIT(_linesGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsLines", "GsLines", "PsLines", VertexFlags::VF_POS));
   _linesGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
@@ -451,7 +450,21 @@ bool ParticleTunnel::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Render()
 {
-  static Color black(0,0,0,0);
+
+#if 1
+  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
+
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
+  _ctx->SetGpuObjects(_linesGpuObjects);
+  _ctx->SetGpuState(_linesState);
+  _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
+  _ctx->SetShaderResource(_lineTexture, ShaderType::PixelShader);
+
+  _ctx->Draw(_numLines, 0);
+
+#else
+  // NOTE, all this stuff is broken.. sorry :(
+  static Color black(0, 0, 0, 0);
   ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
   _ctx->SetRenderTarget(rt.h, &black);
 
@@ -462,7 +475,7 @@ bool ParticleTunnel::Render()
   // Render the background
   _ctx->SetGpuObjects(_backgroundGpuObjects);
   _ctx->SetGpuState(_backgroundState);
-//   _ctx->Draw(3, 0);
+  //   _ctx->Draw(3, 0);
 
   // Render particles
   _ctx->SetGpuObjects(_particleGpuObjects);
@@ -470,16 +483,16 @@ bool ParticleTunnel::Render()
 
   _ctx->SetSamplerState(_particleSamplerState, 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
-//   _ctx->Draw(6 * _settings.num_particles, 0);
+  //   _ctx->Draw(6 * _settings.num_particles, 0);
 
   // text
-//   _ctx->SetGpuObjects(_textGpuObjects);
-//   _ctx->SetGpuState(_textState);
-//   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
+  //   _ctx->SetGpuObjects(_textGpuObjects);
+  //   _ctx->SetGpuState(_textState);
+  //   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
 
   // lines
   _ctx->SetSamplerState(_particleSamplerState, 0, ShaderType::PixelShader);
-  _ctx->SetShaderResource(rt.h, ShaderType::PixelShader);
+  _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
 
   _ctx->SetGpuObjects(_linesGpuObjects);
   _ctx->SetGpuState(_linesState);
@@ -493,6 +506,8 @@ bool ParticleTunnel::Render()
   _ctx->SetGpuObjects(_compositeGpuObjects);
   _ctx->SetGpuState(_compositeState);
   _ctx->Draw(3, 0);
+
+#endif
 
   return true;
 }

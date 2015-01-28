@@ -97,11 +97,11 @@ namespace tano
     ObjectHandle _particleTexture;
     GpuState _particleState;
     GpuObjects _particleGpuObjects;
-    ObjectHandle _particleSamplerState;
 
     GpuState _textState;
     GpuObjects _textGpuObjects;
 
+    ObjectHandle _lineTexture;
     GpuState _linesState;
     GpuObjects _linesGpuObjects;
     u32 _numLines = 0;

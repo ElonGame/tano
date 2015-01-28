@@ -73,7 +73,7 @@ namespace tano
     ObjectHandle _blendState;
     ObjectHandle _rasterizerState;
 
-    enum Samplers 
+    enum Samplers
     {
       Linear,
       LinearWrap,
