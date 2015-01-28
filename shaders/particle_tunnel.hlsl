@@ -131,8 +131,6 @@ void OutputQuad(float4 a, float2 dir, float2 up, float2 tex[4], inout TriangleSt
  
 }
 
-static float2 texA[4] = { float2(0, 1),    float2(0, 0),   float2(0.5, 1), float2(0.5, 0) };
-static float2 texB[4] = { float2(0.5, 1),  float2(0.5, 0), float2(1, 1),   float2(1, 0) };
 
 [maxvertexcount(8)]
 void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
@@ -148,8 +146,8 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
   float4 b = mul(float4(input[1].pos, 1), viewProj);
 
   // clip space line direction
-  float h = 5;
-  float2 dir = h * normalize(a.xy / a.ww - b.xy / b.ww);
+  float h = 4;
+  float2 dir = h * normalize(b.xy / b.ww - a.xy / a.ww);
 
   // swap direction if the points are on opposite sides of the near clip plane
   if (a.w * b.w < 0)
@@ -157,43 +155,17 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
 
   float2 up = dir.yx;
 
+  float2 texA[4] = { float2(0, 1),    float2(0, 0),   float2(0.5, 1), float2(0.5, 0) };
+  float2 texB[4] = { float2(0.5, 1),  float2(0.5, 0), float2(1, 1),   float2(1, 0) };
+
   OutputQuad(a, dir, up, texA, stream);
   OutputQuad(b, dir, up, texB, stream);
-}
-
-// Return distance from point 'p' to line segment 'a b':
-float line_distance(float2 p, float2 a, float2 b)
-{
-    float dist = distance(a,b);
-    float2 v = normalize(b-a);
-    float t = dot(v,p-a);
-    float2 spinePoint;
-    if (t > dist) spinePoint = b;
-    else if (t > 0.0) spinePoint = a + t*v;
-    else spinePoint = a;
-    return distance(p,spinePoint);
 }
 
 float4 PsLines(GsLinesOut input) : Sv_Target
 {
   float4 col = Texture0.Sample(PointSampler, input.tex);
-  return col;
-
-/*  
-  float2 a = input.a.xy;
-  float2 b = input.b.xy;
-  // convert from [-1..1][-1..1] to [0..w][h..0]
-  a.x = (1 + a.x) / 2 * dim.x; 
-  a.y = (1 - (1 + a.y) / 2) * dim.y;
-  b.x = (1 + b.x) / 2 * dim.x; 
-  b.y = (1 - (1 + b.y) / 2) * dim.y;
-
-  float d = line_distance(input.pos.xy, a, b);
-  float t = 1.0 - 12 / d;
-  return float4(t, t, t, 1);
-  return t;
-  return float4(t, t, t, 1);
-*/  
+  return float4(col.r, col.g, col.b, col.r);
 }
 
 //------------------------------------------------------

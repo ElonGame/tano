@@ -249,9 +249,8 @@ bool ParticleTunnel::Init(const char* configFile)
     CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
     dsDesc.DepthEnable = FALSE;
 
-    CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
-
     // pre-multiplied alpha
+    CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
     D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
     b.BlendEnable = TRUE;
     b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
@@ -344,9 +343,9 @@ bool ParticleTunnel::Update(const UpdateState& state)
       int triIdx = _textParticles.selectedTris[i];
       for (int j = 0; j < 3; ++j)
       {
-        vtx->x = xx[3 * triIdx + j];
-        vtx->y = yy[3 * triIdx + j];
-        vtx->z = zz[3 * triIdx + j];
+        vtx->x = xx[triIdx + j];
+        vtx->y = yy[triIdx + j];
+        vtx->z = zz[triIdx + j];
 
         vtx++;
       }
@@ -363,29 +362,27 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
     Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_linesGpuObjects._vb);
 
-    vtx[0] = Vector3(-150, 0, 0);
-    vtx[1] = Vector3(+150, 0, 0);
-    _numLines = 2;
-// 
-//     for (int i = 0, e = (int)_textParticles.selectedTris.size(); i < e; ++i)
-//     {
-//       int triIdx = _textParticles.selectedTris[i];
-//       for (int j = 0; j < 3; ++j)
-//       {
-//         int idx0 = 3 * triIdx + j;
-//         int idx1 = 3 * triIdx + (j + 1) % 3;
-// 
-//         vtx->x = xx[idx0];
-//         vtx->y = yy[idx0];
-//         vtx->z = zz[idx0];
-//         vtx++;
-// 
-//         vtx->x = xx[idx1];
-//         vtx->y = yy[idx1];
-//         vtx->z = zz[idx1];
-//         vtx++;
-//       }
-//     }
+    _numLines = 0;
+    for (int i = 0, e = (int)_textParticles.selectedTris.size(); i < e; ++i)
+    {
+      int triIdx = _textParticles.selectedTris[i];
+      for (int j = 0; j < 3; ++j)
+      {
+        int idx0 = triIdx + j;
+        int idx1 = triIdx + (j + 1) % 3;
+
+        vtx->x = xx[idx0];
+        vtx->y = yy[idx0];
+        vtx->z = zz[idx0];
+        vtx++;
+
+        vtx->x = xx[idx1];
+        vtx->y = yy[idx1];
+        vtx->z = zz[idx1];
+        _numLines += 2;
+        vtx++;
+      }
+    }
 
     _ctx->Unmap(_linesGpuObjects._vb);
   }
@@ -450,20 +447,6 @@ bool ParticleTunnel::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Render()
 {
-
-#if 1
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
-
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
-  _ctx->SetGpuObjects(_linesGpuObjects);
-  _ctx->SetGpuState(_linesState);
-  _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
-  _ctx->SetShaderResource(_lineTexture, ShaderType::PixelShader);
-
-  _ctx->Draw(_numLines, 0);
-
-#else
-  // NOTE, all this stuff is broken.. sorry :(
   static Color black(0, 0, 0, 0);
   ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
   _ctx->SetRenderTarget(rt.h, &black);
@@ -475,39 +458,35 @@ bool ParticleTunnel::Render()
   // Render the background
   _ctx->SetGpuObjects(_backgroundGpuObjects);
   _ctx->SetGpuState(_backgroundState);
-  //   _ctx->Draw(3, 0);
+  _ctx->Draw(3, 0);
 
   // Render particles
   _ctx->SetGpuObjects(_particleGpuObjects);
   _ctx->SetGpuState(_particleState);
-
-  _ctx->SetSamplerState(_particleSamplerState, 0, ShaderType::PixelShader);
+  _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
-  //   _ctx->Draw(6 * _settings.num_particles, 0);
+  _ctx->Draw(6 * _settings.num_particles, 0);
 
   // text
-  //   _ctx->SetGpuObjects(_textGpuObjects);
-  //   _ctx->SetGpuState(_textState);
-  //   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
+  _ctx->SetGpuObjects(_textGpuObjects);
+  _ctx->SetGpuState(_textState);
+  _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
 
   // lines
-  _ctx->SetSamplerState(_particleSamplerState, 0, ShaderType::PixelShader);
-  _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
-
   _ctx->SetGpuObjects(_linesGpuObjects);
   _ctx->SetGpuState(_linesState);
+  _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
+  _ctx->SetShaderResource(_lineTexture, ShaderType::PixelShader);
   _ctx->Draw(_numLines, 0);
 
   // compose final image on default swap chain
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
 
-  _ctx->SetSamplerState(_particleSamplerState, 0, ShaderType::PixelShader);
+  _ctx->SetSamplerState(_compositeState._samplers[GpuState::Point], 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(rt.h, ShaderType::PixelShader);
   _ctx->SetGpuObjects(_compositeGpuObjects);
   _ctx->SetGpuState(_compositeState);
   _ctx->Draw(3, 0);
-
-#endif
 
   return true;
 }
