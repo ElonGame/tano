@@ -25,7 +25,7 @@ float sdSphere(float3 p, float s)
 //------------------------------------------------------
 float DistanceEstimator(float3 p)
 {
-  return sdSphere(p, 5);
+  return sdSphere(p, 10);
 }
 
 
@@ -64,7 +64,8 @@ float4 PsRaymarcher(VSQuadOut input) : SV_TARGET
   // this is done by determining which pixel on the image
   // plane the current pixel represents
   float aspectRatio = dim.x / dim.y;
-  float3 r = 2 * (-0.5 + input.pos.x / dim.x / aspectRatio) * right + (1 - 2 * (-0.5 + input.pos.y / dim.y)) * up + dir;
+  float3 r = 2 * (-0.5 + input.pos.x / dim.x) * right + (2 * (-0.5 + input.pos.y / dim.y)) * up + dir;
+  r.y /= aspectRatio;
   r = normalize(r);
 
   return trace(cameraPos, r);
