@@ -267,6 +267,7 @@ bool ParticleTunnel::Init(const char* configFile)
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
     rssDesc.CullMode = D3D11_CULL_NONE;
+    //rssDesc.FillMode = D3D11_FILL_WIREFRAME;
 
     CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
     dsDesc.DepthEnable = FALSE;
@@ -362,25 +363,30 @@ bool ParticleTunnel::Update(const UpdateState& state)
     float* zz = _textParticles.z;
 
     Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_linesGpuObjects._vb);
-    for (int i = 0, e = (int)_textParticles.selectedTris.size(); i < e; ++i)
-    {
-      int triIdx = _textParticles.selectedTris[i];
-      for (int j = 0; j < 3; ++j)
-      {
-        int idx0 = 3 * triIdx + j;
-        int idx1 = 3 * triIdx + (j + 1) % 3;
 
-        vtx->x = xx[idx0];
-        vtx->y = yy[idx0];
-        vtx->z = zz[idx0];
-        vtx++;
-
-        vtx->x = xx[idx1];
-        vtx->y = yy[idx1];
-        vtx->z = zz[idx1];
-        vtx++;
-      }
-    }
+    vtx[0] = Vector3(-150, 0, 0);
+    vtx[1] = Vector3(+150, 0, 0);
+    _numLines = 2;
+// 
+//     for (int i = 0, e = (int)_textParticles.selectedTris.size(); i < e; ++i)
+//     {
+//       int triIdx = _textParticles.selectedTris[i];
+//       for (int j = 0; j < 3; ++j)
+//       {
+//         int idx0 = 3 * triIdx + j;
+//         int idx1 = 3 * triIdx + (j + 1) % 3;
+// 
+//         vtx->x = xx[idx0];
+//         vtx->y = yy[idx0];
+//         vtx->z = zz[idx0];
+//         vtx++;
+// 
+//         vtx->x = xx[idx1];
+//         vtx->y = yy[idx1];
+//         vtx->z = zz[idx1];
+//         vtx++;
+//       }
+//     }
 
     _ctx->Unmap(_linesGpuObjects._vb);
   }
@@ -456,7 +462,7 @@ bool ParticleTunnel::Render()
   // Render the background
   _ctx->SetGpuObjects(_backgroundGpuObjects);
   _ctx->SetGpuState(_backgroundState);
-  _ctx->Draw(3, 0);
+//   _ctx->Draw(3, 0);
 
   // Render particles
   _ctx->SetGpuObjects(_particleGpuObjects);
@@ -464,7 +470,7 @@ bool ParticleTunnel::Render()
 
   _ctx->SetSamplerState(_particleSamplerState, 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
-  _ctx->Draw(6 * _settings.num_particles, 0);
+//   _ctx->Draw(6 * _settings.num_particles, 0);
 
   // text
 //   _ctx->SetGpuObjects(_textGpuObjects);
@@ -472,9 +478,12 @@ bool ParticleTunnel::Render()
 //   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
 
   // lines
+  _ctx->SetSamplerState(_particleSamplerState, 0, ShaderType::PixelShader);
+  _ctx->SetShaderResource(rt.h, ShaderType::PixelShader);
+
   _ctx->SetGpuObjects(_linesGpuObjects);
   _ctx->SetGpuState(_linesState);
-  _ctx->Draw(_textParticles.selectedTris.size(), 0);
+  _ctx->Draw(_numLines, 0);
 
   // compose final image on default swap chain
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));

@@ -104,6 +104,7 @@ namespace tano
 
     GpuState _linesState;
     GpuObjects _linesGpuObjects;
+    u32 _numLines = 0;
 
     GpuState _compositeState;
     GpuObjects _compositeGpuObjects;

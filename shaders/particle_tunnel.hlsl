@@ -51,8 +51,9 @@ struct VsLinesOut
 struct GsLinesOut
 {
   float4 pos : SV_Position;
-  float4 a : PointA;
-  float4 b : PointB;
+  float2 tex : TexCoord;
+  //float4 a : PointA;
+  //float4 b : PointB;
 };
 
 //------------------------------------------------------
@@ -99,33 +100,111 @@ VsLinesOut VsLines(VsLinesIn v)
   return res;
 }
 
-void OutputVtx(float3 v, float3 a, float3 b, inout TriangleStream<GsLinesOut> stream)
+void OutputVtx(float4 v, float2 tex, inout TriangleStream<GsLinesOut> stream)
 {
   GsLinesOut res;
+  res.pos = v;
+/*  
   res.pos = mul(float4(v, 1), viewProj);
   res.a = mul(float4(a, 1), viewProj);
   res.b = mul(float4(b, 1), viewProj);
   res.a /= res.a.w;
   res.b /= res.b.w;
+*/  
   stream.Append(res);
 }
 
-[maxvertexcount(4)]
+void OutputQuad(float4 a, float2 dir, float2 up, float2 tex[4], inout TriangleStream<GsLinesOut> stream)
+{
+  float4 v0 = a;
+  v0.xy += dir.xy * float2(-1,0);
+  v0.xy += up.xy  * float2(0,-1);
+
+  float4 v1 = a;
+  v1.xy += dir.xy * float2(-1,0);
+  v1.xy += up.xy  * float2(0,+1);
+
+  float4 v2 = a;
+  v2.xy += dir.xy * float2(+1,0);
+  v2.xy += up.xy  * float2(0,-1);
+
+  float4 v3 = a;
+  v3.xy += dir.xy * float2(+1,0);
+  v3.xy += up.xy  * float2(0,+1);
+
+  OutputVtx(v0, stream);
+  OutputVtx(v1, stream);
+  OutputVtx(v2, stream);
+  OutputVtx(v3, stream);
+ 
+}
+
+[maxvertexcount(8)]
 void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
 {
+
+  /*
+      1--3-------5--7
+      |  |       |  |
+      0--2-------4--6
+  */
+
+  float4 a = mul(float4(input[0].pos, 1), viewProj);
+  float4 b = mul(float4(input[1].pos, 1), viewProj);
+
+  // clip space line direction
+  float h = 5;
+  float2 dir = h * normalize(a.xy / a.ww - b.xy / b.ww);
+
+  // swap direction if the points are on opposite sides of the near clip plane
+  if (a.w * b.w < 0)
+    dir = -dir;
+
+  float2 up = dir.yx;
+
   // output a triangle strip for the current line
+/*  
   float3 a = input[0].pos;
   float3 b = input[1].pos;
   float3 dir = normalize(b-a);
   float3 up = float3(0,1,0);
   float3 right = cross(up, dir);
 
-  float h = 5;
+*/
 
-  OutputVtx(a - h * up, a, b, stream);
-  OutputVtx(a + h * up, a, b, stream);
-  OutputVtx(b - h * up, a, b, stream);
-  OutputVtx(b + h * up, a, b, stream);
+/*
+  float2 ofs[4] = { float2(-1, -1), float2(-1, +1), float2(+1, -1), float2(+1, +1) };
+  float4 aPoints[4];
+  for (int i = 0; i < 4; ++i)
+  {
+    float4 tmp = a;
+    tmp.xy += dir.xy * ofs[4] float2(1,0);
+    tmp.xy += up.xy * float2(0,-1);
+  }
+  
+  float4 v0 = a;
+  v0.xy += dir.xy * float2(-1,0);
+  v0.xy += up.xy  * float2(0,-1);
+
+  float4 v1 = a;
+  v1.xy += dir.xy * float2(-1,0);
+  v1.xy += up.xy  * float2(0,+1);
+
+  float4 v2 = a;
+  v2.xy += dir.xy * float2(+1,0);
+  v2.xy += up.xy  * float2(0,-1);
+
+  float4 v3 = a;
+  v3.xy += dir.xy * float2(+1,0);
+  v3.xy += up.xy  * float2(0,+1);
+
+  OutputVtx(v0, stream);
+  OutputVtx(v1, stream);
+  OutputVtx(v2, stream);
+  OutputVtx(v3, stream);
+*/
+  OutputQuad(a, dir, up, stream);
+  OutputQuad(b, dir, up, stream);
 }
 
 // Return distance from point 'p' to line segment 'a b':
@@ -143,6 +222,8 @@ float line_distance(float2 p, float2 a, float2 b)
 
 float4 PsLines(GsLinesOut input) : Sv_Target
 {
+  return 1;
+/*  
   float2 a = input.a.xy;
   float2 b = input.b.xy;
   // convert from [-1..1][-1..1] to [0..w][h..0]
@@ -156,6 +237,7 @@ float4 PsLines(GsLinesOut input) : Sv_Target
   return float4(t, t, t, 1);
   return t;
   return float4(t, t, t, 1);
+*/  
 }
 
 //------------------------------------------------------
