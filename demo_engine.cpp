@@ -93,14 +93,14 @@ bool DemoEngine::Paused() const
 }
 
 //------------------------------------------------------------------------------
-void DemoEngine::SetPos(TimeDuration pos)
+void DemoEngine::SetPos(const TimeDuration& pos)
 {
   _timer.SetElapsed(pos);
   ReclassifyEffects();
 }
 
 //------------------------------------------------------------------------------
-TimeDuration DemoEngine::Pos()
+TimeDuration DemoEngine::Pos() const
 {
   return _timer.Peek();
 }

@@ -331,11 +331,11 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           return 0;
 
         case VK_LEFT:
-          DEMO_ENGINE.SetPos(TimeDuration::Milliseconds(100));
+          DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() - TimeDuration::Milliseconds(100));
           return 0;
 
         case VK_RIGHT:
-          DEMO_ENGINE.SetPos(TimeDuration::Milliseconds(100));
+          DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() + TimeDuration::Milliseconds(100));
           return 0;
 
         case VK_HOME:

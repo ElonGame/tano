@@ -12,7 +12,7 @@ Timer::Timer()
 void Timer::Reset()
 {
   _curTime = _startTime = TimeStamp::Now();
-  if (_cycle > 0)
+  if (_cycle.Ticks() > 0)
     _cycleTime = _curTime + _cycle;
 }
 
@@ -41,7 +41,7 @@ void Timer::Start()
   }
 
   // If the timer is set to loop, set the next end time
-  if (_cycle > 0)
+  if (_cycle.Ticks() > 0)
     _cycleTime = _curTime + _cycle;
 }
 
@@ -58,14 +58,21 @@ void Timer::Stop()
 //------------------------------------------------------------------------------
 void Timer::SetElapsed(TimeDuration elapsed)
 {
-  _startTime = _startTime + elapsed;
-  _curTime = _startTime;
+  if (_running)
+  {
+    _startTime = TimeStamp::Now() - elapsed;
+  }
+  else
+  {
+    _startTime = _curTime - elapsed;
+  }
 }
 
 //------------------------------------------------------------------------------
-TimeDuration Timer::Peek()
+TimeDuration Timer::Peek() const
 {
-  return (_running ? TimeStamp::Now() : _curTime) - _startTime;
+  u64 delta = ((_running ? TimeStamp::Now() : _curTime) - _startTime).Ticks();
+  return TimeDuration(delta);
 }
 
 //------------------------------------------------------------------------------
@@ -79,7 +86,7 @@ TimeDuration Timer::Elapsed(TimeDuration* delta)
     *delta = _curTime - prev;
 
   // check if the timer has looped
-  if (_cycle > 0 && _curTime > _cycleTime)
+  if (_cycle.Ticks() > 0 && _curTime > _cycleTime)
     Reset();
 
   return _curTime - _startTime;
