@@ -5,9 +5,7 @@ using namespace bristol;
 
 //------------------------------------------------------------------------------
 Timer::Timer()
-  : _running(false)
 {
-  Reset();
 }
 
 //------------------------------------------------------------------------------
@@ -15,7 +13,7 @@ void Timer::Reset()
 {
   _curTime = _startTime = TimeStamp::Now();
   if (_cycle > 0)
-    _endTime = _curTime + _cycle;
+    _cycleTime = _curTime + _cycle;
 }
 
 //------------------------------------------------------------------------------
@@ -25,7 +23,26 @@ void Timer::Start()
     return;
 
   _running = true;
-  Reset();
+
+  // check if we are resuming, or starting for the first time
+  if (!_startTime.IsValid())
+  {
+    // first time
+    _curTime = _startTime = TimeStamp::Now();
+  }
+  else
+  {
+    // resuming. curtime is set to when the timer was stopped, so we can
+    // use this to adjust our start time like nothing happened :)
+    TimeStamp now = TimeStamp::Now();
+    TimeDuration delta = now - _curTime;
+    _startTime += delta;
+    _curTime = now;
+  }
+
+  // If the timer is set to loop, set the next end time
+  if (_cycle > 0)
+    _cycleTime = _curTime + _cycle;
 }
 
 //------------------------------------------------------------------------------
@@ -39,9 +56,9 @@ void Timer::Stop()
 }
 
 //------------------------------------------------------------------------------
-void Timer::SetElapsed(TimeDuration us)
+void Timer::SetElapsed(TimeDuration elapsed)
 {
-  _startTime = _startTime + us;
+  _startTime = _startTime + elapsed;
   _curTime = _startTime;
 }
 
@@ -62,7 +79,7 @@ TimeDuration Timer::Elapsed(TimeDuration* delta)
     *delta = _curTime - prev;
 
   // check if the timer has looped
-  if (_cycle > 0 && _curTime > _endTime)
+  if (_cycle > 0 && _curTime > _cycleTime)
     Reset();
 
   return _curTime - _startTime;
@@ -78,5 +95,5 @@ bool Timer::IsRunning() const
 void Timer::SetCycle(const TimeDuration& cycle)
 {
   _cycle = cycle;
-  _endTime = _startTime + _cycle;
+  _cycleTime = _startTime + _cycle;
 }

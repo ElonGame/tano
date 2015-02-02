@@ -17,11 +17,10 @@ namespace tano
     void SetCycle(const TimeDuration& t);
 
   private:
-    bool _running;
+    bool _running = false;
     TimeStamp _startTime;
-    TimeDuration _cycle;
-    TimeStamp _endTime;
     TimeStamp _curTime;
+    TimeDuration _cycle;
+    TimeStamp _cycleTime;
   };
-
 }

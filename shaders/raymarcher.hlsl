@@ -1,10 +1,12 @@
 // distance functions from iq: http://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm
 
 #include "common.hlsl"
+#include "raymarcher_lib.hlsl"
 
 cbuffer PerFrame : register(b0)
 {
   float2 dim;
+  float time;
 };
 
 //------------------------------------------------------
@@ -19,66 +21,69 @@ cbuffer PerFrame : register(b0)
 };
 
 //------------------------------------------------------
-float sdSphere(float3 p, float s)
+float s2(float3 p)
 {
-  return length(p)-s;
+  float s = 3;
+  return sdBox(p, float3(s,s,s)) + 0.1 * sin(time * p.x * p.y) + 0.1 * cos(time * max(p.z,p.y));
 }
 
-//------------------------------------------------------
-float sdBox( float3 p, float3 b )
+float opRep( float3 p, float3 c )
 {
-  float3 d = abs(p) - b;
-  return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
-}
-
-//------------------------------------------------------
-float sdTorus( float3 p, float2 t )
-{
-  float2 q = float2(length(p.xz)-t.x,p.y);
-  return length(q)-t.y;
+    float3 q = modf(p,c)-0.5*c;
+    return s2( q );
 }
 
 //------------------------------------------------------
 float distScene(float3 p)
 {
-  return sdTorus(p, float2(2, 0.5));
-  return 
-    min(
-      min(sdTorus(p, float2(1, 1)), sdSphere(p, 2)), 
-      sdBox(p, float3(2,1,1)));
+  //return sdBox(p, float3(1,1,1));
+  //return sdTorus(p, float2(2, 0.5));
+//  return s2(p);
+  return s2(p);
+  float s = 40;
+  //return opRep(p, float3(s, s, s));
+  return min(s2(p), sdBox(p, float3(2,1,1)));
 }
 
 //------------------------------------------------------
 float3 getNormal(float3 p)
 {
-  float h = 0.0001f;
-
+  float3 eps = float3(0.001, 0.0, 0.0);
   return normalize(float3(
-    distScene(p + float3(h, 0, 0)) - distScene(p - float3(h, 0, 0)),
-    distScene(p + float3(0, h, 0)) - distScene(p - float3(0, h, 0)),
-    distScene(p + float3(0, 0, h)) - distScene(p - float3(0, 0, h))));
+    distScene(p + eps.xyy) - distScene(p - eps.xyy),
+    distScene(p + eps.yxy) - distScene(p - eps.yxy),
+    distScene(p + eps.yyx) - distScene(p - eps.yyx)));
 }
 
 //------------------------------------------------------
 float trace(float3 from, float3 direction)
 {
-  int MaximumRaySteps = 10;
-  float MinimumDistance = 0.1f;
+  int MaximumRaySteps = 50;
+  float MinimumDistance = 0.01f;
 
   float totalDistance = 0.0;
   float col = 0;
   int steps;
+  float prevDistance = 0;
   for (steps=0; steps < MaximumRaySteps; steps++)
   {
     float3 p = from + totalDistance * direction;
     float distance = distScene(p);
-    totalDistance += distance;
     if (distance < MinimumDistance)
     {
+      if (distance < 0)
+        distance = prevDistance + distance;
+      totalDistance += distance;
+      p = from + totalDistance * direction;
       return 0.1f + dot(getNormal(p), normalize(float3(0, 1, -1)));
       col = float(steps)/float(MaximumRaySteps);
       break;
     }
+    else
+    {
+      totalDistance += 0.25 * distance;
+    }
+    prevDistance = distance;
   }
 
   return col;
@@ -86,9 +91,10 @@ float trace(float3 from, float3 direction)
 //------------------------------------------------------
 float4 PsRaymarcher(VSQuadOut input) : SV_TARGET
 {
-  float3 cameraPos = float3(0, 0, -100);
+  float3 cameraPos = float3(5, 3, -10);
+  //float3 cameraPos = float3(0, 0, -10);
   float3 lookAt = float3(0,0,0);
-  float f = 5;
+  float f = 2;
 
   // calc camera base
   float3 dir = normalize(lookAt - cameraPos);

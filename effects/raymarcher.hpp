@@ -30,6 +30,7 @@ namespace tano
     struct CBufferPerFrame
     {
       Vector2 dim;
+      float time;
     };
 
     GpuState _raymarcherState;
