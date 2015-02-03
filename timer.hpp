@@ -9,7 +9,8 @@ namespace tano
 
     void Start();
     void Stop();
-    void SetElapsed(TimeDuration t);
+    void Adjust(const TimeDuration& delta);
+    void SetElapsed(const TimeDuration& elapsed);
     TimeDuration Peek() const;
     TimeDuration Elapsed(TimeDuration* delta);
     bool IsRunning() const;
@@ -17,11 +18,18 @@ namespace tano
     void SetCycle(const TimeDuration& t);
 
   private:
+
+    struct TimerFlag
+    {
+      enum Enum { Running = 1 << 0, Looping = 1 << 1, };
+      struct Bits { u32 running : 1; u32 looping : 1; };
+    };
+
+    typedef Flags<TimerFlag> TimerFlags;
+
     TimeStamp _startTime;
     TimeStamp _curTime;
     TimeDuration _cycle;
-    TimeStamp _cycleTime;
-    bool _running = false;
-    bool _useCycle = false;
+    TimerFlags _flags;
   };
 }

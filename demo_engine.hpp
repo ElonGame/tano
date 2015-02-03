@@ -25,6 +25,7 @@ namespace tano
     void SetPaused(bool pause);
     bool Paused() const;
 
+    void AdjustPos(const TimeDuration& delta);
     void SetPos(const TimeDuration& pos);
     TimeDuration Pos() const;
 

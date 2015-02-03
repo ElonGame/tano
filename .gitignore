@@ -10,6 +10,7 @@ _win32/x64/Release/*
 *.mp3
 *.psess
 *.vsp
+*.ipch
 generated/*
 shaders/*.[pvg]s[oa]
 _win32/My Advisor*

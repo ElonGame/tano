@@ -93,6 +93,13 @@ bool DemoEngine::Paused() const
 }
 
 //------------------------------------------------------------------------------
+void DemoEngine::AdjustPos(const TimeDuration& delta)
+{
+  _timer.Adjust(delta);
+  ReclassifyEffects();
+}
+
+//------------------------------------------------------------------------------
 void DemoEngine::SetPos(const TimeDuration& pos)
 {
   _timer.SetElapsed(pos);

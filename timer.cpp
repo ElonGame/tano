@@ -12,17 +12,15 @@ Timer::Timer()
 void Timer::Reset()
 {
   _curTime = _startTime = TimeStamp::Now();
-  if (_cycle.Ticks() > 0)
-    _cycleTime = _curTime + _cycle;
 }
 
 //------------------------------------------------------------------------------
 void Timer::Start()
 {
-  if (_running)
+  if (_flags.IsSet(Timer::TimerFlag::Running))
     return;
 
-  _running = true;
+  _flags.Set(Timer::TimerFlag::Running);
 
   // check if we are resuming, or starting for the first time
   if (!_startTime.IsValid())
@@ -39,68 +37,66 @@ void Timer::Start()
     _startTime += delta;
     _curTime = now;
   }
-
-  // If the timer is set to loop, set the next end time
-  if (_cycle.Ticks() > 0)
-    _cycleTime = _curTime + _cycle;
 }
 
 //------------------------------------------------------------------------------
 void Timer::Stop()
 {
-  if (!_running)
+  if (!_flags.IsSet(Timer::TimerFlag::Running))
     return;
 
-  _running = false;
+  _flags.Clear(Timer::TimerFlag::Running);
   _curTime = TimeStamp::Now();
 }
 
 //------------------------------------------------------------------------------
-void Timer::SetElapsed(TimeDuration elapsed)
+void Timer::SetElapsed(const TimeDuration& elapsed)
 {
-  if (_running)
-  {
+  if (_flags.IsSet(Timer::TimerFlag::Running))
     _startTime = TimeStamp::Now() - elapsed;
-  }
   else
-  {
     _startTime = _curTime - elapsed;
-  }
+}
+
+//------------------------------------------------------------------------------
+void Timer::Adjust(const TimeDuration& delta)
+{
+  _startTime -= delta;
 }
 
 //------------------------------------------------------------------------------
 TimeDuration Timer::Peek() const
 {
-  u64 delta = ((_running ? TimeStamp::Now() : _curTime) - _startTime).Ticks();
-  return TimeDuration(delta);
+  TimeStamp cur = _flags.IsSet(Timer::TimerFlag::Running) ? TimeStamp::Now() : _curTime;
+  return cur - _startTime;
 }
 
 //------------------------------------------------------------------------------
 TimeDuration Timer::Elapsed(TimeDuration* delta)
 {
   TimeStamp prev = _curTime;
-  if (_running)
+  if (_flags.IsSet(Timer::TimerFlag::Running))
     _curTime = TimeStamp::Now();
 
   if (delta)
     *delta = _curTime - prev;
 
   // check if the timer has looped
-  if (_cycle.Ticks() > 0 && _curTime > _cycleTime)
+  TimeDuration elapsed = _curTime - _startTime;
+  if (_flags.IsSet(Timer::TimerFlag::Looping) && elapsed > _cycle)
     Reset();
 
-  return _curTime - _startTime;
+  return elapsed;
 }
 
 //------------------------------------------------------------------------------
 bool Timer::IsRunning() const
 {
-  return _running;
+  return _flags.IsSet(Timer::TimerFlag::Running);
 }
 
 //------------------------------------------------------------------------------
 void Timer::SetCycle(const TimeDuration& cycle)
 {
   _cycle = cycle;
-  _cycleTime = _startTime + _cycle;
 }

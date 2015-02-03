@@ -24,7 +24,8 @@ cbuffer PerFrame : register(b0)
 float s2(float3 p)
 {
   float s = 3;
-  return sdBox(p, float3(s,s,s)) + 0.1 * sin(time * p.x * p.y) + 0.1 * cos(time * max(p.z,p.y));
+  float t = sin(time * p.x * p.y);
+  return sdBox(p, float3(s,s,s)) + 0.15 * t + 0.1 * cos(time * max(p.z,p.y));
 }
 
 float opRep( float3 p, float3 c )
@@ -58,7 +59,7 @@ float3 getNormal(float3 p)
 //------------------------------------------------------
 float trace(float3 from, float3 direction)
 {
-  int MaximumRaySteps = 50;
+  int MaximumRaySteps = 100;
   float MinimumDistance = 0.01f;
 
   float totalDistance = 0.0;
@@ -110,5 +111,7 @@ float4 PsRaymarcher(VSQuadOut input) : SV_TARGET
   r.y /= aspectRatio;
   r = normalize(r);
 
+  float t = trace(cameraPos, r);
+  return float4(t, 1.1 * t, 1.2 * t, t);
   return trace(cameraPos, r);
 }
