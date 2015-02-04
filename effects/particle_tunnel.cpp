@@ -206,13 +206,13 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(ParseParticleTunnelSettings(InputBuffer(buf), &_settings));
 
   // Background state setup
-  INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsQuad", nullptr, "PsBackground"));
+  INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsQuad", nullptr, "PsBackground"));
   INIT(_backgroundState.Create());
 
   // Particle state setup
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
   INIT(_particleGpuObjects.LoadShadersFromFile(
-    "shaders/particle_tunnel", "VsParticle", nullptr, "PsParticle", VertexFlags::VF_POS | VertexFlags::VF_TEX3_0));
+    "shaders/out/particle_tunnel", "VsParticle", nullptr, "PsParticle", VertexFlags::VF_POS | VertexFlags::VF_TEX3_0));
   INIT(_particleGpuObjects.CreateDynamicVb(sizeof(PosTex3) * 6 * _settings.num_particles, sizeof(PosTex3)));
 
   {
@@ -235,7 +235,7 @@ bool ParticleTunnel::Init(const char* configFile)
   _particles.Create(_settings.num_particles);
 
   // Composite state setup
-  INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsQuad", nullptr, "PsComposite"));
+  INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsQuad", nullptr, "PsComposite"));
   INIT(_compositeState.Create());
 
   // Text setup
@@ -259,7 +259,7 @@ bool ParticleTunnel::Init(const char* configFile)
     INIT(_textState.Create(&dsDesc, &blendDesc, &rssDesc));
   }
   INIT(_textGpuObjects.CreateDynamicVb((u32)_neuroticaTris.size() * sizeof(Vector3), sizeof(Vector3)));
-  INIT(_textGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsText", nullptr, "PsText", VertexFlags::VF_POS));
+  INIT(_textGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsText", nullptr, "PsText", VertexFlags::VF_POS));
 
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
@@ -281,7 +281,7 @@ bool ParticleTunnel::Init(const char* configFile)
   }
   INIT_RESOURCE(_lineTexture, RESOURCE_MANAGER.LoadTexture("gfx/line.png"));
   INIT(_linesGpuObjects.CreateDynamicVb((u32)_neuroticaTris.size() * sizeof(Vector3) * 3 * 2, sizeof(Vector3)));
-  INIT(_linesGpuObjects.LoadShadersFromFile("shaders/particle_tunnel", "VsLines", "GsLines", "PsLines", VertexFlags::VF_POS));
+  INIT(_linesGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsLines", "GsLines", "PsLines", VertexFlags::VF_POS));
   _linesGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 
   // Generic setup
@@ -467,6 +467,7 @@ bool ParticleTunnel::Render()
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
   _ctx->Draw(6 * _settings.num_particles, 0);
 
+/*
   // text
   _ctx->SetGpuObjects(_textGpuObjects);
   _ctx->SetGpuState(_textState);
@@ -478,6 +479,7 @@ bool ParticleTunnel::Render()
   _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_lineTexture, ShaderType::PixelShader);
   _ctx->Draw(_numLines, 0);
+*/
 
   // compose final image on default swap chain
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));

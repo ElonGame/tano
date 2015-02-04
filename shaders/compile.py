@@ -9,29 +9,41 @@ import glob
 import subprocess
 import collections
 
-vs = collections.defaultdict(list)
-gs = collections.defaultdict(list)
-ps = collections.defaultdict(list)
-cs = collections.defaultdict(list)
+out_dir = 'out'
+
+## shaders and entry points
+vs = {
+    'particle_tunnel' : ['VsParticle', 'VsQuad', 'VsText', 'VsLines'],
+    'raymarcher' : ['VsQuad'],
+    'imgui' : ['VsMain'],
+}
+
+ps = {
+    'particle_tunnel' : ['PsParticle', 'PsBackground', 'PsText', 'PsComposite', 'PsLines'],
+    'raymarcher' : ['PsRaymarcher'],
+    'imgui' : ['PsMain'],
+}
+
+cs = {
+    'blur' : ['CopyTranspose', 'BlurTranspose', 'BoxBlurX', 'BoxBlurY'],
+}
+
+gs = {
+    'particle_tunnel' : ['GsLines'],
+}
 
 vs_data = { 'shaders': vs, 'profile': 'vs', 'obj_ext': 'vso', 'asm_ext': 'vsa' }
 gs_data = { 'shaders': gs, 'profile': 'gs', 'obj_ext': 'gso', 'asm_ext': 'gsa' }
 ps_data = { 'shaders': ps, 'profile': 'ps', 'obj_ext': 'pso', 'asm_ext': 'psa' }
 cs_data = { 'shaders': cs, 'profile': 'cs', 'obj_ext': 'cso', 'asm_ext': 'csa' }
 
-## shaders 
-vs['particle_tunnel'] = ['VsParticle', 'VsQuad', 'VsText', 'VsLines']
-ps['particle_tunnel'] = ['PsParticle', 'PsBackground', 'PsText', 'PsComposite', 'PsLines']
-gs['particle_tunnel'] = ['GsLines']
-
-vs['raymarcher'] = ['VsQuad']
-ps['raymarcher'] = ['PsRaymarcher']
-
-vs['imgui'] = ['VsMain']
-ps['imgui'] = ['PsMain']
-
-
 last_fail_time = {}
+
+def safe_mkdir(path):
+    try:
+        os.mkdir(path)
+    except OSError:
+        pass
 
 def filetime_is_newer(time, filename):
     try:
@@ -64,8 +76,8 @@ def compile(data):
 
         # check for old or missing files (each entry point gets its own file)
         for output, entry_point, is_debug in generate_files(filename, entry_points, obj_ext, asm_ext):
-            if filetime_is_newer(hlsl_file_time, output):
-                out_name = filename + '_' + entry_point
+            if filetime_is_newer(hlsl_file_time, os.path.join(out_dir, output)):
+                out_name = os.path.join(out_dir, filename + '_' + entry_point)
 
                 if is_debug:
                     # create debug shader
@@ -95,6 +107,8 @@ def compile(data):
                     last_fail_time[filename] = hlsl_file_time
                 elif filename in last_fail_time: 
                     del(last_fail_time[filename])
+
+safe_mkdir(out_dir)
 
 while True:
     compile(vs_data)

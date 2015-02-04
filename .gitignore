@@ -12,6 +12,6 @@ _win32/x64/Release/*
 *.vsp
 *.ipch
 generated/*
-shaders/*.[pvg]s[oa]
+shaders/out/*
 _win32/My Advisor*
 _win32/My Inspector*

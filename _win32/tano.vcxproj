@@ -238,6 +238,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
+    <ClCompile Include="..\post_process.cpp" />
     <ClCompile Include="..\precompiled.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</PrecompiledHeaderFile>
@@ -347,6 +348,7 @@
     <ClInclude Include="..\imgui_helpers.hpp" />
     <ClInclude Include="..\init_sequence.hpp" />
     <ClInclude Include="..\object_handle.hpp" />
+    <ClInclude Include="..\post_process.hpp" />
     <ClInclude Include="..\precompiled.hpp" />
     <ClInclude Include="..\property_manager.hpp" />
     <ClInclude Include="..\Remotery\lib\Remotery.h" />

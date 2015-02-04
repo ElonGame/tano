@@ -145,6 +145,9 @@
     <ClCompile Include="..\effects\raymarcher.cpp">
       <Filter>effects</Filter>
     </ClCompile>
+    <ClCompile Include="..\post_process.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -299,6 +302,9 @@
     </ClInclude>
     <ClInclude Include="..\effects\raymarcher.hpp">
       <Filter>effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\post_process.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
