@@ -16,6 +16,7 @@ vs = {
     'particle_tunnel' : ['VsParticle', 'VsQuad', 'VsText', 'VsLines'],
     'raymarcher' : ['VsQuad'],
     'imgui' : ['VsMain'],
+    'quad' : ['VsMain'],
 }
 
 ps = {

@@ -1,5 +1,5 @@
 #include "graphics.hpp"
-#include "deferred_context.hpp"
+#include "graphics_context.hpp"
 #include "gpu_objects.hpp"
 
 static const int MAX_SAMPLERS = 8;
@@ -8,8 +8,8 @@ static const int MAX_TEXTURES = 8;
 using namespace tano;
 
 //------------------------------------------------------------------------------
-DeferredContext::DeferredContext() 
-  : _ctx(nullptr)
+GraphicsContext::GraphicsContext(ID3D11DeviceContext* ctx)
+  : _ctx(ctx)
   , _default_stencil_ref(0)
   , _default_sample_mask(0xffffffff)
 {
@@ -17,20 +17,20 @@ DeferredContext::DeferredContext()
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::GenerateMips(ObjectHandle h)
+void GraphicsContext::GenerateMips(ObjectHandle h)
 {
   auto r = GRAPHICS._renderTargets.Get(h)->srv.resource;
   _ctx->GenerateMips(r);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetRenderTarget(ObjectHandle render_target, const Color* clearColor)
+void GraphicsContext::SetRenderTarget(ObjectHandle render_target, const Color* clearColor)
 {
   SetRenderTargets(&render_target, clearColor, 1);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetRenderTargets(
+void GraphicsContext::SetRenderTargets(
     ObjectHandle* renderTargets,
     const Color* clearTargets,
     int numRenderTargets)
@@ -71,13 +71,13 @@ void DeferredContext::SetRenderTargets(
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetSwapChain(ObjectHandle h, const Color& clearColor)
+void GraphicsContext::SetSwapChain(ObjectHandle h, const Color& clearColor)
 {
   SetSwapChain(h, (const float*)clearColor);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetSwapChain(ObjectHandle h, const float* clearColor)
+void GraphicsContext::SetSwapChain(ObjectHandle h, const float* clearColor)
 {
   auto swapChain  = GRAPHICS._swapChains.Get(h);
   auto rt         = GRAPHICS._renderTargets.Get(swapChain->_renderTarget);
@@ -92,41 +92,41 @@ void DeferredContext::SetSwapChain(ObjectHandle h, const float* clearColor)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetVS(ObjectHandle vs)
+void GraphicsContext::SetVS(ObjectHandle vs)
 {
   assert(vs.type() == ObjectHandle::kVertexShader || !vs.IsValid());
   _ctx->VSSetShader(vs.IsValid() ? GRAPHICS._vertexShaders.Get(vs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetCS(ObjectHandle cs)
+void GraphicsContext::SetCS(ObjectHandle cs)
 {
   assert(cs.type() == ObjectHandle::kComputeShader || !cs.IsValid());
   _ctx->CSSetShader(cs.IsValid() ? GRAPHICS._computeShaders.Get(cs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetGS(ObjectHandle gs)
+void GraphicsContext::SetGS(ObjectHandle gs)
 {
   assert(gs.type() == ObjectHandle::kGeometryShader || !gs.IsValid());
   _ctx->GSSetShader(gs.IsValid() ? GRAPHICS._geometryShaders.Get(gs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetPS(ObjectHandle ps)
+void GraphicsContext::SetPS(ObjectHandle ps)
 {
   assert(ps.type() == ObjectHandle::kPixelShader || !ps.IsValid());
   _ctx->PSSetShader(ps.IsValid() ? GRAPHICS._pixelShaders.Get(ps) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetLayout(ObjectHandle layout)
+void GraphicsContext::SetLayout(ObjectHandle layout)
 {
   _ctx->IASetInputLayout(layout.IsValid() ? GRAPHICS._inputLayouts.Get(layout) : nullptr);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetIB(ObjectHandle ib)
+void GraphicsContext::SetIB(ObjectHandle ib)
 {
   if (ib.IsValid())
     SetIB(GRAPHICS._indexBuffers.Get(ib), (DXGI_FORMAT)ib.data());
@@ -135,13 +135,13 @@ void DeferredContext::SetIB(ObjectHandle ib)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetIB(ID3D11Buffer* buf, DXGI_FORMAT format)
+void GraphicsContext::SetIB(ID3D11Buffer* buf, DXGI_FORMAT format)
 {
   _ctx->IASetIndexBuffer(buf, format, 0);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetVB(ID3D11Buffer* buf, u32 stride)
+void GraphicsContext::SetVB(ID3D11Buffer* buf, u32 stride)
 {
   UINT ofs[] = { 0 };
   ID3D11Buffer* bufs[] = { buf };
@@ -150,7 +150,7 @@ void DeferredContext::SetVB(ID3D11Buffer* buf, u32 stride)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetVB(ObjectHandle vb) 
+void GraphicsContext::SetVB(ObjectHandle vb) 
 {
   if (vb.IsValid())
     SetVB(GRAPHICS._vertexBuffers.Get(vb), vb.data());
@@ -159,31 +159,31 @@ void DeferredContext::SetVB(ObjectHandle vb)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY top)
+void GraphicsContext::SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY top)
 {
   _ctx->IASetPrimitiveTopology(top);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetRasterizerState(ObjectHandle rs)
+void GraphicsContext::SetRasterizerState(ObjectHandle rs)
 {
   _ctx->RSSetState(GRAPHICS._rasterizerStates.Get(rs));
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetDepthStencilState(ObjectHandle dss, UINT stencil_ref)
+void GraphicsContext::SetDepthStencilState(ObjectHandle dss, UINT stencil_ref)
 {
   _ctx->OMSetDepthStencilState(GRAPHICS._depthStencilStates.Get(dss), stencil_ref);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetBlendState(ObjectHandle bs, const float* blendFactors, UINT sampleMask)
+void GraphicsContext::SetBlendState(ObjectHandle bs, const float* blendFactors, UINT sampleMask)
 {
   _ctx->OMSetBlendState(GRAPHICS._blendStates.Get(bs), blendFactors, sampleMask);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::UnsetSRVs(u32 first, u32 count, ShaderType shaderType)
+void GraphicsContext::UnsetSRVs(u32 first, u32 count, ShaderType shaderType)
 {
   ID3D11ShaderResourceView* srViews[16] = { nullptr };
 
@@ -198,7 +198,7 @@ void DeferredContext::UnsetSRVs(u32 first, u32 count, ShaderType shaderType)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::UnsetUAVs(int first, int count)
+void GraphicsContext::UnsetUAVs(int first, int count)
 {
   UINT initialCount = -1;
   static ID3D11UnorderedAccessView *nullViews[MAX_TEXTURES] = { nullptr };
@@ -206,14 +206,14 @@ void DeferredContext::UnsetUAVs(int first, int count)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::UnsetRenderTargets(int first, int count)
+void GraphicsContext::UnsetRenderTargets(int first, int count)
 {
   static ID3D11RenderTargetView *nullViews[8] = { nullptr };
   _ctx->OMSetRenderTargets(count, nullViews, nullptr);
 }
 
 //------------------------------------------------------------------------------
-bool DeferredContext::Map(
+bool GraphicsContext::Map(
   ObjectHandle h,
   UINT sub,
   D3D11_MAP type,
@@ -238,7 +238,7 @@ bool DeferredContext::Map(
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::Unmap(ObjectHandle h, UINT sub)
+void GraphicsContext::Unmap(ObjectHandle h, UINT sub)
 {
   switch (h.type())
   {
@@ -261,7 +261,7 @@ void DeferredContext::Unmap(ObjectHandle h, UINT sub)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::CopyToBuffer(ObjectHandle h, const void* data, u32 len)
+void GraphicsContext::CopyToBuffer(ObjectHandle h, const void* data, u32 len)
 {
   D3D11_MAPPED_SUBRESOURCE res;
   if (Map(h, 0, D3D11_MAP_WRITE_DISCARD, 0, &res))
@@ -272,7 +272,7 @@ void DeferredContext::CopyToBuffer(ObjectHandle h, const void* data, u32 len)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::CopyToBuffer(
+void GraphicsContext::CopyToBuffer(
     ObjectHandle h,
     UINT sub,
     D3D11_MAP type,
@@ -289,31 +289,31 @@ void DeferredContext::CopyToBuffer(
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::DrawIndexed(int count, int start_index, int base_vertex)
+void GraphicsContext::DrawIndexed(int count, int start_index, int base_vertex)
 {
   _ctx->DrawIndexed(count, start_index, base_vertex);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::Draw(int vertexCount, int startVertexLocation)
+void GraphicsContext::Draw(int vertexCount, int startVertexLocation)
 {
   _ctx->Draw(vertexCount, startVertexLocation);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::Dispatch(int threadGroupCountX, int threadGroupCountY, int threadGroupCountZ)
+void GraphicsContext::Dispatch(int threadGroupCountX, int threadGroupCountY, int threadGroupCountZ)
 {
   _ctx->Dispatch(threadGroupCountX, threadGroupCountY, threadGroupCountZ);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::Flush()
+void GraphicsContext::Flush()
 {
   _ctx->Flush();
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetShaderResources(
+void GraphicsContext::SetShaderResources(
     const vector<ObjectHandle>& handles,
     ShaderType shaderType)
 {
@@ -339,7 +339,7 @@ void DeferredContext::SetShaderResources(
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetShaderResource(ObjectHandle h, ShaderType shaderType)
+void GraphicsContext::SetShaderResource(ObjectHandle h, ShaderType shaderType)
 {
   ID3D11ShaderResourceView* view = view = GRAPHICS.GetShaderResourceView(h);
   view = GRAPHICS.GetShaderResourceView(h);
@@ -363,7 +363,7 @@ void DeferredContext::SetShaderResource(ObjectHandle h, ShaderType shaderType)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetUAV(ObjectHandle h, Color* clearColor)
+void GraphicsContext::SetUAV(ObjectHandle h, Color* clearColor)
 {
   auto type = h.type();
 
@@ -394,7 +394,7 @@ void DeferredContext::SetUAV(ObjectHandle h, Color* clearColor)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetSamplerState(ObjectHandle h, u32 slot, ShaderType shaderType)
+void GraphicsContext::SetSamplerState(ObjectHandle h, u32 slot, ShaderType shaderType)
 {
   ID3D11SamplerState* samplerState = GRAPHICS._sampler_states.Get(h);
 
@@ -409,7 +409,7 @@ void DeferredContext::SetSamplerState(ObjectHandle h, u32 slot, ShaderType shade
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetSamplers(
+void GraphicsContext::SetSamplers(
     const ObjectHandle* h,
     u32 slot,
     u32 numSamplers,
@@ -430,7 +430,7 @@ void DeferredContext::SetSamplers(
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetConstantBuffer(
+void GraphicsContext::SetConstantBuffer(
     ObjectHandle h,
     const void* buf,
     size_t len,
@@ -456,7 +456,7 @@ void DeferredContext::SetConstantBuffer(
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetGpuObjects(const GpuObjects& obj)
+void GraphicsContext::SetGpuObjects(const GpuObjects& obj)
 {
   // NOTE: We don't check for handle validity here, as setting an invalid (uninitialized)
   // handle is the same as setting NULL, ie unbinding
@@ -470,7 +470,7 @@ void DeferredContext::SetGpuObjects(const GpuObjects& obj)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetGpuState(const GpuState& state)
+void GraphicsContext::SetGpuState(const GpuState& state)
 {
   static float blendFactor[4] = { 1, 1, 1, 1 };
   SetRasterizerState(state._rasterizerState);
@@ -479,20 +479,20 @@ void DeferredContext::SetGpuState(const GpuState& state)
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetGpuStateSamplers(const GpuState& state, ShaderType shaderType)
+void GraphicsContext::SetGpuStateSamplers(const GpuState& state, ShaderType shaderType)
 {
   SetSamplers(state._samplers, 0, 4, shaderType);
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetViewports(u32 numViewports, const D3D11_VIEWPORT& viewport)
+void GraphicsContext::SetViewports(u32 numViewports, const D3D11_VIEWPORT& viewport)
 {
   vector<D3D11_VIEWPORT> viewports(numViewports, viewport);
   _ctx->RSSetViewports(numViewports, viewports.data());
 }
 
 //------------------------------------------------------------------------------
-void DeferredContext::SetScissorRect(u32 numRects, const D3D11_RECT* rects)
+void GraphicsContext::SetScissorRect(u32 numRects, const D3D11_RECT* rects)
 {
   _ctx->RSSetScissorRects(numRects, rects);
 }

@@ -8,15 +8,9 @@ Effect::Effect(const string& name, u32 id)
   : _name(name)
   , _id(id)
   , _running(false)
-  , _ctx(GRAPHICS.CreateDeferredContext())
+  , _ctx(GRAPHICS.GetGraphicsContext())
   , _firstTick(true)
 {
-}
-
-//------------------------------------------------------------------------------
-Effect::~Effect()
-{
-  GRAPHICS.DestroyDeferredContext(_ctx);
 }
 
 //------------------------------------------------------------------------------

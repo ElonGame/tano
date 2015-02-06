@@ -4,6 +4,7 @@
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
 #include "../text_writer.hpp"
+#include "../post_process.hpp"
 
 namespace tano
 {
@@ -115,5 +116,7 @@ namespace tano
     TextWriter _textWriter;
     vector<Vector3> _neuroticaTris;
     TextParticles _textParticles;
+
+    PostProcess _postProcess;
   };
 }

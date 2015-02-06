@@ -1,6 +1,6 @@
 #include "gpu_objects.hpp"
 #include "graphics.hpp"
-#include "deferred_context.hpp"
+#include "graphics_context.hpp"
 
 using namespace tano;
 using namespace bristol;

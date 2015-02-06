@@ -1,6 +1,6 @@
 #include "imgui_helpers.hpp"
 #include "graphics.hpp"
-#include "deferred_context.hpp"
+#include "graphics_context.hpp"
 #include "init_sequence.hpp"
 
 using namespace tano;
@@ -23,7 +23,7 @@ namespace
   INT64 ticks_per_second = 0;
   INT64 last_time = 0;
 
-  DeferredContext* g_ctx;
+  GraphicsContext* g_ctx;
   ConstantBuffer<VERTEX_CONSTANT_BUFFER> g_cb;
 
   GpuObjects g_gpuObjects;
@@ -290,7 +290,7 @@ namespace tano
   //------------------------------------------------------------------------------
   bool InitImGui()
   {
-    g_ctx = GRAPHICS.CreateDeferredContext();
+    g_ctx = GRAPHICS.GetGraphicsContext();
     InitDeviceD3D();
 
     HWND hwnd = GRAPHICS.GetHwnd();

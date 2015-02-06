@@ -1,7 +1,7 @@
 #include "particle_tunnel.hpp"
 #include "../tano.hpp"
 #include "../graphics.hpp"
-#include "../deferred_context.hpp"
+#include "../graphics_context.hpp"
 #include "../demo_engine.hpp"
 #include "../resource_manager.hpp"
 #include "../init_sequence.hpp"
@@ -181,6 +181,7 @@ void ParticleTunnel::TextParticles::Update(float dt)
 ParticleTunnel::ParticleTunnel(const string &name, u32 id)
   : Effect(name, id)
   , _textParticles(_settings)
+  , _postProcess(_ctx)
 {
   PROPERTIES.Register("particle tunnel", 
     bind(&ParticleTunnel::RenderParameterSet, this),
@@ -283,6 +284,9 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(_linesGpuObjects.CreateDynamicVb((u32)_neuroticaTris.size() * sizeof(Vector3) * 3 * 2, sizeof(Vector3)));
   INIT(_linesGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsLines", "GsLines", "PsLines", VertexFlags::VF_POS));
   _linesGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+
+  // Post-process setup
+  INIT(_postProcess.Init());
 
   // Generic setup
   INIT(_cbPerFrame.Create());

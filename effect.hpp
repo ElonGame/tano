@@ -4,7 +4,7 @@
 
 namespace tano
 {
-  class DeferredContext;
+  class GraphicsContext;
 
   struct UpdateState
   {
@@ -22,7 +22,7 @@ namespace tano
   public:
 
     Effect(const string& name, u32 id);
-    virtual ~Effect();
+    virtual ~Effect() {}
     virtual bool Init(const char* configFile);
     virtual bool Show();
     virtual bool Hide();
@@ -48,7 +48,7 @@ namespace tano
     TimeDuration _startTime, _endTime;
     bool _running;
 
-    DeferredContext* _ctx;
+    GraphicsContext* _ctx;
     bool _firstTick;
   };
 }

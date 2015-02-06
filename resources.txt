@@ -16,5 +16,6 @@ shaders/out/particle_tunnel_VsLinesD.vso	C:/projects/tano/shaders/out/particle_t
 shaders/out/particle_tunnel_VsParticleD.vso	C:/projects/tano/shaders/out/particle_tunnel_VsParticleD.vso
 shaders/out/particle_tunnel_VsQuadD.vso	C:/projects/tano/shaders/out/particle_tunnel_VsQuadD.vso
 shaders/out/particle_tunnel_VsTextD.vso	C:/projects/tano/shaders/out/particle_tunnel_VsTextD.vso
+shaders/out/quad_VsMainD.vso	C:/projects/tano/shaders/out/quad_VsMainD.vso
 shaders/out/raymarcher_PsRaymarcherD.pso	C:/projects/tano/shaders/out/raymarcher_PsRaymarcherD.pso
 shaders/out/raymarcher_VsQuadD.vso	C:/projects/tano/shaders/out/raymarcher_VsQuadD.vso

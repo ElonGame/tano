@@ -1,5 +1,5 @@
 #include "graphics.hpp"
-#include "deferred_context.hpp"
+#include "graphics_context.hpp"
 #include "resource_manager.hpp"
 #include "init_sequence.hpp"
 
@@ -44,6 +44,12 @@ Graphics::Graphics()
   , _structuredBuffers(DeleteObj<StructuredBuffer *>)
   , _swapChains(DeleteObj<SwapChain*>)
 {
+}
+
+//------------------------------------------------------------------------------
+Graphics::~Graphics()
+{
+  SAFE_DELETE(_graphicsContext);
 }
 
 //------------------------------------------------------------------------------
@@ -115,12 +121,12 @@ bool Graphics::CreateDevice()
 
   flags |= D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 
-  // Create the DX11 device
+  // Create the DX11 device and context
   CComPtr<IDXGIAdapter> adapter = _curSetup.videoAdapters[_curSetup.selectedAdapter].adapter;
-  if (FAILED(D3D11CreateDevice(
-      adapter,D3D_DRIVER_TYPE_UNKNOWN, NULL, flags, NULL, 0, D3D11_SDK_VERSION,
-      &_device, &_featureLevel, &_immediateContext)))
+  if (FAILED(D3D11CreateDevice(adapter,D3D_DRIVER_TYPE_UNKNOWN, NULL, flags, NULL, 0, D3D11_SDK_VERSION, &_device, &_featureLevel, &_immediateContext)))
     return false;
+
+  _graphicsContext = new GraphicsContext(_immediateContext);
 
   if (_featureLevel < D3D_FEATURE_LEVEL_9_3)
     return false;
@@ -948,19 +954,9 @@ ObjectHandle Graphics::MakeObjectHandle(
 }
 
 //------------------------------------------------------------------------------
-void Graphics::DestroyDeferredContext(DeferredContext *ctx)
+GraphicsContext* Graphics::GetGraphicsContext()
 {
-  if (!ctx)
-    return;
-  delete exch_null(ctx);
-}
-
-//------------------------------------------------------------------------------
-DeferredContext* Graphics::CreateDeferredContext()
-{
-  DeferredContext *dc = new DeferredContext;
-  dc->_ctx = _immediateContext;
-  return dc;
+  return _graphicsContext;
 }
 
 //------------------------------------------------------------------------------

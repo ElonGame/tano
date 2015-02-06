@@ -14,7 +14,7 @@ namespace tano
 {
   class Graphics
   {
-    friend class DeferredContext;
+    friend class GraphicsContext;
     friend class PackedResourceManager;
     friend class ResourceManager;
     friend struct SwapChain;
@@ -94,10 +94,7 @@ namespace tano
     ObjectHandle FindRasterizerState(const string &name);
     ObjectHandle FindDepthStencilState(const string &name);
 
-    // TODO: I want to phase out DeferredContexts, as they are a bad idea, but
-    // that will have to wait..
-    DeferredContext *CreateDeferredContext();
-    void DestroyDeferredContext(DeferredContext *ctx);
+    GraphicsContext *GetGraphicsContext();
     void AddCommandList(ID3D11CommandList *cmd_list);
 
     bool VSync() const { return _vsync; }
@@ -139,6 +136,7 @@ namespace tano
     static ObjectHandle MakeObjectHandle(ObjectHandle::Type type, int idx, int data = 0);
 
   private:
+    ~Graphics();
 
     ObjectHandle ReserveObjectHandle(const string& id, ObjectHandle::Type type);
 
@@ -165,6 +163,7 @@ namespace tano
 
     CComPtr<ID3D11Device> _device;
     CComPtr<ID3D11DeviceContext> _immediateContext;
+    GraphicsContext* _graphicsContext = nullptr;
 
 #if WITH_DXGI_DEBUG
     CComPtr<ID3D11Debug> _d3dDebug;

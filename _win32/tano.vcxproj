@@ -149,7 +149,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\deferred_context.cpp">
+    <ClCompile Include="..\graphics_context.cpp">
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
@@ -324,7 +324,7 @@
     <ClInclude Include="..\bristol\string_utils.hpp" />
     <ClInclude Include="..\bristol\time_utils.hpp" />
     <ClInclude Include="..\bristol\utils.hpp" />
-    <ClInclude Include="..\deferred_context.hpp" />
+    <ClInclude Include="..\graphics_context.hpp" />
     <ClInclude Include="..\demo_engine.hpp" />
     <ClInclude Include="..\effect.hpp" />
     <ClInclude Include="..\effects\particle_tunnel.hpp" />

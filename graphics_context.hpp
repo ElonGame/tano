@@ -5,7 +5,7 @@
 
 namespace tano
 {
-  class DeferredContext
+  class GraphicsContext
   {
     friend class Graphics;
   public:
@@ -64,7 +64,7 @@ namespace tano
     void Flush();
 
   private:
-    DeferredContext();
+    GraphicsContext(ID3D11DeviceContext* ctx);
     ID3D11DeviceContext *_ctx;
 
     u32 _default_stencil_ref;
@@ -74,7 +74,7 @@ namespace tano
   };
 
   template <typename T>
-  T* DeferredContext::MapWriteDiscard(ObjectHandle h)
+  T* GraphicsContext::MapWriteDiscard(ObjectHandle h)
   {
     D3D11_MAPPED_SUBRESOURCE res;
     if (!Map(h, 0, D3D11_MAP_WRITE_DISCARD, 0, &res))

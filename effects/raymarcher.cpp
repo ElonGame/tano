@@ -1,7 +1,7 @@
 #include "raymarcher.hpp"
 #include "../tano.hpp"
 #include "../graphics.hpp"
-#include "../deferred_context.hpp"
+#include "../graphics_context.hpp"
 #include "../demo_engine.hpp"
 #include "../resource_manager.hpp"
 #include "../init_sequence.hpp"

@@ -4,11 +4,11 @@
 
 namespace tano
 {
-  class DeferredContext;
+  class GraphicsContext;
 
   struct PostProcess
   {
-    PostProcess(DeferredContext* ctx);
+    PostProcess(GraphicsContext* ctx);
 
     bool Init();
     void Setup();
@@ -20,7 +20,7 @@ namespace tano
       const Color* clearColor,
       WCHAR* name);
 
-    DeferredContext* _ctx;
+    GraphicsContext* _ctx;
 
     struct CBufferPS
     {
@@ -30,6 +30,7 @@ namespace tano
     ConstantBuffer<CBufferPS> _cb;
 
     GpuState _gpuState;
+    GpuObjects _gpuObjects;
 
     ObjectHandle _vsQuad;
   };

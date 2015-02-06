@@ -4,10 +4,10 @@
 
 namespace tano
 {
-  class DeferredContext;
+  class GraphicsContext;
 
   // Note, the objects here just hold state. The code for actually setting the state
-  // on the context is found in DeferredContext (SetGpuState et al)
+  // on the context is found in GraphicsContext (SetGpuState et al)
 
   //------------------------------------------------------------------------------
   struct GpuObjects

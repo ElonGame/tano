@@ -2,7 +2,7 @@
 #include "resource_manager.hpp"
 #include "demo_engine.hpp"
 #include "graphics.hpp"
-#include "deferred_context.hpp"
+#include "graphics_context.hpp"
 #include "init_sequence.hpp"
 #include "generated/app.parse.hpp"
 #include "generated/input_buffer.hpp"

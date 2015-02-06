@@ -1,11 +1,11 @@
 #include "post_process.hpp"
-#include "deferred_context.hpp"
+#include "graphics_context.hpp"
 #include "init_sequence.hpp"
 
 using namespace tano;
 
 //------------------------------------------------------------------------------
-PostProcess::PostProcess(DeferredContext* ctx)
+PostProcess::PostProcess(GraphicsContext* ctx)
   : _ctx(ctx)
 {
 }
@@ -26,8 +26,7 @@ bool PostProcess::Init()
   rsDesc.CullMode = D3D11_CULL_NONE;
 
   INIT(_gpuState.Create(&dsDesc, nullptr, &rsDesc));
-
-  INIT(GRAPHICS.LoadShadersFromFile("shaders/quad", &_vsQuad, nullptr, nullptr, 0));
+  INIT(_gpuObjects.LoadShadersFromFile("shaders/out/quad", "VsMain", nullptr, nullptr));
 
   END_INIT_SEQUENCE();
 }
@@ -54,8 +53,6 @@ void PostProcess::Execute(
   const Color* clearColor,
   WCHAR* name)
 {
-  GPU_BeginEvent(0xffffffff, name);
-
   _ctx->SetLayout(ObjectHandle());
 
   if (output.IsValid())
@@ -70,14 +67,14 @@ void PostProcess::Execute(
   for (size_t i = 0; i < input.size(); ++i)
     GRAPHICS.GetTextureSize(input[i], &inputX[i], &inputY[i]);
   GRAPHICS.GetTextureSize(output, &outputX, &outputY);
-  _cb.data.inputSize.x = (float)inputX[0];
-  _cb.data.inputSize.y = (float)inputY[0];
-  _cb.data.outputSize.x = (float)outputX;
-  _cb.data.outputSize.y = (float)outputY;
-  _ctx->SetCBuffer(_cb, ShaderType::PixelShader, 0);
+  _cb.inputSize.x = (float)inputX[0];
+  _cb.inputSize.y = (float)inputY[0];
+  _cb.outputSize.x = (float)outputX;
+  _cb.outputSize.y = (float)outputY;
+  _ctx->SetConstantBuffer(_cb, ShaderType::PixelShader, 0);
 
   CD3D11_VIEWPORT viewport = CD3D11_VIEWPORT(0.f, 0.f, (float)outputX, (float)outputY);
-  _ctx->SetViewports(viewport, 1);
+  _ctx->SetViewports(1, viewport);
 
   _ctx->SetPS(shader);
   _ctx->Draw(6, 0);
@@ -86,6 +83,4 @@ void PostProcess::Execute(
     _ctx->UnsetRenderTargets(0, 1);
 
   _ctx->UnsetSRVs(0, (u32)input.size(), ShaderType::PixelShader);
-
-  GPU_EndEvent();
 }
