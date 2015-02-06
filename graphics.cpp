@@ -2,6 +2,7 @@
 #include "graphics_context.hpp"
 #include "resource_manager.hpp"
 #include "init_sequence.hpp"
+#include "post_process.hpp"
 
 extern const TCHAR* g_AppWindowTitle;
 
@@ -50,6 +51,7 @@ Graphics::Graphics()
 Graphics::~Graphics()
 {
   SAFE_DELETE(_graphicsContext);
+  SAFE_DELETE(_postProcess);
 }
 
 //------------------------------------------------------------------------------
@@ -79,6 +81,9 @@ bool Graphics::Init(HINSTANCE hInstance)
   BEGIN_INIT_SEQUENCE();
   INIT(InitConfigDialog(hInstance));
   INIT(CreateDevice());
+
+  _postProcess = new PostProcess(_graphicsContext);
+  INIT(_postProcess->Init());
 
   // Create a dummy texture
   DWORD black = 0;
@@ -957,13 +962,6 @@ ObjectHandle Graphics::MakeObjectHandle(
 GraphicsContext* Graphics::GetGraphicsContext()
 {
   return _graphicsContext;
-}
-
-//------------------------------------------------------------------------------
-void Graphics::AddCommandList(ID3D11CommandList *cmd_list)
-{
-  _immediateContext->ExecuteCommandList(cmd_list, FALSE);
-  cmd_list->Release();
 }
 
 //------------------------------------------------------------------------------

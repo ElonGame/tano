@@ -116,7 +116,5 @@ namespace tano
     TextWriter _textWriter;
     vector<Vector3> _neuroticaTris;
     TextParticles _textParticles;
-
-    PostProcess _postProcess;
   };
 }

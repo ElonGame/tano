@@ -32,8 +32,23 @@ bool PostProcess::Init()
 }
 
 //------------------------------------------------------------------------------
-void PostProcess::Setup()
+ObjectHandle PostProcess::Execute(
+    const vector<ObjectHandle>& input,
+    DXGI_FORMAT outputFormat,
+    ObjectHandle shader,
+    const Color* clearColor)
 {
+  return ObjectHandle();
+}
+
+//------------------------------------------------------------------------------
+void PostProcess::Execute(
+    const vector<ObjectHandle>& input,
+    ObjectHandle output,
+    ObjectHandle shader,
+    const Color* clearColor)
+{
+  _ctx->SetLayout(ObjectHandle());
   _ctx->SetGpuState(_gpuState);
   _ctx->SetGpuStateSamplers(_gpuState, ShaderType::PixelShader);
   _ctx->SetGpuStateSamplers(_gpuState, ShaderType::ComputeShader);
@@ -41,19 +56,10 @@ void PostProcess::Setup()
   _ctx->SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
   _ctx->SetVS(_vsQuad);
   _ctx->SetGS(ObjectHandle());
+  _ctx->SetCS(ObjectHandle());
   _ctx->SetIB(nullptr, DXGI_FORMAT_R32_UINT);
   _ctx->SetVB(nullptr, 24);
-}
 
-//------------------------------------------------------------------------------
-void PostProcess::Execute(
-  const vector<ObjectHandle>& input,
-  ObjectHandle output,
-  ObjectHandle shader,
-  const Color* clearColor,
-  WCHAR* name)
-{
-  _ctx->SetLayout(ObjectHandle());
 
   if (output.IsValid())
     _ctx->SetRenderTarget(output, clearColor);

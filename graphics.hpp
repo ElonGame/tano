@@ -12,6 +12,9 @@
 
 namespace tano
 {
+
+  class PostProcess;
+
   class Graphics
   {
     friend class GraphicsContext;
@@ -95,7 +98,7 @@ namespace tano
     ObjectHandle FindDepthStencilState(const string &name);
 
     GraphicsContext *GetGraphicsContext();
-    void AddCommandList(ID3D11CommandList *cmd_list);
+    PostProcess* GetPostProcess();
 
     bool VSync() const { return _vsync; }
     void SetVSync(bool value) { _vsync = value; }
@@ -164,6 +167,7 @@ namespace tano
     CComPtr<ID3D11Device> _device;
     CComPtr<ID3D11DeviceContext> _immediateContext;
     GraphicsContext* _graphicsContext = nullptr;
+    PostProcess* _postProcess = nullptr;
 
 #if WITH_DXGI_DEBUG
     CComPtr<ID3D11Debug> _d3dDebug;

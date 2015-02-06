@@ -6,20 +6,18 @@ namespace tano
 {
   class GraphicsContext;
 
-  struct PostProcess
+  class PostProcess
   {
+  public:
     PostProcess(GraphicsContext* ctx);
 
     bool Init();
-    void Setup();
+    // Render shader to a temp render target with the given format
+    ObjectHandle Execute(const vector<ObjectHandle>& input, DXGI_FORMAT outputFormat, ObjectHandle shader, const Color* clearColor);
 
-    void Execute(
-      const vector<ObjectHandle>& input,
-      ObjectHandle output,
-      ObjectHandle shader,
-      const Color* clearColor,
-      WCHAR* name);
-
+    // Render shader to the given output
+    void Execute(const vector<ObjectHandle>& input, ObjectHandle output, ObjectHandle shader, const Color* clearColor);
+  private:
     GraphicsContext* _ctx;
 
     struct CBufferPS
