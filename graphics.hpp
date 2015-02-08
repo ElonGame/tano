@@ -118,6 +118,7 @@ namespace tano
     void Present();
     
     void GetBackBufferSize(int* width, int* height);
+    ObjectHandle GetBackBuffer();
     ObjectHandle DefaultSwapChain();
 
     bool LoadShadersFromFile(

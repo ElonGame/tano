@@ -35,7 +35,7 @@ bool PostProcess::Init()
 ObjectHandle PostProcess::Execute(
     const vector<ObjectHandle>& input,
     DXGI_FORMAT outputFormat,
-    ObjectHandle shader,
+    const GpuObjects& gpuObjects,
     const Color* clearColor)
 {
   return ObjectHandle();
@@ -46,20 +46,14 @@ void PostProcess::Execute(
     const vector<ObjectHandle>& input,
     ObjectHandle output,
     ObjectHandle shader,
+    bool releaseOutput,
     const Color* clearColor)
 {
   _ctx->SetLayout(ObjectHandle());
   _ctx->SetGpuState(_gpuState);
   _ctx->SetGpuStateSamplers(_gpuState, ShaderType::PixelShader);
   _ctx->SetGpuStateSamplers(_gpuState, ShaderType::ComputeShader);
-
-  _ctx->SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-  _ctx->SetVS(_vsQuad);
-  _ctx->SetGS(ObjectHandle());
-  _ctx->SetCS(ObjectHandle());
-  _ctx->SetIB(nullptr, DXGI_FORMAT_R32_UINT);
-  _ctx->SetVB(nullptr, 24);
-
+  _ctx->SetGpuObjects(_gpuObjects);
 
   if (output.IsValid())
     _ctx->SetRenderTarget(output, clearColor);
@@ -82,11 +76,11 @@ void PostProcess::Execute(
   CD3D11_VIEWPORT viewport = CD3D11_VIEWPORT(0.f, 0.f, (float)outputX, (float)outputY);
   _ctx->SetViewports(1, viewport);
 
-  _ctx->SetPS(shader);
+  _ctx->SetPixelShader(shader);
   _ctx->Draw(6, 0);
 
-  if (output.IsValid())
+  if (output.IsValid() && releaseOutput)
     _ctx->UnsetRenderTargets(0, 1);
 
-  _ctx->UnsetSRVs(0, (u32)input.size(), ShaderType::PixelShader);
+  _ctx->UnsetShaderResources(0, (u32)input.size(), ShaderType::PixelShader);
 }

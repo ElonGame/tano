@@ -16,22 +16,22 @@ namespace tano
     void SetRenderTargets(ObjectHandle *render_targets, const Color* clearTarget, int num_render_targets);
     void GenerateMips(ObjectHandle h);
 
-    void SetVB(ID3D11Buffer *buf, uint32_t stride);
-    void SetIB(ID3D11Buffer *buf, DXGI_FORMAT format);
-    void SetVS(ObjectHandle vs);
-    void SetPS(ObjectHandle ps);
-    void SetCS(ObjectHandle cs);
-    void SetGS(ObjectHandle cs);
+    void SetVertexBuffer(ID3D11Buffer *buf, uint32_t stride);
+    void SetIndexBuffer(ID3D11Buffer *buf, DXGI_FORMAT format);
+    void SetVertexShader(ObjectHandle vs);
+    void SetPixelShader(ObjectHandle ps);
+    void SetComputeShader(ObjectHandle cs);
+    void SetGeometryShader(ObjectHandle cs);
     void SetLayout(ObjectHandle layout);
-    void SetVB(ObjectHandle vb);
-    void SetIB(ObjectHandle ib);
+    void SetVertexBuffer(ObjectHandle vb);
+    void SetIndexBuffer(ObjectHandle ib);
     void SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY top);
     void SetRasterizerState(ObjectHandle rs);
     void SetDepthStencilState(ObjectHandle dss, UINT stencil_ref);
     void SetBlendState(ObjectHandle bs, const float *blendFactors, UINT sampleMask);
     void SetShaderResource(ObjectHandle h, ShaderType shaderType);
     void SetShaderResources(const vector<ObjectHandle>& handles, ShaderType shaderType);
-    void SetUAV(ObjectHandle h, Color* clearColor);
+    void SetUnorderedAccessView(ObjectHandle h, Color* clearColor);
     void SetSamplerState(ObjectHandle h, u32 slot, ShaderType shaderType);
     void SetSamplers(const ObjectHandle* h, u32 slot, u32 numSamplers, ShaderType shaderType);
     template <typename T>
@@ -47,8 +47,8 @@ namespace tano
     void SetViewports(u32 numViewports, const D3D11_VIEWPORT& viewport);
     void SetScissorRect(u32 numRects, const D3D11_RECT* rects);
 
-    void UnsetSRVs(u32 first, u32 count, ShaderType shaderType);
-    void UnsetUAVs(int first, int count);
+    void UnsetShaderResources(u32 first, u32 count, ShaderType shaderType);
+    void UnsetUnorderedAccessViews(int first, int count);
     void UnsetRenderTargets(int first, int count);
     void DrawIndexed(int count, int start_index, int base_vertex);
     void Draw(int vertexCount, int startVertexLocation);

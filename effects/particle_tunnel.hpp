@@ -89,6 +89,7 @@ namespace tano
       Color outer;
       Vector2 dim;
     };
+    ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 
     string _configName;
 
@@ -110,8 +111,15 @@ namespace tano
     GpuState _compositeState;
     GpuObjects _compositeGpuObjects;
 
-    ConstantBuffer<CBufferPerFrame> _cbPerFrame;
     ParticleTunnelSettings _settings;
+
+    struct CBufferBlur
+    {
+      Vector2 inputSize;
+      float radius = 10;
+    };
+    ConstantBuffer<CBufferBlur> _cbBlur;
+    ObjectHandle _csBlurX;
 
     TextWriter _textWriter;
     vector<Vector3> _neuroticaTris;

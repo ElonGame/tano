@@ -23,9 +23,9 @@ cbuffer PerFrame : register(b0)
 //------------------------------------------------------
 float s2(float3 p)
 {
-  float s = 3;
-  float t = sin(time * p.x * p.y);
-  return sdBox(p, float3(s,s,s)) + 0.15 * t + 0.1 * cos(time * max(p.z,p.y));
+  float t = sin(time / 5 * p.x * p.y);
+  float s = 4 + 0.5 * t;
+  return sdBox(p, float3(s,s,s)) + 0.15 * t + 0.1 * cos(time * p.z);
 }
 
 float opRep( float3 p, float3 c )
@@ -49,7 +49,7 @@ float distScene(float3 p)
 //------------------------------------------------------
 float3 getNormal(float3 p)
 {
-  float3 eps = float3(0.001, 0.0, 0.0);
+  float3 eps = float3(0.01, 0.0, 0.0);
   return normalize(float3(
     distScene(p + eps.xyy) - distScene(p - eps.xyy),
     distScene(p + eps.yxy) - distScene(p - eps.yxy),
@@ -59,7 +59,7 @@ float3 getNormal(float3 p)
 //------------------------------------------------------
 float trace(float3 from, float3 direction)
 {
-  int MaximumRaySteps = 100;
+  int MaximumRaySteps = 512;
   float MinimumDistance = 0.01f;
 
   float totalDistance = 0.0;
@@ -76,7 +76,7 @@ float trace(float3 from, float3 direction)
         distance = prevDistance + distance;
       totalDistance += distance;
       p = from + totalDistance * direction;
-      return 0.1f + dot(getNormal(p), normalize(float3(0, 1, -1)));
+      return 0.1f + dot(getNormal(p), normalize(from - p));
       col = float(steps)/float(MaximumRaySteps);
       break;
     }
@@ -92,7 +92,9 @@ float trace(float3 from, float3 direction)
 //------------------------------------------------------
 float4 PsRaymarcher(VSQuadOut input) : SV_TARGET
 {
-  float3 cameraPos = float3(5, 3, -10);
+  float ss = 20 * sin(time);
+  float cc = 20 * cos(time);
+  float3 cameraPos = float3(ss, 3, cc);
   //float3 cameraPos = float3(0, 0, -10);
   float3 lookAt = float3(0,0,0);
   float f = 2;

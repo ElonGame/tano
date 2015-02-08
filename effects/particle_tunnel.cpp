@@ -284,6 +284,10 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(_linesGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsLines", "GsLines", "PsLines", VertexFlags::VF_POS));
   _linesGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 
+  // blur setup
+  INIT(GRAPHICS.LoadComputeShadersFromFile("shaders/out/blur", &_csBlurX, "BoxBlurX"));
+  INIT(_cbBlur.Create());
+
   // Generic setup
   INIT(_cbPerFrame.Create());
   _cbPerFrame.world = Matrix::Identity();
@@ -467,8 +471,9 @@ bool ParticleTunnel::Render()
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
   _ctx->Draw(6 * _settings.num_particles, 0);
 
-/*
+
   // text
+/*
   _ctx->SetGpuObjects(_textGpuObjects);
   _ctx->SetGpuState(_textState);
   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
@@ -481,14 +486,35 @@ bool ParticleTunnel::Render()
   _ctx->Draw(_numLines, 0);
 */
 
-  // compose final image on default swap chain
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
 
-  _ctx->SetSamplerState(_compositeState._samplers[GpuState::Point], 0, ShaderType::PixelShader);
-  _ctx->SetShaderResource(rt.h, ShaderType::PixelShader);
-  _ctx->SetGpuObjects(_compositeGpuObjects);
-  _ctx->SetGpuState(_compositeState);
-  _ctx->Draw(3, 0);
+  _ctx->UnsetRenderTargets(0, 1);
+
+  PostProcess* postProcess = GRAPHICS.GetPostProcess();
+
+  // Compute shaders require render targets with UAV flag set
+  _ctx->SetShaderResources({rt.h}, ShaderType::ComputeShader);
+  ScopedRenderTarget rtUav(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav);
+  _ctx->SetUnorderedAccessView(rtUav.h, &black);
+
+
+  int w, h;
+  GRAPHICS.GetBackBufferSize(&w, &h);
+
+  _cbBlur.inputSize.x = (float)w;
+  _cbBlur.inputSize.y = (float)h;
+  _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
+
+  _ctx->SetComputeShader(_csBlurX);
+  _ctx->Dispatch(h/32+1, 1, 1);
+
+  _ctx->UnsetUnorderedAccessViews(0, 1);
+  _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
+
+  // blur image
+  //ObjectHandle rtBlur = postProcess->Execute({rt.h}, DXGI_FORMAT_R16G16B16A16_FLOAT, 
+
+  // compose final image on default swap chain
+  postProcess->Execute({rtUav.h}, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
 
   return true;
 }
@@ -501,6 +527,8 @@ void ParticleTunnel::RenderParameterSet()
   if (ImGui::ColorEdit4("Outer", &_settings.outer_color.x)) _cbPerFrame.outer = _settings.outer_color;
   ImGui::Separator();
   ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
+
+  ImGui::SliderFloat("blur", &_cbBlur.radius, 1, 100);
 
   if (ImGui::SliderFloat("min dist", &_settings.text_min_dist, 1, 100)) Reset();
   if (ImGui::SliderFloat("max dist", &_settings.text_max_dist, 100, 2000)) Reset();

@@ -282,6 +282,10 @@ bool Graphics::GetTextureSize(ObjectHandle h, u32* x, u32* y)
     return true;
 //    return _structuredBuffers.Get(h)->srv.resource;
   }
+  else
+  {
+    LOG_ERROR("Attemping to get texture size for unknown object type");
+  }
 
   return false;
 }
@@ -946,7 +950,7 @@ ObjectHandle Graphics::FindDepthStencilState(const string &name)
 //------------------------------------------------------------------------------
 SwapChain* Graphics::GetSwapChain(ObjectHandle h)
 {
-  return _swapChains.Get(h);
+  return h.IsValid() ? _swapChains.Get(h) : _defaultSwapChain;
 }
 
 //------------------------------------------------------------------------------
@@ -962,6 +966,12 @@ ObjectHandle Graphics::MakeObjectHandle(
 GraphicsContext* Graphics::GetGraphicsContext()
 {
   return _graphicsContext;
+}
+
+//------------------------------------------------------------------------------
+PostProcess* Graphics::GetPostProcess()
+{
+  return _postProcess;
 }
 
 //------------------------------------------------------------------------------
@@ -987,6 +997,12 @@ void Graphics::GetBackBufferSize(int* width, int* height)
 {
   *width = (int)_defaultSwapChain->_viewport.Width;
   *height = (int)_defaultSwapChain->_viewport.Height;
+}
+
+//------------------------------------------------------------------------------
+ObjectHandle Graphics::GetBackBuffer()
+{
+  return _defaultSwapChain->_renderTarget;
 }
 
 //------------------------------------------------------------------------------

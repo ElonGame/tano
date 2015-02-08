@@ -92,28 +92,28 @@ void GraphicsContext::SetSwapChain(ObjectHandle h, const float* clearColor)
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetVS(ObjectHandle vs)
+void GraphicsContext::SetVertexShader(ObjectHandle vs)
 {
   assert(vs.type() == ObjectHandle::kVertexShader || !vs.IsValid());
   _ctx->VSSetShader(vs.IsValid() ? GRAPHICS._vertexShaders.Get(vs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetCS(ObjectHandle cs)
+void GraphicsContext::SetComputeShader(ObjectHandle cs)
 {
   assert(cs.type() == ObjectHandle::kComputeShader || !cs.IsValid());
   _ctx->CSSetShader(cs.IsValid() ? GRAPHICS._computeShaders.Get(cs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetGS(ObjectHandle gs)
+void GraphicsContext::SetGeometryShader(ObjectHandle gs)
 {
   assert(gs.type() == ObjectHandle::kGeometryShader || !gs.IsValid());
   _ctx->GSSetShader(gs.IsValid() ? GRAPHICS._geometryShaders.Get(gs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetPS(ObjectHandle ps)
+void GraphicsContext::SetPixelShader(ObjectHandle ps)
 {
   assert(ps.type() == ObjectHandle::kPixelShader || !ps.IsValid());
   _ctx->PSSetShader(ps.IsValid() ? GRAPHICS._pixelShaders.Get(ps) : nullptr, nullptr, 0);
@@ -126,22 +126,22 @@ void GraphicsContext::SetLayout(ObjectHandle layout)
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetIB(ObjectHandle ib)
+void GraphicsContext::SetIndexBuffer(ObjectHandle ib)
 {
   if (ib.IsValid())
-    SetIB(GRAPHICS._indexBuffers.Get(ib), (DXGI_FORMAT)ib.data());
+    SetIndexBuffer(GRAPHICS._indexBuffers.Get(ib), (DXGI_FORMAT)ib.data());
   else
-    SetIB(nullptr, DXGI_FORMAT_UNKNOWN);
+    SetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN);
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetIB(ID3D11Buffer* buf, DXGI_FORMAT format)
+void GraphicsContext::SetIndexBuffer(ID3D11Buffer* buf, DXGI_FORMAT format)
 {
   _ctx->IASetIndexBuffer(buf, format, 0);
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetVB(ID3D11Buffer* buf, u32 stride)
+void GraphicsContext::SetVertexBuffer(ID3D11Buffer* buf, u32 stride)
 {
   UINT ofs[] = { 0 };
   ID3D11Buffer* bufs[] = { buf };
@@ -150,12 +150,12 @@ void GraphicsContext::SetVB(ID3D11Buffer* buf, u32 stride)
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetVB(ObjectHandle vb) 
+void GraphicsContext::SetVertexBuffer(ObjectHandle vb) 
 {
   if (vb.IsValid())
-    SetVB(GRAPHICS._vertexBuffers.Get(vb), vb.data());
+    SetVertexBuffer(GRAPHICS._vertexBuffers.Get(vb), vb.data());
   else
-    SetVB(nullptr, 0);
+    SetVertexBuffer(nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ void GraphicsContext::SetBlendState(ObjectHandle bs, const float* blendFactors, 
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::UnsetSRVs(u32 first, u32 count, ShaderType shaderType)
+void GraphicsContext::UnsetShaderResources(u32 first, u32 count, ShaderType shaderType)
 {
   ID3D11ShaderResourceView* srViews[16] = { nullptr };
 
@@ -198,7 +198,7 @@ void GraphicsContext::UnsetSRVs(u32 first, u32 count, ShaderType shaderType)
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::UnsetUAVs(int first, int count)
+void GraphicsContext::UnsetUnorderedAccessViews(int first, int count)
 {
   UINT initialCount = -1;
   static ID3D11UnorderedAccessView *nullViews[MAX_TEXTURES] = { nullptr };
@@ -298,7 +298,7 @@ void GraphicsContext::DrawIndexed(int count, int start_index, int base_vertex)
 void GraphicsContext::Draw(int vertexCount, int startVertexLocation)
 {
   _ctx->Draw(vertexCount, startVertexLocation);
-}
+} 
 
 //------------------------------------------------------------------------------
 void GraphicsContext::Dispatch(int threadGroupCountX, int threadGroupCountY, int threadGroupCountZ)
@@ -363,7 +363,7 @@ void GraphicsContext::SetShaderResource(ObjectHandle h, ShaderType shaderType)
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetUAV(ObjectHandle h, Color* clearColor)
+void GraphicsContext::SetUnorderedAccessView(ObjectHandle h, Color* clearColor)
 {
   auto type = h.type();
 
@@ -460,12 +460,12 @@ void GraphicsContext::SetGpuObjects(const GpuObjects& obj)
 {
   // NOTE: We don't check for handle validity here, as setting an invalid (uninitialized)
   // handle is the same as setting NULL, ie unbinding
-  SetVS(obj._vs);
-  SetGS(obj._gs);
-  SetPS(obj._ps);
+  SetVertexShader(obj._vs);
+  SetGeometryShader(obj._gs);
+  SetPixelShader(obj._ps);
   SetLayout(obj._layout);
-  SetVB(obj._vb);
-  SetIB(obj._ib);
+  SetVertexBuffer(obj._vb);
+  SetIndexBuffer(obj._ib);
   SetPrimitiveTopology(obj._topology);
 }
 
