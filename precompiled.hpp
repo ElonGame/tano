@@ -1,19 +1,18 @@
 #pragma once
 #pragma warning(disable: 4005)
+//  C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc
+#pragma warning(disable: 4530)
 
-#define WITH_REMOTERY 1
-
-#define WITH_DXGI_DEBUG 1
-#define WITH_DEBUG_SHADERS 1
+//#define WITH_REMOTERY 1
+//#define WITH_DXGI_DEBUG 1
+//#define WITH_DEBUG_SHADERS 1
+//#define WITH_ROCKET 1
+//#define WITH_IMGUI 1
 
 #define WITH_CONFIG_DLG 0
 #define WITH_UNPACKED_RESOUCES 1
 
 #define WITH_MUSIC 0
-
-#define WITH_ROCKET 1
-
-#define WITH_IMGUI 1
 
 #if !WITH_ROCKET
 #define SYNC_PLAYER 1
@@ -29,6 +28,12 @@
   #ifndef WITH_DXGI_DEBUG
     #define WITH_DXGI_DEBUG 1
   #endif
+  #ifndef WITH_REMOTERY
+    #define WITH_REMOTERY 1
+  #endif
+  #ifndef WITH_IMGUI
+    #define WITH_IMGUI 1
+  #endif
 #else
   #ifndef WITH_UNPACKED_RESOUCES 
     #define WITH_UNPACKED_RESOUCES 0
@@ -39,13 +44,19 @@
   #ifndef WITH_DXGI_DEBUG
     #define WITH_DXGI_DEBUG 0
   #endif
+  #ifndef WITH_REMOTERY
+    #define WITH_REMOTERY 0
+  #endif
+  #ifndef WITH_IMGUI
+    #define WITH_IMGUI 0
+  #endif
 #endif
 
 #if !defined(NOMINMAX)
 #define NOMINMAX
 #endif
 
-#ifdef WITH_IMGUI
+#if WITH_IMGUI
 #include "imgui/imgui.h"
 #endif
 
@@ -87,6 +98,8 @@
 
 #if WITH_REMOTERY
 #include "Remotery/lib/Remotery.h"
+#else
+#define rmt_ScopedCPUSample(x) ;
 #endif
 
 #include "bristol/string_utils.hpp"

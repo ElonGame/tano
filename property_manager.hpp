@@ -1,4 +1,5 @@
 #pragma once
+#if WITH_IMGUI
 
 namespace tano
 {
@@ -26,3 +27,5 @@ namespace tano
   };
 
 }
+
+#endif

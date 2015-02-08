@@ -73,7 +73,6 @@ namespace tano
 
     bool GetTextureSize(ObjectHandle h, u32* x, u32* y);
     ObjectHandle GetTempRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags);
-    ObjectHandle GetTempRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags);
     void ReleaseTempRenderTarget(ObjectHandle h);
 
     ObjectHandle CreateRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags, const string& name = "");

@@ -38,7 +38,9 @@ namespace tano
     static bool IsInitialized() { return _instance != nullptr; }
 
     FileWatcher& GetFileWatcher() { return _fileWatcher; }
+#if WITH_IMGUI
     PropertyManager& GetPropertyManager() { return _propertyManager; }
+#endif
 
   private:
 
@@ -69,7 +71,9 @@ namespace tano
     u32 _nextEffectId;
 
     FileWatcher _fileWatcher;
+#if WITH_IMGUI
     PropertyManager _propertyManager;
+#endif
   };
 
 #define DEMO_ENGINE DemoEngine::Instance()

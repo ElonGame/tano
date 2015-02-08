@@ -16,9 +16,11 @@ using namespace bristol;
 RayMarcher::RayMarcher(const string &name, u32 id)
   : Effect(name, id)
 {
+#if WITH_IMGUI
   PROPERTIES.Register("ray marcher",
     bind(&RayMarcher::RenderParameterSet, this),
     bind(&RayMarcher::SaveParameterSet, this));
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -79,13 +81,16 @@ bool RayMarcher::Render()
 }
 
 //------------------------------------------------------------------------------
+#if WITH_IMGUI
 void RayMarcher::RenderParameterSet()
 {
   if (ImGui::Button("Reset"))
     Reset();
 }
+#endif
 
 //------------------------------------------------------------------------------
+#if WITH_IMGUI
 void RayMarcher::SaveParameterSet()
 {
   OutputBuffer buf;
@@ -96,6 +101,7 @@ void RayMarcher::SaveParameterSet()
     fclose(f);
   }
 }
+#endif
 
 //------------------------------------------------------------------------------
 void RayMarcher::Reset()

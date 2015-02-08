@@ -3,6 +3,8 @@
 
 namespace tano
 {
+  class GraphicsContext;
+
   //------------------------------------------------------------------------------
   void VertexFlagsToLayoutDesc(u32 vertexFlags, vector<D3D11_INPUT_ELEMENT_DESC>* desc);
   void SetClientSize(HWND hwnd, int width, int height);
@@ -150,8 +152,10 @@ namespace tano
     ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ~ScopedRenderTarget();
+    void Attach(GraphicsContext* ctx, const Color* clearColor = nullptr);
 
-    ObjectHandle h;
+    ObjectHandle _handle;
+    GraphicsContext* _ctx = nullptr;
   };
 
 }

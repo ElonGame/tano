@@ -1,5 +1,6 @@
 #include "graphics_extra.hpp"
 #include "graphics.hpp"
+#include "graphics_context.hpp"
 #include "_win32/resource.h"
 
 using namespace tano;
@@ -358,21 +359,32 @@ void SwapChain::Present()
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags)
+  : _handle(GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags))
 {
-  h = GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags);
 }
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags)
 {
-  h = GRAPHICS.GetTempRenderTarget(format, bufferFlags);
+  int w, h;
+  GRAPHICS.GetBackBufferSize(&w, &h);
+  _handle = GRAPHICS.GetTempRenderTarget(w, h, format, bufferFlags);
 }
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::~ScopedRenderTarget()
 {
-  if (h.IsValid())
+  if (_handle.IsValid())
   {
-    GRAPHICS.ReleaseTempRenderTarget(h);
+    GRAPHICS.ReleaseTempRenderTarget(_handle);
+    if (_ctx)
+      _ctx->UnsetRenderTargets(0, 1);
   }
+}
+
+//------------------------------------------------------------------------------
+void ScopedRenderTarget::Attach(GraphicsContext* ctx, const Color* clearColor)
+{
+  _ctx = ctx;
+  _ctx->SetRenderTarget(_handle, clearColor);
 }

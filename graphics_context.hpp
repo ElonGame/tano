@@ -29,7 +29,7 @@ namespace tano
     void SetRasterizerState(ObjectHandle rs);
     void SetDepthStencilState(ObjectHandle dss, UINT stencil_ref);
     void SetBlendState(ObjectHandle bs, const float *blendFactors, UINT sampleMask);
-    void SetShaderResource(ObjectHandle h, ShaderType shaderType);
+    void SetShaderResource(ObjectHandle h, ShaderType shaderType, int slot = 0);
     void SetShaderResources(const vector<ObjectHandle>& handles, ShaderType shaderType);
     void SetUnorderedAccessView(ObjectHandle h, Color* clearColor);
     void SetSamplerState(ObjectHandle h, u32 slot, ShaderType shaderType);

@@ -156,7 +156,9 @@ bool DemoEngine::Tick()
   rmt_ScopedCPUSample(DemoEngine_Tick);
 
   _fileWatcher.Tick();
+#if WITH_IMGUI
   _propertyManager.Tick();
+#endif
 
   TimeDuration delta, current;
   current = _timer.Elapsed(&delta);

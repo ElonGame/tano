@@ -1,3 +1,5 @@
+#if WITH_IMGUI
+
 #include "property_manager.hpp"
 #include "demo_engine.hpp"
 
@@ -54,3 +56,5 @@ void PropertyManager::Tick()
 
   ImGui::End();
 }
+
+#endif

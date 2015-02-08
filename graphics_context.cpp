@@ -339,7 +339,7 @@ void GraphicsContext::SetShaderResources(
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetShaderResource(ObjectHandle h, ShaderType shaderType)
+void GraphicsContext::SetShaderResource(ObjectHandle h, ShaderType shaderType, int slot)
 {
   ID3D11ShaderResourceView* view = view = GRAPHICS.GetShaderResourceView(h);
   view = GRAPHICS.GetShaderResourceView(h);
@@ -350,13 +350,13 @@ void GraphicsContext::SetShaderResource(ObjectHandle h, ShaderType shaderType)
   }
 
   if (shaderType == ShaderType::VertexShader)
-    _ctx->VSSetShaderResources(0, 1, &view);
+    _ctx->VSSetShaderResources(slot, 1, &view);
   else if (shaderType == ShaderType::PixelShader)
-    _ctx->PSSetShaderResources(0, 1, &view);
+    _ctx->PSSetShaderResources(slot, 1, &view);
   else if (shaderType == ShaderType::ComputeShader)
-    _ctx->CSSetShaderResources(0, 1, &view);
+    _ctx->CSSetShaderResources(slot, 1, &view);
   else if (shaderType == ShaderType::GeometryShader)
-    _ctx->GSSetShaderResources(0, 1, &view);
+    _ctx->GSSetShaderResources(slot, 1, &view);
   else
     assert(false);
     //LOG_ERROR_LN("Implement me!");

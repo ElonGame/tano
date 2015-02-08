@@ -182,9 +182,11 @@ ParticleTunnel::ParticleTunnel(const string &name, u32 id)
   : Effect(name, id)
   , _textParticles(_settings)
 {
+#if WITH_IMGUI
   PROPERTIES.Register("particle tunnel", 
     bind(&ParticleTunnel::RenderParameterSet, this),
     bind(&ParticleTunnel::SaveParameterSet, this));
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -448,12 +450,49 @@ bool ParticleTunnel::Update(const UpdateState& state)
   return true;
 }
 
+/*
+enum class RenderCommand
+{
+  SetRenderTarget,
+  UnsetRenderTarget,
+  RenderFragment,
+};
+*/
+
+struct RenderCommand
+{
+  virtual void Init(InitSequence& __initSequence) {}
+  virtual void Execute() {}
+
+  GraphicsContext* _ctx = nullptr;
+};
+
+struct CmdSetRenderTarget : public RenderCommand
+{
+  virtual void Init()
+  {
+    //handle = _ctx->GetTempRenderTarget(fmt, BufferFlags(BufferFlag::CreateSrv));
+  }
+
+  virtual void Execute()
+  {
+    _ctx->SetRenderTarget(handle, clearBackground ? &clearColor : nullptr);
+  }
+
+  string id;
+  DXGI_FORMAT fmt;
+  ObjectHandle handle;
+  Color clearColor;
+  bool clearBackground;
+};
+
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Render()
 {
   static Color black(0, 0, 0, 0);
+
   ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  _ctx->SetRenderTarget(rt.h, &black);
+  _ctx->SetRenderTarget(rt._handle, &black);
 
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
@@ -471,7 +510,6 @@ bool ParticleTunnel::Render()
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
   _ctx->Draw(6 * _settings.num_particles, 0);
 
-
   // text
 /*
   _ctx->SetGpuObjects(_textGpuObjects);
@@ -486,16 +524,12 @@ bool ParticleTunnel::Render()
   _ctx->Draw(_numLines, 0);
 */
 
-
   _ctx->UnsetRenderTargets(0, 1);
 
-  PostProcess* postProcess = GRAPHICS.GetPostProcess();
-
   // Compute shaders require render targets with UAV flag set
-  _ctx->SetShaderResources({rt.h}, ShaderType::ComputeShader);
   ScopedRenderTarget rtUav(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav);
-  _ctx->SetUnorderedAccessView(rtUav.h, &black);
-
+  _ctx->SetShaderResources({rt._handle}, ShaderType::ComputeShader);
+  _ctx->SetUnorderedAccessView(rtUav._handle, &black);
 
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
@@ -514,12 +548,14 @@ bool ParticleTunnel::Render()
   //ObjectHandle rtBlur = postProcess->Execute({rt.h}, DXGI_FORMAT_R16G16B16A16_FLOAT, 
 
   // compose final image on default swap chain
-  postProcess->Execute({rtUav.h}, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+  PostProcess* postProcess = GRAPHICS.GetPostProcess();
+  postProcess->Execute({rtUav._handle}, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
 
   return true;
 }
 
 //------------------------------------------------------------------------------
+#if WITH_IMGUI
 void ParticleTunnel::RenderParameterSet()
 {
   if (ImGui::ColorEdit4("Tint", &_settings.tint.x)) _cbPerFrame.tint = _settings.tint;
@@ -537,8 +573,10 @@ void ParticleTunnel::RenderParameterSet()
   if (ImGui::Button("Reset"))
     Reset();
 }
+#endif
 
 //------------------------------------------------------------------------------
+#if WITH_IMGUI
 void ParticleTunnel::SaveParameterSet()
 {
   OutputBuffer buf;
@@ -549,6 +587,7 @@ void ParticleTunnel::SaveParameterSet()
     fclose(f);
   }
 }
+#endif
 
 //------------------------------------------------------------------------------
 void ParticleTunnel::Reset()

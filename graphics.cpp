@@ -291,16 +291,6 @@ bool Graphics::GetTextureSize(ObjectHandle h, u32* x, u32* y)
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::GetTempRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags)
-{
-  // Return a temp render target with the same dimensions as the back buffer
-  return GetTempRenderTarget(
-    _defaultSwapChain->_width, 
-    _defaultSwapChain->_height, 
-    format, bufferFlags);
-}
-
-//------------------------------------------------------------------------------
 ObjectHandle Graphics::GetTempRenderTarget(
   int width,
   int height,

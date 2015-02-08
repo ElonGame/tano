@@ -1,3 +1,4 @@
+#if WITH_IMGUI
 #include "imgui_helpers.hpp"
 #include "graphics.hpp"
 #include "graphics_context.hpp"
@@ -328,3 +329,4 @@ namespace tano
     return true;
   }
 }
+#endif

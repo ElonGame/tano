@@ -26,8 +26,10 @@ namespace tano
   private:
 
     void Reset();
+#if WITH_IMGUI
     void RenderParameterSet();
     void SaveParameterSet();
+#endif
 
     // SOA style
     struct Particles
