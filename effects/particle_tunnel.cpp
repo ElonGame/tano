@@ -287,7 +287,10 @@ bool ParticleTunnel::Init(const char* configFile)
   _linesGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 
   // blur setup
+  INIT(GRAPHICS.LoadComputeShadersFromFile("shaders/out/blur", &_csBlurTranspose, "BlurTranspose"));
+  INIT(GRAPHICS.LoadComputeShadersFromFile("shaders/out/blur", &_csCopyTranspose, "CopyTranspose"));
   INIT(GRAPHICS.LoadComputeShadersFromFile("shaders/out/blur", &_csBlurX, "BoxBlurX"));
+
   INIT(_cbBlur.Create());
 
   // Generic setup
@@ -526,32 +529,94 @@ bool ParticleTunnel::Render()
 
   _ctx->UnsetRenderTargets(0, 1);
 
-  // Compute shaders require render targets with UAV flag set
-  ScopedRenderTarget rtUav(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav);
-  _ctx->SetShaderResources({rt._handle}, ShaderType::ComputeShader);
-  _ctx->SetUnorderedAccessView(rtUav._handle, &black);
+  ScopedRenderTarget rtTmp(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav);
+
+  ApplyBlur(rt._handle, rtTmp._handle);
+
+  // compose final image on default swap chain
+
+  PostProcess* postProcess = GRAPHICS.GetPostProcess();
+  postProcess->Execute({rtTmp._handle}, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+
+  return true;
+}
+
+void ParticleTunnel::ApplyBlur(ObjectHandle inputBuffer, ObjectHandle outputBuffer)
+{
+  static Color black(0, 0, 0, 0);
 
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
+  int s = max(w, h);
 
+  BufferFlags f = BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav;
+  ScopedRenderTarget scratch0(s, s, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+  ScopedRenderTarget scratch1(s, s, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+
+  // set constant buffers
   _cbBlur.inputSize.x = (float)w;
   _cbBlur.inputSize.y = (float)h;
   _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
 
-  _ctx->SetComputeShader(_csBlurX);
+  // set constant buffers
+  ObjectHandle srcDst[] =
+  {
+    // horiz
+    inputBuffer, scratch0._handle, scratch0._handle, scratch1._handle, scratch1._handle, scratch0._handle,
+    // vert
+    scratch1._handle, scratch0._handle, scratch0._handle, scratch1._handle, scratch1._handle, scratch0._handle,
+  };
+
+  // horizontal blur (ends up in scratch0)
+  for (int i = 0; i < 3; ++i)
+  {
+    _ctx->SetShaderResources({ srcDst[i*2+0] }, ShaderType::ComputeShader);
+    _ctx->SetUnorderedAccessView(srcDst[i*2+1], &black);
+
+    _ctx->SetComputeShader(_csBlurX);
+    _ctx->Dispatch(h/32+1, 1, 1);
+
+    _ctx->UnsetUnorderedAccessViews(0, 1);
+    _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
+  }
+
+  // copy/transpose from scratch0 -> scratch1
+  _ctx->SetShaderResources({ scratch0._handle }, ShaderType::ComputeShader);
+  _ctx->SetUnorderedAccessView(scratch1._handle, &black);
+
+  _ctx->SetComputeShader(_csCopyTranspose);
   _ctx->Dispatch(h/32+1, 1, 1);
 
   _ctx->UnsetUnorderedAccessViews(0, 1);
   _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
 
-  // blur image
-  //ObjectHandle rtBlur = postProcess->Execute({rt.h}, DXGI_FORMAT_R16G16B16A16_FLOAT, 
+  // "vertical" blur, ends up in scratch 0
 
-  // compose final image on default swap chain
-  PostProcess* postProcess = GRAPHICS.GetPostProcess();
-  postProcess->Execute({rtUav._handle}, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+  _cbBlur.inputSize.x = (float)h;
+  _cbBlur.inputSize.y = (float)w;
+  _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
 
-  return true;
+  for (int i = 0; i < 3; ++i)
+  {
+    _ctx->SetShaderResources({ srcDst[6+i*2+0] }, ShaderType::ComputeShader);
+    _ctx->SetUnorderedAccessView(srcDst[6+i*2+1], &black);
+
+    _ctx->SetComputeShader(_csBlurX);
+    _ctx->Dispatch(w/32+1, 1, 1);
+
+    _ctx->UnsetUnorderedAccessViews(0, 1);
+    _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
+  }
+
+  // copy/transpose from scratch0 -> blur1
+  _ctx->SetShaderResources({ scratch0._handle }, ShaderType::ComputeShader);
+  _ctx->SetUnorderedAccessView(outputBuffer, &black);
+
+  _ctx->SetComputeShader(_csCopyTranspose);
+  _ctx->Dispatch(w/32+1, 1, 1);
+
+  _ctx->UnsetUnorderedAccessViews(0, 1);
+  _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
 }
 
 //------------------------------------------------------------------------------

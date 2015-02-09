@@ -31,6 +31,8 @@ namespace tano
     void SaveParameterSet();
 #endif
 
+    void ApplyBlur(ObjectHandle inputBuffer, ObjectHandle outputBuffer);
+
     // SOA style
     struct Particles
     {
@@ -122,6 +124,8 @@ namespace tano
     };
     ConstantBuffer<CBufferBlur> _cbBlur;
     ObjectHandle _csBlurX;
+    ObjectHandle _csBlurTranspose;
+    ObjectHandle _csCopyTranspose;
 
     TextWriter _textWriter;
     vector<Vector3> _neuroticaTris;
