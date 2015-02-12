@@ -506,18 +506,21 @@ bool ParticleTunnel::Render()
   _ctx->SetGpuState(_backgroundState);
   _ctx->Draw(3, 0);
 
+/*
   // Render particles
   _ctx->SetGpuObjects(_particleGpuObjects);
   _ctx->SetGpuState(_particleState);
   _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
   _ctx->Draw(6 * _settings.num_particles, 0);
+*/
 
   // text
 /*
   _ctx->SetGpuObjects(_textGpuObjects);
   _ctx->SetGpuState(_textState);
   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
+*/
 
   // lines
   _ctx->SetGpuObjects(_linesGpuObjects);
@@ -525,7 +528,6 @@ bool ParticleTunnel::Render()
   _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_lineTexture, ShaderType::PixelShader);
   _ctx->Draw(_numLines, 0);
-*/
 
   _ctx->UnsetRenderTargets(0, 1);
 
@@ -631,8 +633,9 @@ void ParticleTunnel::RenderParameterSet()
 
   ImGui::SliderFloat("blur", &_cbBlur.radius, 1, 100);
 
+  if (ImGui::SliderFloat("text time", &_settings.text_time, 0.1f, 10.f)) Reset();
   if (ImGui::SliderFloat("min dist", &_settings.text_min_dist, 1, 100)) Reset();
-  if (ImGui::SliderFloat("max dist", &_settings.text_max_dist, 100, 2000)) Reset();
+  if (ImGui::SliderFloat("max dist", &_settings.text_max_dist, 1, 2000)) Reset();
   if (ImGui::SliderFloat("triangle prob", &_settings.text_triangle_prob, 0.f, 1.f)) Reset();
 
   if (ImGui::Button("Reset"))
@@ -657,7 +660,7 @@ void ParticleTunnel::SaveParameterSet()
 //------------------------------------------------------------------------------
 void ParticleTunnel::Reset()
 {
-  _textParticles.Create(_neuroticaTris, 5.f);
+  _textParticles.Create(_neuroticaTris, _settings.text_time);
 }
 
 //------------------------------------------------------------------------------

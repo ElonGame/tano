@@ -27,7 +27,7 @@ namespace tano
 
     void AdjustPos(const TimeDuration& delta);
     void SetPos(const TimeDuration& pos);
-    TimeDuration Pos() const;
+    TimeDuration Pos();
 
     TimeDuration Duration() const;
     void SetDuration(const TimeDuration& duration);
@@ -62,6 +62,7 @@ namespace tano
     vector<Effect*> _effects;
     int _cur_effect;
     TimeDuration _duration;
+    TimeDuration _accumulated;
 
     Timer _timer;
 

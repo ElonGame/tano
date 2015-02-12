@@ -24,6 +24,7 @@ struct particle_tunnel_settings
   int num_particles;
   float text_min_dist;
   float text_max_dist;
+  float text_time = 5;
   float text_triangle_prob;
 };
 

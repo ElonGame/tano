@@ -11,6 +11,13 @@
 using namespace tano;
 using namespace bristol;
 
+namespace
+{
+  // update frequeny in hz
+  u32 UPDATE_FREQUENCY = 100;
+  TimeDuration UPDATE_DELTA = TimeDuration::Microseconds((s64)1e6 / UPDATE_FREQUENCY);
+}
+
 //------------------------------------------------------------------------------
 DemoEngine *DemoEngine::_instance = NULL;
 
@@ -107,7 +114,7 @@ void DemoEngine::SetPos(const TimeDuration& pos)
 }
 
 //------------------------------------------------------------------------------
-TimeDuration DemoEngine::Pos() const
+TimeDuration DemoEngine::Pos()
 {
   return _timer.Peek();
 }
@@ -122,7 +129,6 @@ TimeDuration DemoEngine::Duration() const
 void DemoEngine::SetDuration(const TimeDuration& duration)
 {
   _duration = duration;
-  _timer.SetCycle(duration);
 }
 
 //------------------------------------------------------------------------------
@@ -170,57 +176,58 @@ bool DemoEngine::Tick()
     e->SetRunning(false);
   }
 
-  // check if any effect start now
-  unordered_set<Effect*> firstTimers;
-  while (!_inactiveEffects.empty() && _inactiveEffects.front()->StartTime() <= current)
-  {
-    Effect* e = Transfer(_inactiveEffects, _activeEffects);
-    firstTimers.insert(e);
-    e->SetRunning(true);
-  }
-
   bool paused = !_timer.IsRunning();
 
-  // calc the number of ticks to step
-  const int ticksPerSecond = 100;
-  const float numTicks = TimeDurationToFloat(delta) * ticksPerSecond;
-  const int intNumTicks = (int)numTicks;
-  const float fracNumTicks = numTicks - intNumTicks;
+  // Check if it's time to tick the active effects
+  _accumulated += delta;
 
-  UpdateState curState;
-  curState.globalTime = current;
-  curState.delta = delta;
-  curState.paused = paused;
-  curState.frequency = ticksPerSecond;
-  curState.numTicks = intNumTicks;
-  curState.ticksFraction = fracNumTicks;
-
-  UpdateState initialState;
-  initialState.globalTime = current;
-  initialState.localTime = TimeDuration::Seconds(0);
-  initialState.delta = TimeDuration::Seconds(0);
-  initialState.paused = paused;
-  initialState.frequency = 100;
-  initialState.numTicks = 1;
-  initialState.ticksFraction = 0;
-
-  // tick the active effects
-  for (auto& effect : _activeEffects)
+  if (_accumulated > UPDATE_DELTA)
   {
-    if (firstTimers.find(effect) != firstTimers.end())
-    {
-      effect->SetStartTime(current);
-      effect->Update(initialState);
-    }
-    else
+    // calc the number of ticks to step
+    float numTicks = TimeDurationToFloat(_accumulated) * UPDATE_FREQUENCY;
+    int intNumTicks = (int)numTicks;
+
+    UpdateState curState;
+    curState.globalTime = current;
+    curState.delta = _accumulated;
+    curState.paused = paused;
+    curState.frequency = UPDATE_FREQUENCY;
+    curState.numTicks = intNumTicks;
+    curState.ticksFraction = numTicks - intNumTicks;
+
+    // tick the active effects
+    for (auto& effect : _activeEffects)
     {
       curState.localTime = current - effect->StartTime();
       effect->Update(curState);
     }
 
-    effect->Render();
+    while (intNumTicks--)
+      _accumulated -= UPDATE_DELTA;
   }
 
+  // check if any effect start now
+  UpdateState initialState;
+  initialState.globalTime = current;
+  initialState.localTime = TimeDuration::Seconds(0);
+  initialState.delta = TimeDuration::Seconds(0);
+  initialState.paused = paused;
+  initialState.frequency = UPDATE_FREQUENCY;
+  initialState.numTicks = 1;
+  initialState.ticksFraction = 0;
+
+  // Tick all the first timers
+  while (!_inactiveEffects.empty() && _inactiveEffects.front()->StartTime() <= current)
+  {
+    Effect* e = Transfer(_inactiveEffects, _activeEffects);
+    e->SetRunning(true);
+    e->Update(initialState);
+  }
+
+  for (auto& effect : _activeEffects)
+  {
+    effect->Render();
+  }
 
   return true;
 }
