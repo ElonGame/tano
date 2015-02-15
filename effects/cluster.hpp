@@ -4,6 +4,7 @@
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
 #include "../mesh_loader.hpp"
+#include "../animation_helpers.hpp"
 
 namespace tano
 {
@@ -17,6 +18,7 @@ namespace tano
     virtual bool Update(const UpdateState& state) override;
     virtual bool Render() override;
     virtual bool Close() override;
+    virtual bool InitAnimatedParameters() override;
 
     static const char* Name();
     static Effect* Create(const char* name, u32 id);
@@ -47,5 +49,7 @@ namespace tano
     ClusterSettings _settings;
     string _configName;
     MeshLoader _meshLoader;
+
+    AnimatedInt _blinkFace;
   };
 }

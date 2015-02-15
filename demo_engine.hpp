@@ -34,6 +34,8 @@ namespace tano
     bool Tick();
 
     void WndProc(UINT message, WPARAM wParam, LPARAM lParam);
+    sync_device* GetRocket() { return _rocket; }
+    double GetRow() const;
 
     static bool IsInitialized() { return _instance != nullptr; }
 
@@ -82,13 +84,18 @@ namespace tano
 
 #if WITH_ROCKET
     sync_device* _rocket = nullptr;
+#if !WITH_ROCKET_PLAYER
+    bool _connected = false;
+    TimeStamp _lastReconnect;
     static void RocketPauseCb(void* context, int flag);
     static void RocketSetRowCb(void* context, int row);
     static int RocketIsPlayingCb(void* context);
 #endif
+#endif
   };
 
 #define DEMO_ENGINE DemoEngine::Instance()
+#define ROCKET DemoEngine::Instance().GetRocket()
 #define PROPERTIES DemoEngine::Instance().GetPropertyManager()
 
 }

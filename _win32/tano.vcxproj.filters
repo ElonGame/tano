@@ -157,6 +157,9 @@
     <ClCompile Include="..\mesh_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\animation_helpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -323,6 +326,9 @@
     </ClInclude>
     <ClInclude Include="..\bass\bass.h">
       <Filter>bass</Filter>
+    </ClInclude>
+    <ClInclude Include="..\animation_helpers.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

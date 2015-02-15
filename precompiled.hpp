@@ -7,16 +7,22 @@
 //#define WITH_DXGI_DEBUG 1
 //#define WITH_DEBUG_SHADERS 1
 #define WITH_ROCKET 1
+#define WITH_ROCKET_PLAYER 0
+
+#if WITH_ROCKET_PLAYER
+  #define SYNC_PLAYER
+#else
+  #ifdef SYNC_PLAYER
+    #undef SYNC_PLAYER
+  #endif
+#endif
+
 //#define WITH_IMGUI 1
 
 #define WITH_CONFIG_DLG 0
 #define WITH_UNPACKED_RESOUCES 1
 
 #define WITH_MUSIC 1
-
-#if !WITH_ROCKET
-#define SYNC_PLAYER 1
-#endif
 
 #ifdef _DEBUG
   #ifndef WITH_UNPACKED_RESOUCES 
@@ -79,6 +85,7 @@
 
 #if WITH_ROCKET
 #include "sync/device.h"
+#include "sync/sync.h"
 #endif
 
 #include <atlbase.h>

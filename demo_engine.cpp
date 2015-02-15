@@ -13,8 +13,6 @@ using namespace bristol;
 
 namespace
 {
-  const struct sync_track *clear_r, *clear_g, *clear_b;
-
   // update frequeny in hz
   u32 UPDATE_FREQUENCY = 100;
   TimeDuration UPDATE_DELTA = TimeDuration::Microseconds((s64)1e6 / UPDATE_FREQUENCY);
@@ -71,12 +69,14 @@ DemoEngine::~DemoEngine()
   _inactiveEffects.clear();
   _expiredEffects.clear();
 
+#if !WITH_ROCKET_PLAYER
+  sync_save_tracks(_rocket);
+#endif
+  sync_destroy_device(_rocket);
+
 #if WITH_MUSIC
   BASS_StreamFree(_stream);
   BASS_Free();
-//   _sound->release();
-//   _system->close();
-//   _system->release();
 #endif
 }
 
@@ -178,8 +178,29 @@ void DemoEngine::ReclassifyEffects()
 }
 
 //------------------------------------------------------------------------------
+double DemoEngine::GetRow() const
+{
+  if (!_stream)
+    return 0;
+
+  QWORD pos = BASS_ChannelGetPosition(_stream, BASS_POS_BYTE);
+  double time = BASS_ChannelBytes2Seconds(_stream, pos);
+  double row = time * ROWS_PER_SECOND;
+  return row;
+}
+
+//------------------------------------------------------------------------------
 bool DemoEngine::Tick()
 {
+#if !WITH_ROCKET_PLAYER
+  static struct sync_cb RocketCb =
+  {
+    RocketPauseCb,
+    RocketSetRowCb,
+    RocketIsPlayingCb,
+  };
+#endif
+
   rmt_ScopedCPUSample(DemoEngine_Tick);
 
   _fileWatcher.Tick();
@@ -187,29 +208,29 @@ bool DemoEngine::Tick()
   _propertyManager.Tick();
 #endif
 
-#if WITH_MUSIC
-//  _system->update();
-#endif
-
 #if WITH_ROCKET
   if (_stream)
   {
-    QWORD pos = BASS_ChannelGetPosition(_stream, BASS_POS_BYTE);
-    double time = BASS_ChannelBytes2Seconds(_stream, pos);
-    double row = time * ROWS_PER_SECOND;
-    static struct sync_cb RocketCb =
+    double row = GetRow();
+
+#if !WITH_ROCKET_PLAYER
+    if (!_connected)
     {
-      RocketPauseCb,
-      RocketSetRowCb,
-      RocketIsPlayingCb,
-    };
-
-    if (sync_update(_rocket, (int)(row), &RocketCb, this))
-      sync_connect(_rocket, "localhost", SYNC_DEFAULT_PORT);
-
-    double r = sync_get_val(clear_r, row);
-    double g = sync_get_val(clear_g, row);
-    double b = sync_get_val(clear_b, row);
+      TimeStamp now = TimeStamp::Now();
+      if (now - _lastReconnect > TimeDuration::Seconds(5))
+      {
+        _connected = sync_connect(_rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
+        _lastReconnect = now;
+      }
+    }
+    else
+    {
+      if (sync_update(_rocket, (int)(row), &RocketCb, this))
+      {
+        _connected = false;
+      }
+    }
+#endif
   }
 #endif
 
@@ -259,6 +280,7 @@ bool DemoEngine::Tick()
   {
     Effect* e = Transfer(_inactiveEffects, _activeEffects);
     e->SetRunning(true);
+    e->InitAnimatedParameters();
     e->Update(initialState);
   }
 
@@ -329,6 +351,14 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
   BEGIN_INIT_SEQUENCE();
   bool res = true;
 
+#if WITH_ROCKET 
+  INIT(_rocket = sync_create_device("config/sync/"));
+#if !WITH_ROCKET_PLAYER
+  _connected = sync_connect(_rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
+  _lastReconnect = TimeStamp::Now();
+#endif
+#endif
+
   _fileWatcher.AddFileWatch(config, nullptr, true, &res, [this](const string& filename, void* token)
   {
     vector<char> buf;
@@ -344,15 +374,6 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
 
     return true;
   });
-
-#if WITH_ROCKET
-  INIT(_rocket = sync_create_device("sync"));
-  INIT(sync_connect(_rocket, "localhost", SYNC_DEFAULT_PORT) == 0);
-
-  clear_r = sync_get_track(_rocket, "clear.r");
-  clear_g = sync_get_track(_rocket, "clear.g");
-  clear_b = sync_get_track(_rocket, "clear.b");
-#endif
 
 #if WITH_MUSIC
   INIT(BASS_Init(-1, 44100, 0, 0, 0));
@@ -377,24 +398,36 @@ LRESULT DemoEngine::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
   return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
+#if !WITH_ROCKET_PLAYER
 //------------------------------------------------------------------------------
 void DemoEngine::RocketPauseCb(void* context, int flag)
 {
-  if (HSTREAM h = ((DemoEngine*)context)->_stream)
+  DemoEngine* self = (DemoEngine*)context;
+  if (HSTREAM h = self->_stream)
   {
     if (flag)
+    {
       BASS_ChannelPause(h);
+      self->_timer.Stop();
+    }
     else
+    {
       BASS_ChannelPlay(h, false);
+      self->_timer.Start();
+    }
   }
 }
 
 //------------------------------------------------------------------------------
 void DemoEngine::RocketSetRowCb(void* context, int row)
 {
-  if (HSTREAM h = ((DemoEngine*)context)->_stream)
+  DemoEngine* self = (DemoEngine*)context;
+
+  if (HSTREAM h = self->_stream)
   {
-    QWORD pos = BASS_ChannelSeconds2Bytes(h, row / ROWS_PER_SECOND);
+    double time = row / ROWS_PER_SECOND;
+    self->_timer.SetElapsed(TimeDuration::Microseconds((s64)(1e6 * time)));
+    QWORD pos = BASS_ChannelSeconds2Bytes(h, time);
     BASS_ChannelSetPosition(h, pos, BASS_POS_BYTE);
   }
 }
@@ -407,5 +440,5 @@ int DemoEngine::RocketIsPlayingCb(void* context)
     return BASS_ChannelIsActive(h) == BASS_ACTIVE_PLAYING;
   }
   return 0;
-
 }
+#endif

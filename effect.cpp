@@ -32,6 +32,12 @@ bool Effect::Init(const char* configFile)
 }
 
 //------------------------------------------------------------------------------
+bool Effect::InitAnimatedParameters()
+{
+  return true;
+}
+
+//------------------------------------------------------------------------------
 bool Effect::Update(const UpdateState& state)
 {
   return true;

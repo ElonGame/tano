@@ -23,6 +23,7 @@ namespace
 //------------------------------------------------------------------------------
 Cluster::Cluster(const string &name, u32 id)
   : Effect(name, id)
+  , _blinkFace("blinkface")
 {
 #if WITH_IMGUI
   PROPERTIES.Register("cluster",
@@ -107,6 +108,12 @@ bool Cluster::Render()
   _ctx->SetGpuState(_clusterState);
   _ctx->DrawIndexed(_clusterGpuObjects._numIndices, 0, 0);
 
+  return true;
+}
+
+//------------------------------------------------------------------------------
+bool Cluster::InitAnimatedParameters()
+{
   return true;
 }
 
