@@ -34,7 +34,9 @@
 #ifdef _WIN32
  #define WIN32_LEAN_AND_MEAN
  #define NOMINMAX
- #include <winsock2.h>
+ #include <winsock.h>
+ //typedef unsigned __int64 UINT_PTR, *PUINT_PTR;
+ //typedef UINT_PTR SOCKET;
  #include <windows.h>
  #include <limits.h>
 #elif defined(USE_AMITCP)

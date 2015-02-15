@@ -13,6 +13,15 @@
 using namespace tano;
 using namespace bristol;
 
+namespace
+{
+  bool wireframe = false;
+  float angle = 0;
+  float height = 0;
+  float distance = 100;
+  bool extended = false;
+}
+
 //------------------------------------------------------------------------------
 void ParticleTunnel::Particles::Create(int num)
 {
@@ -118,6 +127,14 @@ void ParticleTunnel::TextParticles::Create(const vector<Vector3>& verts, float t
     y = new float[numParticles];
     z = new float[numParticles];
 
+    startX = new float[numParticles];
+    startY = new float[numParticles];
+    startZ = new float[numParticles];
+
+    endX = new float[numParticles];
+    endY = new float[numParticles];
+    endZ = new float[numParticles];
+
     vx = new float[numParticles];
     vy = new float[numParticles];
     vz = new float[numParticles];
@@ -134,6 +151,14 @@ void ParticleTunnel::TextParticles::Create(const vector<Vector3>& verts, float t
     vx[i] = dist * dir.x / targetTime;
     vy[i] = dist * dir.y / targetTime;
     vz[i] = dist * dir.z / targetTime;
+
+    startX[i] = verts[i].x - dir.x * dist;
+    startY[i] = verts[i].y - dir.y * dist;
+    startZ[i] = verts[i].z - dir.z * dist;
+
+    endX[i] = verts[i].x;
+    endY[i] = verts[i].y;
+    endZ[i] = verts[i].z;
 
     x[i] = verts[i].x - dir.x * dist;
     y[i] = verts[i].y - dir.y * dist;
@@ -159,8 +184,10 @@ void ParticleTunnel::TextParticles::Destroy()
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::TextParticles::Update(float dt)
+void ParticleTunnel::TextParticles::Update(const UpdateState& state)
 {
+  float dt = 1.f / state.frequency;
+
   float* xx = x;
   float* yy = y;
   float* zz = z;
@@ -169,11 +196,20 @@ void ParticleTunnel::TextParticles::Update(float dt)
   float *vvy = vy;
   float *vvz = vz;
 
+  float s = Clamp(0.f, 1.f, (float)state.localTime.TotalMicroseconds() / (float)(1e6 * settings.text_time));
+
   for (int i = 0, e = numParticles; i < e; ++i)
   {
+/*
     xx[i] += dt * vvx[i];
     yy[i] += dt * vvy[i];
     zz[i] += dt * vvz[i];
+*/
+
+    xx[i] = lerp(startX[i], endX[i], s);
+    yy[i] = lerp(startY[i], endY[i], s);
+    zz[i] = lerp(startZ[i], endZ[i], s);
+
   }
 }
 
@@ -266,7 +302,7 @@ bool ParticleTunnel::Init(const char* configFile)
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
     rssDesc.CullMode = D3D11_CULL_NONE;
-    //rssDesc.FillMode = D3D11_FILL_WIREFRAME;
+    rssDesc.FillMode = D3D11_FILL_WIREFRAME;
 
     CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
     dsDesc.DepthEnable = FALSE;
@@ -295,11 +331,7 @@ bool ParticleTunnel::Init(const char* configFile)
 
   // Generic setup
   INIT(_cbPerFrame.Create());
-  _cbPerFrame.world = Matrix::Identity();
-  Matrix view = Matrix::CreateLookAt(Vector3(0, 0, -500), Vector3(0, 0, 0), Vector3(0, 1, 0));
-  Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 2000.f);
-  Matrix viewProj = view * proj;
-  _cbPerFrame.viewProj = viewProj.Transpose();
+  UpdateCameraMatrix();
   _cbPerFrame.tint = _settings.tint;
   _cbPerFrame.inner = _settings.inner_color;
   _cbPerFrame.outer = _settings.outer_color;
@@ -313,12 +345,32 @@ bool ParticleTunnel::Init(const char* configFile)
 }
 
 //------------------------------------------------------------------------------
+void ParticleTunnel::UpdateCameraMatrix()
+{
+  float x = distance * sin(angle);
+  float z = distance * cos(angle);
+  Vector3 pos = Vector3(x, height, z);
+  Vector3 target = Vector3(0, 0, 0);
+  Vector3 dir = target - pos;
+  dir.Normalize();
+
+  Matrix view = Matrix::CreateLookAt(pos, Vector3(0, 0, 0), Vector3(0, 1, 0));
+  Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 2000.f);
+  Matrix viewProj = view * proj;
+
+  _cbPerFrame.world = Matrix::Identity();
+  _cbPerFrame.view = view.Transpose();
+  _cbPerFrame.proj = proj.Transpose();
+  _cbPerFrame.viewProj = viewProj.Transpose();
+  _cbPerFrame.viewDir = dir;
+}
+
+//------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
-  rmt_ScopedCPUSample(ParticleTunnel_Update);
+  UpdateCameraMatrix();
 
-  if (state.numTicks == 0)
-    return true;
+  rmt_ScopedCPUSample(ParticleTunnel_Update);
 
   float dt = 1.f / state.frequency;
   {
@@ -331,10 +383,13 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
   {
     rmt_ScopedCPUSample(TextParticles_Update);
+    _textParticles.Update(state);
+/*
     for (int tick = 0; tick < state.numTicks; ++tick)
     {
       _textParticles.Update(dt);
     }
+*/
   }
 
   {
@@ -371,6 +426,11 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
     Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_linesGpuObjects._vb);
 
+#if 1
+    _numLines = 2;
+    vtx[0] = Vector3(-50, 0, 0);
+    vtx[1] = Vector3(+50, 0, 0);
+#else
     _numLines = 0;
     for (int i = 0, e = (int)_textParticles.selectedTris.size(); i < e; ++i)
     {
@@ -392,6 +452,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
         vtx++;
       }
     }
+#endif
 
     _ctx->Unmap(_linesGpuObjects._vb);
   }
@@ -500,28 +561,28 @@ bool ParticleTunnel::Render()
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
-
+/*
   // Render the background
   _ctx->SetGpuObjects(_backgroundGpuObjects);
   _ctx->SetGpuState(_backgroundState);
   _ctx->Draw(3, 0);
 
-/*
+
   // Render particles
   _ctx->SetGpuObjects(_particleGpuObjects);
   _ctx->SetGpuState(_particleState);
   _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
   _ctx->Draw(6 * _settings.num_particles, 0);
-*/
+
 
   // text
-/*
+
   _ctx->SetGpuObjects(_textGpuObjects);
   _ctx->SetGpuState(_textState);
   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
-*/
 
+*/
   // lines
   _ctx->SetGpuObjects(_linesGpuObjects);
   _ctx->SetGpuState(_linesState);
@@ -538,7 +599,8 @@ bool ParticleTunnel::Render()
   // compose final image on default swap chain
 
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
-  postProcess->Execute({rtTmp._handle}, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+  //postProcess->Execute({ rtTmp._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+  postProcess->Execute({ rt._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
 
   return true;
 }
@@ -625,18 +687,49 @@ void ParticleTunnel::ApplyBlur(ObjectHandle inputBuffer, ObjectHandle outputBuff
 #if WITH_IMGUI
 void ParticleTunnel::RenderParameterSet()
 {
-  if (ImGui::ColorEdit4("Tint", &_settings.tint.x)) _cbPerFrame.tint = _settings.tint;
-  if (ImGui::ColorEdit4("Inner", &_settings.inner_color.x)) _cbPerFrame.inner = _settings.inner_color;
-  if (ImGui::ColorEdit4("Outer", &_settings.outer_color.x)) _cbPerFrame.outer = _settings.outer_color;
-  ImGui::Separator();
-  ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
+  ImGui::Checkbox("extended", &extended);
+  if (extended)
+  {
+    if (ImGui::ColorEdit4("Tint", &_settings.tint.x)) _cbPerFrame.tint = _settings.tint;
+    if (ImGui::ColorEdit4("Inner", &_settings.inner_color.x)) _cbPerFrame.inner = _settings.inner_color;
+    if (ImGui::ColorEdit4("Outer", &_settings.outer_color.x)) _cbPerFrame.outer = _settings.outer_color;
+    ImGui::Separator();
+    ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
 
-  ImGui::SliderFloat("blur", &_cbBlur.radius, 1, 100);
+    ImGui::SliderFloat("blur", &_cbBlur.radius, 1, 100);
 
-  if (ImGui::SliderFloat("text time", &_settings.text_time, 0.1f, 10.f)) Reset();
-  if (ImGui::SliderFloat("min dist", &_settings.text_min_dist, 1, 100)) Reset();
-  if (ImGui::SliderFloat("max dist", &_settings.text_max_dist, 1, 2000)) Reset();
-  if (ImGui::SliderFloat("triangle prob", &_settings.text_triangle_prob, 0.f, 1.f)) Reset();
+    if (ImGui::Checkbox("wireframe", &wireframe))
+    {
+      CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
+      rssDesc.CullMode = D3D11_CULL_NONE;
+      if (wireframe)
+        rssDesc.FillMode = D3D11_FILL_WIREFRAME;
+
+      CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
+      dsDesc.DepthEnable = FALSE;
+
+      CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+
+      // pre-multiplied alpha
+      D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
+      b.BlendEnable = TRUE;
+      b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+      b.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+
+      _linesState.Create(&dsDesc, &blendDesc, &rssDesc);
+    }
+
+    if (ImGui::SliderFloat("text time", &_settings.text_time, 0.1f, 10.f)) Reset();
+    if (ImGui::SliderFloat("min dist", &_settings.text_min_dist, 1, 100)) Reset();
+    if (ImGui::SliderFloat("max dist", &_settings.text_max_dist, 1, 2000)) Reset();
+    if (ImGui::SliderFloat("triangle prob", &_settings.text_triangle_prob, 0.f, 1.f)) Reset();
+  }
+  else
+  {
+    ImGui::SliderAngle("camera xz-plane", &angle);
+    ImGui::SliderFloat("camera distance", &distance, 1, 200);
+    ImGui::SliderFloat("camera height", &height, -100, 100);
+  }
 
   if (ImGui::Button("Reset"))
     Reset();

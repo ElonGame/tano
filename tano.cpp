@@ -8,6 +8,7 @@
 #include "generated/input_buffer.hpp"
 #include "effects/particle_tunnel.hpp"
 #include "effects/raymarcher.hpp"
+#include "effects/cluster.hpp"
 
 #if WITH_IMGUI
 #include "imgui_helpers.hpp"
@@ -29,15 +30,6 @@ Remotery* g_rmt;
 App* App::_instance;
 
 //------------------------------------------------------------------------------
-#define FMOD_CHECKED(x) { \
-  FMOD_RESULT result = x; \
-  if (result != FMOD_OK) { \
-  LOG_ERROR(ToString("FMOD error! (%d) %s\n", result, FMOD_ErrorString(result)).c_str()); \
-  return false; \
-    } \
-}
-
-//------------------------------------------------------------------------------
 static char g_ModuleName[MAX_PATH];
 
 //------------------------------------------------------------------------------
@@ -57,11 +49,6 @@ static bool GlobalClose()
 //------------------------------------------------------------------------------
 App::App()
   : _hinstance(NULL)
-#if WITH_MUSIC
-  , _sound(nullptr)
-  , _system(nullptr)
-  , _channel(nullptr)
-#endif
 {
 }
 
@@ -84,15 +71,9 @@ bool App::Destroy()
   g_rmt = nullptr;
 #endif
 
-
-  if (!ResourceManager::Destroy())
-    return false;
-
-  if (!DemoEngine::Destroy())
-    return false;
-
-  if (!Graphics::Destroy())
-    return false;
+  INIT(ResourceManager::Destroy());
+  INIT(DemoEngine::Destroy());
+  INIT(Graphics::Destroy());
 
   delete exch_null(_instance);
 
@@ -145,24 +126,9 @@ bool App::Init(HINSTANCE hinstance)
   INIT(DemoEngine::Create());
   ParticleTunnel::Register();
   RayMarcher::Register();
+  Cluster::Register();
 
   INIT(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
-
-#if WITH_MUSIC
-  FMOD_CHECKED(FMOD::System_Create(&_system));
-
-  u32 version;
-  FMOD_CHECKED(_system->getVersion(&version));
-
-  if (version < FMOD_VERSION)
-  {
-    LOG_ERROR(ToString("Error!  You are using an old version of FMOD %08x.  This program requires %08x\n", version, FMOD_VERSION).c_str());
-    return false;
-  }
-
-  FMOD_CHECKED(_system->init(1, FMOD_INIT_NORMAL, 0));
-  FMOD_CHECKED(_system->createStream("Distance.mp3", FMOD_HARDWARE | FMOD_LOOP_NORMAL | FMOD_2D, 0, &_sound));
-#endif
 
   END_INIT_SEQUENCE();
 }
@@ -173,10 +139,6 @@ bool App::Run()
   MSG msg ={ 0 };
 
   DEMO_ENGINE.Start();
-
-#if WITH_MUSIC
-  //FMOD_RESULT result = _system->playSound(FMOD_CHANNEL_FREE, _sound, false, &_channel);
-#endif
 
   while (WM_QUIT != msg.message)
   {
@@ -198,21 +160,11 @@ bool App::Run()
     RESOURCE_MANAGER.Tick();
 #endif
 
-#if WITH_MUSIC
-    _system->update();
-#endif
-
 #if WITH_IMGUI
     ImGui::Render();
 #endif
     GRAPHICS.Present();
   }
-
-#if WITH_MUSIC
-  FMOD_CHECKED(_sound->release());
-  FMOD_CHECKED(_system->close());
-  FMOD_CHECKED(_system->release());
-#endif
 
   return true;
 }
@@ -224,16 +176,14 @@ bool App::LoadSettings()
 
   vector<char> buf;
   INIT(RESOURCE_MANAGER.LoadFile(PathJoin(_appRoot.c_str(), "app.gb").c_str(), &buf));
-
   INIT(ParseAppSettings(InputBuffer(buf.data(), buf.size()), &_settings));
+
   END_INIT_SEQUENCE();
 }
 
 //------------------------------------------------------------------------------
 void App::SaveSettings()
 {
-//   if (_appRootFilename.empty())
-//     return;
 }
 
 //------------------------------------------------------------------------------
@@ -336,6 +286,14 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case VK_RIGHT:
           DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() + TimeDuration::Seconds(1));
+          return 0;
+
+        case VK_UP:
+          DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() - TimeDuration::Milliseconds(100));
+          return 0;
+
+        case VK_DOWN:
+          DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() + TimeDuration::Milliseconds(100));
           return 0;
 
         case VK_HOME:

@@ -26,6 +26,7 @@ bool GpuObjects::CreateDynamicVb(u32 vbSize, u32 vbElemSize, const void* vbData)
 {
   _vbSize = vbSize;
   _vbElemSize = vbElemSize;
+  _numVerts = _vbSize / _vbElemSize;
   _vb = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, vbSize, true, vbData, vbElemSize);
   return _vb.IsValid();
 }
@@ -35,7 +36,28 @@ bool GpuObjects::CreateDynamicIb(u32 ibSize, DXGI_FORMAT ibFormat, const void* i
 {
   _ibSize = ibSize;
   _ibFormat = ibFormat;
+  _numIndices = _ibSize / IndexSizeFromFormat(ibFormat);
   _ib = GRAPHICS.CreateBuffer(D3D11_BIND_INDEX_BUFFER, ibSize, true, ibData, ibFormat);
+  return _ib.IsValid();
+}
+
+//------------------------------------------------------------------------------
+bool GpuObjects::CreateVertexBuffer(u32 vbSize, u32 vbElemSize, const  void* vbData)
+{
+  _vbSize = vbSize;
+  _vbElemSize = vbElemSize;
+  _numVerts = _vbSize / _vbElemSize;
+  _vb = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, vbSize, false, vbData, vbElemSize);
+  return _vb.IsValid();
+}
+
+//------------------------------------------------------------------------------
+bool GpuObjects::CreateIndexBuffer(u32 ibSize, DXGI_FORMAT ibFormat, const  void* ibData)
+{
+  _ibSize = ibSize;
+  _ibFormat = ibFormat;
+  _numIndices = _ibSize / IndexSizeFromFormat(ibFormat);
+  _ib = GRAPHICS.CreateBuffer(D3D11_BIND_INDEX_BUFFER, ibSize, false, ibData, ibFormat);
   return _ib.IsValid();
 }
 

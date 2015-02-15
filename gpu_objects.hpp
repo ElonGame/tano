@@ -23,6 +23,9 @@ namespace tano
     bool CreateDynamicVb(u32 vbSize, u32 vbElemSize, const  void* vbData = nullptr);
     bool CreateDynamicIb(u32 ibSize, DXGI_FORMAT ibFormat, const  void* ibData = nullptr);
 
+    bool CreateVertexBuffer(u32 vbSize, u32 vbElemSize, const  void* vbData);
+    bool CreateIndexBuffer(u32 ibSize, DXGI_FORMAT ibFormat, const  void* ibData);
+
     // TODO: replace the flags with a list of semnatic/format tuples
     bool LoadShadersFromFile(
       const char* filename,
@@ -45,6 +48,8 @@ namespace tano
     u32 _ibSize;
     u32 _vbElemSize;
     DXGI_FORMAT _ibFormat;
+    u32 _numVerts = 0;
+    u32 _numIndices = 0;
   };
 
   //------------------------------------------------------------------------------

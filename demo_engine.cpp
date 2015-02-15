@@ -13,9 +13,17 @@ using namespace bristol;
 
 namespace
 {
+  const struct sync_track *clear_r, *clear_g, *clear_b;
+
   // update frequeny in hz
   u32 UPDATE_FREQUENCY = 100;
   TimeDuration UPDATE_DELTA = TimeDuration::Microseconds((s64)1e6 / UPDATE_FREQUENCY);
+
+  // these values come from the rocket editor
+  // const float bpm = 180.0f;
+  // const float rpb = 8.0f;
+  float ROWS_PER_SECOND = 24.0f; // bpm / 60.0f * rpb;
+
 }
 
 //------------------------------------------------------------------------------
@@ -62,6 +70,14 @@ DemoEngine::~DemoEngine()
   _activeEffects.clear();
   _inactiveEffects.clear();
   _expiredEffects.clear();
+
+#if WITH_MUSIC
+  BASS_StreamFree(_stream);
+  BASS_Free();
+//   _sound->release();
+//   _system->close();
+//   _system->release();
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -81,6 +97,11 @@ bool DemoEngine::Create()
 bool DemoEngine::Start()
 {
   _timer.Start();
+#if WITH_MUSIC
+  BASS_Start();
+  BASS_ChannelPlay(_stream, false);
+#endif
+
   return true;
 }
 
@@ -166,6 +187,32 @@ bool DemoEngine::Tick()
   _propertyManager.Tick();
 #endif
 
+#if WITH_MUSIC
+//  _system->update();
+#endif
+
+#if WITH_ROCKET
+  if (_stream)
+  {
+    QWORD pos = BASS_ChannelGetPosition(_stream, BASS_POS_BYTE);
+    double time = BASS_ChannelBytes2Seconds(_stream, pos);
+    double row = time * ROWS_PER_SECOND;
+    static struct sync_cb RocketCb =
+    {
+      RocketPauseCb,
+      RocketSetRowCb,
+      RocketIsPlayingCb,
+    };
+
+    if (sync_update(_rocket, (int)(row), &RocketCb, this))
+      sync_connect(_rocket, "localhost", SYNC_DEFAULT_PORT);
+
+    double r = sync_get_val(clear_r, row);
+    double g = sync_get_val(clear_g, row);
+    double b = sync_get_val(clear_b, row);
+  }
+#endif
+
   TimeDuration delta, current;
   current = _timer.Elapsed(&delta);
 
@@ -178,32 +225,23 @@ bool DemoEngine::Tick()
 
   bool paused = !_timer.IsRunning();
 
-  // Check if it's time to tick the active effects
-  _accumulated += delta;
+  // calc the number of ticks to step
+  float numTicks = TimeDurationToFloat(delta) * UPDATE_FREQUENCY;
+  int intNumTicks = (int)numTicks;
 
-  if (_accumulated > UPDATE_DELTA)
+  UpdateState curState;
+  curState.globalTime = current;
+  curState.delta = delta;
+  curState.paused = paused;
+  curState.frequency = UPDATE_FREQUENCY;
+  curState.numTicks = intNumTicks;
+  curState.ticksFraction = numTicks - intNumTicks;
+
+  // tick the active effects
+  for (auto& effect : _activeEffects)
   {
-    // calc the number of ticks to step
-    float numTicks = TimeDurationToFloat(_accumulated) * UPDATE_FREQUENCY;
-    int intNumTicks = (int)numTicks;
-
-    UpdateState curState;
-    curState.globalTime = current;
-    curState.delta = _accumulated;
-    curState.paused = paused;
-    curState.frequency = UPDATE_FREQUENCY;
-    curState.numTicks = intNumTicks;
-    curState.ticksFraction = numTicks - intNumTicks;
-
-    // tick the active effects
-    for (auto& effect : _activeEffects)
-    {
-      curState.localTime = current - effect->StartTime();
-      effect->Update(curState);
-    }
-
-    while (intNumTicks--)
-      _accumulated -= UPDATE_DELTA;
+    curState.localTime = current - effect->StartTime();
+    effect->Update(curState);
   }
 
   // check if any effect start now
@@ -288,6 +326,7 @@ bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
 //------------------------------------------------------------------------------
 bool DemoEngine::Init(const char* config, HINSTANCE instance)
 {
+  BEGIN_INIT_SEQUENCE();
   bool res = true;
 
   _fileWatcher.AddFileWatch(config, nullptr, true, &res, [this](const string& filename, void* token)
@@ -306,9 +345,24 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
     return true;
   });
 
+#if WITH_ROCKET
+  INIT(_rocket = sync_create_device("sync"));
+  INIT(sync_connect(_rocket, "localhost", SYNC_DEFAULT_PORT) == 0);
+
+  clear_r = sync_get_track(_rocket, "clear.r");
+  clear_g = sync_get_track(_rocket, "clear.g");
+  clear_b = sync_get_track(_rocket, "clear.b");
+#endif
+
+#if WITH_MUSIC
+  INIT(BASS_Init(-1, 44100, 0, 0, 0));
+  INIT(_stream = BASS_StreamCreateFile(false, _settings.soundtrack.c_str(), 0, 0, BASS_STREAM_PRESCAN));
+#endif
+
   ReclassifyEffects();
 
-  return res;
+  INIT(res);
+  END_INIT_SEQUENCE();
 }
 
 //------------------------------------------------------------------------------
@@ -321,4 +375,37 @@ void DemoEngine::RegisterFactory(const string& type, const EffectFactory& factor
 LRESULT DemoEngine::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
   return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+//------------------------------------------------------------------------------
+void DemoEngine::RocketPauseCb(void* context, int flag)
+{
+  if (HSTREAM h = ((DemoEngine*)context)->_stream)
+  {
+    if (flag)
+      BASS_ChannelPause(h);
+    else
+      BASS_ChannelPlay(h, false);
+  }
+}
+
+//------------------------------------------------------------------------------
+void DemoEngine::RocketSetRowCb(void* context, int row)
+{
+  if (HSTREAM h = ((DemoEngine*)context)->_stream)
+  {
+    QWORD pos = BASS_ChannelSeconds2Bytes(h, row / ROWS_PER_SECOND);
+    BASS_ChannelSetPosition(h, pos, BASS_POS_BYTE);
+  }
+}
+
+//------------------------------------------------------------------------------
+int DemoEngine::RocketIsPlayingCb(void* context)
+{
+  if (HSTREAM h = ((DemoEngine*)context)->_stream)
+  {
+    return BASS_ChannelIsActive(h) == BASS_ACTIVE_PLAYING;
+  }
+  return 0;
+
 }

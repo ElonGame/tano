@@ -24,6 +24,30 @@ void PropertyManager::Register(const char* label, const cbRenderCallback& cbRend
 }
 
 //------------------------------------------------------------------------------
+void PropertyManager::SetActive(const char* label)
+{
+  if (_comboString.empty())
+    return;
+
+  const char* cur = _comboString.data();
+  int idx = 0;
+  while (true) {
+    if (!(*cur))
+      return;
+
+    size_t len = strlen(cur);
+    if (strcmp(cur, label) == 0) {
+      _curItem = idx;
+      return;
+    }
+
+    // skip the current string, and the 0 char
+    cur += len + 1;
+    idx++;
+  }
+}
+
+//------------------------------------------------------------------------------
 void PropertyManager::Tick()
 {
   if (_callbacks.empty())

@@ -5,16 +5,24 @@
   {
     name: 'intro';
     factory: 'particle_tunnel';
-    start_time: 0;
+    start_time: 1300000;
     end_time: 1300000;
     settings: 'config/particle_tunnel.gb';
   },
   {
     name: 'intro2';
     factory: 'raymarcher';
-    start_time: 300000;
-    end_time: 300000;
+    start_time: 2300000;
+    end_time: 2300000;
     settings: 'config/raymarcher.gb';
   },
+  {
+    name: 'cluster';
+    factory: 'cluster';
+    start_time: 0;
+    end_time: 2300000;
+    settings: 'config/cluster.gb';
+  },
+
   ];
 }

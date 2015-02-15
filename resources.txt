@@ -1,3 +1,4 @@
+config/cluster.gb	d:/projects/tano/config/cluster.gb
 config/demo.gb	d:/projects/tano/config/demo.gb
 config/particle_tunnel.gb	d:/projects/tano/config/particle_tunnel.gb
 config/raymarcher.gb	d:/projects/tano/config/raymarcher.gb
@@ -7,6 +8,8 @@ gfx/particle1_pre.png	d:/projects/tano/gfx/particle1_pre.png
 shaders/out/blur_BlurTransposeD.cso	d:/projects/tano/shaders/out/blur_BlurTransposeD.cso
 shaders/out/blur_BoxBlurXD.cso	d:/projects/tano/shaders/out/blur_BoxBlurXD.cso
 shaders/out/blur_CopyTransposeD.cso	d:/projects/tano/shaders/out/blur_CopyTransposeD.cso
+shaders/out/cluster_PsMeshD.pso	d:/projects/tano/shaders/out/cluster_PsMeshD.pso
+shaders/out/cluster_VsMeshD.vso	d:/projects/tano/shaders/out/cluster_VsMeshD.vso
 shaders/out/imgui_PsMainD.pso	d:/projects/tano/shaders/out/imgui_PsMainD.pso
 shaders/out/imgui_VsMainD.vso	d:/projects/tano/shaders/out/imgui_VsMainD.vso
 shaders/out/particle_tunnel_GsLinesD.gso	d:/projects/tano/shaders/out/particle_tunnel_GsLinesD.gso

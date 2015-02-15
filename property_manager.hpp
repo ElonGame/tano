@@ -12,6 +12,7 @@ namespace tano
     PropertyManager();
     void Register(const char* label, const cbRenderCallback& cbRender, const cbSaveCallback& cbSave);
     void Tick();
+    void SetActive(const char* label);
 
   private:
     struct Callbacks

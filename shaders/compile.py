@@ -17,12 +17,14 @@ vs = {
     'raymarcher' : ['VsQuad'],
     'imgui' : ['VsMain'],
     'quad' : ['VsMain'],
+    'cluster' : ['VsMesh'],
 }
 
 ps = {
     'particle_tunnel' : ['PsParticle', 'PsBackground', 'PsText', 'PsComposite', 'PsLines'],
     'raymarcher' : ['PsRaymarcher'],
     'imgui' : ['PsMain'],
+    'cluster' : ['PsMesh'],
 }
 
 cs = {

@@ -1,6 +1,8 @@
 #pragma once
 #include "generated/app.types.hpp"
 
+struct sync_device;
+
 namespace tano
 {
   class App
@@ -26,12 +28,6 @@ namespace tano
 
     static App* _instance;
     HINSTANCE _hinstance;
-
-#if WITH_MUSIC
-    FMOD::System *_system;
-    FMOD::Sound  *_sound;
-    FMOD::Channel *_channel;
-#endif
 
     string _appRoot;
     AppSettings _settings;

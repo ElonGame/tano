@@ -2,7 +2,6 @@
 
 namespace tano
 {
-
   struct Mesh;
 
 #pragma pack(push, 1)
@@ -25,6 +24,7 @@ namespace tano
 
     struct MeshElement
     {
+      u32 GetVertexFormat() const;
       const char* name;
       u32 numVerts;
       u32 numIndices;
@@ -50,4 +50,5 @@ namespace tano
     vector<char> buf;
   };
 #pragma pack(pop)
+
 }

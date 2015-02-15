@@ -6,11 +6,14 @@ sampler PointSampler : register(s0);
 cbuffer PerFrame : register(b0)
 {
   matrix world;
+  matrix view;
+  matrix proj;
   matrix viewProj;
   float4 tint;
   float4 inner;
   float4 outer;
   float2 dim;
+  float3 viewDir;
 };
 
 //------------------------------------------------------
@@ -101,28 +104,32 @@ VsLinesOut VsLines(VsLinesIn v)
 void OutputVtx(float4 v, float2 tex, inout TriangleStream<GsLinesOut> stream)
 {
   GsLinesOut res;
-  res.pos = v;
+  res.pos = mul(v, proj);
   res.tex = tex;
   stream.Append(res);
 }
 
-void OutputQuad(float4 a, float2 dir, float2 up, float2 tex[4], inout TriangleStream<GsLinesOut> stream)
+void OutputVtx2(float3 v, float2 tex, inout TriangleStream<GsLinesOut> stream)
+{
+  GsLinesOut res;
+  res.pos = mul(float4(v, 1), viewProj);
+  res.tex = tex;
+  stream.Append(res);
+}
+
+void OutputQuad(float4 a, float3 dir, float3 up, float2 tex[4], inout TriangleStream<GsLinesOut> stream)
 {
   float4 v0 = a;
-  v0.xy += dir.xy * float2(-1,0);
-  v0.xy += up.xy  * float2(0,-1);
+  v0.xyz += -1 * dir - 1 * up;
 
   float4 v1 = a;
-  v1.xy += dir.xy * float2(-1,0);
-  v1.xy += up.xy  * float2(0,+1);
+  v1.xyz += -1 * dir + 1 * up;
 
   float4 v2 = a;
-  v2.xy += dir.xy * float2(+1,0);
-  v2.xy += up.xy  * float2(0,-1);
-
+  v2.xyz += +1 * dir - 1 * up;
+  
   float4 v3 = a;
-  v3.xy += dir.xy * float2(+1,0);
-  v3.xy += up.xy  * float2(0,+1);
+  v3.xyz += +1 * dir + 1 * up;
 
   OutputVtx(v0, tex[0], stream);
   OutputVtx(v1, tex[1], stream);
@@ -131,10 +138,46 @@ void OutputQuad(float4 a, float2 dir, float2 up, float2 tex[4], inout TriangleSt
  
 }
 
+void OutputQuad2(float4 a, float2 dir, float2 up, float2 tex[4], inout TriangleStream<GsLinesOut> stream)
+{
+  float4 v0 = a;
+  v0.xy += -1 * dir.xy - 1 * up.xy;
+
+  float4 v1 = a;
+  v1.xy += -1 * dir.xy + 1 * up.xy;
+
+  float4 v2 = a;
+  v2.xy += +1 * dir.xy - 1 * up.xy;
+  
+  float4 v3 = a;
+  v3.xy += +1 * dir.xy + 1 * up.xy;
+
+  OutputVtx(v0, tex[0], stream);
+  OutputVtx(v1, tex[1], stream);
+  OutputVtx(v2, tex[2], stream);
+  OutputVtx(v3, tex[3], stream);
+}
+
+void OutputQuad3(float3 a, float3 right, float3 up, float2 tex[4], inout TriangleStream<GsLinesOut> stream)
+{
+  float3 v0 = a - 1 * right - 1 * up;
+  float3 v1 = a - 1 * right + 1 * up;
+  float3 v2 = a + 1 * right - 1 * up;
+  float3 v3 = a + 1 * right + 1 * up;
+
+  OutputVtx2(v0, tex[0], stream);
+  OutputVtx2(v1, tex[1], stream);
+  OutputVtx2(v2, tex[2], stream);
+  OutputVtx2(v3, tex[3], stream);
+}
+
 
 [maxvertexcount(8)]
 void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
 {
+
+  float2 texA[4] = { float2(0, 1),    float2(0, 0),   float2(0.5, 1), float2(0.5, 0) };
+  float2 texB[4] = { float2(0.5, 1),  float2(0.5, 0), float2(1, 1),   float2(1, 0) };
 
   /*
       1--3-------5--7
@@ -142,11 +185,29 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
       0--2-------4--6
   */
 
+  // read axis from the camera view matrix
+  float3 camRight = float3(view._11, view._21, view._31);
+  float3 camUp = float3(view._21, view._22, view._23);
+  float3 camForward = float3(view._31, view._32, view._33);
+
+  float3 pos = input[0].pos;
+  OutputQuad3(pos, camRight, camUp, texA, stream);
+  return;
+
+  float4 aView = mul(float4(input[0].pos, 1), view);
+  float4 bView = mul(float4(input[1].pos, 1), view);
+
+  // get z from the direction
+  float3 axisDir = normalize(bView.xyz - aView.xyz);
+  float3 axisRight = -viewDir;
+  float3 axisUp = cross(axisDir, axisRight);
+  //float3 axisRight = cross(axisUp, axisDir);
+
   float4 a = mul(float4(input[0].pos, 1), viewProj);
   float4 b = mul(float4(input[1].pos, 1), viewProj);
 
   // clip space line direction
-  float h = 4;
+  float h = 5;
   float2 dir = h * normalize(b.xy / b.ww - a.xy / a.ww);
 
   // swap direction if the points are on opposite sides of the near clip plane
@@ -155,15 +216,16 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
 
   float2 up = dir.yx;
 
-  float2 texA[4] = { float2(0, 1),    float2(0, 0),   float2(0.5, 1), float2(0.5, 0) };
-  float2 texB[4] = { float2(0.5, 1),  float2(0.5, 0), float2(1, 1),   float2(1, 0) };
 
-  OutputQuad(a, dir, up, texA, stream);
-  OutputQuad(b, dir, up, texB, stream);
+  //OutputQuad2(a, dir, up, texA, stream);
+  //OutputQuad2(b, dir, up, texB, stream);
+  OutputQuad(aView, axisDir, axisUp, texA, stream);
+  OutputQuad(bView, axisDir, axisUp, texB, stream);
 }
 
 float4 PsLines(GsLinesOut input) : Sv_Target
 {
+  return 1;
   float4 col = Texture0.Sample(PointSampler, input.tex);
   return float4(col.r, col.g, col.b, col.r);
 }

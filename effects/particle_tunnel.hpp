@@ -31,6 +31,7 @@ namespace tano
     void SaveParameterSet();
 #endif
 
+    void UpdateCameraMatrix();
     void ApplyBlur(ObjectHandle inputBuffer, ObjectHandle outputBuffer);
 
     // SOA style
@@ -68,11 +69,17 @@ namespace tano
       TextParticles(const ParticleTunnelSettings& settings) : settings(settings) {}
       void Create(const vector<Vector3>& verts, float targetTime);
       void Destroy();
-      void Update(float dt);
+      void Update(const UpdateState& state);
 
       float* x = nullptr;
       float* y = nullptr;
       float* z = nullptr;
+      float* startX = nullptr;
+      float* startY = nullptr;
+      float* startZ = nullptr;
+      float* endX = nullptr;
+      float* endY = nullptr;
+      float* endZ = nullptr;
       float* vx = nullptr;
       float* vy = nullptr;
       float* vz = nullptr;
@@ -87,11 +94,14 @@ namespace tano
     struct CBufferPerFrame
     {
       Matrix world;
+      Matrix view;
+      Matrix proj;
       Matrix viewProj;
       Color tint;
       Color inner;
       Color outer;
       Vector2 dim;
+      Vector3 viewDir;
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 

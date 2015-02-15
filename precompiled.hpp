@@ -3,16 +3,16 @@
 //  C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc
 #pragma warning(disable: 4530)
 
-//#define WITH_REMOTERY 1
+#define WITH_REMOTERY 1
 //#define WITH_DXGI_DEBUG 1
 //#define WITH_DEBUG_SHADERS 1
-//#define WITH_ROCKET 1
+#define WITH_ROCKET 1
 //#define WITH_IMGUI 1
 
 #define WITH_CONFIG_DLG 0
 #define WITH_UNPACKED_RESOUCES 1
 
-#define WITH_MUSIC 0
+#define WITH_MUSIC 1
 
 #if !WITH_ROCKET
 #define SYNC_PLAYER 1
@@ -77,6 +77,10 @@
 #include <D3DX11tex.h>
 #include <DirectXMath.h>
 
+#if WITH_ROCKET
+#include "sync/device.h"
+#endif
+
 #include <atlbase.h>
 #include <windows.h>
 #include <windowsx.h>
@@ -92,8 +96,7 @@
 #include <memory>
 
 #if WITH_MUSIC
-#include <fmod.hpp>
-#include <fmod_errors.h>
+#include <bass.h>
 #endif
 
 #if WITH_REMOTERY

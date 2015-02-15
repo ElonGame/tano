@@ -41,6 +41,9 @@
     <Filter Include="remotery">
       <UniqueIdentifier>{341c806c-144b-485d-afe0-6003cedb2f6a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="bass">
+      <UniqueIdentifier>{58b1a917-8ee9-441a-8795-42459940b94c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tano.cpp">
@@ -146,6 +149,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\graphics_context.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\cluster.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mesh_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -305,6 +314,15 @@
     </ClInclude>
     <ClInclude Include="..\graphics_context.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\cluster.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mesh_utils.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bass\bass.h">
+      <Filter>bass</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

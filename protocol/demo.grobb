@@ -32,3 +32,8 @@ struct ray_marcher_settings
 {
   
 };
+
+struct cluster_settings
+{
+  
+};

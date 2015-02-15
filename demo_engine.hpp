@@ -75,6 +75,17 @@ namespace tano
 #if WITH_IMGUI
     PropertyManager _propertyManager;
 #endif
+
+#if WITH_MUSIC
+    HSTREAM _stream = 0;
+#endif
+
+#if WITH_ROCKET
+    sync_device* _rocket = nullptr;
+    static void RocketPauseCb(void* context, int flag);
+    static void RocketSetRowCb(void* context, int row);
+    static int RocketIsPlayingCb(void* context);
+#endif
   };
 
 #define DEMO_ENGINE DemoEngine::Instance()

@@ -3,6 +3,7 @@
 using namespace tano;
 using namespace bristol;
 
+//------------------------------------------------------------------------------
 bool MeshLoader::Load(const char* filename)
 {
   if (!LoadFile(filename, &buf))
@@ -26,6 +27,7 @@ bool MeshLoader::Load(const char* filename)
   return true;
 }
 
+//------------------------------------------------------------------------------
 void MeshLoader::ProcessFixups(u32 fixupOffset)
 {
   // Process all the fixups. A list of locations that point to relative
@@ -46,4 +48,10 @@ void MeshLoader::ProcessFixups(u32 fixupOffset)
     u32 ofs = *(u32*)(base + fixup);
     *(intptr_t*)(base + fixup) = base + ofs;
   }
+}
+
+//------------------------------------------------------------------------------
+u32 MeshLoader::MeshElement::GetVertexFormat() const
+{
+  return (verts ? VF_POS : 0) | (normals ? VF_NORMAL : 0) | (uv ? VF_TEX2_0 : 0);
 }
