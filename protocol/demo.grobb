@@ -13,6 +13,7 @@ struct effect_settings
   int start_time;
   int end_time;
   string settings;
+  bool force = false;
 };
 
 struct particle_tunnel_settings

@@ -17,11 +17,11 @@ namespace
   u32 UPDATE_FREQUENCY = 100;
   TimeDuration UPDATE_DELTA = TimeDuration::Microseconds((s64)1e6 / UPDATE_FREQUENCY);
 
-  // these values come from the rocket editor
+  // These values are kinda arbitrary, and should probably be set to match
+  // the music
   // const float bpm = 180.0f;
   // const float rpb = 8.0f;
   float ROWS_PER_SECOND = 24.0f; // bpm / 60.0f * rpb;
-
 }
 
 //------------------------------------------------------------------------------
@@ -100,6 +100,7 @@ bool DemoEngine::Start()
 #if WITH_MUSIC
   BASS_Start();
   BASS_ChannelPlay(_stream, false);
+  BASS_ChannelSetAttribute(_stream, BASS_ATTRIB_VOL, 0);
 #endif
 
   return true;
@@ -234,15 +235,16 @@ bool DemoEngine::Tick()
   }
 #endif
 
+  UpdateEffects();
+
+  return true;
+}
+
+//------------------------------------------------------------------------------
+void DemoEngine::UpdateEffects()
+{
   TimeDuration delta, current;
   current = _timer.Elapsed(&delta);
-
-  // check for any effects that have ended
-  while (!_activeEffects.empty() && _activeEffects.front()->EndTime() <= current)
-  {
-    Effect* e = Transfer(_activeEffects, _expiredEffects);
-    e->SetRunning(false);
-  }
 
   bool paused = !_timer.IsRunning();
 
@@ -258,6 +260,23 @@ bool DemoEngine::Tick()
   curState.numTicks = intNumTicks;
   curState.ticksFraction = numTicks - intNumTicks;
 
+
+  // If a force effect is set, just tick this guy
+  if (_forceEffect)
+  {
+    curState.localTime = current;
+    _forceEffect->Update(curState);
+    _forceEffect->Render();
+    return;
+  }
+
+  // check for any effects that have ended
+  while (!_activeEffects.empty() && _activeEffects.front()->EndTime() <= current)
+  {
+    Effect* e = Transfer(_activeEffects, _expiredEffects);
+    e->SetRunning(false);
+  }
+
   // tick the active effects
   for (auto& effect : _activeEffects)
   {
@@ -265,31 +284,22 @@ bool DemoEngine::Tick()
     effect->Update(curState);
   }
 
-  // check if any effect start now
-  UpdateState initialState;
-  initialState.globalTime = current;
-  initialState.localTime = TimeDuration::Seconds(0);
-  initialState.delta = TimeDuration::Seconds(0);
-  initialState.paused = paused;
-  initialState.frequency = UPDATE_FREQUENCY;
-  initialState.numTicks = 1;
-  initialState.ticksFraction = 0;
+  _initialState.globalTime = current;
+  _initialState.paused = paused;
 
-  // Tick all the first timers
+  // Tick all the effects that start now
   while (!_inactiveEffects.empty() && _inactiveEffects.front()->StartTime() <= current)
   {
     Effect* e = Transfer(_inactiveEffects, _activeEffects);
     e->SetRunning(true);
     e->InitAnimatedParameters();
-    e->Update(initialState);
+    e->Update(_initialState);
   }
 
   for (auto& effect : _activeEffects)
   {
     effect->Render();
   }
-
-  return true;
 }
 
 //------------------------------------------------------------------------------
@@ -336,10 +346,18 @@ bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
     TimeDuration end = TimeDuration::Milliseconds(e.end_time);
     effect->SetDuration(start, end);
     INIT(effect->Init(e.settings.c_str()));
+
+    if (e.force)
+    {
+      if (_forceEffect)
+      {
+        INJECT_ERROR("Only a single effect can be marked as force!");
+        continue;
+      }
+      _forceEffect = effect;
+    }
   }
 
-  // If we get this far, apply the new settings
-  // Ok, we can't actually roll out of anything bad..
   _settings = settings;
 
   END_INIT_SEQUENCE();
@@ -379,6 +397,13 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
   INIT(BASS_Init(-1, 44100, 0, 0, 0));
   INIT(_stream = BASS_StreamCreateFile(false, _settings.soundtrack.c_str(), 0, 0, BASS_STREAM_PRESCAN));
 #endif
+
+  // Set up the initial effect state
+  _initialState.localTime = TimeDuration::Seconds(0);
+  _initialState.delta = TimeDuration::Seconds(0);
+  _initialState.frequency = UPDATE_FREQUENCY;
+  _initialState.numTicks = 1;
+  _initialState.ticksFraction = 0;
 
   ReclassifyEffects();
 

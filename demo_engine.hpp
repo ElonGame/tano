@@ -4,6 +4,7 @@
 #include "timer.hpp"
 #include "property_manager.hpp"
 #include "generated/demo.types.hpp"
+#include "effect.hpp"
 
 namespace tano
 {
@@ -53,6 +54,7 @@ namespace tano
     void ReclassifyEffects();
     void KillEffects();
 
+    void UpdateEffects();
     Effect* FindEffectByName(const string &name);
     bool ApplySettingsChange(const DemoSettings& settings);
 
@@ -92,6 +94,8 @@ namespace tano
     static int RocketIsPlayingCb(void* context);
 #endif
 #endif
+    UpdateState _initialState;
+    Effect* _forceEffect = nullptr;
   };
 
 #define DEMO_ENGINE DemoEngine::Instance()

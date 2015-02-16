@@ -38,7 +38,7 @@ VsMeshOut VsMesh(VsMeshIn v)
 
 float4 PsMesh(VsMeshOut p) : SV_Target
 {
-  float3 d = normalize(float3(0.5, 1, -1));
+  float3 d = normalize(float3(0.5, 0.7, -1));
   float3 amb = float3(0.05, 0.05, 0.05);
   float dff = saturate(dot(d, p.normal));
   return float4(amb + dff * float3(0.1, 0.5, 0.2), 1);

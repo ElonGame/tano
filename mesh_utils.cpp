@@ -56,13 +56,10 @@ namespace tano
 
   inline Vector3 Cross(const Vector3& a, const Vector3& b)
   {
-    using namespace DirectX;
-    XMVECTOR v1 = XMLoadFloat3(&a);
-    XMVECTOR v2 = XMLoadFloat3(&b);
-    XMVECTOR r = XMVector3Cross(v1, v2);
-    Vector3 tmp;
-    XMStoreFloat3(&tmp, r);
-    return tmp;
+    return Vector3(
+      (a.y * b.z) - (a.z * b.y),
+      (a.z * b.x) - (a.x * b.z),
+      (a.x * b.y) - (a.y * b.x));
   }
 
   //------------------------------------------------------------------------------
@@ -75,6 +72,9 @@ namespace tano
 
       // mesh found, allocate the vertex/index buffer
       u32 vertexFormat = mesh->GetVertexFormat();
+      // Note, normals are automatically added, so adjust vertexFlags to show this
+      vertexFormat |= VF_NORMAL;
+
       if (vertexFlags)
         *vertexFlags = vertexFormat;
 
@@ -91,9 +91,9 @@ namespace tano
       // note, we're processing a face at a time
       for (u32 i = 0; i < numIndices / 3; ++i) {
 
-        u32 a = mesh->indices[i*3+2];
+        u32 a = mesh->indices[i*3+0];
         u32 b = mesh->indices[i*3+1];
-        u32 c = mesh->indices[i*3+0];
+        u32 c = mesh->indices[i*3+2];
         const u32 indices[] ={ a, b, c };
 
         Vector3 v0(mesh->verts[a*3+0], mesh->verts[a*3+1], mesh->verts[a*3+2]);
@@ -104,8 +104,7 @@ namespace tano
         // compute face normal
         Vector3 e1 = v1 - v0; e1.Normalize();
         Vector3 e2 = v2 - v0; e2.Normalize();
-        Vector3 n  = Cross(e1, e2);
-
+        Vector3 n = Cross(e1, e2); n.Normalize();
 
         // add the 3 vertices
         for (u32 j = 0; j < 3; ++j)
@@ -115,12 +114,10 @@ namespace tano
           dst[2] = verts[j]->z;
           dst += 3;
 
-          if (vertexFormat & VF_NORMAL) {
-            dst[0] = n.x;
-            dst[1] = n.y;
-            dst[2] = n.z;
-            dst += 3;
-          }
+          dst[0] = n.x;
+          dst[1] = n.y;
+          dst[2] = n.z;
+          dst += 3;
 
           if (vertexFormat & VF_TEX2_0) {
             dst[0] = mesh->uv[indices[j]*2+0];
