@@ -100,8 +100,9 @@ namespace tano
       Color tint;
       Color inner;
       Color outer;
-      Vector2 dim;
-      Vector3 viewDir;
+      Vector4 dim;
+      Vector4 viewDir;
+      Vector4 camPos;
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 
@@ -120,7 +121,7 @@ namespace tano
     ObjectHandle _lineTexture;
     GpuState _linesState;
     GpuObjects _linesGpuObjects;
-    u32 _numLines = 0;
+    u32 _numLinesPoints = 0;
 
     GpuState _compositeState;
     GpuObjects _compositeGpuObjects;

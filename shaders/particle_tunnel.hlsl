@@ -12,8 +12,9 @@ cbuffer PerFrame : register(b0)
   float4 tint;
   float4 inner;
   float4 outer;
-  float2 dim;
-  float3 viewDir;
+  float4 dim;
+  float4 viewDir;
+  float4 camPos;
 };
 
 //------------------------------------------------------
@@ -54,7 +55,8 @@ struct VsLinesOut
 struct GsLinesOut
 {
   float4 pos : SV_Position;
-  float2 tex : TexCoord;
+  float2 tex : TexCoord0;
+  float4 ss : TexCoord1;    // screen space coordinates of end point
 };
 
 //------------------------------------------------------
@@ -106,6 +108,7 @@ void OutputVtx(float4 v, float2 tex, inout TriangleStream<GsLinesOut> stream)
   GsLinesOut res;
   res.pos = mul(v, proj);
   res.tex = tex;
+  res.ss = float4(0,0,0,0);
   stream.Append(res);
 }
 
@@ -114,6 +117,16 @@ void OutputVtx2(float3 v, float2 tex, inout TriangleStream<GsLinesOut> stream)
   GsLinesOut res;
   res.pos = mul(float4(v, 1), viewProj);
   res.tex = tex;
+  res.ss = float4(0,0,0,0);
+  stream.Append(res);
+}
+
+void OutputVtx3(float3 v, float4 ss, inout TriangleStream<GsLinesOut> stream)
+{
+  GsLinesOut res;
+  res.pos = mul(float4(v, 1), viewProj);
+  res.tex = float2(0,0);
+  res.ss = ss;
   stream.Append(res);
 }
 
@@ -171,9 +184,84 @@ void OutputQuad3(float3 a, float3 right, float3 up, float2 tex[4], inout Triangl
   OutputVtx2(v3, tex[3], stream);
 }
 
-
 [maxvertexcount(8)]
 void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
+{
+  // read axis from the camera view matrix
+  float3 camRight = float3(view._11, view._21, view._31);
+  float3 camUp = float3(view._12, view._22, view._32);
+
+  /*
+      1--3-------5--7
+      |  |       |  |
+      0--2-------4--6
+  */
+
+  float3 a = input[0].pos;
+  float3 b = input[1].pos;
+
+  float3 right = normalize(b-a);
+  float3 dir = normalize(camPos.xyz-a);
+  float3 up = normalize(cross(right, dir));
+
+  float h = 10;
+  float3 v0 = a - h * right - h * up;
+  float3 v1 = a - h * right + h * up;
+  float3 v2 = b + h * right - h * up;
+  float3 v3 = b + h * right + h * up;
+
+  // compute screen space end points
+  float4 cs_a = mul(float4(a, 1), viewProj);
+  float4 cs_b = mul(float4(b, 1), viewProj);
+
+  float2 ss_a = cs_a.xy / cs_a.w;
+  float2 ss_b = cs_b.xy / cs_b.w;
+
+  float4 ss;
+  if (cs_a.w != cs_b.w)
+  {
+    ss.xy = ss_b;
+    ss.zw = ss_a;
+  }
+  else
+  {
+    ss.xy = ss_a;
+    ss.zw = ss_b;
+  }
+
+  OutputVtx3(v0, ss, stream);
+  OutputVtx3(v1, ss, stream);
+  OutputVtx3(v2, ss, stream);
+  OutputVtx3(v3, ss, stream);
+}
+
+// Return distance from point 'p' to line segment 'a b':
+float line_distance(float2 p, float2 a, float2 b)
+{
+    float dist = distance(a,b);
+    float2 v = normalize(b-a);
+    float t = dot(v,p-a);
+    float2 spinePoint;
+    if (t > dist) spinePoint = b;
+    else if (t > 0.0) spinePoint = a + t*v;
+    else spinePoint = a;
+    return distance(p,spinePoint);
+}
+
+float4 PsLines(GsLinesOut input) : Sv_Target
+{
+  // compute ndc pixel coords
+  float2 ndc = 2 * (input.pos.xy / dim.xy - 0.5);
+  ndc.y *= -1;
+  float d = saturate(1 - 20 * line_distance(ndc, input.ss.xy, input.ss.zw));
+  d = pow(d, 30);
+  return float4(float3(0.8, 0.2, 0.2) * d, 0);
+}
+
+
+
+[maxvertexcount(8)]
+void GsLines2(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
 {
 
   float2 texA[4] = { float2(0, 1),    float2(0, 0),   float2(0.5, 1), float2(0.5, 0) };
@@ -199,7 +287,7 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
 
   // get z from the direction
   float3 axisDir = normalize(bView.xyz - aView.xyz);
-  float3 axisRight = -viewDir;
+  float3 axisRight = -viewDir.xyz;
   float3 axisUp = cross(axisDir, axisRight);
   //float3 axisRight = cross(axisUp, axisDir);
 
@@ -221,13 +309,6 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
   //OutputQuad2(b, dir, up, texB, stream);
   OutputQuad(aView, axisDir, axisUp, texA, stream);
   OutputQuad(bView, axisDir, axisUp, texB, stream);
-}
-
-float4 PsLines(GsLinesOut input) : Sv_Target
-{
-  return 1;
-  float4 col = Texture0.Sample(PointSampler, input.tex);
-  return float4(col.r, col.g, col.b, col.r);
 }
 
 //------------------------------------------------------

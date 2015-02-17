@@ -95,14 +95,16 @@ void TextWriter::GenerateTris(const char* str, vector<Vector3>* tris)
 
     // Copy vertices to @tris
     // The actual mesh data uses indices, so we expand those here
+    //MeshLoader::MeshElement* elem = letter.cap1;
     MeshLoader::MeshElement* elem = letter.outline;
     u32 numIndices = elem->numIndices;
     tris->resize(tris->size() + numIndices);
     for (u32 j = 0; j < numIndices; ++j)
     {
-      float x = elem->verts[elem->indices[j]*3+0];
-      float y = elem->verts[elem->indices[j]*3+1];
-      float z = elem->verts[elem->indices[j]*3+2];
+      int vertIdx = elem->indices[j]*3;
+      float x = elem->verts[vertIdx+0];
+      float y = elem->verts[vertIdx+1];
+      float z = elem->verts[vertIdx+2];
       
       xMin = min(xMin, x + xOfs); xMax = max(xMax, x + xOfs);
       yMin = min(yMin, y + yOfs); yMax = max(yMax, y + yOfs);
@@ -121,6 +123,5 @@ void TextWriter::GenerateTris(const char* str, vector<Vector3>* tris)
     (*tris)[i].x -= xCenter;
     (*tris)[i].y -= yCenter;
   }
-
 }
 

@@ -18,7 +18,8 @@ namespace
   bool wireframe = false;
   float angle = 0;
   float height = 0;
-  float distance = 100;
+  //float distance = 300;
+  float distance = 1700;
   bool extended = false;
 }
 
@@ -118,7 +119,9 @@ void ParticleTunnel::Particles::Update(float dt)
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::TextParticles::Create(const vector<Vector3>& verts, float targetTime)
+void ParticleTunnel::TextParticles::Create(
+    const vector<Vector3>& verts,
+    float targetTime)
 {
   numParticles = (int)verts.size();
   if (!x)
@@ -166,14 +169,15 @@ void ParticleTunnel::TextParticles::Create(const vector<Vector3>& verts, float t
   }
 
   selectedTris.clear();
-  selectedTris.reserve(verts.size());
-  for (int i = 0; i < verts.size(); ++i)
+
+  int numTris = (int)verts.size() / 3;
+  selectedTris.reserve(numTris);
+  for (int i = 0; i < numTris; ++i)
   {
     float p = randf(0.f, 1.f);
     if (p > settings.text_triangle_prob)
       selectedTris.push_back(i);
   }
-
 }
 
 //------------------------------------------------------------------------------
@@ -302,7 +306,8 @@ bool ParticleTunnel::Init(const char* configFile)
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
     rssDesc.CullMode = D3D11_CULL_NONE;
-    rssDesc.FillMode = D3D11_FILL_WIREFRAME;
+    if (wireframe)
+      rssDesc.FillMode = D3D11_FILL_WIREFRAME;
 
     CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
     dsDesc.DepthEnable = FALSE;
@@ -348,7 +353,7 @@ bool ParticleTunnel::Init(const char* configFile)
 void ParticleTunnel::UpdateCameraMatrix()
 {
   float x = distance * sin(angle);
-  float z = distance * cos(angle);
+  float z = -distance * cos(angle);
   Vector3 pos = Vector3(x, height, z);
   Vector3 target = Vector3(0, 0, 0);
   Vector3 dir = target - pos;
@@ -362,7 +367,8 @@ void ParticleTunnel::UpdateCameraMatrix()
   _cbPerFrame.view = view.Transpose();
   _cbPerFrame.proj = proj.Transpose();
   _cbPerFrame.viewProj = viewProj.Transpose();
-  _cbPerFrame.viewDir = dir;
+  _cbPerFrame.viewDir = Vector4(dir.x, dir.y, dir.z, 1);
+  _cbPerFrame.camPos = Vector4(pos.x, pos.y, pos.z, 1);
 }
 
 //------------------------------------------------------------------------------
@@ -384,12 +390,6 @@ bool ParticleTunnel::Update(const UpdateState& state)
   {
     rmt_ScopedCPUSample(TextParticles_Update);
     _textParticles.Update(state);
-/*
-    for (int tick = 0; tick < state.numTicks; ++tick)
-    {
-      _textParticles.Update(dt);
-    }
-*/
   }
 
   {
@@ -426,19 +426,22 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
     Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_linesGpuObjects._vb);
 
-#if 1
-    _numLines = 2;
+#if 0
+    _numLinesPoints = 2;
     vtx[0] = Vector3(-50, 0, 0);
     vtx[1] = Vector3(+50, 0, 0);
 #else
-    _numLines = 0;
-    for (int i = 0, e = (int)_textParticles.selectedTris.size(); i < e; ++i)
+    int numTris = (int)_textParticles.selectedTris.size();
+    _numLinesPoints = 6 * numTris;
+
+    for (int i = 0; i < numTris; ++i)
     {
       int triIdx = _textParticles.selectedTris[i];
-      for (int j = 0; j < 3; ++j)
+      // Barrett enumeration :)
+      for (int j = 2, k = 0; k < 3; j = k++)
       {
-        int idx0 = triIdx + j;
-        int idx1 = triIdx + (j + 1) % 3;
+        int idx0 = triIdx * 3 + j;
+        int idx1 = triIdx * 3 + k;
 
         vtx->x = xx[idx0];
         vtx->y = yy[idx0];
@@ -448,10 +451,10 @@ bool ParticleTunnel::Update(const UpdateState& state)
         vtx->x = xx[idx1];
         vtx->y = yy[idx1];
         vtx->z = zz[idx1];
-        _numLines += 2;
         vtx++;
       }
     }
+
 #endif
 
     _ctx->Unmap(_linesGpuObjects._vb);
@@ -577,7 +580,6 @@ bool ParticleTunnel::Render()
 
 
   // text
-
   _ctx->SetGpuObjects(_textGpuObjects);
   _ctx->SetGpuState(_textState);
   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
@@ -588,7 +590,7 @@ bool ParticleTunnel::Render()
   _ctx->SetGpuState(_linesState);
   _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_lineTexture, ShaderType::PixelShader);
-  _ctx->Draw(_numLines, 0);
+  _ctx->Draw(_numLinesPoints, 0);
 
   _ctx->UnsetRenderTargets(0, 1);
 
@@ -720,14 +722,14 @@ void ParticleTunnel::RenderParameterSet()
     }
 
     if (ImGui::SliderFloat("text time", &_settings.text_time, 0.1f, 10.f)) Reset();
-    if (ImGui::SliderFloat("min dist", &_settings.text_min_dist, 1, 100)) Reset();
+    if (ImGui::SliderFloat("min dist", &_settings.text_min_dist, 1, 2000)) Reset();
     if (ImGui::SliderFloat("max dist", &_settings.text_max_dist, 1, 2000)) Reset();
     if (ImGui::SliderFloat("triangle prob", &_settings.text_triangle_prob, 0.f, 1.f)) Reset();
   }
   else
   {
     ImGui::SliderAngle("camera xz-plane", &angle);
-    ImGui::SliderFloat("camera distance", &distance, 1, 200);
+    ImGui::SliderFloat("camera distance", &distance, 1, 2000);
     ImGui::SliderFloat("camera height", &height, -100, 100);
   }
 
