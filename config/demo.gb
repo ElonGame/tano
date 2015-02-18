@@ -1,5 +1,6 @@
 {
   soundtrack: 'distance.mp3';
+  silent: true;
   
   effects: [
   {

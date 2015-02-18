@@ -71,18 +71,15 @@ namespace tano
       void Destroy();
       void Update(const UpdateState& state);
 
-      float* x = nullptr;
-      float* y = nullptr;
-      float* z = nullptr;
+      float* curX = nullptr;
+      float* curY = nullptr;
+      float* curZ = nullptr;
       float* startX = nullptr;
       float* startY = nullptr;
       float* startZ = nullptr;
       float* endX = nullptr;
       float* endY = nullptr;
       float* endZ = nullptr;
-      float* vx = nullptr;
-      float* vy = nullptr;
-      float* vz = nullptr;
 
       int numParticles = 0;
       const ParticleTunnelSettings& settings;

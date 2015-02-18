@@ -3,6 +3,7 @@ import 'base.grobb';
 struct demo_settings
 {
   string soundtrack;
+  bool silent = false;
   effect_settings[] effects;
 };
 

@@ -57,6 +57,7 @@ struct GsLinesOut
   float4 pos : SV_Position;
   float2 tex : TexCoord0;
   float4 ss : TexCoord1;    // screen space coordinates of end point
+  float bad : TexCoord2;
 };
 
 //------------------------------------------------------
@@ -109,6 +110,7 @@ void OutputVtx(float4 v, float2 tex, inout TriangleStream<GsLinesOut> stream)
   res.pos = mul(v, proj);
   res.tex = tex;
   res.ss = float4(0,0,0,0);
+  res.bad = 0;
   stream.Append(res);
 }
 
@@ -118,15 +120,17 @@ void OutputVtx2(float3 v, float2 tex, inout TriangleStream<GsLinesOut> stream)
   res.pos = mul(float4(v, 1), viewProj);
   res.tex = tex;
   res.ss = float4(0,0,0,0);
+  res.bad = 0;
   stream.Append(res);
 }
 
-void OutputVtx3(float3 v, float4 ss, inout TriangleStream<GsLinesOut> stream)
+void OutputVtx3(float3 v, float4 ss, float bad, inout TriangleStream<GsLinesOut> stream)
 {
   GsLinesOut res;
   res.pos = mul(float4(v, 1), viewProj);
   res.tex = float2(0,0);
   res.ss = ss;
+  res.bad = bad;
   stream.Append(res);
 }
 
@@ -214,11 +218,38 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
   float4 cs_a = mul(float4(a, 1), viewProj);
   float4 cs_b = mul(float4(b, 1), viewProj);
 
+  // handle clipping
+/*  
+  if (cs_a.x < -cs_a.w) cs_a.x = -cs_a.w;
+  if (cs_a.x > +cs_a.w) cs_a.x = +cs_a.w;
+  if (cs_a.y < -cs_a.w) cs_a.y = -cs_a.w;
+  if (cs_a.y > +cs_a.w) cs_a.y = +cs_a.w;
+
+  if (cs_b.x < -cs_b.w) cs_b.x = -cs_b.w;
+  if (cs_b.x > +cs_b.w) cs_b.x = +cs_b.w;
+  if (cs_b.y < -cs_b.w) cs_b.y = -cs_b.w;
+  if (cs_b.y > +cs_b.w) cs_b.y = +cs_b.w;
+*/
+/*  
+  cs_a.x = max(cs_a.x, -cs_a.w);
+  cs_a.x = min(cs_a.x, +cs_a.w);
+  cs_a.y = max(cs_a.y, -cs_a.w);
+  cs_a.y = min(cs_a.y, +cs_a.w);
+
+  cs_b.x = max(cs_b.x, -cs_b.w);
+  cs_b.x = min(cs_b.x, +cs_b.w);
+  cs_b.y = max(cs_b.y, -cs_b.w);
+  cs_b.y = min(cs_b.y, +cs_b.w);
+*/
   float2 ss_a = cs_a.xy / cs_a.w;
   float2 ss_b = cs_b.xy / cs_b.w;
 
   float4 ss;
-  if (cs_a.w != cs_b.w)
+  ss.xy = ss_a;
+  ss.zw = ss_b;
+
+/*  
+  if (cs_a.w * cs_b.w < 0)
   {
     ss.xy = ss_b;
     ss.zw = ss_a;
@@ -228,11 +259,12 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
     ss.xy = ss_a;
     ss.zw = ss_b;
   }
-
-  OutputVtx3(v0, ss, stream);
-  OutputVtx3(v1, ss, stream);
-  OutputVtx3(v2, ss, stream);
-  OutputVtx3(v3, ss, stream);
+*/
+  float bad = cs_a.w * cs_b.w;
+  OutputVtx3(v0, ss, bad, stream);
+  OutputVtx3(v1, ss, bad, stream);
+  OutputVtx3(v2, ss, bad, stream);
+  OutputVtx3(v3, ss, bad, stream);
 }
 
 // Return distance from point 'p' to line segment 'a b':
@@ -250,12 +282,14 @@ float line_distance(float2 p, float2 a, float2 b)
 
 float4 PsLines(GsLinesOut input) : Sv_Target
 {
+  //if (input.bad < 0)
+//    return 1;
   // compute ndc pixel coords
   float2 ndc = 2 * (input.pos.xy / dim.xy - 0.5);
   ndc.y *= -1;
-  float d = saturate(1 - 20 * line_distance(ndc, input.ss.xy, input.ss.zw));
-  d = pow(d, 30);
-  return float4(float3(0.8, 0.2, 0.2) * d, 0);
+  float d = saturate(1 - 10 * line_distance(ndc, input.ss.xy, input.ss.zw));
+  d = pow(d, 20);
+  return float4(float3(0.2, 0.2, 0.8) * d, 0);
 }
 
 

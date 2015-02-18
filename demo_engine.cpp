@@ -100,7 +100,8 @@ bool DemoEngine::Start()
 #if WITH_MUSIC
   BASS_Start();
   BASS_ChannelPlay(_stream, false);
-  BASS_ChannelSetAttribute(_stream, BASS_ATTRIB_VOL, 0);
+  if (_settings.silent)
+    BASS_ChannelSetAttribute(_stream, BASS_ATTRIB_VOL, 0);
 #endif
 
   return true;

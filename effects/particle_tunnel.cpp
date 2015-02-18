@@ -19,7 +19,7 @@ namespace
   float angle = 0;
   float height = 0;
   //float distance = 300;
-  float distance = 1700;
+  float distance = 2700;
   bool extended = false;
 }
 
@@ -124,53 +124,55 @@ void ParticleTunnel::TextParticles::Create(
     float targetTime)
 {
   numParticles = (int)verts.size();
-  if (!x)
+  if (!curX)
   {
-    x = new float[numParticles];
-    y = new float[numParticles];
-    z = new float[numParticles];
+    curX = new float[numParticles];
+    curY = new float[numParticles];
+    curZ = new float[numParticles];
 
-    startX = new float[numParticles];
+    startX = new float[numParticles]; 
     startY = new float[numParticles];
     startZ = new float[numParticles];
 
     endX = new float[numParticles];
     endY = new float[numParticles];
     endZ = new float[numParticles];
-
-    vx = new float[numParticles];
-    vy = new float[numParticles];
-    vz = new float[numParticles];
   }
 
-  float dist = randf(settings.text_min_dist, settings.text_max_dist);
-
-  // project each vertex outwards along the hemisphere in the z-plane
-  for (int i = 0; i < numParticles; ++i)
+  // note, everything is done on a per triangle basis, and not per vertex
+  int numTris = (int)verts.size() / 3;
+  int idx = 0;
+  for (int i = 0; i < numTris; ++i)
   {
-    Vector3 dir(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(0.f, 1.f));
-    dir.Normalize();
+    //float dist = randf(settings.text_min_dist, settings.text_max_dist);
 
-    vx[i] = dist * dir.x / targetTime;
-    vy[i] = dist * dir.y / targetTime;
-    vz[i] = dist * dir.z / targetTime;
+    for (int j = 0; j < 3; ++j)
+    {
+      float x = verts[idx].x;
+      float y = verts[idx].y;
+      float s = (x + y) / 50;
 
-    startX[i] = verts[i].x - dir.x * dist;
-    startY[i] = verts[i].y - dir.y * dist;
-    startZ[i] = verts[i].z - dir.z * dist;
+      float dist = settings.text_max_dist * (2 + cos(s) * sin(s));
 
-    endX[i] = verts[i].x;
-    endY[i] = verts[i].y;
-    endZ[i] = verts[i].z;
+      //    Vector3 dir(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(0.f, 1.f));
+      // project each vertex outwards along the hemisphere in the z-plane
+      Vector3 dir(0.1 * sin(s), 0.1 * cos(s), 1);
+      dir.Normalize();
 
-    x[i] = verts[i].x - dir.x * dist;
-    y[i] = verts[i].y - dir.y * dist;
-    z[i] = verts[i].z - dir.z * dist;
+      startX[idx] = verts[idx].x - dir.x * dist;
+      startY[idx] = verts[idx].y - dir.y * dist;
+      startZ[idx] = verts[idx].z - dir.z * dist;
+
+      endX[idx] = verts[idx].x;
+      endY[idx] = verts[idx].y;
+      endZ[idx] = verts[idx].z;
+
+      ++idx;
+    }
   }
 
   selectedTris.clear();
 
-  int numTris = (int)verts.size() / 3;
   selectedTris.reserve(numTris);
   for (int i = 0; i < numTris; ++i)
   {
@@ -183,8 +185,9 @@ void ParticleTunnel::TextParticles::Create(
 //------------------------------------------------------------------------------
 void ParticleTunnel::TextParticles::Destroy()
 {
-  SAFE_ADELETE(x);  SAFE_ADELETE(y);  SAFE_ADELETE(z);
-  SAFE_ADELETE(vx); SAFE_ADELETE(vy); SAFE_ADELETE(vz);
+  SAFE_ADELETE(curX); SAFE_ADELETE(curY); SAFE_ADELETE(curZ);
+  SAFE_ADELETE(startX);  SAFE_ADELETE(startY);  SAFE_ADELETE(startZ);
+  SAFE_ADELETE(endX); SAFE_ADELETE(endY); SAFE_ADELETE(endZ);
 }
 
 //------------------------------------------------------------------------------
@@ -192,28 +195,17 @@ void ParticleTunnel::TextParticles::Update(const UpdateState& state)
 {
   float dt = 1.f / state.frequency;
 
-  float* xx = x;
-  float* yy = y;
-  float* zz = z;
-
-  float *vvx = vx;
-  float *vvy = vy;
-  float *vvz = vz;
+  float* xx = curX;
+  float* yy = curY;
+  float* zz = curZ;
 
   float s = Clamp(0.f, 1.f, (float)state.localTime.TotalMicroseconds() / (float)(1e6 * settings.text_time));
 
   for (int i = 0, e = numParticles; i < e; ++i)
   {
-/*
-    xx[i] += dt * vvx[i];
-    yy[i] += dt * vvy[i];
-    zz[i] += dt * vvz[i];
-*/
-
     xx[i] = lerp(startX[i], endX[i], s);
     yy[i] = lerp(startY[i], endY[i], s);
     zz[i] = lerp(startZ[i], endZ[i], s);
-
   }
 }
 
@@ -360,7 +352,7 @@ void ParticleTunnel::UpdateCameraMatrix()
   dir.Normalize();
 
   Matrix view = Matrix::CreateLookAt(pos, Vector3(0, 0, 0), Vector3(0, 1, 0));
-  Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 2000.f);
+  Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 3000.f);
   Matrix viewProj = view * proj;
 
   _cbPerFrame.world = Matrix::Identity();
@@ -396,9 +388,9 @@ bool ParticleTunnel::Update(const UpdateState& state)
     // Blit text
     rmt_ScopedCPUSample(TextParticle_Map);
 
-    float* xx = _textParticles.x;
-    float* yy = _textParticles.y;
-    float* zz = _textParticles.z;
+    float* xx = _textParticles.curX;
+    float* yy = _textParticles.curY;
+    float* zz = _textParticles.curZ;
 
     Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_textGpuObjects._vb);
 
@@ -420,9 +412,9 @@ bool ParticleTunnel::Update(const UpdateState& state)
   {
     // Blit lines
 
-    float* xx = _textParticles.x;
-    float* yy = _textParticles.y;
-    float* zz = _textParticles.z;
+    float* xx = _textParticles.curX;
+    float* yy = _textParticles.curY;
+    float* zz = _textParticles.curZ;
 
     Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_linesGpuObjects._vb);
 
@@ -577,13 +569,12 @@ bool ParticleTunnel::Render()
   _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
   _ctx->Draw(6 * _settings.num_particles, 0);
-
-
+*/
   // text
+/*
   _ctx->SetGpuObjects(_textGpuObjects);
   _ctx->SetGpuState(_textState);
   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
-
 */
   // lines
   _ctx->SetGpuObjects(_linesGpuObjects);
