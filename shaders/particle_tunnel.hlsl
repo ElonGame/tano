@@ -57,7 +57,9 @@ struct GsLinesOut
   float4 pos : SV_Position;
   float2 tex : TexCoord0;
   float4 ss : TexCoord1;    // screen space coordinates of end point
-  float bad : TexCoord2;
+  float4 a : TexCoord2;    // screen space coordinates of end point
+  float4 b : TexCoord3;    // screen space coordinates of end point
+  float bad : TexCoord4;
 };
 
 //------------------------------------------------------
@@ -124,13 +126,15 @@ void OutputVtx2(float3 v, float2 tex, inout TriangleStream<GsLinesOut> stream)
   stream.Append(res);
 }
 
-void OutputVtx3(float3 v, float4 ss, float bad, inout TriangleStream<GsLinesOut> stream)
+void OutputVtx3(float3 v, float4 ss, float bad, float4 a, float4 b, inout TriangleStream<GsLinesOut> stream)
 {
   GsLinesOut res;
   res.pos = mul(float4(v, 1), viewProj);
   res.tex = float2(0,0);
   res.ss = ss;
   res.bad = bad;
+  res.a = a;
+  res.b = b;
   stream.Append(res);
 }
 
@@ -188,6 +192,17 @@ void OutputQuad3(float3 a, float3 right, float3 up, float2 tex[4], inout Triangl
   OutputVtx2(v3, tex[3], stream);
 }
 
+// Cohen-Sutherland
+int ClipCode(float4 a)
+{
+  int res = 0;
+  if (a.y > +a.w) res |= 1;
+  if (a.y < -a.w) res |= 2;
+  if (a.x > +a.w) res |= 4;
+  if (a.x < -a.w) res |= 8;
+  return res;
+}
+
 [maxvertexcount(8)]
 void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
 {
@@ -217,36 +232,39 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
   // compute screen space end points
   float4 cs_a = mul(float4(a, 1), viewProj);
   float4 cs_b = mul(float4(b, 1), viewProj);
+  float bad = cs_a.w * cs_b.w;
 
-  // handle clipping
-/*  
-  if (cs_a.x < -cs_a.w) cs_a.x = -cs_a.w;
-  if (cs_a.x > +cs_a.w) cs_a.x = +cs_a.w;
-  if (cs_a.y < -cs_a.w) cs_a.y = -cs_a.w;
-  if (cs_a.y > +cs_a.w) cs_a.y = +cs_a.w;
-
-  if (cs_b.x < -cs_b.w) cs_b.x = -cs_b.w;
-  if (cs_b.x > +cs_b.w) cs_b.x = +cs_b.w;
-  if (cs_b.y < -cs_b.w) cs_b.y = -cs_b.w;
-  if (cs_b.y > +cs_b.w) cs_b.y = +cs_b.w;
-*/
-/*  
-  cs_a.x = max(cs_a.x, -cs_a.w);
-  cs_a.x = min(cs_a.x, +cs_a.w);
-  cs_a.y = max(cs_a.y, -cs_a.w);
-  cs_a.y = min(cs_a.y, +cs_a.w);
-
-  cs_b.x = max(cs_b.x, -cs_b.w);
-  cs_b.x = min(cs_b.x, +cs_b.w);
-  cs_b.y = max(cs_b.y, -cs_b.w);
-  cs_b.y = min(cs_b.y, +cs_b.w);
-*/
   float2 ss_a = cs_a.xy / cs_a.w;
   float2 ss_b = cs_b.xy / cs_b.w;
 
   float4 ss;
   ss.xy = ss_a;
   ss.zw = ss_b;
+
+  int codeA = ClipCode(cs_a);
+  int codeB = ClipCode(cs_b);
+
+  // Check for trivial accept or reject
+  for (int i = 0; i < 4; ++i)
+  {
+    if ((codeA | codeB) == 0)
+    {
+      // both points inside
+      OutputVtx3(v0, ss, bad, cs_a, cs_b, stream);
+      OutputVtx3(v1, ss, bad, cs_a, cs_b, stream);
+      OutputVtx3(v2, ss, bad, cs_a, cs_b, stream);
+      OutputVtx3(v3, ss, bad, cs_a, cs_b, stream);
+      return;
+    }
+    else if ((codeA & codeB) != 0)
+    {
+      // both points outside on same side
+      return;
+    }
+
+  }
+  
+
 
 /*  
   if (cs_a.w * cs_b.w < 0)
@@ -260,11 +278,6 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
     ss.zw = ss_b;
   }
 */
-  float bad = cs_a.w * cs_b.w;
-  OutputVtx3(v0, ss, bad, stream);
-  OutputVtx3(v1, ss, bad, stream);
-  OutputVtx3(v2, ss, bad, stream);
-  OutputVtx3(v3, ss, bad, stream);
 }
 
 // Return distance from point 'p' to line segment 'a b':
@@ -283,11 +296,12 @@ float line_distance(float2 p, float2 a, float2 b)
 float4 PsLines(GsLinesOut input) : Sv_Target
 {
   //if (input.bad < 0)
-//    return 1;
+    //return 1;
   // compute ndc pixel coords
   float2 ndc = 2 * (input.pos.xy / dim.xy - 0.5);
   ndc.y *= -1;
   float d = saturate(1 - 10 * line_distance(ndc, input.ss.xy, input.ss.zw));
+  //float d = saturate(1 - 10 * line_distance(ndc, input.a.xy, input.b.xy));
   d = pow(d, 20);
   return float4(float3(0.2, 0.2, 0.8) * d, 0);
 }
