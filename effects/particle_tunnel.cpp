@@ -19,7 +19,7 @@ namespace
   float angle = 0;
   float height = 0;
   //float distance = 300;
-  float distance = 2700;
+  float distance = 1700;
   bool extended = false;
 }
 
@@ -275,6 +275,7 @@ bool ParticleTunnel::Init(const char* configFile)
   // Text setup
   INIT(_textWriter.Init("gfx/text1.boba"));
   _textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
+  //_textWriter.GenerateTris("radio silence", &_neuroticaTris);
   _textParticles.Create(_neuroticaTris, 5.f);
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
@@ -556,7 +557,7 @@ bool ParticleTunnel::Render()
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
-/*
+
   // Render the background
   _ctx->SetGpuObjects(_backgroundGpuObjects);
   _ctx->SetGpuState(_backgroundState);
@@ -569,13 +570,12 @@ bool ParticleTunnel::Render()
   _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
   _ctx->Draw(6 * _settings.num_particles, 0);
-*/
+
   // text
-/*
   _ctx->SetGpuObjects(_textGpuObjects);
   _ctx->SetGpuState(_textState);
   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
-*/
+
   // lines
   _ctx->SetGpuObjects(_linesGpuObjects);
   _ctx->SetGpuState(_linesState);
@@ -592,8 +592,8 @@ bool ParticleTunnel::Render()
   // compose final image on default swap chain
 
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
-  //postProcess->Execute({ rtTmp._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
-  postProcess->Execute({ rt._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+  postProcess->Execute({ rtTmp._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+  //postProcess->Execute({ rt._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
 
   return true;
 }

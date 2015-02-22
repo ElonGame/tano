@@ -57,8 +57,8 @@ struct GsLinesOut
   float4 pos : SV_Position;
   float2 tex : TexCoord0;
   float4 ss : TexCoord1;    // screen space coordinates of end point
-  float4 a : TexCoord2;    // screen space coordinates of end point
-  float4 b : TexCoord3;    // screen space coordinates of end point
+  float4 a : TexCoord2;
+  float4 b : TexCoord3;
   float bad : TexCoord4;
 };
 
@@ -223,7 +223,7 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
   float3 dir = normalize(camPos.xyz-a);
   float3 up = normalize(cross(right, dir));
 
-  float h = 10;
+  float h = 25;
   float3 v0 = a - h * right - h * up;
   float3 v1 = a - h * right + h * up;
   float3 v2 = b + h * right - h * up;
@@ -237,47 +237,119 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
   float2 ss_a = cs_a.xy / cs_a.w;
   float2 ss_b = cs_b.xy / cs_b.w;
 
-  float4 ss;
-  ss.xy = ss_a;
-  ss.zw = ss_b;
+  float4 ss = float4(ss_a.x, ss_a.y, ss_b.x, ss_b.y);
+
+  cs_a.x = -1; cs_a.y = -1;
+  cs_a.z = 0.5; cs_a.w = 1;
+  OutputVtx3(v0, ss, bad, cs_a, cs_b, stream);
+
+  cs_a.x = -1; cs_a.y = +1;
+  cs_a.z = 0.5; cs_a.w = 0;
+  OutputVtx3(v1, ss, bad, cs_a, cs_b, stream);
+
+  cs_a.x = +1; cs_a.y = -1;
+  cs_a.z = 0.5; cs_a.w = 1;
+  OutputVtx3(v2, ss, bad, cs_a, cs_b, stream);
+
+  cs_a.x = +1; cs_a.y = +1;
+  cs_a.z = 0.5; cs_a.w = 0;
+  OutputVtx3(v3, ss, bad, cs_a, cs_b, stream);
+  return;
 
   int codeA = ClipCode(cs_a);
   int codeB = ClipCode(cs_b);
+
+  float x1 = cs_a.x;
+  float y1 = cs_a.y;
+
+  float x2 = cs_b.x;
+  float y2 = cs_b.y;
+
+  float xmin, xmax;
+  float ymin, ymax;
+  int codeOut;
 
   // Check for trivial accept or reject
   for (int i = 0; i < 4; ++i)
   {
     if ((codeA | codeB) == 0)
     {
-      // both points inside
+      // both points inside, so output the verts
+
+      float2 ss_a = cs_a.xy / cs_a.w;
+      float2 ss_b = cs_b.xy / cs_b.w;
+
+      float4 ss = float4(ss_a.x, ss_a.y, ss_b.x, ss_b.y);
       OutputVtx3(v0, ss, bad, cs_a, cs_b, stream);
       OutputVtx3(v1, ss, bad, cs_a, cs_b, stream);
       OutputVtx3(v2, ss, bad, cs_a, cs_b, stream);
       OutputVtx3(v3, ss, bad, cs_a, cs_b, stream);
-      return;
+      break;
     }
     else if ((codeA & codeB) != 0)
     {
       // both points outside on same side
-      return;
+      break;
     }
 
-  }
-  
+    float x, y;
+    if (codeA)
+    {
+      codeOut = codeA;
+      xmin = -cs_a.w; xmax = +cs_a.w;
+      ymin = -cs_a.w; ymax = +cs_a.w;
+    }
+    else
+    {
+      codeOut = codeB;
+      xmin = -cs_b.w; xmax = +cs_b.w;
+      ymin = -cs_b.w; ymax = +cs_b.w;
+    }
 
+    if (codeOut & 1)
+    {
+        // top
+        x = x1 + (x2 - x1) * (ymax - y1) / (y2 - y1);
+        y = ymax;
+    }
+    else if (codeOut & 2) 
+    {
+        // bottom
+        x = x1 + (x2 - x1) * (ymin - y1) / (y2 - y1);
+        y = ymin;
+    }
+    else if (codeOut & 4) 
+    {
+        // right
+        y = y1 + (y2 - y1) * (xmax - x1) / (x2 - x1);
+        x = xmax;
+    }
+    else 
+    {
+      // left
+        y = y1 + (y2 - y1) * (xmin - x1) / (x2 - x1);
+        x = xmin;
+    }
 
-/*  
-  if (cs_a.w * cs_b.w < 0)
-  {
-    ss.xy = ss_b;
-    ss.zw = ss_a;
+    if (codeOut == codeA)
+    {
+        // first endpoint was clipped
+        x1 = x;
+        y1 = y;
+        cs_a.x = x;
+        cs_a.y = y;
+        codeA = ClipCode(float4(x1, y1, 0, cs_a.w));
+    }
+    else 
+    {
+        // second endpoint was clipped
+        x2 = x;
+        y2 = y;
+        cs_b.x = x;
+        cs_b.y = y;
+        codeB = ClipCode(float4(x2, y2, 0, cs_b.w));
+    }
   }
-  else
-  {
-    ss.xy = ss_a;
-    ss.zw = ss_b;
-  }
-*/
 }
 
 // Return distance from point 'p' to line segment 'a b':
@@ -293,14 +365,42 @@ float line_distance(float2 p, float2 a, float2 b)
     return distance(p,spinePoint);
 }
 
+float line_distance3(float3 p, float3 a, float3 b)
+{
+    float dist = distance(a,b);
+    float3 v = normalize(b-a);
+    float t = dot(v,p-a);
+    float3 spinePoint;
+    if (t > dist) spinePoint = b;
+    else if (t > 0.0) spinePoint = a + t*v;
+    else spinePoint = a;
+    return distance(p,spinePoint);
+}
+
 float4 PsLines(GsLinesOut input) : Sv_Target
 {
-  //if (input.bad < 0)
-    //return 1;
-  // compute ndc pixel coords
+  float3 col = Texture0.Sample(PointSampler, input.a.zw).rgb;
+  float aa = length(col);
+  float bb = pow(aa, 5);
+  return float4(bb, bb, bb, 0);
+
+  return 1 - length(input.a.xy);
+  float xxx = input.a.x;
+  return float4(xxx, xxx, xxx, 1);
+  return input.a.x;
   float2 ndc = 2 * (input.pos.xy / dim.xy - 0.5);
   ndc.y *= -1;
-  float d = saturate(1 - 10 * line_distance(ndc, input.ss.xy, input.ss.zw));
+
+  float dd = 1 - length(ndc - input.a.xy);
+  return float4(dd, dd, dd, 1);
+  return length(input.pos.xy - input.a.xy);
+  //if (input.bad < 0)
+   // return 1;
+  // compute ndc pixel coords
+  //float2 ndc = 2 * (input.pos.xy / dim.xy - 0.5);
+  //ndc.y *= -1;
+  float3 xx = float3(ndc.x * input.a.w, ndc.y * input.a.w, input.pos.z * input.a.w);
+  float d = saturate(1 - 10 * line_distance3(xx, input.a.xyz, input.b.xyz));
   //float d = saturate(1 - 10 * line_distance(ndc, input.a.xy, input.b.xy));
   d = pow(d, 20);
   return float4(float3(0.2, 0.2, 0.8) * d, 0);
