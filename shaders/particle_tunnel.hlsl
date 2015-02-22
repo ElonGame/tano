@@ -206,10 +206,6 @@ int ClipCode(float4 a)
 [maxvertexcount(8)]
 void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
 {
-  // read axis from the camera view matrix
-  float3 camRight = float3(view._11, view._21, view._31);
-  float3 camUp = float3(view._12, view._22, view._32);
-
   /*
       1--3-------5--7
       |  |       |  |
@@ -218,16 +214,19 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
 
   float3 a = input[0].pos;
   float3 b = input[1].pos;
+  float3 mid = (a+b)/2;
 
   float3 right = normalize(b-a);
-  float3 dir = normalize(camPos.xyz-a);
+  //float3 dir = float3(0,0,-1); //normalize(camPos.xyz-a);
+  float3 dir = normalize(camPos.xyz-mid);
   float3 up = normalize(cross(right, dir));
 
-  float h = 25;
-  float3 v0 = a - h * right - h * up;
-  float3 v1 = a - h * right + h * up;
-  float3 v2 = b + h * right - h * up;
-  float3 v3 = b + h * right + h * up;
+  float h = 15;
+  float w = 20;
+  float3 v0 = a - w * right - h * up;
+  float3 v1 = a - w * right + h * up;
+  float3 v2 = b + w * right - h * up;
+  float3 v3 = b + w * right + h * up;
 
   // compute screen space end points
   float4 cs_a = mul(float4(a, 1), viewProj);
@@ -254,102 +253,81 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
   cs_a.x = +1; cs_a.y = +1;
   cs_a.z = 0.5; cs_a.w = 0;
   OutputVtx3(v3, ss, bad, cs_a, cs_b, stream);
-  return;
+}
 
-  int codeA = ClipCode(cs_a);
-  int codeB = ClipCode(cs_b);
+[maxvertexcount(8)]
+void GsLines2(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
+{
+  /*
+      1--3-------5--7
+      |  |       |  |
+      0--2-------4--6
+  */
 
-  float x1 = cs_a.x;
-  float y1 = cs_a.y;
+  float3 a = input[0].pos;
+  float3 b = input[1].pos;
+  float3 mid = (a+b)/2;
 
-  float x2 = cs_b.x;
-  float y2 = cs_b.y;
+  float3 right = normalize(b-a);
+  //float3 dir = float3(0,0,-1); //normalize(camPos.xyz-a);
+  float3 dir = normalize(camPos.xyz-mid);
+  float3 up = normalize(cross(right, dir));
 
-  float xmin, xmax;
-  float ymin, ymax;
-  int codeOut;
+  float h = 25;
+  float w = 5;
+  float3 v0 = a - w * right - h * up;
+  float3 v1 = a - w * right + h * up;
+  float3 v2 = a + w * right - h * up;
+  float3 v3 = a + w * right + h * up;
 
-  // Check for trivial accept or reject
-  for (int i = 0; i < 4; ++i)
-  {
-    if ((codeA | codeB) == 0)
-    {
-      // both points inside, so output the verts
+  float3 v4 = b - w * right - h * up;
+  float3 v5 = b - w * right + h * up;
+  float3 v6 = b + w * right - h * up;
+  float3 v7 = b + w * right + h * up;
 
-      float2 ss_a = cs_a.xy / cs_a.w;
-      float2 ss_b = cs_b.xy / cs_b.w;
+  // compute screen space end points
+  float4 cs_a = mul(float4(a, 1), viewProj);
+  float4 cs_b = mul(float4(b, 1), viewProj);
+  float bad = cs_a.w * cs_b.w;
 
-      float4 ss = float4(ss_a.x, ss_a.y, ss_b.x, ss_b.y);
-      OutputVtx3(v0, ss, bad, cs_a, cs_b, stream);
-      OutputVtx3(v1, ss, bad, cs_a, cs_b, stream);
-      OutputVtx3(v2, ss, bad, cs_a, cs_b, stream);
-      OutputVtx3(v3, ss, bad, cs_a, cs_b, stream);
-      break;
-    }
-    else if ((codeA & codeB) != 0)
-    {
-      // both points outside on same side
-      break;
-    }
+  float2 ss_a = cs_a.xy / cs_a.w;
+  float2 ss_b = cs_b.xy / cs_b.w;
 
-    float x, y;
-    if (codeA)
-    {
-      codeOut = codeA;
-      xmin = -cs_a.w; xmax = +cs_a.w;
-      ymin = -cs_a.w; ymax = +cs_a.w;
-    }
-    else
-    {
-      codeOut = codeB;
-      xmin = -cs_b.w; xmax = +cs_b.w;
-      ymin = -cs_b.w; ymax = +cs_b.w;
-    }
+  float4 ss = float4(ss_a.x, ss_a.y, ss_b.x, ss_b.y);
 
-    if (codeOut & 1)
-    {
-        // top
-        x = x1 + (x2 - x1) * (ymax - y1) / (y2 - y1);
-        y = ymax;
-    }
-    else if (codeOut & 2) 
-    {
-        // bottom
-        x = x1 + (x2 - x1) * (ymin - y1) / (y2 - y1);
-        y = ymin;
-    }
-    else if (codeOut & 4) 
-    {
-        // right
-        y = y1 + (y2 - y1) * (xmax - x1) / (x2 - x1);
-        x = xmax;
-    }
-    else 
-    {
-      // left
-        y = y1 + (y2 - y1) * (xmin - x1) / (x2 - x1);
-        x = xmin;
-    }
+  cs_a.x = -1; cs_a.y = -1;
+  cs_a.z = 0.0; cs_a.w = 1;
+  OutputVtx3(v0, ss, bad, cs_a, cs_b, stream);
 
-    if (codeOut == codeA)
-    {
-        // first endpoint was clipped
-        x1 = x;
-        y1 = y;
-        cs_a.x = x;
-        cs_a.y = y;
-        codeA = ClipCode(float4(x1, y1, 0, cs_a.w));
-    }
-    else 
-    {
-        // second endpoint was clipped
-        x2 = x;
-        y2 = y;
-        cs_b.x = x;
-        cs_b.y = y;
-        codeB = ClipCode(float4(x2, y2, 0, cs_b.w));
-    }
-  }
+  cs_a.x = -1; cs_a.y = +1;
+  cs_a.z = 0.0; cs_a.w = 0;
+  OutputVtx3(v1, ss, bad, cs_a, cs_b, stream);
+
+  cs_a.x = +1; cs_a.y = -1;
+  cs_a.z = 0.5; cs_a.w = 1;
+  OutputVtx3(v2, ss, bad, cs_a, cs_b, stream);
+
+  cs_a.x = +1; cs_a.y = +1;
+  cs_a.z = 0.5; cs_a.w = 0;
+  OutputVtx3(v3, ss, bad, cs_a, cs_b, stream);
+
+
+  cs_a.x = -1; cs_a.y = -1;
+  cs_a.z = 0.5; cs_a.w = 1;
+  OutputVtx3(v4, ss, bad, cs_a, cs_b, stream);
+
+  cs_a.x = -1; cs_a.y = +1;
+  cs_a.z = 0.5; cs_a.w = 0;
+  OutputVtx3(v5, ss, bad, cs_a, cs_b, stream);
+
+  cs_a.x = +1; cs_a.y = -1;
+  cs_a.z = 1.0; cs_a.w = 1;
+  OutputVtx3(v6, ss, bad, cs_a, cs_b, stream);
+
+  cs_a.x = +1; cs_a.y = +1;
+  cs_a.z = 1.0; cs_a.w = 0;
+  OutputVtx3(v7, ss, bad, cs_a, cs_b, stream);
+
 }
 
 // Return distance from point 'p' to line segment 'a b':
@@ -379,6 +357,7 @@ float line_distance3(float3 p, float3 a, float3 b)
 
 float4 PsLines(GsLinesOut input) : Sv_Target
 {
+  //return 1;
   float3 col = Texture0.Sample(PointSampler, input.a.zw).rgb;
   float aa = length(col);
   float bb = pow(aa, 5);
@@ -404,59 +383,6 @@ float4 PsLines(GsLinesOut input) : Sv_Target
   //float d = saturate(1 - 10 * line_distance(ndc, input.a.xy, input.b.xy));
   d = pow(d, 20);
   return float4(float3(0.2, 0.2, 0.8) * d, 0);
-}
-
-
-
-[maxvertexcount(8)]
-void GsLines2(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
-{
-
-  float2 texA[4] = { float2(0, 1),    float2(0, 0),   float2(0.5, 1), float2(0.5, 0) };
-  float2 texB[4] = { float2(0.5, 1),  float2(0.5, 0), float2(1, 1),   float2(1, 0) };
-
-  /*
-      1--3-------5--7
-      |  |       |  |
-      0--2-------4--6
-  */
-
-  // read axis from the camera view matrix
-  float3 camRight = float3(view._11, view._21, view._31);
-  float3 camUp = float3(view._21, view._22, view._23);
-  float3 camForward = float3(view._31, view._32, view._33);
-
-  float3 pos = input[0].pos;
-  OutputQuad3(pos, camRight, camUp, texA, stream);
-  return;
-
-  float4 aView = mul(float4(input[0].pos, 1), view);
-  float4 bView = mul(float4(input[1].pos, 1), view);
-
-  // get z from the direction
-  float3 axisDir = normalize(bView.xyz - aView.xyz);
-  float3 axisRight = -viewDir.xyz;
-  float3 axisUp = cross(axisDir, axisRight);
-  //float3 axisRight = cross(axisUp, axisDir);
-
-  float4 a = mul(float4(input[0].pos, 1), viewProj);
-  float4 b = mul(float4(input[1].pos, 1), viewProj);
-
-  // clip space line direction
-  float h = 5;
-  float2 dir = h * normalize(b.xy / b.ww - a.xy / a.ww);
-
-  // swap direction if the points are on opposite sides of the near clip plane
-  if (a.w * b.w < 0)
-    dir = -dir;
-
-  float2 up = dir.yx;
-
-
-  //OutputQuad2(a, dir, up, texA, stream);
-  //OutputQuad2(b, dir, up, texB, stream);
-  OutputQuad(aView, axisDir, axisUp, texA, stream);
-  OutputQuad(bView, axisDir, axisUp, texB, stream);
 }
 
 //------------------------------------------------------

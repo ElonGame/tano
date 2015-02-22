@@ -18,7 +18,7 @@ namespace
   bool wireframe = false;
   float angle = 0;
   float height = 0;
-  //float distance = 300;
+  //float distance = 100;
   float distance = 1700;
   bool extended = false;
 }
@@ -156,7 +156,7 @@ void ParticleTunnel::TextParticles::Create(
 
       //    Vector3 dir(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(0.f, 1.f));
       // project each vertex outwards along the hemisphere in the z-plane
-      Vector3 dir(0.1 * sin(s), 0.1 * cos(s), 1);
+      Vector3 dir((float)(0.1 * sin(s)), (float)(0.1 * cos(s)), 1);
       dir.Normalize();
 
       startX[idx] = verts[idx].x - dir.x * dist;
@@ -421,8 +421,24 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
 #if 0
     _numLinesPoints = 2;
-    vtx[0] = Vector3(-50, 0, 0);
-    vtx[1] = Vector3(+50, 0, 0);
+
+    float angle = 0;
+    float angleInc = 2 * 3.1415f / 20;
+    float r = 20;
+    Vector3 prev(r * cos(angle - angleInc), r * sin(angle - angleInc), 1);
+    for (int i = 0; i < 20; ++i)
+    {
+      Vector3 cur(r * cos(angle), r * sin(angle), 1);
+      vtx[i*2+0] = prev;
+      vtx[i*2+1] = cur;
+      prev = cur;
+      angle += angleInc;
+    }
+
+    _numLinesPoints = 2 * 20;
+
+    //vtx[0] = Vector3(-50, 0, 0);
+    //vtx[1] = Vector3(+50, 0, 0);
 #else
     int numTris = (int)_textParticles.selectedTris.size();
     _numLinesPoints = 6 * numTris;
@@ -563,19 +579,18 @@ bool ParticleTunnel::Render()
   _ctx->SetGpuState(_backgroundState);
   _ctx->Draw(3, 0);
 
-
   // Render particles
   _ctx->SetGpuObjects(_particleGpuObjects);
   _ctx->SetGpuState(_particleState);
   _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
   _ctx->Draw(6 * _settings.num_particles, 0);
-
+/*
   // text
   _ctx->SetGpuObjects(_textGpuObjects);
   _ctx->SetGpuState(_textState);
   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
-
+*/
   // lines
   _ctx->SetGpuObjects(_linesGpuObjects);
   _ctx->SetGpuState(_linesState);
