@@ -19,7 +19,7 @@ namespace
   float angle = 0;
   float height = 0;
   //float distance = 100;
-  float distance = 1700;
+  float distance = 1300;
   bool extended = false;
 }
 
@@ -274,8 +274,8 @@ bool ParticleTunnel::Init(const char* configFile)
 
   // Text setup
   INIT(_textWriter.Init("gfx/text1.boba"));
-  //_textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
-  _textWriter.GenerateTris("radio silence", &_neuroticaTris);
+  _textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
+  //_textWriter.GenerateTris("radio\nsilence", &_neuroticaTris);
   _textParticles.Create(_neuroticaTris, 5.f);
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());

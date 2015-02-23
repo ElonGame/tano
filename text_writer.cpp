@@ -71,57 +71,119 @@ bool TextWriter::Init(const char* filename)
 //------------------------------------------------------------------------------
 void TextWriter::GenerateTris(const char* str, vector<Vector3>* tris)
 {
+  // split text into rows
+  vector<string> rows;
   u32 len = (u32)strlen(str);
-  float xOfs = 0;
-  float yOfs = 0;
+  const char* start = str;
+  const char* end = str + len;
+  const char* cur = start;
+  while (start != end)
+  {
+    cur = strchr(start, '\n');
+    if (!cur)
+      break;
+    rows.push_back(string(start, cur - start));
+    start = cur + 1;
+  }
+
+  if (start != end)
+    rows.push_back(string(start, end - start));
+
+  struct RowDim
+  {
+    u32 triStart, triEnd;
+    float xMin, xMax;
+    float yMin, yMax;
+  };
+
+  vector<RowDim> dims;
+
   float xMin = FLT_MAX, xMax = -FLT_MAX;
   float yMin = FLT_MAX, yMax = -FLT_MAX;
   u32 idx = 0;
-  for (u32 i = 0; i < len; ++i)
+  for (const string& str : rows)
   {
-    char ch = toupper(str[i]);
-
-    if (ch == ' ')
+    float xOfs = 0;
+    u32 curLen = (u32)str.size();
+    u32 triStart = (u32)tris->size();
+    for (u32 i = 0; i < curLen; ++i)
     {
-      xOfs += 50;
-      continue;
-    }
-    else if (ch < 'A' || ch > 'Z')
-    {
-      continue;
+      char ch = toupper(str[i]);
+
+      if (ch == ' ')
+      {
+        xOfs += 50;
+        continue;
+      }
+      else if (ch < 'A' || ch > 'Z')
+      {
+        continue;
+      }
+
+      const TextWriter::Letter& letter = _letters[ch - 'A'];
+
+      // Copy vertices to @tris
+      // The actual mesh data uses indices, so we expand those here
+      //MeshLoader::MeshElement* elem = letter.cap1;
+      MeshLoader::MeshElement* elem = letter.outline;
+      u32 numIndices = elem->numIndices;
+      tris->resize(tris->size() + numIndices);
+      for (u32 j = 0; j < numIndices; ++j)
+      {
+        int vertIdx = elem->indices[j] * 3;
+        float x = elem->verts[vertIdx + 0] + xOfs;
+        float y = elem->verts[vertIdx + 1];
+        float z = elem->verts[vertIdx + 2];
+
+        xMin = min(xMin, x); xMax = max(xMax, x);
+        yMin = min(yMin, y); yMax = max(yMax, y);
+        (*tris)[idx + j] = Vector3(x, y, z);
+      }
+
+      xOfs += letter.width * 1.05f;
+      idx += numIndices;
     }
 
-    const TextWriter::Letter& letter = _letters[ch - 'A'];
-
-    // Copy vertices to @tris
-    // The actual mesh data uses indices, so we expand those here
-    //MeshLoader::MeshElement* elem = letter.cap1;
-    MeshLoader::MeshElement* elem = letter.outline;
-    u32 numIndices = elem->numIndices;
-    tris->resize(tris->size() + numIndices);
-    for (u32 j = 0; j < numIndices; ++j)
-    {
-      int vertIdx = elem->indices[j]*3;
-      float x = elem->verts[vertIdx+0];
-      float y = elem->verts[vertIdx+1];
-      float z = elem->verts[vertIdx+2];
-      
-      xMin = min(xMin, x + xOfs); xMax = max(xMax, x + xOfs);
-      yMin = min(yMin, y + yOfs); yMax = max(yMax, y + yOfs);
-      (*tris)[idx + j] = Vector3(x + xOfs, y + yOfs, z);
-    }
-
-    xOfs += letter.width * 1.05f;
-    idx += numIndices;
+    dims.push_back({triStart, (u32)tris->size(), xMin, xMax, yMin, yMax});
   }
 
-  // loop over all the verts and center the text
-  float xCenter = (xMax - xMin) / 2;
-  float yCenter = (yMax - yMin) / 2;
-  for (u32 i = 0, e = (u32)tris->size(); i < e; ++i)
+  float xStart = dims[0].xMin;
+  float xEnd = dims[0].xMax;
+  float yStart = dims[0].yMin;
+  float yEnd = dims[0].yMax;
+  for (size_t i = 1; i < dims.size(); ++i)
   {
-    (*tris)[i].x -= xCenter;
-    (*tris)[i].y -= yCenter;
+    xStart = min(xStart, dims[i].xMin);
+    xEnd = max(xEnd, dims[i].xMax);
+    yStart = min(yStart, dims[i].yMin);
+    yEnd = max(yEnd, dims[i].yMax);
   }
+
+  float sx = xEnd - xStart;
+  float sy = yEnd - yStart;
+
+  float y0 = dims[0].yMax - dims[0].yMin;
+  float xCenter = sx / 2;
+  float yCenter = sy / 2;
+  float yOfs = yCenter;
+
+  for (const RowDim& row : dims)
+  {
+    float rx = row.xMax - row.xMin;
+    float ry = row.yMax - row.yMin;
+    float xRowOfs = (sx - rx) / 2;
+    float yRowOfs = (sy - ry) / 2;
+
+    // loop over all the verts and center the text
+    for (u32 i = row.triStart, e = row.triEnd; i < e; ++i)
+    {
+      (*tris)[i].x -= (xCenter - xRowOfs);
+      //(*tris)[i].y -= (yCenter - yRowOfs + yOfs);
+      (*tris)[i].y += yOfs;
+    }
+
+    yOfs -= ry;
+  }
+  
 }
 
