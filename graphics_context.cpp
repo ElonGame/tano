@@ -26,13 +26,13 @@ void GraphicsContext::GenerateMips(ObjectHandle h)
 //------------------------------------------------------------------------------
 void GraphicsContext::SetRenderTarget(ObjectHandle render_target, const Color* clearColor)
 {
-  SetRenderTargets(&render_target, clearColor, 1);
+  SetRenderTargets(&render_target, &clearColor, 1);
 }
 
 //------------------------------------------------------------------------------
 void GraphicsContext::SetRenderTargets(
     ObjectHandle* renderTargets,
-    const Color* clearTargets,
+    const Color** clearTargets,
     int numRenderTargets)
 {
   if (!numRenderTargets)
@@ -56,9 +56,9 @@ void GraphicsContext::SetRenderTargets(
     }
     rts[i] = rt->rtv.resource;
     // clear render target (and depth stenci)
-    if (clearTargets[i])
+    if (clearTargets && clearTargets[i])
     {
-      _ctx->ClearRenderTargetView(rts[i], &clearTargets[i].x);
+      _ctx->ClearRenderTargetView(rts[i], &clearTargets[i]->x);
       if (rt->dsv.resource)
       {
         _ctx->ClearDepthStencilView(rt->dsv.resource, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0 );

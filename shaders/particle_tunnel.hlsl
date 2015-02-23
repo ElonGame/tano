@@ -2,6 +2,8 @@
 
 Texture2D Texture0 : register(t0);
 Texture2D Texture1 : register(t1);
+Texture2D Texture2 : register(t2);
+Texture2D Texture3 : register(t3);
 sampler PointSampler : register(s0);
 
 cbuffer PerFrame : register(b0)
@@ -60,6 +62,12 @@ struct GsLinesOut
   float4 tex : TexCoord0;    // xy = uv, z = dof
 };
 
+struct PsLinesOut
+{
+  float4 col  : SV_Target0;
+  float dof   : SV_Target1;
+};
+
 //------------------------------------------------------
 // particles
 //------------------------------------------------------
@@ -106,11 +114,11 @@ VsLinesOut VsLines(VsLinesIn v)
 
 float CalcDof(float z)
 {
-  float nearStart = 100;
-  float nearEnd = 200;
+  float nearStart = 500;
+  float nearEnd = 2000;
 
-  float farStart = 500;
-  float farEnd = 600;
+  float farStart = 4000;
+  float farEnd = 5500;
   // blend between 0..1 ... 1..0 
   return min(smoothstep(nearStart, nearEnd, z), 1 - smoothstep(farStart, farEnd, z));
 }
@@ -118,10 +126,10 @@ float CalcDof(float z)
 void OutputVtx(float3 v, float2 tex, inout TriangleStream<GsLinesOut> stream)
 {
   GsLinesOut res;
-  float4 camPos = mul(float4(v, 1), view);
   res.pos = mul(float4(v, 1), viewProj);
   res.tex.xy = tex.xy;
-  res.tex.zw = CalcDof(camPos.z);
+  float3 dist = v - camPos.xyz;
+  res.tex.zw = CalcDof(length(dist));
   stream.Append(res);
 }
 
@@ -157,13 +165,16 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
 }
 
 
-float4 PsLines(GsLinesOut input) : Sv_Target
+PsLinesOut PsLines(GsLinesOut input)
 {
   float3 col = Texture0.Sample(PointSampler, input.tex.xy).rgb;
   float aa = length(col);
   float bb = pow(aa, 5);
   // the output is monochrome, so output the DOF in g
-  return float4(bb, bb, bb, 0);
+  PsLinesOut res;
+  res.col = float4(bb, bb, bb, 0);
+  res.dof = input.tex.z;
+  return res;
 }
 
 //------------------------------------------------------
@@ -198,16 +209,32 @@ float4 PsText(VsTextOut p) : SV_Target
 //------------------------------------------------------
 float4 PsComposite(VSQuadOut p) : SV_Target
 {
+  // textures used:
+  // 0 - background
+  // 1 - lines, depth
+  // 2 - lines, blurred
   float2 uv = p.uv.xy;
   float2 xx = -1 + 2 * uv;
-  float4 blurCol = Texture0.Sample(PointSampler, uv);
+//  float4 backgroundCol = Texture0.Sample(PointSampler, uv);
+  float4 lines = Texture0.Sample(PointSampler, uv);
+  float4 linesDepth = Texture1.Sample(PointSampler, uv);
+  float4 linesBlur = Texture2.Sample(PointSampler, uv);
+
+/*  
   float4 sample = Texture1.Sample(PointSampler, uv);
   float4 orgCol = sample;
   float dof = saturate(1 - length(orgCol));
   dof = saturate(CalcDof(600));
   dof = 1 - pow(length(xx), 20);
   float4 col = lerp(blurCol, orgCol, dof);
+*/
+  //float4 col = backgroundCol;
+  float dof = linesDepth.x;
+  float4 col = lerp(linesBlur, lines, saturate(dof));
+//  col = lines;
+
+  //col = col + col2;
+  // vignette
   float r = 0.5 + 0.9 - sqrt(xx.x*xx.x + xx.y*xx.y);
   return r * col;
-  return col;
 }
