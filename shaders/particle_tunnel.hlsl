@@ -37,7 +37,6 @@ struct VsParticleOut
 struct PsParticlesOut
 {
   float4 col  : SV_Target0;
-  //float dof   : SV_Target1;
 };
 
 struct VsTextIn
@@ -71,7 +70,6 @@ struct GsLinesOut
 struct PsLinesOut
 {
   float4 col  : SV_Target0;
-  float dof   : SV_Target1;
 };
 
 //------------------------------------------------------
@@ -182,7 +180,6 @@ PsLinesOut PsLines(GsLinesOut input)
   PsLinesOut res;
   float dof = input.tex.z;
   res.col = float4(bb, dof, bb, bb);
-  res.dof = input.tex.z;
   return res;
 }
 
@@ -221,36 +218,21 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   // textures used:
   // 0 - background
   // 1 - lines, normal
-  // 2 - lines, depth
-  // 3 - lines, blurred
+  // 2 - lines, blurred
   float2 uv = p.uv.xy;
   float2 xx = -1 + 2 * uv;
   float4 backgroundCol = Texture0.Sample(PointSampler, uv);
   float4 lines = Texture1.Sample(PointSampler, uv);
-  float4 linesDepth = Texture2.Sample(PointSampler, uv);
-  float4 linesBlur = Texture3.Sample(PointSampler, uv);
+  float4 linesBlur = Texture2.Sample(PointSampler, uv);
 
   float dofTmp = lines.g;
   float dofBlur = linesBlur.g;
   lines.xyzw = lines.xxxw;
   linesBlur.xyzw = linesBlur.xxxw;
-/*  
-  float4 sample = Texture1.Sample(PointSampler, uv);
-  float4 orgCol = sample;
-  float dof = saturate(1 - length(orgCol));
-  dof = saturate(CalcDof(600));
-  dof = 1 - pow(length(xx), 20);
-  float4 col = lerp(blurCol, orgCol, dof);
-*/
-  //float4 col = backgroundCol;
-  float dof = linesDepth.x;
-  //return dofBlur;
-  float4 tmp = lerp(linesBlur, lines, saturate(dofBlur));
-  //tmp.rgb *= lines.a;
-  float4 col = backgroundCol + tmp;
-//  col = lines;
 
-  //col = col + col2;
+  float4 tmp = lerp(linesBlur, lines, saturate(dofBlur));
+  float4 col = backgroundCol + tmp;
+
   // vignette
   float r = 0.5 + 0.9 - sqrt(xx.x*xx.x + xx.y*xx.y);
   return r * col;

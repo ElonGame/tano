@@ -580,10 +580,6 @@ bool ParticleTunnel::Render()
   _ctx->Draw(3, 0);
 
   // Render particles
-//   ObjectHandle arr[] = { rt._handle, rtLinesDof._handle };
-//   const Color* arrColor[] = { nullptr, &black };
-//   _ctx->SetRenderTargets(arr, arrColor, 2);
-
   _ctx->SetGpuObjects(_particleGpuObjects);
   _ctx->SetGpuState(_particleState);
   _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
@@ -598,10 +594,7 @@ bool ParticleTunnel::Render()
   // lines
 
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  ScopedRenderTarget rtLinesDof(DXGI_FORMAT_R16_FLOAT);
-  ObjectHandle arr[] = { rtLines._handle, rtLinesDof._handle };
-  const Color* arrColor[] = {&black, &black};
-  _ctx->SetRenderTargets(arr, arrColor, 2);
+  _ctx->SetRenderTarget(rtLines._handle, &black);
 
   _ctx->SetGpuObjects(_linesGpuObjects);
   _ctx->SetGpuState(_linesState);
@@ -617,7 +610,7 @@ bool ParticleTunnel::Render()
   // compose final image on default swap chain
 
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
-  postProcess->Execute({ rt._handle, rtLines._handle, rtLinesDof._handle, rtBlur._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+  postProcess->Execute({ rt._handle, rtLines._handle, rtBlur._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
   //postProcess->Execute({ rt._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
 
   return true;
