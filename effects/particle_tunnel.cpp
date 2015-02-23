@@ -600,14 +600,13 @@ bool ParticleTunnel::Render()
 
   _ctx->UnsetRenderTargets(0, 1);
 
-  ScopedRenderTarget rtTmp(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav);
-
-  ApplyBlur(rt._handle, rtTmp._handle);
+  ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav);
+  ApplyBlur(rt._handle, rtBlur._handle);
 
   // compose final image on default swap chain
 
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
-  postProcess->Execute({ rtTmp._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+  postProcess->Execute({ rtBlur._handle, rt._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
   //postProcess->Execute({ rt._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
 
   return true;
