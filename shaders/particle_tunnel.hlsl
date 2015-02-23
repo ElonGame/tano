@@ -34,6 +34,12 @@ struct VsParticleOut
   float3 uv : TexCoord;
 };
 
+struct PsParticlesOut
+{
+  float4 col  : SV_Target0;
+  //float dof   : SV_Target1;
+};
+
 struct VsTextIn
 {
   float3 pos  : Position;
@@ -81,11 +87,14 @@ VsParticleOut VsParticle(VsParticleIn v)
   return res;
 }
 
-float4 PsParticle(VsParticleOut p) : SV_Target
+PsParticlesOut PsParticle(VsParticleOut p)
 {
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
-  return (1 - p.uv.z) * float4(col.rgb, col.g);
+  PsParticlesOut res;
+  res.col = (1 - p.uv.z) * float4(col.rgb, col.g);
+  //res.dof = 0;
+  return res;
 }
 
 //------------------------------------------------------
@@ -114,7 +123,7 @@ VsLinesOut VsLines(VsLinesIn v)
 
 float CalcDof(float z)
 {
-  float nearStart = 500;
+  float nearStart = 1000;
   float nearEnd = 2000;
 
   float farStart = 4000;
@@ -151,7 +160,7 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
   float3 dir = normalize(camPos.xyz-mid);
   float3 up = normalize(cross(right, dir));
 
-  float h = 15;
+  float h = 10;
   float w = 20;
   float3 v0 = a - w * right - h * up;
   float3 v1 = a - w * right + h * up;
@@ -169,10 +178,10 @@ PsLinesOut PsLines(GsLinesOut input)
 {
   float3 col = Texture0.Sample(PointSampler, input.tex.xy).rgb;
   float aa = length(col);
-  float bb = pow(aa, 5);
-  // the output is monochrome, so output the DOF in g
+  float bb = pow(aa, 4);
   PsLinesOut res;
-  res.col = float4(bb, bb, bb, 0);
+  float dof = input.tex.z;
+  res.col = float4(bb, dof, bb, bb);
   res.dof = input.tex.z;
   return res;
 }
@@ -211,15 +220,20 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 {
   // textures used:
   // 0 - background
-  // 1 - lines, depth
-  // 2 - lines, blurred
+  // 1 - lines, normal
+  // 2 - lines, depth
+  // 3 - lines, blurred
   float2 uv = p.uv.xy;
   float2 xx = -1 + 2 * uv;
-//  float4 backgroundCol = Texture0.Sample(PointSampler, uv);
-  float4 lines = Texture0.Sample(PointSampler, uv);
-  float4 linesDepth = Texture1.Sample(PointSampler, uv);
-  float4 linesBlur = Texture2.Sample(PointSampler, uv);
+  float4 backgroundCol = Texture0.Sample(PointSampler, uv);
+  float4 lines = Texture1.Sample(PointSampler, uv);
+  float4 linesDepth = Texture2.Sample(PointSampler, uv);
+  float4 linesBlur = Texture3.Sample(PointSampler, uv);
 
+  float dofTmp = lines.g;
+  float dofBlur = linesBlur.g;
+  lines.xyzw = lines.xxxw;
+  linesBlur.xyzw = linesBlur.xxxw;
 /*  
   float4 sample = Texture1.Sample(PointSampler, uv);
   float4 orgCol = sample;
@@ -230,7 +244,10 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 */
   //float4 col = backgroundCol;
   float dof = linesDepth.x;
-  float4 col = lerp(linesBlur, lines, saturate(dof));
+  //return dofBlur;
+  float4 tmp = lerp(linesBlur, lines, saturate(dofBlur));
+  //tmp.rgb *= lines.a;
+  float4 col = backgroundCol + tmp;
 //  col = lines;
 
   //col = col + col2;

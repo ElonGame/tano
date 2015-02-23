@@ -274,8 +274,8 @@ bool ParticleTunnel::Init(const char* configFile)
 
   // Text setup
   INIT(_textWriter.Init("gfx/text1.boba"));
-  _textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
-  //_textWriter.GenerateTris("radio silence", &_neuroticaTris);
+  //_textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
+  _textWriter.GenerateTris("radio silence", &_neuroticaTris);
   _textParticles.Create(_neuroticaTris, 5.f);
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
@@ -568,20 +568,22 @@ bool ParticleTunnel::Render()
   static Color black(0, 0, 0, 0);
 
   ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
-//  ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
-
-  _ctx->SetRenderTarget(rt._handle, &black);
 
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
   // Render the background
+  _ctx->SetRenderTarget(rt._handle, &black);
   _ctx->SetGpuObjects(_backgroundGpuObjects);
   _ctx->SetGpuState(_backgroundState);
   _ctx->Draw(3, 0);
 
   // Render particles
+//   ObjectHandle arr[] = { rt._handle, rtLinesDof._handle };
+//   const Color* arrColor[] = { nullptr, &black };
+//   _ctx->SetRenderTargets(arr, arrColor, 2);
+
   _ctx->SetGpuObjects(_particleGpuObjects);
   _ctx->SetGpuState(_particleState);
   _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
@@ -594,10 +596,13 @@ bool ParticleTunnel::Render()
   _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
 */
   // lines
+
+  ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
   ScopedRenderTarget rtLinesDof(DXGI_FORMAT_R16_FLOAT);
-  ObjectHandle arr[] = { rt._handle, rtLinesDof._handle };
-  const Color* arrColor[] = {nullptr, &black};
+  ObjectHandle arr[] = { rtLines._handle, rtLinesDof._handle };
+  const Color* arrColor[] = {&black, &black};
   _ctx->SetRenderTargets(arr, arrColor, 2);
+
   _ctx->SetGpuObjects(_linesGpuObjects);
   _ctx->SetGpuState(_linesState);
   _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
@@ -607,12 +612,12 @@ bool ParticleTunnel::Render()
   _ctx->UnsetRenderTargets(0, 1);
 
   ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav);
-  ApplyBlur(rt._handle, rtBlur._handle);
+  ApplyBlur(rtLines._handle, rtBlur._handle);
 
   // compose final image on default swap chain
 
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
-  postProcess->Execute({ rt._handle, rtLinesDof._handle, rtBlur._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+  postProcess->Execute({ rt._handle, rtLines._handle, rtLinesDof._handle, rtBlur._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
   //postProcess->Execute({ rt._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
 
   return true;
