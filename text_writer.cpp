@@ -149,37 +149,31 @@ void TextWriter::GenerateTris(const char* str, vector<Vector3>* tris)
 
   float xStart = dims[0].xMin;
   float xEnd = dims[0].xMax;
-  float yStart = dims[0].yMin;
-  float yEnd = dims[0].yMax;
+  float ySize = 0;
   for (size_t i = 1; i < dims.size(); ++i)
   {
     xStart = min(xStart, dims[i].xMin);
     xEnd = max(xEnd, dims[i].xMax);
-    yStart = min(yStart, dims[i].yMin);
-    yEnd = max(yEnd, dims[i].yMax);
+    ySize += dims[i].yMax - dims[i].yMin;
   }
 
   float sx = xEnd - xStart;
-  float sy = yEnd - yStart;
-
-  float y0 = dims[0].yMax - dims[0].yMin;
   float xCenter = sx / 2;
-  float yCenter = sy / 2;
-  float yOfs = yCenter;
+  float yOfs = ySize / 2;
 
   for (const RowDim& row : dims)
   {
     float rx = row.xMax - row.xMin;
     float ry = row.yMax - row.yMin;
     float xRowOfs = (sx - rx) / 2;
-    float yRowOfs = (sy - ry) / 2;
 
     // loop over all the verts and center the text
     for (u32 i = row.triStart, e = row.triEnd; i < e; ++i)
     {
       (*tris)[i].x -= (xCenter - xRowOfs);
-      //(*tris)[i].y -= (yCenter - yRowOfs + yOfs);
-      (*tris)[i].y += yOfs;
+      // we first center the text around its local origin, and then move it
+      // to the correct global position
+      (*tris)[i].y += -ry / 2 + yOfs;
     }
 
     yOfs -= ry;

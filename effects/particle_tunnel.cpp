@@ -18,7 +18,6 @@ namespace
   bool wireframe = false;
   float angle = 0;
   float height = 0;
-  //float distance = 100;
   float distance = 1300;
   bool extended = false;
 }
@@ -274,8 +273,8 @@ bool ParticleTunnel::Init(const char* configFile)
 
   // Text setup
   INIT(_textWriter.Init("gfx/text1.boba"));
-  _textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
-  //_textWriter.GenerateTris("radio\nsilence", &_neuroticaTris);
+  //_textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
+  _textWriter.GenerateTris("radio\nsilence", &_neuroticaTris);
   _textParticles.Create(_neuroticaTris, 5.f);
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
@@ -326,6 +325,7 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(GRAPHICS.LoadComputeShadersFromFile("shaders/out/blur", &_csBlurX, "BoxBlurX"));
 
   INIT(_cbBlur.Create());
+  _cbBlur.radius = _settings.blur_radius;
 
   // Generic setup
   INIT(_cbPerFrame.Create());
@@ -616,6 +616,7 @@ bool ParticleTunnel::Render()
   return true;
 }
 
+//------------------------------------------------------------------------------
 void ParticleTunnel::ApplyBlur(ObjectHandle inputBuffer, ObjectHandle outputBuffer)
 {
   static Color black(0, 0, 0, 0);

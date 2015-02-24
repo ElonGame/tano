@@ -28,6 +28,7 @@ struct particle_tunnel_settings
   float text_max_dist;
   float text_time = 5;
   float text_triangle_prob;
+  float blur_radius = 15;
 };
 
 struct ray_marcher_settings
