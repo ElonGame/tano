@@ -13,9 +13,7 @@ shaders/out/particle_tunnel_PsBackgroundD.pso	C:/projects/tano/shaders/out/parti
 shaders/out/particle_tunnel_PsCompositeD.pso	C:/projects/tano/shaders/out/particle_tunnel_PsCompositeD.pso
 shaders/out/particle_tunnel_PsLinesD.pso	C:/projects/tano/shaders/out/particle_tunnel_PsLinesD.pso
 shaders/out/particle_tunnel_PsParticleD.pso	C:/projects/tano/shaders/out/particle_tunnel_PsParticleD.pso
-shaders/out/particle_tunnel_PsTextD.pso	C:/projects/tano/shaders/out/particle_tunnel_PsTextD.pso
 shaders/out/particle_tunnel_VsLinesD.vso	C:/projects/tano/shaders/out/particle_tunnel_VsLinesD.vso
 shaders/out/particle_tunnel_VsParticleD.vso	C:/projects/tano/shaders/out/particle_tunnel_VsParticleD.vso
 shaders/out/particle_tunnel_VsQuadD.vso	C:/projects/tano/shaders/out/particle_tunnel_VsQuadD.vso
-shaders/out/particle_tunnel_VsTextD.vso	C:/projects/tano/shaders/out/particle_tunnel_VsTextD.vso
 shaders/out/quad_VsMainD.vso	C:/projects/tano/shaders/out/quad_VsMainD.vso

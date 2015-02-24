@@ -190,15 +190,14 @@ void ParticleTunnel::TextParticles::Destroy()
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::TextParticles::Update(const UpdateState& state)
+void ParticleTunnel::TextParticles::Update(float seconds, float start, float end)
 {
-  float dt = 1.f / state.frequency;
-
   float* xx = curX;
   float* yy = curY;
   float* zz = curZ;
 
-  float s = Clamp(0.f, 1.f, (float)state.localTime.TotalMicroseconds() / (float)(1e6 * settings.text_time));
+  float duration = end - start;
+  float s = Clamp(0.f, 1.f, seconds / duration);
 
   for (int i = 0, e = numParticles; i < e; ++i)
   {
@@ -211,7 +210,9 @@ void ParticleTunnel::TextParticles::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 ParticleTunnel::ParticleTunnel(const string &name, u32 id)
   : Effect(name, id)
-  , _textParticles(_settings)
+  , _neuroticaParticles(_settings)
+  , _radioSilenceParticles(_settings)
+  , _partyParticles(_settings)
 {
 #if WITH_IMGUI
   PROPERTIES.Register("particle tunnel", 
@@ -273,9 +274,17 @@ bool ParticleTunnel::Init(const char* configFile)
 
   // Text setup
   INIT(_textWriter.Init("gfx/text1.boba"));
-  //_textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
-  _textWriter.GenerateTris("radio\nsilence", &_neuroticaTris);
-  _textParticles.Create(_neuroticaTris, 5.f);
+  _textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
+  _textWriter.GenerateTris("radio\nsilence", &_radioSilenceTris);
+  _textWriter.GenerateTris("solskogen", &_partyTris);
+
+  _neuroticaParticles.Create(_neuroticaTris, 5.f);
+  _radioSilenceParticles.Create(_radioSilenceTris, 5.f);
+  _partyParticles.Create(_partyTris, 5.f);
+
+  _curParticles = &_neuroticaParticles;
+
+#if WITH_TEXT
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
     rssDesc.CullMode = D3D11_CULL_NONE;
@@ -292,8 +301,10 @@ bool ParticleTunnel::Init(const char* configFile)
 
     INIT(_textState.Create(&dsDesc, &blendDesc, &rssDesc));
   }
+
   INIT(_textGpuObjects.CreateDynamicVb((u32)_neuroticaTris.size() * sizeof(Vector3), sizeof(Vector3)));
   INIT(_textGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsText", nullptr, "PsText", VertexFlags::VF_POS));
+#endif
 
   {
     CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
@@ -369,6 +380,31 @@ bool ParticleTunnel::Update(const UpdateState& state)
 {
   UpdateCameraMatrix();
 
+  // check if it's time to switch to the next text
+  float ms = state.localTime.TotalMilliseconds() / 1000.f;
+  if (ms >= _settings.text1_start && ms < _settings.text1_end)
+  {
+    _particlesStart = _settings.text1_start;
+    _particlesEnd = _settings.text1_end;
+    _curParticles = &_neuroticaParticles;
+  }
+  else if (ms >= _settings.text2_start && ms < _settings.text2_end)
+  {
+    _particlesStart = _settings.text2_start;
+    _particlesEnd = _settings.text2_end;
+    _curParticles = &_radioSilenceParticles;
+  }
+  else if (ms >= _settings.text3_start && ms < _settings.text3_end)
+  {
+    _particlesStart = _settings.text3_start;
+    _particlesEnd = _settings.text3_end;
+    _curParticles = &_partyParticles;
+  }
+  else
+  {
+    _curParticles = nullptr;
+  }
+
   rmt_ScopedCPUSample(ParticleTunnel_Update);
 
   float dt = 1.f / state.frequency;
@@ -382,22 +418,24 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
   {
     rmt_ScopedCPUSample(TextParticles_Update);
-    _textParticles.Update(state);
+    if (_curParticles)
+      _curParticles->Update(ms - _particlesStart, _particlesStart, _particlesEnd);
   }
 
+#if WITH_TEXT
   {
     // Blit text
     rmt_ScopedCPUSample(TextParticle_Map);
 
-    float* xx = _textParticles.curX;
-    float* yy = _textParticles.curY;
-    float* zz = _textParticles.curZ;
+    float* xx = _curParticles->curX;
+    float* yy = _curParticles->curY;
+    float* zz = _curParticles->curZ;
 
     Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_textGpuObjects._vb);
 
-    for (int i = 0, e = (int)_textParticles.selectedTris.size(); i < e; ++i)
+    for (int i = 0, e = (int)_curParticles->selectedTris.size(); i < e; ++i)
     {
-      int triIdx = _textParticles.selectedTris[i];
+      int triIdx = _curParticles->selectedTris[i];
       for (int j = 0; j < 3; ++j)
       {
         vtx->x = xx[triIdx + j];
@@ -409,13 +447,14 @@ bool ParticleTunnel::Update(const UpdateState& state)
     }
     _ctx->Unmap(_textGpuObjects._vb);
   }
+#endif
 
+  // Blit lines
+  if (_curParticles)
   {
-    // Blit lines
-
-    float* xx = _textParticles.curX;
-    float* yy = _textParticles.curY;
-    float* zz = _textParticles.curZ;
+    float* xx = _curParticles->curX;
+    float* yy = _curParticles->curY;
+    float* zz = _curParticles->curZ;
 
     Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_linesGpuObjects._vb);
 
@@ -429,8 +468,8 @@ bool ParticleTunnel::Update(const UpdateState& state)
     for (int i = 0; i < 20; ++i)
     {
       Vector3 cur(r * cos(angle), r * sin(angle), 1);
-      vtx[i*2+0] = prev;
-      vtx[i*2+1] = cur;
+      vtx[i * 2 + 0] = prev;
+      vtx[i * 2 + 1] = cur;
       prev = cur;
       angle += angleInc;
     }
@@ -440,12 +479,12 @@ bool ParticleTunnel::Update(const UpdateState& state)
     //vtx[0] = Vector3(-50, 0, 0);
     //vtx[1] = Vector3(+50, 0, 0);
 #else
-    int numTris = (int)_textParticles.selectedTris.size();
+    int numTris = (int)_curParticles->selectedTris.size();
     _numLinesPoints = 6 * numTris;
 
     for (int i = 0; i < numTris; ++i)
     {
-      int triIdx = _textParticles.selectedTris[i];
+      int triIdx = _curParticles->selectedTris[i];
       // Barrett enumeration :)
       for (int j = 2, k = 0; k < 3; j = k++)
       {
@@ -585,14 +624,15 @@ bool ParticleTunnel::Render()
   _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
   _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
   _ctx->Draw(6 * _settings.num_particles, 0);
-/*
+
+#if WITH_TEXT
   // text
   _ctx->SetGpuObjects(_textGpuObjects);
   _ctx->SetGpuState(_textState);
-  _ctx->Draw((u32)_textParticles.selectedTris.size(), 0);
-*/
-  // lines
+  _ctx->Draw((u32)_curParticles->selectedTris.size(), 0);
+#endif
 
+  // lines
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
   _ctx->SetRenderTarget(rtLines._handle, &black);
 
@@ -765,7 +805,7 @@ void ParticleTunnel::SaveParameterSet()
 //------------------------------------------------------------------------------
 void ParticleTunnel::Reset()
 {
-  _textParticles.Create(_neuroticaTris, _settings.text_time);
+  _curParticles->Create(_neuroticaTris, _settings.text_time);
 }
 
 //------------------------------------------------------------------------------

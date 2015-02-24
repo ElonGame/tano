@@ -29,6 +29,12 @@ struct particle_tunnel_settings
   float text_time = 5;
   float text_triangle_prob;
   float blur_radius = 15;
+  float text1_start = 5;
+  float text1_end = 10;
+  float text2_start = 12;
+  float text2_end = 17;
+  float text3_start = 19;
+  float text3_end = 24;
 };
 
 struct ray_marcher_settings

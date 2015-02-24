@@ -6,6 +6,8 @@
 #include "../text_writer.hpp"
 #include "../post_process.hpp"
 
+#define WITH_TEXT 0
+
 namespace tano
 {
   class ParticleTunnel : public Effect
@@ -69,7 +71,7 @@ namespace tano
       TextParticles(const ParticleTunnelSettings& settings) : settings(settings) {}
       void Create(const vector<Vector3>& verts, float targetTime);
       void Destroy();
-      void Update(const UpdateState& state);
+      void Update(float seconds, float start, float end);
 
       float* curX = nullptr;
       float* curY = nullptr;
@@ -113,8 +115,10 @@ namespace tano
     GpuState _particleState;
     GpuObjects _particleGpuObjects;
 
+#if WITH_TEXT
     GpuState _textState;
     GpuObjects _textGpuObjects;
+#endif
 
     ObjectHandle _lineTexture;
     GpuState _linesState;
@@ -138,6 +142,14 @@ namespace tano
 
     TextWriter _textWriter;
     vector<Vector3> _neuroticaTris;
-    TextParticles _textParticles;
+    vector<Vector3> _radioSilenceTris;
+    vector<Vector3> _partyTris;
+
+    TextParticles _neuroticaParticles;
+    TextParticles _radioSilenceParticles;
+    TextParticles _partyParticles;
+    float _particlesStart, _particlesEnd;
+
+    TextParticles* _curParticles = nullptr;
   };
 }
