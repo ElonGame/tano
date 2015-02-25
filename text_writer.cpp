@@ -69,7 +69,10 @@ bool TextWriter::Init(const char* filename)
 }
 
 //------------------------------------------------------------------------------
-void TextWriter::GenerateTris(const char* str, vector<Vector3>* tris)
+void TextWriter::GenerateTris(
+    const char* str,
+    vector<Vector3>* outlineTris,
+    vector<Vector3>* capTris)
 {
   // split text into rows
   vector<string> rows;
@@ -91,21 +94,24 @@ void TextWriter::GenerateTris(const char* str, vector<Vector3>* tris)
 
   struct RowDim
   {
-    u32 triStart, triEnd;
+    u32 outlineTriStart, outlineTriEnd;
+    u32 capTriStart, capTriEnd;
     float xMin, xMax;
     float yMin, yMax;
   };
 
   vector<RowDim> dims;
 
-  float xMin = FLT_MAX, xMax = -FLT_MAX;
-  float yMin = FLT_MAX, yMax = -FLT_MAX;
-  u32 idx = 0;
+  Vector3 vMin(+FLT_MAX, +FLT_MAX, +FLT_MAX);
+  Vector3 vMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+  u32 outlineIdx = 0;
+  u32 capIdx = 0;
   for (const string& str : rows)
   {
     float xOfs = 0;
     u32 curLen = (u32)str.size();
-    u32 triStart = (u32)tris->size();
+    u32 outlineTriStart = (u32)outlineTris->size();
+    u32 capTriStart = (u32)capTris->size();
     for (u32 i = 0; i < curLen; ++i)
     {
       char ch = toupper(str[i]);
@@ -124,27 +130,49 @@ void TextWriter::GenerateTris(const char* str, vector<Vector3>* tris)
 
       // Copy vertices to @tris
       // The actual mesh data uses indices, so we expand those here
-      //MeshLoader::MeshElement* elem = letter.cap1;
-      MeshLoader::MeshElement* elem = letter.outline;
-      u32 numIndices = elem->numIndices;
-      tris->resize(tris->size() + numIndices);
-      for (u32 j = 0; j < numIndices; ++j)
+      if (outlineTris)
       {
-        int vertIdx = elem->indices[j] * 3;
-        float x = elem->verts[vertIdx + 0] + xOfs;
-        float y = elem->verts[vertIdx + 1];
-        float z = elem->verts[vertIdx + 2];
+        MeshLoader::MeshElement* elem = letter.outline;
+        u32 numIndices = elem->numIndices;
+        outlineTris->resize(outlineTris->size() + numIndices);
+        for (u32 j = 0; j < numIndices; ++j)
+        {
+          int vertIdx = elem->indices[j] * 3;
+          Vector3 v(elem->verts[vertIdx + 0] + xOfs, elem->verts[vertIdx + 1], elem->verts[vertIdx + 2]);
+          vMin = Vector3::Min(v, vMin);
+          vMax = Vector3::Max(v, vMax);
+          (*outlineTris)[outlineIdx + j] = v;
+        }
 
-        xMin = min(xMin, x); xMax = max(xMax, x);
-        yMin = min(yMin, y); yMax = max(yMax, y);
-        (*tris)[idx + j] = Vector3(x, y, z);
+        outlineIdx += numIndices;
+      }
+
+      if (capTris)
+      {
+        MeshLoader::MeshElement* elem = letter.cap1;
+        u32 numIndices = elem->numIndices;
+        capTris->resize(capTris->size() + numIndices);
+        for (u32 j = 0; j < numIndices; ++j)
+        {
+          int vertIdx = elem->indices[j] * 3;
+          Vector3 v(elem->verts[vertIdx + 0] + xOfs, elem->verts[vertIdx + 1], elem->verts[vertIdx + 2]);
+          if (!outlineTris)
+          {
+            vMin = Vector3::Min(v, vMin);
+            vMax = Vector3::Max(v, vMax);
+          }
+          (*capTris)[capIdx + j] = v;
+        }
+
+        capIdx += numIndices;
       }
 
       xOfs += letter.width * 1.05f;
-      idx += numIndices;
     }
 
-    dims.push_back({triStart, (u32)tris->size(), xMin, xMax, yMin, yMax});
+    dims.push_back({
+      outlineTriStart, (u32)outlineTris->size(), capTriStart, (u32)capTris->size(),
+      vMin.x, vMax.x, vMin.y, vMax.y});
   }
 
   float xStart = dims[0].xMin;
@@ -168,16 +196,29 @@ void TextWriter::GenerateTris(const char* str, vector<Vector3>* tris)
     float xRowOfs = (sx - rx) / 2;
 
     // loop over all the verts and center the text
-    for (u32 i = row.triStart, e = row.triEnd; i < e; ++i)
+    if (outlineTris)
     {
-      (*tris)[i].x -= (xCenter - xRowOfs);
-      // we first center the text around its local origin, and then move it
-      // to the correct global position
-      (*tris)[i].y += -ry / 2 + yOfs;
+      for (u32 i = row.outlineTriStart, e = row.outlineTriEnd; i < e; ++i)
+      {
+        (*outlineTris)[i].x -= (xCenter - xRowOfs);
+        // we first center the text around its local origin, and then move it
+        // to the correct global position
+        (*outlineTris)[i].y += -ry / 2 + yOfs;
+      }
+    }
+
+    if (capTris)
+    {
+      for (u32 i = row.capTriStart, e = row.capTriEnd; i < e; ++i)
+      {
+        (*capTris)[i].x -= (xCenter - xRowOfs);
+        // we first center the text around its local origin, and then move it
+        // to the correct global position
+        (*capTris)[i].y += -ry / 2 + yOfs;
+      }
     }
 
     yOfs -= ry;
   }
-  
 }
 

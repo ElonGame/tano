@@ -142,8 +142,11 @@ namespace tano
 
     TextWriter _textWriter;
     vector<Vector3> _neuroticaTris;
+    vector<Vector3> _neuroticaCapTris;
     vector<Vector3> _radioSilenceTris;
+    vector<Vector3> _radioSilenceCapTris;
     vector<Vector3> _partyTris;
+    vector<Vector3> _partyCapTris;
 
     TextParticles _neuroticaParticles;
     TextParticles _radioSilenceParticles;

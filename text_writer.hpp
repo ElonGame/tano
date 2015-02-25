@@ -7,7 +7,7 @@ namespace tano
   {
     bool Init(const char* filename);
 
-    void GenerateTris(const char* str, vector<Vector3>* tris);
+    void GenerateTris(const char* str, vector<Vector3>* outlineLines, vector<Vector3>* capTris);
 
     struct Letter
     {

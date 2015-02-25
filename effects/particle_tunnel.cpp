@@ -274,9 +274,9 @@ bool ParticleTunnel::Init(const char* configFile)
 
   // Text setup
   INIT(_textWriter.Init("gfx/text1.boba"));
-  _textWriter.GenerateTris("neurotica efs", &_neuroticaTris);
-  _textWriter.GenerateTris("radio\nsilence", &_radioSilenceTris);
-  _textWriter.GenerateTris("solskogen", &_partyTris);
+  _textWriter.GenerateTris("neurotica efs", &_neuroticaTris, &_neuroticaCapTris);
+  _textWriter.GenerateTris("radio\nsilence", &_radioSilenceTris, &_radioSilenceCapTris);
+  _textWriter.GenerateTris("solskogen", &_partyTris, &_partyCapTris);
 
   _neuroticaParticles.Create(_neuroticaTris, 5.f);
   _radioSilenceParticles.Create(_radioSilenceTris, 5.f);
