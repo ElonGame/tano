@@ -76,6 +76,7 @@ namespace tano
 
   };
 #define RESOURCE_MANAGER ResourceManager::Instance()
+#define RESOURCE_MANAGER_STATIC ResourceManager
 
 #else
 
@@ -83,23 +84,23 @@ namespace tano
   {
   public:
     PackedResourceManager(const char* resourceFile);
-    ~PackedResourceManager();
 
-    static PackedResourceManager &instance();
-    static bool create(const char* resourceFile);
-    static bool close();
+    static PackedResourceManager &Instance();
+    static bool Create(const char* resourceFile);
+    static bool Destroy();
 
-    bool load_file(const char* filename, vector<char>* buf);
-    bool load_partial(const char* filename, size_t ofs, size_t len, vector<char>* buf);
-    bool load_inplace(const char* filename, size_t ofs, size_t len, void* buf);
+    bool LoadFile(const char* filename, vector<char>* buf);
+    bool LoadPartial(const char* filename, size_t ofs, size_t len, vector<char>* buf);
+    bool LoadInplace(const char* filename, size_t ofs, size_t len, void* buf);
     ObjectHandle LoadTexture(const char* filename, const char* friendly_name, bool srgb, D3DX11_IMAGE_INFO* info);
     ObjectHandle LoadTextureFromMemory(const char* buf, size_t len, const char* friendly_name, bool srgb, D3DX11_IMAGE_INFO* info);
 
   private:
 
-    bool loadPackedFile(const char* filename, vector<char>* buf);
-    bool loadPackedInplace(const char* filename, size_t ofs, size_t len, void* buf);
-    int hashLookup(const char* key);
+    bool Init();
+    bool LoadPackedFile(const char* filename, vector<char>* buf);
+    bool LoadPackedInplace(const char* filename, size_t ofs, size_t len, void* buf);
+    int HashLookup(const char* key);
 
     struct PackedFileInfo {
       int offset;
@@ -117,6 +118,7 @@ namespace tano
   };
 
 #define RESOURCE_MANAGER PackedResourceManager::Instance()
+#define RESOURCE_MANAGER_STATIC PackedResourceManager
 
 #endif
 }

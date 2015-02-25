@@ -71,7 +71,7 @@ bool App::Destroy()
   g_rmt = nullptr;
 #endif
 
-  INIT(ResourceManager::Destroy());
+  INIT(RESOURCE_MANAGER_STATIC::Destroy());
   INIT(DemoEngine::Destroy());
   INIT(Graphics::Destroy());
 
@@ -105,7 +105,11 @@ bool App::Init(HINSTANCE hinstance)
     return false;
   }
 
-  INIT(ResourceManager::Create("resources.txt"));
+#if WITH_UNPACKED_RESOUCES
+  INIT(RESOURCE_MANAGER_STATIC::Create("resources.txt"));
+#else
+  INIT(RESOURCE_MANAGER_STATIC::Create("resource.dat"));
+#endif
   INIT(LoadSettings());
 
   INIT(Graphics::Create(_hinstance));

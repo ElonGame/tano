@@ -1,5 +1,6 @@
 #include "resource_manager.hpp"
 #include "graphics.hpp"
+#include "init_sequence.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -262,15 +263,19 @@ ObjectHandle ResourceManager::LoadTextureFromMemory(
 
 #else
 
+//------------------------------------------------------------------------------
 #include "lz4/lz4.h"
 
 using namespace std::tr1::placeholders;
 using namespace std;
 
+//------------------------------------------------------------------------------
 static PackedResourceManager* g_instance;
 static const int cMaxFileBufferSize = 16*  1024*  1024;
 
-static uint32 FnvHash(uint32 d, const char* str) {
+//------------------------------------------------------------------------------
+static u32 FnvHash(u32 d, const char* str)
+{
   if (d == 0)
     d = 0x01000193;
 
@@ -282,46 +287,59 @@ static uint32 FnvHash(uint32 d, const char* str) {
   }
 }
 
-struct PackedHeader {
+//------------------------------------------------------------------------------
+struct PackedHeader
+{
   int headerSize;
   int numFiles;
 };
 
-PackedResourceManager &PackedResourceManager::instance() {
-  KASSERT(g_instance);
+//------------------------------------------------------------------------------
+PackedResourceManager &PackedResourceManager::Instance()
+{
   return* g_instance;
 }
 
-bool PackedResourceManager::create(const char* outputFilename) {
-  KASSERT(!g_instance);
+//------------------------------------------------------------------------------
+bool PackedResourceManager::Create(const char* outputFilename)
+{
   g_instance = new PackedResourceManager(outputFilename);
   return true;
 }
 
-bool PackedResourceManager::close() {
+//------------------------------------------------------------------------------
+bool PackedResourceManager::Destroy()
+{
   delete exch_null(g_instance);
   return true;
 }
 
-PackedResourceManager::PackedResourceManager(const char* resourceFile) 
+//------------------------------------------------------------------------------
+PackedResourceManager::PackedResourceManager(const char* resourceFile)
   : _resourceFile(resourceFile)
 {
-  FILE* f = fopen(resourceFile, "rb");
-  LOG_ERROR_COND_LN(f, "Unable to open resource file: %s", resourceFile);
+}
+
+//------------------------------------------------------------------------------
+bool PackedResourceManager::Init()
+{
+  BEGIN_INIT_SEQUENCE();
+  FILE* f = fopen(_resourceFile.c_str(), "rb");
+  INIT_FATAL(f);
   DEFER([&]{ fclose(f); });
 
   PackedHeader header;
-  LOG_ERROR_COND_LN(fread(&header, sizeof(header), 1, f) == 1, "Error reading packed header");
+  INIT(fread(&header, sizeof(header), 1, f) == 1);
 
   // read the perfect hash tables
   _intermediateHash.resize(header.numFiles);
   _finalHash.resize(header.numFiles);
 
-  LOG_ERROR_COND_LN(fread(&_intermediateHash[0], sizeof(int), header.numFiles, f) == header.numFiles, "Error reading hash");
-  LOG_ERROR_COND_LN(fread(&_finalHash[0], sizeof(int), header.numFiles, f) == header.numFiles, "Error reading hash");
+  INIT(fread(&_intermediateHash[0], sizeof(int), header.numFiles, f) == header.numFiles);
+  INIT(fread(&_finalHash[0], sizeof(int), header.numFiles, f) == header.numFiles);
 
   _fileInfo.resize(header.numFiles);
-  LOG_ERROR_COND_LN(fread(&_fileInfo[0], sizeof(PackedFileInfo), header.numFiles, f) == header.numFiles, "Error reading packed file info");
+  INIT(fread(&_fileInfo[0], sizeof(PackedFileInfo), header.numFiles, f) == header.numFiles);
 
   int pos = ftell(f);
   fseek(f, 0, SEEK_END);
@@ -329,62 +347,79 @@ PackedResourceManager::PackedResourceManager(const char* resourceFile)
   int dataSize = endPos - pos;
   fseek(f, pos, SEEK_SET);
   _fileBuffer.resize(dataSize);
-  LOG_ERROR_COND_LN(fread(&_fileBuffer[0], 1, dataSize, f) == dataSize, "Error reading packed file data");
+  INIT(fread(&_fileBuffer[0], 1, dataSize, f) == dataSize);
+
+  END_INIT_SEQUENCE();
 }
 
-PackedResourceManager::~PackedResourceManager() {
-}
-
-int PackedResourceManager::hashLookup(const char* key) {
+//------------------------------------------------------------------------------
+int PackedResourceManager::HashLookup(const char* key)
+{
   int d = _intermediateHash[FnvHash(0, key) % _intermediateHash.size()];
   return d < 0 ? _finalHash[-d-1] : _finalHash[FnvHash(d, key) % _finalHash.size()];
 }
 
-bool PackedResourceManager::loadPackedFile(const char* filename, vector<char>* buf) {
-  PackedFileInfo* p = &_fileInfo[hashLookup(filename)];
+//------------------------------------------------------------------------------
+bool PackedResourceManager::LoadPackedFile(const char* filename, vector<char>* buf)
+{
+  PackedFileInfo* p = &_fileInfo[HashLookup(filename)];
   buf->resize(p->finalSize);
   int res = LZ4_uncompress(&_fileBuffer[p->offset], buf->data(), p->finalSize);
   return res == p->compressedSize;
 }
 
-bool PackedResourceManager::loadPackedInplace(const char* filename, size_t ofs, size_t len, void* buf) {
+//------------------------------------------------------------------------------
+bool PackedResourceManager::LoadPackedInplace(const char* filename, size_t ofs, size_t len, void* buf)
+{
   vector<char> tmp;
-  if (!loadPackedFile(filename, &tmp))
+  if (!LoadPackedFile(filename, &tmp))
     return false;
 
   memcpy(buf, tmp.data() + ofs, len);
   return true;
 }
 
-bool PackedResourceManager::load_file(const char* filename, vector<char>* buf) {
-  return loadPackedFile(filename, buf);
+//------------------------------------------------------------------------------
+bool PackedResourceManager::LoadFile(const char* filename, vector<char>* buf)
+{
+  return LoadPackedFile(filename, buf);
 }
 
-
-bool PackedResourceManager::load_partial(const char* filename, size_t ofs, size_t len, vector<char>* buf) {
+//------------------------------------------------------------------------------
+bool PackedResourceManager::LoadPartial(const char* filename, size_t ofs, size_t len, vector<char>* buf)
+{
   // this is kinda cheesy..
   vector<char> tmp;
-  if (!loadPackedFile(filename, &tmp))
+  if (!LoadPackedFile(filename, &tmp))
     return false;
   buf->resize(len);
   copy(begin(tmp) + ofs, begin(tmp) + ofs + len, begin(*buf));
   return true;
 }
 
-bool PackedResourceManager::load_inplace(const char* filename, size_t ofs, size_t len, void* buf) {
-  return loadPackedInplace(filename, ofs, len, buf);
+//------------------------------------------------------------------------------
+bool PackedResourceManager::LoadInplace(const char* filename, size_t ofs, size_t len, void* buf)
+{
+  return LoadPackedInplace(filename, ofs, len, buf);
 }
 
-ObjectHandle PackedResourceManager::LoadTexture(const char* filename, const char* friendly_name, bool srgb, D3DX11_IMAGE_INFO* info) {
+//------------------------------------------------------------------------------
+ObjectHandle PackedResourceManager::LoadTexture(
+    const char* filename,
+    const char* friendly_name,
+    bool srgb,
+    D3DX11_IMAGE_INFO* info)
+{
   vector<char> tmp;
-  loadPackedFile(filename, &tmp);
-  return GRAPHICS.LoadTextureFromMemory(tmp.data(), tmp.size(), friendly_name, srgb, info);
+  LoadPackedFile(filename, &tmp);
+  return GRAPHICS.LoadTextureFromMemory(tmp.data(), (u32)tmp.size(), friendly_name, srgb, info);
 }
 
+//------------------------------------------------------------------------------
 ObjectHandle PackedResourceManager::LoadTextureFromMemory(
   const char* buf, size_t len, const char* friendly_name, bool srgb, D3DX11_IMAGE_INFO* info)
 {
-  return GRAPHICS.LoadTextureFromMemory(buf, len, friendly_name, srgb, info);
+  return GRAPHICS.LoadTextureFromMemory(buf, (u32)len, friendly_name, srgb, info);
 }
 
 #endif
