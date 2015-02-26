@@ -96,7 +96,7 @@ bool App::Init(HINSTANCE hinstance)
 #if WITH_UNPACKED_RESOUCES
   INIT(FindAppRoot("app.gb"));
 #else
-  INIT(FindAppRoot("resource.dat"));
+  INIT(FindAppRoot("resources.dat"));
 #endif
 
   if (_appRoot.empty())
@@ -108,7 +108,7 @@ bool App::Init(HINSTANCE hinstance)
 #if WITH_UNPACKED_RESOUCES
   INIT(RESOURCE_MANAGER_STATIC::Create("resources.txt"));
 #else
-  INIT(RESOURCE_MANAGER_STATIC::Create("resource.dat"));
+  INIT(RESOURCE_MANAGER_STATIC::Create("resources.dat"));
 #endif
   INIT(LoadSettings());
 

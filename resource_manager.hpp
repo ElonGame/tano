@@ -4,9 +4,9 @@
 
 namespace tano
 {
-#if WITH_UNPACKED_RESOUCES
+  typedef function<bool(const string&, void*)> cbFileChanged;
 
-  typedef function<bool (const string&, void* )> cbFileChanged;
+#if WITH_UNPACKED_RESOUCES
 
   class ResourceManager
   {
@@ -92,8 +92,20 @@ namespace tano
     bool LoadFile(const char* filename, vector<char>* buf);
     bool LoadPartial(const char* filename, size_t ofs, size_t len, vector<char>* buf);
     bool LoadInplace(const char* filename, size_t ofs, size_t len, void* buf);
-    ObjectHandle LoadTexture(const char* filename, const char* friendly_name, bool srgb, D3DX11_IMAGE_INFO* info);
+    ObjectHandle LoadTexture(
+        const char* filename,
+        const char* friendlyName = nullptr,
+        bool srgb = false,
+        D3DX11_IMAGE_INFO* info = nullptr);
+
     ObjectHandle LoadTextureFromMemory(const char* buf, size_t len, const char* friendly_name, bool srgb, D3DX11_IMAGE_INFO* info);
+
+    FileWatcher::WatchId AddFileWatch(
+      const string& filename,
+      void* token,
+      bool initial_callback,
+      bool* initial_result,
+      const cbFileChanged& cb);
 
   private:
 

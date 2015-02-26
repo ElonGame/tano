@@ -44,6 +44,9 @@
     <Filter Include="bass">
       <UniqueIdentifier>{58b1a917-8ee9-441a-8795-42459940b94c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lz4">
+      <UniqueIdentifier>{2174c6ef-d0fe-41f0-8b26-74b8341815a5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tano.cpp">
@@ -151,14 +154,17 @@
     <ClCompile Include="..\graphics_context.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\effects\cluster.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\mesh_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\animation_helpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\cluster.cpp">
-      <Filter>effects</Filter>
+    <ClCompile Include="..\lz4\lz4.c">
+      <Filter>lz4</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -318,6 +324,9 @@
     <ClInclude Include="..\graphics_context.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\effects\cluster.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\mesh_utils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -327,8 +336,8 @@
     <ClInclude Include="..\animation_helpers.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\effects\cluster.hpp">
-      <Filter>effects</Filter>
+    <ClInclude Include="..\lz4\lz4.h">
+      <Filter>lz4</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

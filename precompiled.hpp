@@ -3,7 +3,7 @@
 //  C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc
 #pragma warning(disable: 4530)
 
-#define WITH_REMOTERY 1
+#define WITH_REMOTERY 0
 //#define WITH_DXGI_DEBUG 1
 //#define WITH_DEBUG_SHADERS 1
 #define WITH_ROCKET 1
@@ -17,14 +17,23 @@
   #endif
 #endif
 
-//#define WITH_IMGUI 1
+#define WITH_IMGUI 1
 
 #define WITH_CONFIG_DLG 0
-#define WITH_UNPACKED_RESOUCES 0
+#define WITH_UNPACKED_RESOUCES 1
 
 #define WITH_MUSIC 1
 
-#ifdef _DEBUG
+#ifdef _PUBLIC
+  #define WITH_UNPACKED_RESOUCES 0
+  #define WITH_DEBUG_SHADERS 0
+  #define WITH_DXGI_DEBUG 0
+  #define WITH_REMOTERY 0
+  #define WITH_IMGUI 0
+  #define WITH_CONFIG_DLG 1
+  #define WITH_ROCKET 1
+  #define WITH_ROCKET_PLAYER 1
+#elif _DEBUG
   #ifndef WITH_UNPACKED_RESOUCES 
     #define WITH_UNPACKED_RESOUCES 1
   #endif
