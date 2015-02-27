@@ -101,7 +101,7 @@ void ParticleTunnel::Particles::Update(float dt)
     *zz += dt * *vvz;
     --ll->left;
 
-    if (*zz < -500)
+    if (*zz < -1500)
     {
       dead[numDead++] = i;
     }
@@ -380,8 +380,10 @@ bool ParticleTunnel::Update(const UpdateState& state)
 {
   UpdateCameraMatrix();
 
-  // check if it's time to switch to the next text
   float ms = state.localTime.TotalMilliseconds() / 1000.f;
+  _cbPerFrame.time.x = ms;
+
+  // check if it's time to switch to the next text
   if (ms >= _settings.text1_start && ms < _settings.text1_end)
   {
     _particlesStart = _settings.text1_start;
@@ -650,8 +652,11 @@ bool ParticleTunnel::Render()
   // compose final image on default swap chain
 
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
-  postProcess->Execute({ rt._handle, rtLines._handle, rtBlur._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
-  //postProcess->Execute({ rt._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+  postProcess->Execute(
+    { rt._handle, rtLines._handle, rtBlur._handle }, 
+    GRAPHICS.GetBackBuffer(), 
+    _compositeGpuObjects._ps
+    , false);
 
   return true;
 }

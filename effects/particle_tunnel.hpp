@@ -103,6 +103,7 @@ namespace tano
       Vector4 viewDir;
       Vector4 camPos;
       Vector4 dofSettings;
+      Vector4 time;
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 

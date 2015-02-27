@@ -19,6 +19,7 @@ cbuffer PerFrame : register(b0)
   float4 viewDir;
   float4 camPos;
   float4 dofSettings; // near-z-start, near-z-end, far-z-start, far-z-end
+  float4 time; // x = local-time
 };
 
 //------------------------------------------------------
@@ -236,4 +237,5 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   // vignette
   float r = 0.5 + 0.9 - sqrt(xx.x*xx.x + xx.y*xx.y);
   return r * col;
+  //return smoothstep(0, 2, time.x) * r * col;
 }
