@@ -111,9 +111,17 @@ bool DemoEngine::Start()
 void DemoEngine::SetPaused(bool pause)
 {
   if (pause)
+  {
+    if (_stream)
+      BASS_ChannelPause(_stream);
     _timer.Stop();
+  }
   else
+  {
+    if (_stream)
+      BASS_ChannelPlay(_stream, false);
     _timer.Start();
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -133,6 +141,13 @@ void DemoEngine::AdjustPos(const TimeDuration& delta)
 void DemoEngine::SetPos(const TimeDuration& pos)
 {
   _timer.SetElapsed(pos);
+
+  if (_stream)
+  {
+    QWORD pp = BASS_ChannelSeconds2Bytes(_stream, pos.TotalMilliseconds() / 1e3);
+    BASS_ChannelSetPosition(_stream, pp, BASS_POS_BYTE);
+  }
+
   ReclassifyEffects();
 }
 

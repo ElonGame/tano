@@ -29,6 +29,9 @@ struct particle_tunnel_settings
   float text_time = 5;
   float text_triangle_prob;
   float blur_radius = 15;
+  float text_start;
+  float text_length;
+  float fade_out;
   float text1_start = 5;
   float text1_end = 10;
   float text2_start = 12;

@@ -60,18 +60,8 @@ void PostProcess::Execute(
 
   _ctx->SetShaderResources(input, ShaderType::PixelShader);
 
-  // set constant buffers
-  u32 inputX[8], inputY[8];
   u32 outputX, outputY;
-
-  for (size_t i = 0; i < input.size(); ++i)
-    GRAPHICS.GetTextureSize(input[i], &inputX[i], &inputY[i]);
   GRAPHICS.GetTextureSize(output, &outputX, &outputY);
-  _cb.inputSize.x = (float)inputX[0];
-  _cb.inputSize.y = (float)inputY[0];
-  _cb.outputSize.x = (float)outputX;
-  _cb.outputSize.y = (float)outputY;
-  _ctx->SetConstantBuffer(_cb, ShaderType::PixelShader, 0);
 
   CD3D11_VIEWPORT viewport = CD3D11_VIEWPORT(0.f, 0.f, (float)outputX, (float)outputY);
   _ctx->SetViewports(1, viewport);

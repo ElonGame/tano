@@ -4,8 +4,8 @@
 #pragma warning(disable: 4530)
 
 #define WITH_REMOTERY 0
-//#define WITH_DXGI_DEBUG 1
-//#define WITH_DEBUG_SHADERS 1
+#define WITH_DXGI_DEBUG 1
+#define WITH_DEBUG_SHADERS 1
 #define WITH_ROCKET 1
 #define WITH_ROCKET_PLAYER 1
 

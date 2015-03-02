@@ -233,11 +233,14 @@ bool ParticleTunnel::Init(const char* configFile)
   BEGIN_INIT_SEQUENCE();
 
   _configName = configFile;
-  vector<char> buf;
-  if (!RESOURCE_MANAGER.LoadFile(configFile, &buf))
-    return false;
+  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(configFile, nullptr, true, [this](const string& filename, void*)
+  {
+    vector<char> buf;
+    if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
+      return false;
 
-  INIT(ParseParticleTunnelSettings(InputBuffer(buf), &_settings));
+    return ParseParticleTunnelSettings(InputBuffer(buf), &_settings);
+  });
 
   // Background state setup
   INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsQuad", nullptr, "PsBackground"));
@@ -407,6 +410,11 @@ bool ParticleTunnel::Update(const UpdateState& state)
     _curParticles = nullptr;
   }
 
+  // set the particle status in the cbuffer
+  _cbPerFrame.time.y = _curParticles ? 1.f : 0.f;
+  _cbPerFrame.time.z = _particlesStart;
+  _cbPerFrame.time.w = _particlesEnd;
+
   rmt_ScopedCPUSample(ParticleTunnel_Update);
 
   float dt = 1.f / state.frequency;
@@ -567,42 +575,6 @@ bool ParticleTunnel::Update(const UpdateState& state)
   return true;
 }
 
-/*
-enum class RenderCommand
-{
-  SetRenderTarget,
-  UnsetRenderTarget,
-  RenderFragment,
-};
-*/
-
-struct RenderCommand
-{
-  virtual void Init(InitSequence& __initSequence) {}
-  virtual void Execute() {}
-
-  GraphicsContext* _ctx = nullptr;
-};
-
-struct CmdSetRenderTarget : public RenderCommand
-{
-  virtual void Init()
-  {
-    //handle = _ctx->GetTempRenderTarget(fmt, BufferFlags(BufferFlag::CreateSrv));
-  }
-
-  virtual void Execute()
-  {
-    _ctx->SetRenderTarget(handle, clearBackground ? &clearColor : nullptr);
-  }
-
-  string id;
-  DXGI_FORMAT fmt;
-  ObjectHandle handle;
-  Color clearColor;
-  bool clearBackground;
-};
-
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Render()
 {
@@ -637,19 +609,22 @@ bool ParticleTunnel::Render()
   // lines
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
   _ctx->SetRenderTarget(rtLines._handle, &black);
-
-  _ctx->SetGpuObjects(_linesGpuObjects);
-  _ctx->SetGpuState(_linesState);
-  _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
-  _ctx->SetShaderResource(_lineTexture, ShaderType::PixelShader);
-  _ctx->Draw(_numLinesPoints, 0);
-
+  if (_curParticles)
+  {
+    _ctx->SetGpuObjects(_linesGpuObjects);
+    _ctx->SetGpuState(_linesState);
+    _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
+    _ctx->SetShaderResource(_lineTexture, ShaderType::PixelShader);
+    _ctx->Draw(_numLinesPoints, 0);
+  }
   _ctx->UnsetRenderTargets(0, 1);
 
   ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav);
   ApplyBlur(rtLines._handle, rtBlur._handle);
 
   // compose final image on default swap chain
+
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
   postProcess->Execute(

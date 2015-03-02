@@ -5,6 +5,10 @@
 namespace tano
 {
   typedef function<bool(const string&, void*)> cbFileChanged;
+  struct AddFileWatchResult {
+    FileWatcher::WatchId watchId;
+    bool initialResult;
+  };
 
 #if WITH_UNPACKED_RESOUCES
 
@@ -38,11 +42,10 @@ namespace tano
 
     void AddPath(const string &path);
 
-    FileWatcher::WatchId AddFileWatch(
+    AddFileWatchResult AddFileWatch(
         const string& filename, 
         void* token,
         bool initial_callback,
-        bool* initial_result,
         const cbFileChanged& cb);
 
     void RemoveFileWatch(FileWatcher::WatchId id);

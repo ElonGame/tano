@@ -31,12 +31,12 @@ namespace tano
   private:
     GraphicsContext* _ctx;
 
-    struct CBufferPS
+    struct CBufferPerFrame
     {
       Vector2 inputSize;
       Vector2 outputSize;
     };
-    ConstantBuffer<CBufferPS> _cb;
+    ConstantBuffer<CBufferPerFrame> _cb;
 
     GpuState _gpuState;
     GpuObjects _gpuObjects;

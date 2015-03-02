@@ -19,7 +19,7 @@ cbuffer PerFrame : register(b0)
   float4 viewDir;
   float4 camPos;
   float4 dofSettings; // near-z-start, near-z-end, far-z-start, far-z-end
-  float4 time; // x = local-time
+  float4 time; // x = local-time, y = text active, z = text start, w = start end
 };
 
 //------------------------------------------------------
@@ -223,19 +223,31 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float2 uv = p.uv.xy;
   float2 xx = -1 + 2 * uv;
   float4 backgroundCol = Texture0.Sample(PointSampler, uv);
-  float4 lines = Texture1.Sample(PointSampler, uv);
-  float4 linesBlur = Texture2.Sample(PointSampler, uv);
 
-  float dofTmp = lines.g;
-  float dofBlur = linesBlur.g;
-  lines.xyzw = lines.xxxw;
-  linesBlur.xyzw = linesBlur.xxxw;
+  float4 linesR = Texture1.Sample(PointSampler, uv);
+  float4 linesBlurR = Texture2.Sample(PointSampler, uv);
 
-  float4 tmp = lerp(linesBlur, lines, saturate(dofBlur));
-  float4 col = backgroundCol + tmp;
+  float4 linesG = Texture1.Sample(PointSampler, uv + float2(0, 0.01));
+  float4 linesBlurG = Texture2.Sample(PointSampler, uv + float2(0, 0.01));
+
+  float4 linesB = Texture1.Sample(PointSampler, uv + float2(0, 0.02));
+  float4 linesBlurB = Texture2.Sample(PointSampler, uv + float2(0, 0.02));
+
+  float dofBlur = linesBlurR.g;
+  linesR.xyzw = linesR.xxxw; linesBlurR.xyzw = linesBlurR.xxxw;
+  linesG.xyzw = linesG.xxxw; linesBlurG.xyzw = linesBlurG.xxxw;
+  linesB.xyzw = linesB.xxxw; linesBlurB.xyzw = linesBlurB.xxxw;
+
+  float4 tmpR = lerp(linesBlurR, linesR, saturate(dofBlur));
+  float4 tmpG = lerp(linesBlurG, linesG, saturate(dofBlur));
+  float4 tmpB = lerp(linesBlurB, linesB, saturate(dofBlur));
+
+  float4 tmp = float4(tmpR.x, tmpG.y, tmpB.z, tmpR.w);
+  float s = 0.1;
+  float4 col = backgroundCol + (1 - smoothstep(time.z, (1 + s) * time.z, time.x)) * tmp;
+  col = backgroundCol + tmp;
 
   // vignette
   float r = 0.5 + 0.9 - sqrt(xx.x*xx.x + xx.y*xx.y);
-  return r * col;
-  //return smoothstep(0, 2, time.x) * r * col;
+  return smoothstep(0, 2, time.x) * r * col;
 }

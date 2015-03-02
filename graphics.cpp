@@ -1032,9 +1032,8 @@ bool Graphics::LoadComputeShadersFromFile(
   string suffix = ToString("_%s.cso", entry);
 #endif
 
-  bool res;
-  RESOURCE_MANAGER.AddFileWatch((filenameBase + suffix).c_str(), nullptr, true, &res,
-    [=](const string& filename, void* token)
+  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch((filenameBase + suffix).c_str(), nullptr, true, 
+  [=](const string& filename, void* token)
   {
     vector<char> buf;
     if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
@@ -1053,7 +1052,7 @@ bool Graphics::LoadComputeShadersFromFile(
     return true;
   });
 
-  if (!res)
+  if (!res.initialResult)
     return false;
 
   return true;
@@ -1085,41 +1084,40 @@ bool Graphics::LoadShadersFromFile(
   string gsId = gs ? filenameBase + gsEntry : string();
   string psId = ps ? filenameBase + psEntry : string();
 
-  bool res = true;
+  AddFileWatchResult res;
   if (vs)
   {
     ObjectHandle vsHandle = ReserveObjectHandle(vsId, ObjectHandle::kVertexShader);
     *vs = vsHandle;
 
-    RESOURCE_MANAGER.AddFileWatch((filenameBase + vsSuffix).c_str(), nullptr, true, &res,
-      [=](const string& filename, void* token)
+    res = RESOURCE_MANAGER.AddFileWatch((filenameBase + vsSuffix).c_str(), nullptr, true, [=](const string& filename, void* token)
+    {
+      vector<char> buf;
+      ID3D11VertexShader *vs = nullptr;
+
+      if (
+        RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf) &&
+        SUCCEEDED(_device->CreateVertexShader(buf.data(), buf.size(), NULL, &vs)))
       {
-        vector<char> buf;
-        ID3D11VertexShader *vs = nullptr;
-
-        if (
-          RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf) &&
-          SUCCEEDED(_device->CreateVertexShader(buf.data(), buf.size(), NULL, &vs)))
+        _vertexShaders.Update(vsHandle, vs);
+        if (inputLayout)
         {
-          _vertexShaders.Update(vsHandle, vs);
-          if (inputLayout)
-          {
-            vector<D3D11_INPUT_ELEMENT_DESC> desc;
-            VertexFlagsToLayoutDesc(vertexFlags, &desc);
-            *inputLayout = GRAPHICS.CreateInputLayout(desc, buf);
-            if (!inputLayout->IsValid())
-              return false;
-          }
-          return true;
+          vector<D3D11_INPUT_ELEMENT_DESC> desc;
+          VertexFlagsToLayoutDesc(vertexFlags, &desc);
+          *inputLayout = GRAPHICS.CreateInputLayout(desc, buf);
+          if (!inputLayout->IsValid())
+            return false;
         }
+        return true;
+      }
 
-        LOG_WARN(ToString("Unable to %s vertex shader", buf.empty() ? "load" : "create").c_str()
-          << LogKeyValue("filename", filename));
-        return false;
-      });
+      LOG_WARN(ToString("Unable to %s vertex shader", buf.empty() ? "load" : "create").c_str()
+        << LogKeyValue("filename", filename));
+      return false;
+    });
   }
 
-  if (!res)
+  if (!res.initialResult)
     return false;
 
   if (gs)
@@ -1127,8 +1125,7 @@ bool Graphics::LoadShadersFromFile(
     ObjectHandle gsHandle = ReserveObjectHandle(gsId, ObjectHandle::kGeometryShader);
     *gs = gsHandle;
 
-    RESOURCE_MANAGER.AddFileWatch((filenameBase + gsSuffix).c_str(), nullptr, true, &res,
-      [=](const string& filename, void* token)
+    res = RESOURCE_MANAGER.AddFileWatch((filenameBase + gsSuffix).c_str(), nullptr, true, [=](const string& filename, void* token)
     {
       vector<char> buf;
       ID3D11GeometryShader* gs = nullptr;
@@ -1150,8 +1147,7 @@ bool Graphics::LoadShadersFromFile(
     ObjectHandle psHandle = ReserveObjectHandle(psId, ObjectHandle::kPixelShader);
     *ps = psHandle;
 
-    RESOURCE_MANAGER.AddFileWatch((filenameBase + psSuffix).c_str(), nullptr, true, &res,
-      [=](const string& filename, void* token)
+    res = RESOURCE_MANAGER.AddFileWatch((filenameBase + psSuffix).c_str(), nullptr, true, [=](const string& filename, void* token)
     {
       vector<char> buf;
       ID3D11PixelShader *ps = nullptr;
@@ -1170,5 +1166,5 @@ bool Graphics::LoadShadersFromFile(
     });
   }
 
-  return res;
+  return res.initialResult;
 }
