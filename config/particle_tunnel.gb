@@ -6,15 +6,9 @@
   num_particles: 5000;
   text_min_dist: 500.000000;
   text_max_dist: 2000.000000;
-  text_time: 15.000000;
   text_triangle_prob: 0.000000;
-  text1_start: 4;
-  text1_end: 10;
-  text2_start: 11;
-  text2_end: 17;
-  text3_start: 18;
-  text3_end: 24;
   text_start: 4;
   text_length: 5;
-  fade_out: 1;
+  fade_delay: 1;
+  fade_out: 2;
 };

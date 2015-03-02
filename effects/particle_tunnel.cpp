@@ -386,34 +386,32 @@ bool ParticleTunnel::Update(const UpdateState& state)
   float ms = state.localTime.TotalMilliseconds() / 1000.f;
   _cbPerFrame.time.x = ms;
 
-  // check if it's time to switch to the next text
-  if (ms >= _settings.text1_start && ms < _settings.text1_end)
+  // check which text segment we're in
+  float partLength = _settings.text_length + _settings.fade_delay + _settings.fade_out;
+  int idx = (int)((ms - _settings.text_start) / partLength);
+  TextParticles* particles[] = { &_neuroticaParticles, &_radioSilenceParticles, &_partyParticles };
+  if (ms >= _settings.text_start && idx < ELEMS_IN_ARRAY(particles))
   {
-    _particlesStart = _settings.text1_start;
-    _particlesEnd = _settings.text1_end;
-    _curParticles = &_neuroticaParticles;
-  }
-  else if (ms >= _settings.text2_start && ms < _settings.text2_end)
-  {
-    _particlesStart = _settings.text2_start;
-    _particlesEnd = _settings.text2_end;
-    _curParticles = &_radioSilenceParticles;
-  }
-  else if (ms >= _settings.text3_start && ms < _settings.text3_end)
-  {
-    _particlesStart = _settings.text3_start;
-    _particlesEnd = _settings.text3_end;
-    _curParticles = &_partyParticles;
+    _curParticles = particles[idx];
+    float ofs = ms - _settings.text_start - idx * partLength;
+    // check if we're fading out
+    if (ofs < _settings.text_length + _settings.fade_delay)
+    {
+      _cbPerFrame.time.y = 0;
+      _cbPerFrame.time.z = Clamp(0.f, 1.f, 1.f - ofs / _settings.text_length);
+    }
+    else
+    {
+      _cbPerFrame.time.y = (ofs - _settings.text_length - _settings.fade_delay) / _settings.fade_out;
+      _cbPerFrame.time.z = 0;
+    }
+    _particlesStart = _settings.text_start + idx * partLength;
+    _particlesEnd = _particlesStart + _settings.text_length;
   }
   else
   {
     _curParticles = nullptr;
   }
-
-  // set the particle status in the cbuffer
-  _cbPerFrame.time.y = _curParticles ? 1.f : 0.f;
-  _cbPerFrame.time.z = _particlesStart;
-  _cbPerFrame.time.w = _particlesEnd;
 
   rmt_ScopedCPUSample(ParticleTunnel_Update);
 
@@ -751,7 +749,6 @@ void ParticleTunnel::RenderParameterSet()
       _linesState.Create(&dsDesc, &blendDesc, &rssDesc);
     }
 
-    if (ImGui::SliderFloat("text time", &_settings.text_time, 0.1f, 10.f)) Reset();
     if (ImGui::SliderFloat("min dist", &_settings.text_min_dist, 1, 2000)) Reset();
     if (ImGui::SliderFloat("max dist", &_settings.text_max_dist, 1, 2000)) Reset();
     if (ImGui::SliderFloat("triangle prob", &_settings.text_triangle_prob, 0.f, 1.f)) Reset();
@@ -785,7 +782,7 @@ void ParticleTunnel::SaveParameterSet()
 //------------------------------------------------------------------------------
 void ParticleTunnel::Reset()
 {
-  _curParticles->Create(_neuroticaTris, _settings.text_time);
+  _curParticles->Create(_neuroticaTris, _settings.text_length);
 }
 
 //------------------------------------------------------------------------------
