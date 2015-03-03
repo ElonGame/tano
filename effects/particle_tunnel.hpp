@@ -5,6 +5,7 @@
 #include "../generated/demo.types.hpp"
 #include "../text_writer.hpp"
 #include "../post_process.hpp"
+#include "../animation_helpers.hpp"
 
 #define WITH_TEXT 0
 
@@ -155,5 +156,7 @@ namespace tano
     float _particlesStart, _particlesEnd;
 
     TextParticles* _curParticles = nullptr;
+
+    AnimatedFloat _beatTrack;
   };
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rootElement>
+<tracks rows="10000" startRow="0" endRow="10000" highlightRowStep="8">
+	<track name="beat" folded="0" muteKeyCount="0" color="ffb27474">
+		<key row="0" value="0.000000" interpolation="0" />
+		<key row="220" value="5.000000" interpolation="1" />
+		<key row="240" value="0.000000" interpolation="1" />
+		<key row="270" value="0.000000" interpolation="0" />
+		<key row="400" value="5.000000" interpolation="1" />
+		<key row="416" value="0.000000" interpolation="1" />
+		<key row="450" value="0.000000" interpolation="0" />
+	</track>
+</tracks>
+	</rootElement>

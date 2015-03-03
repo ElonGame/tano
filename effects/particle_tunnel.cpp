@@ -213,6 +213,7 @@ ParticleTunnel::ParticleTunnel(const string &name, u32 id)
   , _neuroticaParticles(_settings)
   , _radioSilenceParticles(_settings)
   , _partyParticles(_settings)
+  , _beatTrack("beat")
 {
 #if WITH_IMGUI
   PROPERTIES.Register("particle tunnel", 
@@ -385,6 +386,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
   float ms = state.localTime.TotalMilliseconds() / 1000.f;
   _cbPerFrame.time.x = ms;
+  _cbPerFrame.time.w = _beatTrack;
 
   // check which text segment we're in
   float partLength = _settings.text_length + _settings.fade_delay + _settings.fade_out;

@@ -227,13 +227,13 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 linesR = Texture1.Sample(PointSampler, uv);
   float4 linesBlurR = Texture2.Sample(PointSampler, uv);
 
-  float cc = 5 * time.z;
+  float cc = max(time.w, 5 * time.z);
 
-  float4 linesG = Texture1.Sample(PointSampler, uv + cc * float2(0, 0.01));
-  float4 linesBlurG = Texture2.Sample(PointSampler, uv + cc * float2(0, 0.01));
+  float4 linesG = Texture1.Sample(PointSampler, uv + cc * 0.01 * xx);
+  float4 linesBlurG = Texture2.Sample(PointSampler, uv + cc * 0.01 * xx);
 
-  float4 linesB = Texture1.Sample(PointSampler, uv + cc * float2(0, 0.02));
-  float4 linesBlurB = Texture2.Sample(PointSampler, uv + cc * float2(0, 0.02));
+  float4 linesB = Texture1.Sample(PointSampler, uv + cc * 0.02 * xx);
+  float4 linesBlurB = Texture2.Sample(PointSampler, uv + cc * 0.02 * xx);
 
   float dofBlur = linesBlurR.g;
   linesR.xyzw = linesR.xxxw; linesBlurR.xyzw = linesBlurR.xxxw;
