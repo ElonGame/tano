@@ -317,7 +317,8 @@ void GraphicsContext::SetShaderResources(
     const vector<ObjectHandle>& handles,
     ShaderType shaderType)
 {
-  ID3D11ShaderResourceView** v = (ID3D11ShaderResourceView**)_alloca(sizeof(ID3D11ShaderResourceView*) * handles.size());
+  assert(handles.size() < 16);
+  ID3D11ShaderResourceView* v[16];
   ID3D11ShaderResourceView** t = v;
   for (auto h : handles)
   {

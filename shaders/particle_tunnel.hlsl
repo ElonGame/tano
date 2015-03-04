@@ -160,7 +160,7 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<GsLinesOut> stream)
   float3 up = normalize(cross(right, dir));
 
   float h = 10;
-  float w = 20;
+  float w = 10;
   float3 v0 = a - w * right - h * up;
   float3 v1 = a - w * right + h * up;
   float3 v2 = b + w * right - h * up;
@@ -227,13 +227,13 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 linesR = Texture1.Sample(PointSampler, uv);
   float4 linesBlurR = Texture2.Sample(PointSampler, uv);
 
-  float cc = max(time.w, 5 * time.z);
+  float cc = 5 * time.z;
 
-  float4 linesG = Texture1.Sample(PointSampler, uv + cc * 0.01 * xx);
-  float4 linesBlurG = Texture2.Sample(PointSampler, uv + cc * 0.01 * xx);
+  float4 linesG = Texture1.Sample(PointSampler, uv + cc * 0.01);
+  float4 linesBlurG = Texture2.Sample(PointSampler, uv + cc * 0.01);
 
-  float4 linesB = Texture1.Sample(PointSampler, uv + cc * 0.02 * xx);
-  float4 linesBlurB = Texture2.Sample(PointSampler, uv + cc * 0.02 * xx);
+  float4 linesB = Texture1.Sample(PointSampler, uv + cc * 0.02);
+  float4 linesBlurB = Texture2.Sample(PointSampler, uv + cc * 0.02);
 
   float dofBlur = linesBlurR.g;
   linesR.xyzw = linesR.xxxw; linesBlurR.xyzw = linesBlurR.xxxw;
@@ -244,9 +244,9 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 tmpG = lerp(linesBlurG, linesG, saturate(dofBlur));
   float4 tmpB = lerp(linesBlurB, linesB, saturate(dofBlur));
 
-  float4 tmp = float4(tmpR.x, tmpG.y, tmpB.z, tmpR.w);
-  float s = 0.1;
-  float4 col = backgroundCol + (1 - smoothstep(0, 1, time.y)) * tmp;
+  float4 tmp = (1 + time.w) * float4(tmpR.x, tmpG.y, tmpB.z, tmpR.w);
+  float4 fadeTmp = (1 - smoothstep(0, 1, time.y)) * tmp;
+  float4 col = backgroundCol + fadeTmp;
 
   // vignette
   float r = 0.5 + 0.9 - sqrt(xx.x*xx.x + xx.y*xx.y);
