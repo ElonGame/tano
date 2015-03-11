@@ -43,3 +43,8 @@ struct cluster_settings
 {
   
 };
+
+struct landscape_settings
+{
+  
+};

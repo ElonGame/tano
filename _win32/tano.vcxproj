@@ -93,6 +93,7 @@
   <ItemGroup>
     <ClCompile Include="..\animation_helpers.cpp" />
     <ClCompile Include="..\effects\cluster.cpp" />
+    <ClCompile Include="..\effects\landscape.cpp" />
     <ClCompile Include="..\effects\raymarcher.cpp" />
     <ClCompile Include="..\lz4\lz4.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
@@ -325,6 +326,7 @@
     <ClInclude Include="..\animation_helpers.hpp" />
     <ClInclude Include="..\bass\bass.h" />
     <ClInclude Include="..\effects\cluster.hpp" />
+    <ClInclude Include="..\effects\landscape.hpp" />
     <ClInclude Include="..\effects\raymarcher.hpp" />
     <ClInclude Include="..\lz4\lz4.h" />
     <ClInclude Include="..\mesh_loader.hpp" />
@@ -356,7 +358,6 @@
     <ClInclude Include="..\id_buffer.hpp" />
     <ClInclude Include="..\imgui\imconfig.h" />
     <ClInclude Include="..\imgui\imgui.h" />
-    <ClInclude Include="..\imgui\stb_image.h" />
     <ClInclude Include="..\imgui\stb_rect_pack.h" />
     <ClInclude Include="..\imgui\stb_textedit.h" />
     <ClInclude Include="..\imgui\stb_truetype.h" />
@@ -370,6 +371,7 @@
     <ClInclude Include="..\Remotery\lib\Remotery.h" />
     <ClInclude Include="..\render_queue.hpp" />
     <ClInclude Include="..\resource_manager.hpp" />
+    <ClInclude Include="..\stb\stb_image.h" />
     <ClInclude Include="..\sync\base.h" />
     <ClInclude Include="..\sync\data.h" />
     <ClInclude Include="..\sync\device.h" />

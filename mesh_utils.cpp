@@ -134,4 +134,91 @@ namespace tano
     return false;
   }
 
+  //------------------------------------------------------------------------------
+  float Luminosity(const Color& col)
+  {
+    return 0.21f * col.x + 0.72f * col.y + 0.07f * col.z;
+  }
+  //------------------------------------------------------------------------------
+  Color ColorFromRgba(const u32* col)
+  {
+    u32 c = *col;
+    return Color(
+      ((c >> 24) & 0xff) / 255.f,
+      ((c >> 16) & 0xff) / 255.f,
+      ((c >> 8) & 0xff) / 255.f,
+      ((c >> 0) & 0xff) / 255.f);
+  }
+
+  //------------------------------------------------------------------------------
+  bool CreateBuffersFromBitmapFaceted(
+    const u8* bitmap, 
+    int width, 
+    int height, 
+    const Vector3& scale,
+    u32* vertexFlags, 
+    GpuObjects* objects)
+  {
+
+    Vector3 ofs(-scale.x * ((float)width-1) / 2, 0, -scale.z * ((float)height-1) / 2);
+
+    vector<Vector3> verts;
+    int numVerts = 6 * (width-1) * (height-1);
+    verts.resize(2 * numVerts);
+
+    int triIdx = 0;
+    const u32* buf = (u32*)bitmap;
+    int hOfs = height-1;
+
+    // create the vertices
+    for (int i = 0; i < height-1; ++i) {
+      for (int j = 0; j < width-1; ++j) {
+
+        // 1--2
+        // |  |
+        // 0--3
+        Color c0 = ColorFromRgba(&buf[(hOfs-(j+0))*width+(i+0)]);
+        Color c1 = ColorFromRgba(&buf[(hOfs-(j+0))*width+(i+1)]);
+        Color c2 = ColorFromRgba(&buf[(hOfs-(j+1))*width+(i+1)]);
+        Color c3 = ColorFromRgba(&buf[(hOfs-(j+1))*width+(i+0)]);
+
+        Vector3 v0(ofs.x + (float)(j+0) * scale.x, scale.y * (-0.5f + Luminosity(c0)), ofs.z + (float)(i+0) * scale.z);
+        Vector3 v1(ofs.x + (float)(j+0) * scale.x, scale.y * (-0.5f + Luminosity(c1)), ofs.z + (float)(i+1) * scale.z);
+        Vector3 v2(ofs.x + (float)(j+1) * scale.x, scale.y * (-0.5f + Luminosity(c2)), ofs.z + (float)(i+1) * scale.z);
+        Vector3 v3(ofs.x + (float)(j+1) * scale.x, scale.y * (-0.5f + Luminosity(c3)), ofs.z + (float)(i+0) * scale.z);
+
+        Vector3 e1, e2;
+        e1 = v2 - v1; e1.Normalize();
+        e2 = v0 - v1; e2.Normalize();
+        Vector3 n0 = Cross(e1, e2); n0.Normalize();
+
+        e1 = v0 - v3; e1.Normalize();
+        e2 = v2 - v3; e2.Normalize();
+        Vector3 n1 = Cross(e1, e2); n1.Normalize();
+
+        // 0, 1, 3
+        verts[triIdx*6+0] = v0;
+        verts[triIdx*6+1] = n0;
+        verts[triIdx*6+2] = v1;
+        verts[triIdx*6+3] = n0;
+        verts[triIdx*6+4] = v3;
+        verts[triIdx*6+5] = n0;
+        ++triIdx;
+
+        // 3, 1, 2
+        verts[triIdx*6+0] = v3;
+        verts[triIdx*6+1] = n1;
+        verts[triIdx*6+2] = v1;
+        verts[triIdx*6+3] = n1;
+        verts[triIdx*6+4] = v2;
+        verts[triIdx*6+5] = n1;
+        ++triIdx;
+      }
+    }
+
+    int vertexSize = sizeof(PosNormal);
+    objects->CreateVertexBuffer(numVerts * vertexSize, vertexSize, verts.data());
+    return true;
+  }
+
 }

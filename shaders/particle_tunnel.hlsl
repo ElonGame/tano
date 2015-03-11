@@ -249,6 +249,6 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 col = backgroundCol + fadeTmp;
 
   // vignette
-  float r = 0.5 + 0.9 - sqrt(xx.x*xx.x + xx.y*xx.y);
+  float r = 0.5 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
   return smoothstep(0, 2, time.x) * r * col;
 }

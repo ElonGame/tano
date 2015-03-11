@@ -4,8 +4,8 @@
 using namespace tano;
 
 //------------------------------------------------------------------------------
-Effect::Effect(const string& name, u32 id)
-  : _name(name)
+Effect::Effect(const string& instanceName, u32 id)
+  : _instanceName(instanceName)
   , _id(id)
   , _running(false)
   , _ctx(GRAPHICS.GetGraphicsContext())

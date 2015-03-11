@@ -47,6 +47,9 @@
     <Filter Include="lz4">
       <UniqueIdentifier>{2174c6ef-d0fe-41f0-8b26-74b8341815a5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="stb">
+      <UniqueIdentifier>{7ac3cbc1-c4ef-4faa-85f6-bd4eacc29021}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tano.cpp">
@@ -166,6 +169,9 @@
     <ClCompile Include="..\lz4\lz4.c">
       <Filter>lz4</Filter>
     </ClCompile>
+    <ClCompile Include="..\effects\landscape.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -264,9 +270,6 @@
     <ClInclude Include="..\imgui_helpers.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\imgui\stb_image.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
     <ClInclude Include="..\property_manager.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -338,6 +341,12 @@
     </ClInclude>
     <ClInclude Include="..\lz4\lz4.h">
       <Filter>lz4</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\landscape.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\stb\stb_image.h">
+      <Filter>stb</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

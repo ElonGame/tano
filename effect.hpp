@@ -21,7 +21,7 @@ namespace tano
   {
   public:
 
-    Effect(const string& name, u32 id);
+    Effect(const string& instanceName, u32 id);
     virtual ~Effect() {}
     virtual bool Init(const char* configFile);
     virtual bool Show();
@@ -30,8 +30,7 @@ namespace tano
     virtual bool Render();
     virtual bool Close();
     virtual bool InitAnimatedParameters();
-
-    const string& Name() const { return _name; }
+    const string& InstanceName() const { return _instanceName; }
     TimeDuration StartTime() const { return _startTime; }
     TimeDuration EndTime() const { return _endTime; }
     bool Running() const;
@@ -43,7 +42,7 @@ namespace tano
 
   protected:
 
-    string _name;
+    string _instanceName;
     u32 _id;
 
     TimeDuration _startTime, _endTime;

@@ -112,14 +112,18 @@ void DemoEngine::SetPaused(bool pause)
 {
   if (pause)
   {
+#if WITH_MUSIC
     if (_stream)
       BASS_ChannelPause(_stream);
+#endif
     _timer.Stop();
   }
   else
   {
+#if WITH_MUSIC
     if (_stream)
       BASS_ChannelPlay(_stream, false);
+#endif
     _timer.Start();
   }
 }
@@ -141,13 +145,13 @@ void DemoEngine::AdjustPos(const TimeDuration& delta)
 void DemoEngine::SetPos(const TimeDuration& pos)
 {
   _timer.SetElapsed(pos);
-
+#if WITH_MUSIC
   if (_stream)
   {
     QWORD pp = BASS_ChannelSeconds2Bytes(_stream, pos.TotalMilliseconds() / 1e3);
     BASS_ChannelSetPosition(_stream, pp, BASS_POS_BYTE);
   }
-
+#endif
   ReclassifyEffects();
 }
 
@@ -197,6 +201,7 @@ void DemoEngine::ReclassifyEffects()
 //------------------------------------------------------------------------------
 double DemoEngine::GetRow() const
 {
+#if WITH_MUSIC
   if (!_stream)
     return 0;
 
@@ -204,6 +209,9 @@ double DemoEngine::GetRow() const
   double time = BASS_ChannelBytes2Seconds(_stream, pos);
   double row = time * ROWS_PER_SECOND;
   return row;
+#else
+  return 0;
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -226,6 +234,7 @@ bool DemoEngine::Tick()
 #endif
 
 #if WITH_ROCKET
+#if WITH_MUSIC
   if (_stream)
   {
     double row = GetRow();
@@ -249,6 +258,7 @@ bool DemoEngine::Tick()
     }
 #endif
   }
+#endif
 #endif
 
   UpdateEffects();
@@ -328,8 +338,7 @@ bool DemoEngine::Destroy()
 //------------------------------------------------------------------------------
 Effect *DemoEngine::FindEffectByName(const string &name)
 {
-  auto it = find_if(_effects.begin(), _effects.end(),
-      [&](const Effect *e) { return e->Name() == name; });
+  auto it = find_if(_effects.begin(), _effects.end(), [&](const Effect *e) { return e->InstanceName() == name; });
   return it == end(_effects) ? nullptr : *it;
 }
 

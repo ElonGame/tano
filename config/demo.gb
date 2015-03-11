@@ -9,6 +9,13 @@
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/particle_tunnel.gb';
+  },
+  {
+    name: 'landscape';
+    factory: 'landscape';
+    start_time: 1300000;
+    end_time: 1300000;
+    settings: 'config/landscape.gb';
     force: true;
   },
   ];

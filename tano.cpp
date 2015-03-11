@@ -9,6 +9,7 @@
 #include "effects/particle_tunnel.hpp"
 #include "effects/raymarcher.hpp"
 #include "effects/cluster.hpp"
+#include "effects/landscape.hpp"
 
 #if WITH_IMGUI
 #include "imgui_helpers.hpp"
@@ -131,6 +132,7 @@ bool App::Init(HINSTANCE hinstance)
   ParticleTunnel::Register();
   RayMarcher::Register();
   Cluster::Register();
+  Landscape::Register();
 
   INIT(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
 

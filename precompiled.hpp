@@ -7,7 +7,7 @@
 #define WITH_DXGI_DEBUG 1
 #define WITH_DEBUG_SHADERS 1
 #define WITH_ROCKET 1
-#define WITH_ROCKET_PLAYER 0
+#define WITH_ROCKET_PLAYER 1
 
 #if WITH_ROCKET_PLAYER
   #define SYNC_PLAYER
@@ -192,3 +192,6 @@ namespace tano
 #ifdef WITH_ROCKET
 #pragma comment(lib, "Ws2_32.lib")
 #endif
+
+#define STBI_ONLY_PNG
+#include "stb/stb_image.h"
