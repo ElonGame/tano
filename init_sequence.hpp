@@ -5,9 +5,9 @@ namespace tano
   // TODO: make a thread local stack of these guys, to make the output nicer on failures
   struct InitSequence
   {
-    InitSequence();
-    void AddFailure(const char* file, int line, const char* str, bool fatal);
-    bool EndSequence();
+    static void Enter();
+    static bool Exit();
+    static void AddFailure(const char* file, int line, const char* str, bool fatal);
 
     struct InitFailure
     {
@@ -16,16 +16,19 @@ namespace tano
       string str;
     };
 
+    vector<InitSequence> _children;
     vector<InitFailure> _failures;
-    bool _fatal;
+    bool _fatal = false;
+    int _maxDepth = 0;
   };
 
-#define BEGIN_INIT_SEQUENCE() InitSequence __initSequence;
-#define INIT(x) if (!(x)) { __initSequence.AddFailure(__FILE__, __LINE__, #x, false); }
-#define INJECT_ERROR(str) { __initSequence.AddFailure(__FILE__, __LINE__, str, false); }
-#define INJECT_ERROR_FATAL(str) { __initSequence.AddFailure(__FILE__, __LINE__, str, true); }
-#define INIT_RESOURCE(h, x) { h = (x); if (!(h).IsValid()) { __initSequence.AddFailure(__FILE__, __LINE__, #x, false); } }
-#define INIT_FATAL(x) if (!(x)) { __initSequence.AddFailure(__FILE__, __LINE__, #x, true); return __initSequence.EndSequence(); }
-#define END_INIT_SEQUENCE() return __initSequence.EndSequence();
+
+#define BEGIN_INIT_SEQUENCE() InitSequence::Enter();
+#define INIT(x) if (!(x)) { InitSequence::AddFailure(__FILE__, __LINE__, #x, false); }
+#define INJECT_ERROR(str) { InitSequence::AddFailure(__FILE__, __LINE__, str, false); }
+#define INJECT_ERROR_FATAL(str) { InitSequence::AddFailure(__FILE__, __LINE__, str, true); }
+#define INIT_RESOURCE(h, x) { h = (x); if (!(h).IsValid()) { InitSequence::AddFailure(__FILE__, __LINE__, #x, false); } }
+#define INIT_FATAL(x) if (!(x)) { InitSequence::AddFailure(__FILE__, __LINE__, #x, true); return InitSequence::Exit(); }
+#define END_INIT_SEQUENCE() return InitSequence::Exit();
 
 }
