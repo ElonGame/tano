@@ -5,8 +5,10 @@
 		<key row="0" value="0.000000" interpolation="0" />
 		<key row="220" value="3.000000" interpolation="2" />
 		<key row="270" value="0.000000" interpolation="0" />
-		<key row="401" value="3.000000" interpolation="2" />
+		<key row="400" value="3.000000" interpolation="1" />
 		<key row="450" value="0.000000" interpolation="0" />
 	</track>
+	<track name="blinkface" folded="0" muteKeyCount="0"
+color="ffb28050" />
 </tracks>
 	</rootElement>

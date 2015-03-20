@@ -5,6 +5,8 @@
 using namespace tano;
 using namespace bristol;
 
+extern "C" float stb_perlin_noise3(float x, float y, float z, int x_wrap=0, int y_wrap=0, int z_wrap=0);
+
 namespace tano
 {
   //------------------------------------------------------------------------------
@@ -151,6 +153,14 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
+  void Vector3ToFloat(float* buf, const Vector3& v)
+  {
+    buf[0] = v.x;
+    buf[1] = v.y;
+    buf[2] = v.z;
+  }
+
+  //------------------------------------------------------------------------------
   bool CreateBuffersFromBitmapFaceted(
     const u8* bitmap, 
     int width, 
@@ -160,11 +170,12 @@ namespace tano
     GpuObjects* objects)
   {
 
-    Vector3 ofs(-scale.x * ((float)width-1) / 2, 0, -scale.z * ((float)height-1) / 2);
+    Vector3 size(scale.x * ((float)width-1), 0, scale.z * ((float)height-1));
+    Vector3 ofs(-size.x / 2, 0, -size.z/2);
 
-    vector<Vector3> verts;
-    int numVerts = 6 * (width-1) * (height-1);
-    verts.resize(2 * numVerts);
+    vector<float> verts;
+    int numVerts = 3 * (width-1) * (height-1);
+    verts.resize(6 * 2 * numVerts);
 
     int triIdx = 0;
     const u32* buf = (u32*)bitmap;
@@ -182,36 +193,46 @@ namespace tano
         Color c2 = ColorFromRgba(&buf[(hOfs-(j+1))*width+(i+1)]);
         Color c3 = ColorFromRgba(&buf[(hOfs-(j+1))*width+(i+0)]);
 
-        Vector3 v0(ofs.x + (float)(j+0) * scale.x, scale.y * (-0.5f + Luminosity(c0)), ofs.z + (float)(i+0) * scale.z);
-        Vector3 v1(ofs.x + (float)(j+0) * scale.x, scale.y * (-0.5f + Luminosity(c1)), ofs.z + (float)(i+1) * scale.z);
-        Vector3 v2(ofs.x + (float)(j+1) * scale.x, scale.y * (-0.5f + Luminosity(c2)), ofs.z + (float)(i+1) * scale.z);
-        Vector3 v3(ofs.x + (float)(j+1) * scale.x, scale.y * (-0.5f + Luminosity(c3)), ofs.z + (float)(i+0) * scale.z);
+        float x0 = ofs.x + (float)(j+0) * scale.x;
+        float x1 = ofs.x + (float)(j+1) * scale.x;
+        float z0 = ofs.z + (float)(i+0) * scale.z;
+        float z1 = ofs.z + (float)(i+1) * scale.z;
+
+        Vector3 v0(x0, scale.y * (-0.5f + Luminosity(c0)), z0);
+        Vector3 v1(x0, scale.y * (-0.5f + Luminosity(c1)), z1);
+        Vector3 v2(x1, scale.y * (-0.5f + Luminosity(c2)), z1);
+        Vector3 v3(x1, scale.y * (-0.5f + Luminosity(c3)), z0);
+
+        v0.y = scale.y * stb_perlin_noise3(256 * x0 / size.x, 0, 256 * z0 / size.z);
+        v1.y = scale.y * stb_perlin_noise3(256 * x0 / size.x, 0, 256 * z1 / size.z);
+        v2.y = scale.y * stb_perlin_noise3(256 * x1 / size.x, 0, 256 * z1 / size.z);
+        v3.y = scale.y * stb_perlin_noise3(256 * x1 / size.x, 0, 256 * z0 / size.z);
 
         Vector3 e1, e2;
         e1 = v2 - v1; e1.Normalize();
         e2 = v0 - v1; e2.Normalize();
-        Vector3 n0 = Cross(e1, e2); n0.Normalize();
+        Vector3 n0 = Cross(e1, e2);
 
         e1 = v0 - v3; e1.Normalize();
         e2 = v2 - v3; e2.Normalize();
-        Vector3 n1 = Cross(e1, e2); n1.Normalize();
+        Vector3 n1 = Cross(e1, e2);
 
         // 0, 1, 3
-        verts[triIdx*6+0] = v0;
-        verts[triIdx*6+1] = n0;
-        verts[triIdx*6+2] = v1;
-        verts[triIdx*6+3] = n0;
-        verts[triIdx*6+4] = v3;
-        verts[triIdx*6+5] = n0;
+        Vector3ToFloat(&verts[triIdx*18+0], v0);
+        Vector3ToFloat(&verts[triIdx*18+3], n0);
+        Vector3ToFloat(&verts[triIdx*18+6], v1);
+        Vector3ToFloat(&verts[triIdx*18+9], n0);
+        Vector3ToFloat(&verts[triIdx*18+12], v3);
+        Vector3ToFloat(&verts[triIdx*18+15], n0);
         ++triIdx;
 
         // 3, 1, 2
-        verts[triIdx*6+0] = v3;
-        verts[triIdx*6+1] = n1;
-        verts[triIdx*6+2] = v1;
-        verts[triIdx*6+3] = n1;
-        verts[triIdx*6+4] = v2;
-        verts[triIdx*6+5] = n1;
+        Vector3ToFloat(&verts[triIdx*18+0], v3);
+        Vector3ToFloat(&verts[triIdx*18+3], n1);
+        Vector3ToFloat(&verts[triIdx*18+6], v1);
+        Vector3ToFloat(&verts[triIdx*18+9], n1);
+        Vector3ToFloat(&verts[triIdx*18+12], v2);
+        Vector3ToFloat(&verts[triIdx*18+15], n1);
         ++triIdx;
       }
     }

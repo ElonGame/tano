@@ -17,7 +17,7 @@ using namespace bristol;
 namespace
 {
   float angle = 0;
-  float height = 0;
+  float height = 200;
   float distance = 500;
 }
 
@@ -43,6 +43,15 @@ Landscape::~Landscape()
 //------------------------------------------------------------------------------
 bool Landscape::Init(const char* configFile)
 {
+  auto sx = ToSpherical({ -1, 0, 0 });
+  auto vx = FromSpherical(sx);
+
+  auto sy = ToSpherical({ 0, -1, 0 });
+  auto vy = FromSpherical(sy);
+
+  auto sz = ToSpherical({ 0, 0, -1 });
+  auto vz = FromSpherical(sz);
+
   BEGIN_INIT_SEQUENCE();
 
   _configName = configFile;
@@ -57,7 +66,7 @@ bool Landscape::Init(const char* configFile)
 
   // create mesh from landscape
   u32 vertexFlags = VF_POS | VF_NORMAL;
-  INIT(CreateBuffersFromBitmapFaceted(data, x, y, Vector3(10, 200, 10), &vertexFlags, &_landscapeGpuObjects));
+  INIT(CreateBuffersFromBitmapFaceted(data, x, y, Vector3(10, 20, 10), &vertexFlags, &_landscapeGpuObjects));
 
   INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/Landscape", "VsLandscape", nullptr, "PsLandscape", vertexFlags));
   INIT(_landscapeState.Create());
