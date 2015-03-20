@@ -51,6 +51,7 @@ static bool GlobalClose()
 App::App()
   : _hinstance(NULL)
 {
+  memset(&_ioState, 0, sizeof(_ioState));
 }
 
 //------------------------------------------------------------------------------
@@ -193,9 +194,14 @@ void App::SaveSettings()
 }
 
 //------------------------------------------------------------------------------
+const IoState& App::GetIoState() const
+{
+  return _ioState;
+}
+
+//------------------------------------------------------------------------------
 LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-
 #if WITH_IMGUI
   if (ImGuiWndProc(hWnd, message, wParam, lParam))
     return 0;
@@ -380,3 +386,4 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line
   GlobalClose();
   return 0;
 }
+

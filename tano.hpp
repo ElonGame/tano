@@ -5,6 +5,25 @@ struct sync_device;
 
 namespace tano
 {
+
+  struct IoState
+  {
+    enum Button
+    {
+      ButtonLeft,
+      ButtonMiddle,
+      ButtonRight,
+    };
+
+    float deltaTime;
+    float mouseX, mouseY;
+    float wheel;
+    u8 keysPressed[256];
+    u8 shiftPressed : 1;
+    u8 controlPressed : 1;
+    u8 altPressed : 1;
+  };
+
   class App
   {
   public:
@@ -16,6 +35,8 @@ namespace tano
 
     static bool Create();
     static bool Destroy();
+
+    const IoState& GetIoState() const;
 
   private:
     App();
@@ -34,6 +55,8 @@ namespace tano
 
     bristol::LogSinkApp _logSinkApp;
     bristol::LogSinkConsole _logSinkConsole;
+
+    IoState _ioState;
   };
 }
 
