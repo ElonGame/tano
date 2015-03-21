@@ -173,6 +173,9 @@ namespace tano
   using DirectX::SimpleMath::Vector3;
   using DirectX::SimpleMath::Vector4;
   using DirectX::SimpleMath::Matrix;
+  using DirectX::SimpleMath::Quaternion;
+
+  using DirectX::XM_PI;
 
   using namespace std::tr1::placeholders;
 
@@ -181,6 +184,8 @@ namespace tano
 
   using bristol::TimeStamp;
   using bristol::TimeDuration;
+
+  using bristol::Spherical;
 }
 
 #pragma comment(lib, "DXGI.lib")

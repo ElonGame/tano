@@ -13,11 +13,13 @@ namespace tano
       ButtonLeft,
       ButtonMiddle,
       ButtonRight,
+      NumButtons
     };
 
     float deltaTime;
     float mouseX, mouseY;
-    float wheel;
+    float mouseWheel;
+    bool buttons[NumButtons];
     u8 keysPressed[256];
     u8 shiftPressed : 1;
     u8 controlPressed : 1;
@@ -44,6 +46,7 @@ namespace tano
     bool FindAppRoot(const char* filename);
     bool LoadSettings();
     void SaveSettings();
+    void UpdateIoState();
 
     static LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 

@@ -5,6 +5,7 @@
 #include "../generated/demo.types.hpp"
 #include "../mesh_loader.hpp"
 #include "../animation_helpers.hpp"
+#include "../camera.hpp"
 
 namespace tano
 {
@@ -51,5 +52,8 @@ namespace tano
     MeshLoader _meshLoader;
 
     AnimatedInt _blinkFace;
+
+    Camera _camera;
+
   };
 }

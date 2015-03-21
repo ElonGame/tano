@@ -157,6 +157,8 @@ bool App::Run()
     }
     rmt_ScopedCPUSample(App_Run);
 
+    UpdateIoState();
+
 #if WITH_IMGUI
     UpdateImGui();
 #endif
@@ -222,19 +224,36 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       break;
 
     case WM_LBUTTONUP:
+      TANO._ioState.buttons[IoState::ButtonLeft] = false;
+      break;
+
     case WM_MBUTTONUP:
+      TANO._ioState.buttons[IoState::ButtonMiddle] = false;
+      break;
+
     case WM_RBUTTONUP:
+      TANO._ioState.buttons[IoState::ButtonRight] = false;
       break;
 
     case WM_LBUTTONDOWN:
+      TANO._ioState.buttons[IoState::ButtonLeft] = true;
+      break;
+
     case WM_MBUTTONDOWN:
+      TANO._ioState.buttons[IoState::ButtonMiddle] = true;
+      break;
+
     case WM_RBUTTONDOWN:
+      TANO._ioState.buttons[IoState::ButtonRight] = true;
       break;
 
     case WM_MOUSEMOVE:
+      TANO._ioState.mouseX = (signed short)(lParam);
+      TANO._ioState.mouseY = (signed short)(lParam >> 16);
       break;
 
     case WM_MOUSEWHEEL:
+      TANO._ioState.mouseWheel += GET_WHEEL_DELTA_WPARAM(wParam) > 0 ? +1.0f : -1.0f;
       break;
 
     case WM_KEYUP:
@@ -356,6 +375,19 @@ bool App::FindAppRoot(const char* filename)
   }
   _appRoot = starting_dir;
   return false;
+}
+
+//------------------------------------------------------------------------------
+void App::UpdateIoState()
+{
+  u8 keystate[256];
+  GetKeyboardState(keystate);
+  for (int i = 0; i < 256; i++)
+    _ioState.keysPressed[i] = (keystate[i] & 0x80) != 0;
+
+  _ioState.controlPressed = (keystate[VK_CONTROL] & 0x80) != 0;
+  _ioState.shiftPressed = (keystate[VK_SHIFT] & 0x80) != 0;
+  _ioState.altPressed = (keystate[VK_MENU] & 0x80) != 0;
 }
 
 //------------------------------------------------------------------------------

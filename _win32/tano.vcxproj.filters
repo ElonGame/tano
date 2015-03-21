@@ -172,6 +172,9 @@
     <ClCompile Include="..\effects\landscape.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -347,6 +350,9 @@
     </ClInclude>
     <ClInclude Include="..\stb\stb_image.h">
       <Filter>stb</Filter>
+    </ClInclude>
+    <ClInclude Include="..\camera.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

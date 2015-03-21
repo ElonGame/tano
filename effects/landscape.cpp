@@ -75,6 +75,8 @@ bool Landscape::Init(const char* configFile)
   INIT(_cbPerFrame.Create());
   GRAPHICS.GetBackBufferSize(&w, &h);
 
+//  _camera._pos = Vector3(0, 200, 500);
+
   END_INIT_SEQUENCE();
 }
 
@@ -101,6 +103,8 @@ void Landscape::UpdateCameraMatrix()
   dir.Normalize();
 
   Matrix view = Matrix::CreateLookAt(pos, Vector3(0, 0, 0), Vector3(0, 1, 0));
+  _camera.Update();
+  view = _camera._view;
   Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 2000.f);
   Matrix viewProj = view * proj;
 
