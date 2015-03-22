@@ -42,6 +42,11 @@ namespace tano
       Matrix proj;
       Matrix viewProj;
       Vector4 dim;
+      Vector3 cameraPos;
+      float pad1;
+      Vector3 cameraLookAt;
+      float pad2;
+      Vector3 cameraUp;
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 

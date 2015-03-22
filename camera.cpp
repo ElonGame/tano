@@ -49,5 +49,7 @@ void Camera::Update()
   if (state.keysPressed['S'])
     _pos -= s * dir;
 
-  _view = Matrix::CreateLookAt(_pos, _pos + dir, up);
+  _target = _pos + dir;
+  _up = up;
+  _view = Matrix::CreateLookAt(_pos, _target, _up);
 }

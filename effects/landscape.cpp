@@ -14,13 +14,6 @@
 using namespace tano;
 using namespace bristol;
 
-namespace
-{
-  float angle = 0;
-  float height = 200;
-  float distance = 500;
-}
-
 //------------------------------------------------------------------------------
 Landscape::Landscape(const string &name, u32 id)
   : Effect(name, id)
@@ -50,6 +43,9 @@ bool Landscape::Init(const char* configFile)
   INIT_FATAL(RESOURCE_MANAGER.LoadFile(configFile, &buf));
 
   INIT(ParseLandscapeSettings(InputBuffer(buf), &_settings));
+  _camera._pitch = _settings.pitch;
+  _camera._yaw = _settings.yaw;
+  _camera._pos = _settings.pos;
 
   INIT_FATAL(RESOURCE_MANAGER.LoadFile("gfx/landscape1.png", &buf));
   int x, y, n;
@@ -90,18 +86,8 @@ bool Landscape::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 void Landscape::UpdateCameraMatrix()
 {
-  float x = distance * sin(angle);
-  float y = height;
-  float z = distance * cos(angle);
-
-  Vector3 pos = Vector3(x, y, z);
-  Vector3 target = Vector3(0, 0, 0);
-  Vector3 dir = target - pos;
-  dir.Normalize();
-
-  Matrix view = Matrix::CreateLookAt(pos, Vector3(0, 0, 0), Vector3(0, 1, 0));
   _camera.Update();
-  view = _camera._view;
+  Matrix view = _camera._view;
   Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 2000.f);
   Matrix viewProj = view * proj;
 
@@ -109,6 +95,9 @@ void Landscape::UpdateCameraMatrix()
   _cbPerFrame.view = view.Transpose();
   _cbPerFrame.proj = proj.Transpose();
   _cbPerFrame.viewProj = viewProj.Transpose();
+  _cbPerFrame.cameraPos = _camera._pos;
+  _cbPerFrame.cameraLookAt = _camera._target;
+  _cbPerFrame.cameraUp = _camera._up;
 }
 
 //------------------------------------------------------------------------------
@@ -118,7 +107,7 @@ bool Landscape::Render()
   static Color black(0, 0, 0, 0);
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
 
-  ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateDepthBuffer);
 
   u32 dimX, dimY;
   GRAPHICS.GetTextureSize(rt._handle, &dimX, &dimY);
@@ -158,11 +147,6 @@ bool Landscape::InitAnimatedParameters()
 #if WITH_IMGUI
 void Landscape::RenderParameterSet()
 {
-
-  ImGui::SliderAngle("camera xz-plane", &angle);
-  ImGui::SliderFloat("camera distance", &distance, -1000, 1000);
-  ImGui::SliderFloat("camera height", &height, -200, 200);
-
   if (ImGui::Button("Reset"))
     Reset();
 }
@@ -173,6 +157,9 @@ void Landscape::RenderParameterSet()
 void Landscape::SaveParameterSet()
 {
   OutputBuffer buf;
+  _settings.pos = _camera._pos;
+  _settings.yaw = _camera._yaw;
+  _settings.pitch = _camera._pitch;
   Serialize(buf, _settings);
   if (FILE* f = fopen(_configName.c_str(), "wt"))
   {
