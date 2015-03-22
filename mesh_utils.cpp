@@ -57,39 +57,6 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  Vector3 Cross(const Vector3& a, const Vector3& b)
-  {
-    return Vector3(
-      (a.y * b.z) - (a.z * b.y),
-      (a.z * b.x) - (a.x * b.z),
-      (a.x * b.y) - (a.y * b.x));
-  }
-
-  //------------------------------------------------------------------------------
-  void Cross(
-    float ax, float ay, float az,
-    float bx, float by, float bz,
-    float* nx, float* ny, float* nz)
-  {
-    *nx = (ay * bz) - (az * by);
-    *ny = (az * bx) - (ax * bz);
-    *nz = (ax * by) - (ay * bx);
-  }
-
-  //------------------------------------------------------------------------------
-  void Normalize(float* x, float* y, float* z)
-  {
-    float xx = *x;
-    float yy = *y;
-    float zz = *z;
-
-    float recipLen = 1.f / sqrtf(xx*xx + yy*yy + zz*zz);
-    *x = xx * recipLen;
-    *y = yy * recipLen;
-    *z = zz * recipLen;
-  }
-
-  //------------------------------------------------------------------------------
   void ComputeNormal(
     float v0x, float v0y, float v0z,
     float v1x, float v1y, float v1z,
