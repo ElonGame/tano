@@ -56,12 +56,56 @@ namespace tano
     return false;
   }
 
-  inline Vector3 Cross(const Vector3& a, const Vector3& b)
+  //------------------------------------------------------------------------------
+  Vector3 Cross(const Vector3& a, const Vector3& b)
   {
     return Vector3(
       (a.y * b.z) - (a.z * b.y),
       (a.z * b.x) - (a.x * b.z),
       (a.x * b.y) - (a.y * b.x));
+  }
+
+  //------------------------------------------------------------------------------
+  void Cross(
+    float ax, float ay, float az,
+    float bx, float by, float bz,
+    float* nx, float* ny, float* nz)
+  {
+    *nx = (ay * bz) - (az * by);
+    *ny = (az * bx) - (ax * bz);
+    *nz = (ax * by) - (ay * bx);
+  }
+
+  //------------------------------------------------------------------------------
+  void Normalize(float* x, float* y, float* z)
+  {
+    float xx = *x;
+    float yy = *y;
+    float zz = *z;
+
+    float recipLen = 1.f / sqrtf(xx*xx + yy*yy + zz*zz);
+    *x = xx * recipLen;
+    *y = yy * recipLen;
+    *z = zz * recipLen;
+  }
+
+  //------------------------------------------------------------------------------
+  void ComputeNormal(
+    float v0x, float v0y, float v0z,
+    float v1x, float v1y, float v1z,
+    float v2x, float v2y, float v2z,
+    float* nx, float* ny, float* nz)
+  {
+    float e1x = v2x - v1x;
+    float e1y = v2y - v1y;
+    float e1z = v2z - v1z;
+
+    float e2x = v0x - v1x;
+    float e2y = v0y - v1y;
+    float e2z = v0z - v1z;
+
+    Cross(e1x, e1y, e1z, e2x, e2y, e2z, nx, ny, nz);
+    Normalize(nx, ny, nz);
   }
 
   //------------------------------------------------------------------------------
@@ -181,6 +225,8 @@ namespace tano
     const u32* buf = (u32*)bitmap;
     int hOfs = height-1;
 
+    float* ptr = verts.data();
+
     // create the vertices
     for (int i = 0; i < height-1; ++i) {
       for (int j = 0; j < width-1; ++j) {
@@ -188,35 +234,72 @@ namespace tano
         // 1--2
         // |  |
         // 0--3
+
+        float xx0 = ofs.x + (float)(j+0) * scale.x;
+        float xx1 = ofs.x + (float)(j+1) * scale.x;
+        float zz0 = ofs.z + (float)(i+0) * scale.z;
+        float zz1 = ofs.z + (float)(i+1) * scale.z;
+
+#if 0
+        float x0 = xx0; float x1 = xx0; float x2 = xx1; float x3 = xx1;
+        float z0 = zz0; float z1 = zz1; float z2 = zz1; float z3 = zz0;
+
+        float y0 = scale.y * stb_perlin_noise3(256 * x0 / size.x, 0, 256 * z0 / size.z);
+        float y1 = scale.y * stb_perlin_noise3(256 * x0 / size.x, 0, 256 * z1 / size.z);
+        float y2 = scale.y * stb_perlin_noise3(256 * x1 / size.x, 0, 256 * z1 / size.z);
+        float y3 = scale.y * stb_perlin_noise3(256 * x1 / size.x, 0, 256 * z0 / size.z);
+
+        float n0x, n0y, n0z;
+        float n1x, n1y, n1z;
+        ComputeNormal(x0, y0, z0, x1, y1, z1, x2, y2, z2, &n0x, &n0y, &n0z);
+        ComputeNormal(x2, y2, z2, x3, y3, z3, x0, y0, z0, &n1x, &n1y, &n1z);
+
+        // 0, 1, 3
+        *ptr++ = x0; *ptr++ = y0; *ptr++ = z0;
+        *ptr++ = n0x; *ptr++ = n0x; *ptr++ = n0x;
+
+        *ptr++ = x1; *ptr++ = y1; *ptr++ = z1;
+        *ptr++ = n0x; *ptr++ = n0x; *ptr++ = n0x;
+
+        *ptr++ = x3; *ptr++ = y3; *ptr++ = z3;
+        *ptr++ = n0x; *ptr++ = n0x; *ptr++ = n0x;
+
+        // 3, 1, 2
+        *ptr++ = x3; *ptr++ = y3; *ptr++ = z3;
+        *ptr++ = n1x; *ptr++ = n1x; *ptr++ = n1x;
+
+        *ptr++ = x1; *ptr++ = y1; *ptr++ = z1;
+        *ptr++ = n1x; *ptr++ = n1x; *ptr++ = n1x;
+
+        *ptr++ = x2; *ptr++ = y2; *ptr++ = z2;
+        *ptr++ = n1x; *ptr++ = n1x; *ptr++ = n1x;
+#else
         Color c0 = ColorFromRgba(&buf[(hOfs-(j+0))*width+(i+0)]);
         Color c1 = ColorFromRgba(&buf[(hOfs-(j+0))*width+(i+1)]);
         Color c2 = ColorFromRgba(&buf[(hOfs-(j+1))*width+(i+1)]);
         Color c3 = ColorFromRgba(&buf[(hOfs-(j+1))*width+(i+0)]);
 
-        float x0 = ofs.x + (float)(j+0) * scale.x;
-        float x1 = ofs.x + (float)(j+1) * scale.x;
-        float z0 = ofs.z + (float)(i+0) * scale.z;
-        float z1 = ofs.z + (float)(i+1) * scale.z;
-
-        Vector3 v0(x0, scale.y * (-0.5f + Luminosity(c0)), z0);
-        Vector3 v1(x0, scale.y * (-0.5f + Luminosity(c1)), z1);
-        Vector3 v2(x1, scale.y * (-0.5f + Luminosity(c2)), z1);
-        Vector3 v3(x1, scale.y * (-0.5f + Luminosity(c3)), z0);
-
-        v0.y = scale.y * stb_perlin_noise3(256 * x0 / size.x, 0, 256 * z0 / size.z);
-        v1.y = scale.y * stb_perlin_noise3(256 * x0 / size.x, 0, 256 * z1 / size.z);
-        v2.y = scale.y * stb_perlin_noise3(256 * x1 / size.x, 0, 256 * z1 / size.z);
-        v3.y = scale.y * stb_perlin_noise3(256 * x1 / size.x, 0, 256 * z0 / size.z);
-
+        Vector3 v0(xx0, scale.y * (-0.5f + Luminosity(c0)), zz0);
+        Vector3 v1(xx0, scale.y * (-0.5f + Luminosity(c1)), zz1);
+        Vector3 v2(xx1, scale.y * (-0.5f + Luminosity(c2)), zz1);
+        Vector3 v3(xx1, scale.y * (-0.5f + Luminosity(c3)), zz0);
+        
+        v0.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz0 / size.z);
+        v1.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz1 / size.z);
+        v2.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz1 / size.z);
+        v3.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz0 / size.z);
+        
         Vector3 e1, e2;
-        e1 = v2 - v1; e1.Normalize();
-        e2 = v0 - v1; e2.Normalize();
+        e1 = v2 - v1;
+        e2 = v0 - v1;
         Vector3 n0 = Cross(e1, e2);
-
-        e1 = v0 - v3; e1.Normalize();
-        e2 = v2 - v3; e2.Normalize();
+        n0.Normalize();
+        
+        e1 = v0 - v3;
+        e2 = v2 - v3;
         Vector3 n1 = Cross(e1, e2);
-
+        n1.Normalize();
+        
         // 0, 1, 3
         Vector3ToFloat(&verts[triIdx*18+0], v0);
         Vector3ToFloat(&verts[triIdx*18+3], n0);
@@ -226,7 +309,6 @@ namespace tano
         Vector3ToFloat(&verts[triIdx*18+15], n0);
         ++triIdx;
 
-        // 3, 1, 2
         Vector3ToFloat(&verts[triIdx*18+0], v3);
         Vector3ToFloat(&verts[triIdx*18+3], n1);
         Vector3ToFloat(&verts[triIdx*18+6], v1);
@@ -234,6 +316,7 @@ namespace tano
         Vector3ToFloat(&verts[triIdx*18+12], v2);
         Vector3ToFloat(&verts[triIdx*18+15], n1);
         ++triIdx;
+#endif
       }
     }
 

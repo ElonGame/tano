@@ -9,6 +9,7 @@
 #include "../generated/input_buffer.hpp"
 #include "../generated/output_buffer.hpp"
 #include "../mesh_loader.hpp"
+#include "../post_process.hpp"
 
 using namespace tano;
 using namespace bristol;

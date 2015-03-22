@@ -9,7 +9,7 @@
 #include "../generated/input_buffer.hpp"
 #include "../generated/output_buffer.hpp"
 #include "../mesh_utils.hpp"
-
+#include "../post_process.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -43,15 +43,6 @@ Landscape::~Landscape()
 //------------------------------------------------------------------------------
 bool Landscape::Init(const char* configFile)
 {
-  auto sx = ToSpherical({ -1, 0, 0 });
-  auto vx = FromSpherical(sx);
-
-  auto sy = ToSpherical({ 0, -1, 0 });
-  auto vy = FromSpherical(sy);
-
-  auto sz = ToSpherical({ 0, 0, -1 });
-  auto vz = FromSpherical(sz);
-
   BEGIN_INIT_SEQUENCE();
 
   _configName = configFile;
@@ -66,10 +57,16 @@ bool Landscape::Init(const char* configFile)
 
   // create mesh from landscape
   u32 vertexFlags = VF_POS | VF_NORMAL;
-  INIT(CreateBuffersFromBitmapFaceted(data, x, y, Vector3(10, 20, 10), &vertexFlags, &_landscapeGpuObjects));
+  INIT(CreateBuffersFromBitmapFaceted(data, x, y, Vector3(10, 30, 10), &vertexFlags, &_landscapeGpuObjects));
 
-  INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/Landscape", "VsLandscape", nullptr, "PsLandscape", vertexFlags));
+  INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsLandscape", nullptr, "PsLandscape", vertexFlags));
   INIT(_landscapeState.Create());
+
+  INIT(_edgeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsEdgeDetect"));
+  INIT(_skyGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsSky"));
+
+  INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsComposite"));
+  INIT(_compositeState.Create());
 
   int w, h;
   INIT(_cbPerFrame.Create());
@@ -117,14 +114,36 @@ void Landscape::UpdateCameraMatrix()
 //------------------------------------------------------------------------------
 bool Landscape::Render()
 {
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
-
   rmt_ScopedCPUSample(Landscape_Render);
+  static Color black(0, 0, 0, 0);
+  PostProcess* postProcess = GRAPHICS.GetPostProcess();
 
+  ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
+
+  u32 dimX, dimY;
+  GRAPHICS.GetTextureSize(rt._handle, &dimX, &dimY);
+  _cbPerFrame.dim.x = (float)dimX;
+  _cbPerFrame.dim.y = (float)dimY;
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
+
+  // Render the sky
+  _ctx->SetRenderTarget(rt._handle, &black);
+  _ctx->SetGpuObjects(_skyGpuObjects);
+  _ctx->Draw(3, 0);
+
+  // Render the background
+  _ctx->SetRenderTarget(rt._handle, nullptr);
   _ctx->SetGpuObjects(_landscapeGpuObjects);
   _ctx->SetGpuState(_landscapeState);
   _ctx->Draw(_landscapeGpuObjects._numVerts, 0);
+
+  // outline
+  ScopedRenderTarget rtOutline(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  postProcess->Execute({ rt._handle }, rtOutline._handle, _edgeGpuObjects._ps, false);
+
+  postProcess->Execute({ rt._handle, rtOutline._handle }, 
+    GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
 
   return true;
 }

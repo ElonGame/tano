@@ -4,7 +4,6 @@
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
 #include "../text_writer.hpp"
-#include "../post_process.hpp"
 #include "../animation_helpers.hpp"
 
 #define WITH_TEXT 0

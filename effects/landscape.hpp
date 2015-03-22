@@ -41,6 +41,7 @@ namespace tano
       Matrix view;
       Matrix proj;
       Matrix viewProj;
+      Vector4 dim;
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 
@@ -50,6 +51,12 @@ namespace tano
     LandscapeSettings _settings;
     string _configName;
     MeshLoader _meshLoader;
+
+    GpuObjects _edgeGpuObjects;
+    GpuObjects _skyGpuObjects;
+
+    GpuState _compositeState;
+    GpuObjects _compositeGpuObjects;
 
     AnimatedInt _blinkFace;
 
