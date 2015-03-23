@@ -174,6 +174,7 @@ namespace tano
   using DirectX::SimpleMath::Vector4;
   using DirectX::SimpleMath::Matrix;
   using DirectX::SimpleMath::Quaternion;
+  using DirectX::SimpleMath::Plane;
 
   using DirectX::XM_PI;
 

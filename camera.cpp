@@ -1,6 +1,7 @@
 #include "camera.hpp"
 #include "tano.hpp"
 #include "mesh_utils.hpp"
+#include "graphics.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -8,6 +9,9 @@ using namespace bristol;
 //------------------------------------------------------------------------------
 Camera::Camera()
 {
+  int w, h;
+  GRAPHICS.GetBackBufferSize(&w, &h);
+  _proj = Matrix::CreatePerspectiveFieldOfView(_fov, (float)w/h, _nearPlane, _farPlane);
   Update();
 }
 
@@ -29,9 +33,15 @@ void Camera::Update()
   if (state.keysPressed['E'])
     _pitch += 0.1f / XM_PI;
 
-  Matrix mtx = Matrix::CreateFromYawPitchRoll(_yaw, _pitch, 0);
-  Vector3 dir = Vector3::Transform(Vector3(0, 0, 1), mtx);
-  Vector3 up = Vector3::Transform(Vector3(0, 1, 0), mtx);
+  if (state.keysPressed['R'])
+    _roll += 0.1f / XM_PI;
+
+  if (state.keysPressed['T'])
+    _roll -= 0.1f / XM_PI;
+
+  _mtx = Matrix::CreateFromYawPitchRoll(_yaw, _pitch, _roll);
+  Vector3 dir = Vector3::Transform(Vector3(0, 0, 1), _mtx);
+  Vector3 up = Vector3::Transform(Vector3(0, 1, 0), _mtx);
   Vector3 right = Cross(up, dir);
 
   // movement

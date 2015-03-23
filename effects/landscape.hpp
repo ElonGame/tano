@@ -66,6 +66,7 @@ namespace tano
     AnimatedInt _blinkFace;
 
     Camera _camera;
+    u32 _numVerts;
 
   };
 }
