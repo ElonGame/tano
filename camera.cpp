@@ -11,7 +11,8 @@ Camera::Camera()
 {
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
-  _proj = Matrix::CreatePerspectiveFieldOfView(_fov, (float)w/h, _nearPlane, _farPlane);
+  _aspectRatio = (float)w / h;
+  _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
   Update();
 }
 
@@ -40,26 +41,99 @@ void Camera::Update()
     _roll -= 0.1f / XM_PI;
 
   _mtx = Matrix::CreateFromYawPitchRoll(_yaw, _pitch, _roll);
-  Vector3 dir = Vector3::Transform(Vector3(0, 0, 1), _mtx);
-  Vector3 up = Vector3::Transform(Vector3(0, 1, 0), _mtx);
-  Vector3 right = Cross(up, dir);
+  _dir = Vector3::Transform(Vector3(0, 0, 1), _mtx);
+  _up = Vector3::Transform(Vector3(0, 1, 0), _mtx);
+  _right = Cross(_up, _dir);
 
   // movement
   float s = state.shiftPressed ? 5.f : 1.f;
 
   if (state.keysPressed['Z'])
-    _pos -= s * right;
+    _pos -= s * _right;
 
   if (state.keysPressed['C'])
-    _pos += s * right;
+    _pos += s * _right;
 
   if (state.keysPressed['W'])
-    _pos += s * dir;
+    _pos += s * _dir;
 
   if (state.keysPressed['S'])
-    _pos -= s * dir;
+    _pos -= s * _dir;
 
-  _target = _pos + dir;
-  _up = up;
+  _target = _pos + _dir;
   _view = Matrix::CreateLookAt(_pos, _target, _up);
+}
+
+//------------------------------------------------------------------------------
+void Camera::GetFrustumCorners(Vector3* pts)
+{
+  float hNear = 2 * tan(_fov / 2) * _nearPlane;
+  float wNear = _aspectRatio * hNear;
+
+  float hFar = 2 * tan(_fov / 2) * _farPlane;
+  float wFar = _aspectRatio * hFar;
+
+  // because all the points are relative the center of the planes, we just
+  // need the half distances
+  hNear /= 2;
+  wNear /= 2;
+
+  hFar /= 2;
+  wFar /= 2;
+
+  // calc the 8 corner points of the view frustum (in world space)
+
+  // 0, 1
+  // 2, 3
+
+  // far plane
+  Vector3 fc = _pos + _dir * _farPlane;
+  pts[0] = fc + hFar * _up - wFar * _right;
+  pts[1] = fc + hFar * _up + wFar * _right;
+  pts[2] = fc - hFar * _up - wFar * _right;
+  pts[3] = fc - hFar * _up + wFar * _right;
+
+  // near plane
+  Vector3 nc = _pos + _dir * _nearPlane;
+  pts[4] = nc + hNear * _up - wNear * _right;
+  pts[5] = nc + hNear * _up + wNear * _right;
+  pts[6] = nc - hNear * _up - wNear * _right;
+  pts[7] = nc - hNear * _up + wNear * _right;
+
+}
+
+//------------------------------------------------------------------------------
+void Camera::GetFrustumCenter(Vector3* pts)
+{
+  float hNear = 2 * tan(_fov / 2) * _nearPlane;
+  float wNear = _aspectRatio * hNear;
+
+  float hFar = 2 * tan(_fov / 2) * _farPlane;
+  float wFar = _aspectRatio * hFar;
+
+  // because all the points are relative the center of the planes, we just
+  // need the half distances
+  hNear /= 2;
+  wNear /= 2;
+
+  hFar /= 2;
+  wFar /= 2;
+
+  // calc the 4 center points of the view frustum (in world space)
+
+  // 0, 1
+
+  // far plane
+  Vector3 fc = _pos + _dir * _farPlane;
+  pts[0] = fc - wFar * _right;
+  pts[1] = fc + wFar * _right;
+
+  // near plane
+  Vector3 nc = _pos + _dir * _nearPlane;
+  pts[2] = nc - wNear * _right;
+  pts[3] = nc + wNear * _right;
+
+  // center points
+  pts[4] = fc;
+  pts[5] = nc;
 }

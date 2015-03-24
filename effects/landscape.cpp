@@ -60,6 +60,99 @@ unordered_map<u32, NoiseValues> noiseCache;
 
 u8 culled[1024*1024];
 
+void DynamicFill(
+  const Matrix& viewProj,
+  const Vector3& start, const Vector3& end, const Vector3& nn,
+  int steps, const Vector3& scale, float* verts, u32* numVerts)
+{
+  Plane planes[6];
+  ExtractPlanes(planes, viewProj);
+
+  Vector3 dd = end - start;
+  float len = dd.Length();
+  dd.Normalize();
+
+//  Vector3 nn(-dd.z, 0, dd.x);
+
+  Vector3 cur = start;
+  Vector3 reset = cur;
+
+  int triIdx = 0;
+  Vector3 v0, v1, v2, v3;
+  Vector3 n0, n1;
+
+  Vector3 size(1024, 0, 1024);
+
+  for (int i = 0; i < steps; ++i)
+  {
+    cur = reset;
+
+    for (int j = 0; j < len / scale.x; ++j)
+    {
+      // 1--2
+      // |  |
+      // 0--3
+
+      float xx0 = cur.x;
+      float xx1 = (cur + scale.x * dd).x;
+      float zz0 = cur.z;
+      float zz1 = (cur + scale.x * nn).z;
+
+      v0.x = xx0; v0.z = zz0;
+      v1.x = xx0; v1.z = zz1;
+      v2.x = xx1; v2.z = zz1;
+      v3.x = xx1; v3.z = zz0;
+
+      if (!GridInsideFrustum(planes,
+        Vector3(xx0, +scale.y, zz0), Vector3(xx0, +scale.y, zz1), Vector3(xx1, +scale.y, zz1), Vector3(xx1, +scale.y, zz0),
+        Vector3(xx0, -scale.y, zz0), Vector3(xx0, -scale.y, zz1), Vector3(xx1, -scale.y, zz1), Vector3(xx1, -scale.y, zz0)))
+      {
+        //continue;
+      }
+
+      v0.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz0 / size.z);
+      v1.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz1 / size.z);
+      v2.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz1 / size.z);
+      v3.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz0 / size.z);
+
+      Vector3 e1, e2;
+      e1 = v2 - v1;
+      e2 = v0 - v1;
+      n0 = Cross(e1, e2);
+      n0.Normalize();
+
+      e1 = v0 - v3;
+      e2 = v2 - v3;
+      n1 = Cross(e1, e2);
+      n1.Normalize();
+
+
+      // 0, 1, 3
+      Vector3ToFloat(&verts[triIdx*18+0], v0);
+      Vector3ToFloat(&verts[triIdx*18+3], n0);
+      Vector3ToFloat(&verts[triIdx*18+6], v1);
+      Vector3ToFloat(&verts[triIdx*18+9], n0);
+      Vector3ToFloat(&verts[triIdx*18+12], v3);
+      Vector3ToFloat(&verts[triIdx*18+15], n0);
+      ++triIdx;
+
+      Vector3ToFloat(&verts[triIdx*18+0], v3);
+      Vector3ToFloat(&verts[triIdx*18+3], n1);
+      Vector3ToFloat(&verts[triIdx*18+6], v1);
+      Vector3ToFloat(&verts[triIdx*18+9], n1);
+      Vector3ToFloat(&verts[triIdx*18+12], v2);
+      Vector3ToFloat(&verts[triIdx*18+15], n1);
+      ++triIdx;
+
+      cur += scale.x * dd;
+    }
+
+    reset += scale.x * nn;
+  }
+
+  *numVerts = triIdx * 3;
+}
+
 void SlowAndSteady(int width, int height, const Matrix& viewProj, const Vector3& scale, float* verts, u32* numVerts)
 {
   Plane planes[6];
@@ -124,7 +217,6 @@ void SlowAndSteady(int width, int height, const Matrix& viewProj, const Vector3&
         }
       }
 
-#if 1
       v0.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz0 / size.z);
       v1.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz1 / size.z);
       v2.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz1 / size.z);
@@ -140,39 +232,6 @@ void SlowAndSteady(int width, int height, const Matrix& viewProj, const Vector3&
       e2 = v2 - v3;
       n1 = Cross(e1, e2);
       n1.Normalize();
-#else
-      auto it = noiseCache.find(i*width+j);
-      if (it == noiseCache.end())
-      {
-        v0.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz0 / size.z);
-        v1.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz1 / size.z);
-        v2.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz1 / size.z);
-        v3.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz0 / size.z);
-
-        Vector3 e1, e2;
-        e1 = v2 - v1;
-        e2 = v0 - v1;
-        n0 = Cross(e1, e2);
-        n0.Normalize();
-
-        e1 = v0 - v3;
-        e2 = v2 - v3;
-        n1 = Cross(e1, e2);
-        n1.Normalize();
-
-        noiseCache[i*width+j] ={ v0.y, v1.y, v2.y, v3.y, n0, n1 };
-      }
-      else
-      {
-        const NoiseValues& values = it->second;
-        v0.y = values.v0;
-        v1.y = values.v1;
-        v2.y = values.v2;
-        v3.y = values.v3;
-        n0 = values.n0;
-        n1 = values.n1;
-      }
-#endif
 
 
       // 0, 1, 3
@@ -369,7 +428,17 @@ bool Landscape::Render()
   _ctx->SetRenderTarget(rt._handle, nullptr);
 
   float* buf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
-  SlowAndSteady(1024, 1024, _camera._view * _camera._proj, Vector3(10, 30, 10), buf, &_numVerts);
+
+  Vector3 corners[6];
+  _camera.GetFrustumCenter(&corners[0]);
+
+
+  // vector from far the near plane
+  Vector3 nn = corners[5] - corners[4];
+  int steps = (int)(nn.Length() / 10);
+  nn.Normalize();
+  DynamicFill(_camera._view * _camera._proj, corners[0], corners[1], nn, steps, Vector3(10, 30, 10), buf, &_numVerts);
+  //SlowAndSteady(1024, 1024, _camera._view * _camera._proj, Vector3(10, 30, 10), buf, &_numVerts);
   _ctx->Unmap(_landscapeGpuObjects._vb);
 
   _ctx->SetGpuObjects(_landscapeGpuObjects);
@@ -427,6 +496,8 @@ void Landscape::SaveParameterSet()
 //------------------------------------------------------------------------------
 void Landscape::Reset()
 {
+  _camera._pos = Vector3(0.f, 0.f, 0.f);
+  _camera._pitch = _camera._yaw = _camera._roll = 0.f;
 }
 
 //------------------------------------------------------------------------------
