@@ -72,8 +72,6 @@ void DynamicFill(
   float len = dd.Length();
   dd.Normalize();
 
-//  Vector3 nn(-dd.z, 0, dd.x);
-
   Vector3 cur = start;
   Vector3 reset = cur;
 
@@ -93,6 +91,21 @@ void DynamicFill(
       // |  |
       // 0--3
 
+      v0 = cur;
+      v1 = cur - scale.x * nn;
+      v2 = cur - scale.x * nn + scale.x * dd;
+      v3 = cur + scale.x * dd;
+
+/*
+      if (!GridInsideFrustum(planes,
+        Vector3(v0.x, +scale.y, v0.z), Vector3(v1.x, +scale.y, v1.z), Vector3(v2.x, +scale.y, v2.z), Vector3(v3.x, +scale.y, v3.z),
+        Vector3(v0.x, -scale.y, v0.z), Vector3(v1.x, -scale.y, v1.z), Vector3(v2.x, -scale.y, v2.z), Vector3(v3.x, -scale.y, v3.z)))
+      {
+        continue;
+      }
+*/
+
+#if 0
       float xx0 = cur.x;
       float xx1 = (cur + scale.x * dd).x;
       float zz0 = cur.z;
@@ -114,6 +127,12 @@ void DynamicFill(
       v1.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz1 / size.z);
       v2.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz1 / size.z);
       v3.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz0 / size.z);
+#endif
+      v0.y = scale.y * stb_perlin_noise3(256 * v0.x / size.x, 0, 256 * v0.z / size.z);
+      v1.y = scale.y * stb_perlin_noise3(256 * v1.x / size.x, 0, 256 * v1.z / size.z);
+      v2.y = scale.y * stb_perlin_noise3(256 * v2.x / size.x, 0, 256 * v2.z / size.z);
+      v3.y = scale.y * stb_perlin_noise3(256 * v3.x / size.x, 0, 256 * v3.z / size.z);
+
 
       Vector3 e1, e2;
       e1 = v2 - v1;
@@ -335,9 +354,9 @@ bool Landscape::Init(const char* configFile)
   _camera._roll = _settings.camera.roll;
   _camera._pos = _settings.camera.pos;
 
-  INIT_FATAL(RESOURCE_MANAGER.LoadFile("gfx/landscape1.png", &buf));
-  int x, y, n;
-  u8* data = stbi_load_from_memory((const u8*)buf.data(), (int)buf.size(), &x, &y, &n, 4);
+//   INIT_FATAL(RESOURCE_MANAGER.LoadFile("gfx/landscape1.png", &buf));
+//   int x, y, n;
+//   u8* data = stbi_load_from_memory((const u8*)buf.data(), (int)buf.size(), &x, &y, &n, 4);
 
   // create mesh from landscape
   u32 vertexFlags = VF_POS | VF_NORMAL;
