@@ -123,15 +123,19 @@ void Camera::GetFrustumCenter(Vector3* pts)
 
   // 0, 1
 
+  Matrix mtxFlat = Matrix::CreateFromYawPitchRoll(_yaw, 0, 0);
+  Vector3 dir = Vector3::Transform(Vector3(0, 0, 1), mtxFlat);
+  Vector3 right = Vector3::Transform(Vector3(1, 0, 0), mtxFlat);
+
   // far plane
-  Vector3 fc = _pos + _dir * _farPlane;
-  pts[0] = fc - wFar * _right;
-  pts[1] = fc + wFar * _right;
+  Vector3 fc = _pos + dir * _farPlane;
+  pts[0] = fc - wFar * right;
+  pts[1] = fc + wFar * right;
 
   // near plane
-  Vector3 nc = _pos + _dir * _nearPlane;
-  pts[2] = nc - wNear * _right;
-  pts[3] = nc + wNear * _right;
+  Vector3 nc = _pos + dir * _nearPlane;
+  pts[2] = nc - wNear * right;
+  pts[3] = nc + wNear * right;
 
   // center points
   pts[4] = fc;

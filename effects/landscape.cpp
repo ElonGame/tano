@@ -60,6 +60,79 @@ unordered_map<u32, NoiseValues> noiseCache;
 
 u8 culled[1024*1024];
 
+void Rasterize(
+  const Matrix& viewProj,
+  const Vector3& scale,
+  int startY, const vector<pair<int, int>>& spans, 
+  float* verts, u32* numVerts)
+{
+
+  Vector3 v0, v1, v2, v3;
+  Vector3 n0, n1;
+  Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
+
+  int triIdx = 0;
+  int ey = startY - (int)spans.size();
+  for (int idx = 0; idx < (int)spans.size(); ++idx)
+  {
+    int i = startY - idx;
+    int a = spans[idx].first;
+    int b = spans[idx].second;
+    for (int j = a; j <= b; ++j)
+    {
+      // 1--2
+      // |  |
+      // 0--3
+
+      float xx0 = (float)(j+0) * scale.x;
+      float xx1 = (float)(j+1) * scale.x;
+      float zz0 = (float)(i+0) * scale.z;
+      float zz1 = (float)(i+1) * scale.z;
+
+      v0.x = xx0; v0.z = zz0;
+      v1.x = xx0; v1.z = zz1;
+      v2.x = xx1; v2.z = zz1;
+      v3.x = xx1; v3.z = zz0;
+
+      v0.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz0 / size.z);
+      v1.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz1 / size.z);
+      v2.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz1 / size.z);
+      v3.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz0 / size.z);
+
+      Vector3 e1, e2;
+      e1 = v2 - v1;
+      e2 = v0 - v1;
+      n0 = Cross(e1, e2);
+      n0.Normalize();
+
+      e1 = v0 - v3;
+      e2 = v2 - v3;
+      n1 = Cross(e1, e2);
+      n1.Normalize();
+
+
+      // 0, 1, 3
+      Vector3ToFloat(&verts[triIdx*18+0], v0);
+      Vector3ToFloat(&verts[triIdx*18+3], n0);
+      Vector3ToFloat(&verts[triIdx*18+6], v1);
+      Vector3ToFloat(&verts[triIdx*18+9], n0);
+      Vector3ToFloat(&verts[triIdx*18+12], v3);
+      Vector3ToFloat(&verts[triIdx*18+15], n0);
+      ++triIdx;
+
+      Vector3ToFloat(&verts[triIdx*18+0], v3);
+      Vector3ToFloat(&verts[triIdx*18+3], n1);
+      Vector3ToFloat(&verts[triIdx*18+6], v1);
+      Vector3ToFloat(&verts[triIdx*18+9], n1);
+      Vector3ToFloat(&verts[triIdx*18+12], v2);
+      Vector3ToFloat(&verts[triIdx*18+15], n1);
+      ++triIdx;
+    }
+  }
+
+  *numVerts = triIdx * 3;
+}
+
 void DynamicFill(
   const Matrix& viewProj,
   const Vector3& start, const Vector3& end, const Vector3& nn,
@@ -451,12 +524,124 @@ bool Landscape::Render()
   Vector3 corners[6];
   _camera.GetFrustumCenter(&corners[0]);
 
+  // what we want to do is rasterize the triangle between the 2 frustum corners, and the
+  // camera position
 
-  // vector from far the near plane
-  Vector3 nn = corners[5] - corners[4];
-  int steps = (int)(nn.Length() / 10);
-  nn.Normalize();
-  DynamicFill(_camera._view * _camera._proj, corners[0], corners[1], nn, steps, Vector3(10, 30, 10), buf, &_numVerts);
+  Vector3 dd = corners[5] - corners[4];
+  dd.Normalize();
+  Vector3 behind = corners[5];
+  behind.z += 1.25f * dd.z;
+
+  Vector2 verts[] = {
+    Vector2(corners[0].x / 10, corners[0].z / 10),
+    Vector2(corners[1].x / 10, corners[1].z / 10),
+    Vector2(corners[5].x / 10, corners[5].z / 10)
+  };
+
+  // 3 edges, a->b, b->c, c->a
+  struct {
+    int a, b;
+  } edges[3] = {
+      { 0, 1 },
+      { 1, 2 },
+      { 2, 0 },
+  };
+
+  for (int i = 0; i < 3; ++i)
+  {
+    if (verts[edges[i].a].y < verts[edges[i].b].y) 
+      swap(edges[i].a, edges[i].b);
+  }
+
+  int sorted[3];
+  {
+    // sort the edges, so 0 is the longest, and then 1 is above 2
+    float aa = fabsf(verts[edges[0].a].y - verts[edges[0].b].y);
+    float bb = fabsf(verts[edges[1].a].y - verts[edges[1].b].y);
+    float cc = fabsf(verts[edges[2].a].y - verts[edges[2].b].y);
+
+    if (aa >= bb && aa >= cc)
+    {
+      sorted[0] = 0;
+      sorted[1] = verts[edges[1].a].y > verts[edges[2].a].y ? 1 : 2;
+      sorted[2] = verts[edges[1].a].y > verts[edges[2].a].y ? 2 : 1;
+    }
+    else if (bb >= aa && bb >= cc)
+    {
+      sorted[0] = 1;
+      sorted[1] = verts[edges[0].a].y > verts[edges[2].a].y ? 0 : 2;
+      sorted[2] = verts[edges[0].a].y > verts[edges[2].a].y ? 2 : 0;
+    }
+    else
+    {
+      sorted[0] = 2;
+      sorted[1] = verts[edges[0].a].y > verts[edges[1].a].y ? 0 : 1;
+      sorted[2] = verts[edges[0].a].y > verts[edges[1].a].y ? 1 : 0;
+    }
+  }
+
+  int aa = sorted[0];
+  int bb = sorted[1];
+  int cc = sorted[2];
+
+  // rasterize 0 -> 1, and then 0 -> 2
+  float dx0 = verts[edges[aa].b].x - verts[edges[aa].a].x;
+  float dy0 = verts[edges[aa].a].y - verts[edges[aa].b].y;
+  float dxdy0 = dy0 <= 0 ? -1 : dx0 / dy0;
+
+  float dx1 = verts[edges[bb].b].x - verts[edges[bb].a].x;
+  float dy1 = verts[edges[bb].a].y - verts[edges[bb].b].y;
+  float dxdy1 = dy1 <= 0 ? -1 : dx1 / dy1;
+
+  float dx2 = verts[edges[cc].b].x - verts[edges[cc].a].x;
+  float dy2 = verts[edges[cc].a].y - verts[edges[cc].b].y;
+  float dxdy2 = dy2 <= 0 ? -1 : dx2 / dy2;
+
+  int sy, ey, y;
+  // rasterize edge 1
+  sy = lround(verts[edges[bb].a].y);
+  ey = lround(verts[edges[bb].b].y);
+  float x0 = verts[edges[aa].a].x;
+  float x1 = verts[edges[bb].a].x;
+  vector<pair<int, int>> spans;
+
+  if (dxdy1 != -1)
+  {
+    for (y = sy; y >= ey; --y)
+    {
+      int a = lround(x0);
+      int b = lround(x1);
+      spans.push_back(make_pair(min(a, b), max(a, b)));
+      x0 += dxdy0;
+      x1 += dxdy1;
+    }
+  }
+
+  // rasterize edge 2
+  sy = lround(verts[edges[cc].a].y);
+  ey = lround(verts[edges[cc].b].y);
+
+  if (dxdy2 != -1)
+  {
+    for (y = sy; y >= ey; --y)
+    {
+      int a = lround(x0);
+      int b = lround(x1);
+      spans.push_back(make_pair(min(a, b), max(a, b)));
+      x0 += dxdy0;
+      x1 += dxdy2;
+    }
+  }
+
+  sy = lround(verts[edges[aa].a].y);
+  Rasterize(_camera._view * _camera._proj, Vector3(10, 30, 10), sy, spans, buf, &_numVerts);
+
+// 
+//   // vector from far the near plane
+//   Vector3 nn = corners[5] - corners[4];
+//   int steps = (int)(nn.Length() / 10);
+//   nn.Normalize();
+//   DynamicFill(_camera._view * _camera._proj, corners[0], corners[1], nn, steps, Vector3(10, 30, 10), buf, &_numVerts);
   //SlowAndSteady(1024, 1024, _camera._view * _camera._proj, Vector3(10, 30, 10), buf, &_numVerts);
   _ctx->Unmap(_landscapeGpuObjects._vb);
 
@@ -487,6 +672,7 @@ bool Landscape::InitAnimatedParameters()
 void Landscape::RenderParameterSet()
 {
   ImGui::InputInt("NumVerts", (int*)&_numVerts);
+  ImGui::InputFloat("Pitch", &_camera._pitch);
 
   if (ImGui::Button("Reset"))
     Reset();
