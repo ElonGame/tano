@@ -16,6 +16,92 @@ using namespace bristol;
 
 extern "C" float stb_perlin_noise3(float x, float y, float z, int x_wrap=0, int y_wrap=0, int z_wrap=0);
 
+long ClipPolygonAgainstPlane(long vertexCount, const Vector3* vertex, const Plane& plane, Vector3* result)
+{
+  enum Side
+  {
+    polygonInterior = 1,
+    polygonBoundary = 0,
+    polygonExterior = -1
+  };
+
+  Side location[16]; 
+
+  const float boundaryEpsilon = 1.0e-3F;
+
+  long positive = 0;
+  long negative = 0;
+
+  for (long a = 0; a < vertexCount; a++)
+  {
+    float d = DistanceToPoint(plane, vertex[a]);
+    if (d > boundaryEpsilon)
+    {
+      location[a] = polygonInterior;
+      positive++;
+    }
+    else
+    {
+      if (d < -boundaryEpsilon)
+      {
+        location[a] = polygonExterior;
+        negative++;
+      }
+      else
+      {
+        location[a] = polygonBoundary;
+      }
+    }
+  }
+
+  if (negative == 0)
+  {
+    for (long a = 0; a < vertexCount; a++) result[a] = vertex[a];
+    return (vertexCount);
+  }
+  else if (positive == 0)
+  {
+    return (0);
+  }
+
+  long count = 0;
+  long previous = vertexCount - 1;
+  for (long index = 0; index < vertexCount; index++)
+  {
+    long loc = location[index];
+    if (loc == polygonExterior)
+    {
+      if (location[previous] == polygonInterior)
+      {
+        const Vector3& v1 = vertex[previous];
+        const Vector3& v2 = vertex[index];
+        Vector3 dv = v2 - v1;
+
+        float t = DistanceToPoint(plane, v2) / Dot(plane, dv);
+        result[count++] = v2 - dv * t;
+      }
+    }
+    else
+    {
+      const Vector3& v1 = vertex[index];
+      if ((loc == polygonInterior) && (location[previous] == polygonExterior))
+      {
+        const Vector3& v2 = vertex[previous];
+        Vector3 dv = v2 - v1;
+
+        float t = DistanceToPoint(plane, v2) / Dot(plane, dv);
+        result[count++] = v2 - dv * t;
+      }
+
+      result[count++] = v1;
+    }
+
+    previous = index;
+  }
+
+  return (count);
+}
+
 
 inline bool PlaneDot(const Plane& p, const Vector3& v)
 {
@@ -139,7 +225,7 @@ void DynamicFill(
   int steps, const Vector3& scale, float* verts, u32* numVerts)
 {
   Plane planes[6];
-  ExtractPlanes(planes, viewProj);
+  ExtractPlanes(viewProj, true, planes);
 
   Vector3 dd = end - start;
   float len = dd.Length();
@@ -248,7 +334,7 @@ void DynamicFill(
 void SlowAndSteady(int width, int height, const Matrix& viewProj, const Vector3& scale, float* verts, u32* numVerts)
 {
   Plane planes[6];
-  ExtractPlanes(planes, viewProj);
+  ExtractPlanes(viewProj, true, planes);
 
   Vector3 size(scale.x * ((float)width-1), 0, scale.z * ((float)height-1));
   Vector3 ofs(-size.x / 2, 0, -size.z/2);
@@ -524,6 +610,49 @@ bool Landscape::Render()
   Vector3 corners[6];
   _camera.GetFrustumCenter(&corners[0]);
 
+  Plane planes[6];
+  ExtractPlanes(_camera._view * _camera._proj, true, planes);
+
+  float ofs = 2 * _camera._farPlane;
+  Vector3 c = _camera._pos;
+  Vector3 buf0[16] = {
+    c + Vector3(-ofs, 0, +ofs),
+    c + Vector3(+ofs, 0, +ofs),
+    c + Vector3(+ofs, 0, -ofs),
+    c + Vector3(-ofs, 0, -ofs)
+  };
+  Vector3 buf1[16];
+
+  int numVerts = 4;
+  for (int i = 0; i < 4; ++i)
+  {
+    numVerts = ClipPolygonAgainstPlane(numVerts, buf0, planes[i], buf1);
+    if (numVerts == 0)
+      break;
+    memcpy(buf0, buf1, numVerts * sizeof(Vector3));
+  }
+
+  Vector3 minValues = buf0[0];
+  Vector3 maxValues = buf0[0];
+
+  for (int i = 1; i < numVerts; ++i)
+  {
+    minValues = Vector3::Min(minValues, buf0[i]);
+    maxValues = Vector3::Max(maxValues, buf0[i]);
+  }
+
+  vector<pair<int, int>> spans;
+  int sy = lround(maxValues.z / 10);
+  int cy = sy - lround(minValues.z / 10);
+  for (int i = 0; i < cy; ++i)
+  {
+    spans.push_back(make_pair(lround(minValues.x / 10), lround(maxValues.x / 10)));
+  }
+
+  Rasterize(_camera._view * _camera._proj, Vector3(10, 30, 10), sy, spans, buf, &_numVerts);
+
+
+#if 0
   // what we want to do is rasterize the triangle between the 2 frustum corners, and the
   // camera position
 
@@ -635,7 +764,7 @@ bool Landscape::Render()
 
   sy = lround(verts[edges[aa].a].y);
   Rasterize(_camera._view * _camera._proj, Vector3(10, 30, 10), sy, spans, buf, &_numVerts);
-
+#endif
 // 
 //   // vector from far the near plane
 //   Vector3 nn = corners[5] - corners[4];
