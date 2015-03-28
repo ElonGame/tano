@@ -16,118 +16,6 @@ using namespace bristol;
 
 extern "C" float stb_perlin_noise3(float x, float y, float z, int x_wrap=0, int y_wrap=0, int z_wrap=0);
 
-long ClipPolygonAgainstPlane(long vertexCount, const Vector3* vertex, const Plane& plane, Vector3* result)
-{
-  enum Side
-  {
-    polygonInterior = 1,
-    polygonBoundary = 0,
-    polygonExterior = -1
-  };
-
-  Side location[16]; 
-
-  const float boundaryEpsilon = 1.0e-3F;
-
-  long positive = 0;
-  long negative = 0;
-
-  for (long a = 0; a < vertexCount; a++)
-  {
-    float d = DistanceToPoint(plane, vertex[a]);
-    if (d > boundaryEpsilon)
-    {
-      location[a] = polygonInterior;
-      positive++;
-    }
-    else
-    {
-      if (d < -boundaryEpsilon)
-      {
-        location[a] = polygonExterior;
-        negative++;
-      }
-      else
-      {
-        location[a] = polygonBoundary;
-      }
-    }
-  }
-
-  if (negative == 0)
-  {
-    for (long a = 0; a < vertexCount; a++) result[a] = vertex[a];
-    return (vertexCount);
-  }
-  else if (positive == 0)
-  {
-    return (0);
-  }
-
-  long count = 0;
-  long previous = vertexCount - 1;
-  for (long index = 0; index < vertexCount; index++)
-  {
-    long loc = location[index];
-    if (loc == polygonExterior)
-    {
-      if (location[previous] == polygonInterior)
-      {
-        const Vector3& v1 = vertex[previous];
-        const Vector3& v2 = vertex[index];
-        Vector3 dv = v2 - v1;
-
-        float t = DistanceToPoint(plane, v2) / Dot(plane, dv);
-        result[count++] = v2 - dv * t;
-      }
-    }
-    else
-    {
-      const Vector3& v1 = vertex[index];
-      if ((loc == polygonInterior) && (location[previous] == polygonExterior))
-      {
-        const Vector3& v2 = vertex[previous];
-        Vector3 dv = v2 - v1;
-
-        float t = DistanceToPoint(plane, v2) / Dot(plane, dv);
-        result[count++] = v2 - dv * t;
-      }
-
-      result[count++] = v1;
-    }
-
-    previous = index;
-  }
-
-  return (count);
-}
-
-
-inline bool PlaneDot(const Plane& p, const Vector3& v)
-{
-  return p.x * v.x + p.y * v.y + p.z * v.z + p.w < 0;
-}
-
-bool GridInsideFrustum(
-  const Plane* planes,
-  const Vector3& v0,
-  const Vector3& v1,
-  const Vector3& v2,
-  const Vector3& v3,
-  const Vector3& v4,
-  const Vector3& v5,
-  const Vector3& v6,
-  const Vector3& v7)
-{
-  for (int i = 0; i < 6; ++i)
-  {
-    const Plane& p = planes[i];
-    if (PlaneDot(p, v0) && PlaneDot(p, v1) && PlaneDot(p, v2) && PlaneDot(p, v3) &&
-        PlaneDot(p, v4) && PlaneDot(p, v5) && PlaneDot(p, v6) && PlaneDot(p, v7))
-      return false;
-  }
-  return true;
-}
 
 void Vector3ToFloat(float* buf, const Vector3& v)
 {
@@ -144,24 +32,19 @@ struct NoiseValues
 
 unordered_map<u32, NoiseValues> noiseCache;
 
-u8 culled[1024*1024];
-
 void Rasterize(
-  const Matrix& viewProj,
   const Vector3& scale,
-  int startY, const vector<pair<int, int>>& spans, 
+  int startZ, const vector<pair<int, int>>& spans, 
   float* verts, u32* numVerts)
 {
-
   Vector3 v0, v1, v2, v3;
   Vector3 n0, n1;
   Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
 
   int triIdx = 0;
-  int ey = startY - (int)spans.size();
   for (int idx = 0; idx < (int)spans.size(); ++idx)
   {
-    int i = startY - idx;
+    int i = startZ + idx;
     int a = spans[idx].first;
     int b = spans[idx].second;
     for (int j = a; j <= b; ++j)
@@ -217,266 +100,6 @@ void Rasterize(
   }
 
   *numVerts = triIdx * 3;
-}
-
-void DynamicFill(
-  const Matrix& viewProj,
-  const Vector3& start, const Vector3& end, const Vector3& nn,
-  int steps, const Vector3& scale, float* verts, u32* numVerts)
-{
-  Plane planes[6];
-  ExtractPlanes(viewProj, true, planes);
-
-  Vector3 dd = end - start;
-  float len = dd.Length();
-  dd.Normalize();
-
-  Vector3 cur = start;
-  Vector3 reset = cur;
-
-  int triIdx = 0;
-  Vector3 v0, v1, v2, v3;
-  Vector3 n0, n1;
-
-  Vector3 size(1024, 0, 1024);
-
-  for (int i = 0; i < steps; ++i)
-  {
-    cur = reset;
-
-    for (int j = 0; j < len / scale.x; ++j)
-    {
-      // 1--2
-      // |  |
-      // 0--3
-
-      v0 = cur;
-      v1 = cur - scale.x * nn;
-      v2 = cur - scale.x * nn + scale.x * dd;
-      v3 = cur + scale.x * dd;
-
-/*
-      if (!GridInsideFrustum(planes,
-        Vector3(v0.x, +scale.y, v0.z), Vector3(v1.x, +scale.y, v1.z), Vector3(v2.x, +scale.y, v2.z), Vector3(v3.x, +scale.y, v3.z),
-        Vector3(v0.x, -scale.y, v0.z), Vector3(v1.x, -scale.y, v1.z), Vector3(v2.x, -scale.y, v2.z), Vector3(v3.x, -scale.y, v3.z)))
-      {
-        continue;
-      }
-*/
-
-#if 0
-      float xx0 = cur.x;
-      float xx1 = (cur + scale.x * dd).x;
-      float zz0 = cur.z;
-      float zz1 = (cur + scale.x * nn).z;
-
-      v0.x = xx0; v0.z = zz0;
-      v1.x = xx0; v1.z = zz1;
-      v2.x = xx1; v2.z = zz1;
-      v3.x = xx1; v3.z = zz0;
-
-      if (!GridInsideFrustum(planes,
-        Vector3(xx0, +scale.y, zz0), Vector3(xx0, +scale.y, zz1), Vector3(xx1, +scale.y, zz1), Vector3(xx1, +scale.y, zz0),
-        Vector3(xx0, -scale.y, zz0), Vector3(xx0, -scale.y, zz1), Vector3(xx1, -scale.y, zz1), Vector3(xx1, -scale.y, zz0)))
-      {
-        //continue;
-      }
-
-      v0.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz0 / size.z);
-      v1.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz1 / size.z);
-      v2.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz1 / size.z);
-      v3.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz0 / size.z);
-#endif
-      v0.y = scale.y * stb_perlin_noise3(256 * v0.x / size.x, 0, 256 * v0.z / size.z);
-      v1.y = scale.y * stb_perlin_noise3(256 * v1.x / size.x, 0, 256 * v1.z / size.z);
-      v2.y = scale.y * stb_perlin_noise3(256 * v2.x / size.x, 0, 256 * v2.z / size.z);
-      v3.y = scale.y * stb_perlin_noise3(256 * v3.x / size.x, 0, 256 * v3.z / size.z);
-
-
-      Vector3 e1, e2;
-      e1 = v2 - v1;
-      e2 = v0 - v1;
-      n0 = Cross(e1, e2);
-      n0.Normalize();
-
-      e1 = v0 - v3;
-      e2 = v2 - v3;
-      n1 = Cross(e1, e2);
-      n1.Normalize();
-
-
-      // 0, 1, 3
-      Vector3ToFloat(&verts[triIdx*18+0], v0);
-      Vector3ToFloat(&verts[triIdx*18+3], n0);
-      Vector3ToFloat(&verts[triIdx*18+6], v1);
-      Vector3ToFloat(&verts[triIdx*18+9], n0);
-      Vector3ToFloat(&verts[triIdx*18+12], v3);
-      Vector3ToFloat(&verts[triIdx*18+15], n0);
-      ++triIdx;
-
-      Vector3ToFloat(&verts[triIdx*18+0], v3);
-      Vector3ToFloat(&verts[triIdx*18+3], n1);
-      Vector3ToFloat(&verts[triIdx*18+6], v1);
-      Vector3ToFloat(&verts[triIdx*18+9], n1);
-      Vector3ToFloat(&verts[triIdx*18+12], v2);
-      Vector3ToFloat(&verts[triIdx*18+15], n1);
-      ++triIdx;
-
-      cur += scale.x * dd;
-    }
-
-    reset += scale.x * nn;
-  }
-
-  *numVerts = triIdx * 3;
-}
-
-void SlowAndSteady(int width, int height, const Matrix& viewProj, const Vector3& scale, float* verts, u32* numVerts)
-{
-  Plane planes[6];
-  ExtractPlanes(viewProj, true, planes);
-
-  Vector3 size(scale.x * ((float)width-1), 0, scale.z * ((float)height-1));
-  Vector3 ofs(-size.x / 2, 0, -size.z/2);
-
-  int triIdx = 0;
-  int hOfs = height-1;
-
-  Vector3 v0, v1, v2, v3;
-  Vector3 n0, n1;
-
-  memset(culled, 0, 1024*1024);
-  int BLOCK_SIZE = 4;
-
-  // create the vertices
-  for (int i = 0; i < height-1; ++i) {
-
-    for (int j = 0; j < width-1; ++j) {
-
-      if (culled[i*width+j])
-        continue;
-
-      // 1--2
-      // |  |
-      // 0--3
-
-      float xx0 = ofs.x + (float)(j+0) * scale.x;
-      float xx1 = ofs.x + (float)(j+1) * scale.x;
-      float zz0 = ofs.z + (float)(i+0) * scale.z;
-      float zz1 = ofs.z + (float)(i+1) * scale.z;
-
-      v0.x = xx0; v0.z = zz0;
-      v1.x = xx0; v1.z = zz1;
-      v2.x = xx1; v2.z = zz1;
-      v3.x = xx1; v3.z = zz0;
-
-      // frustum cull in grids
-      if ((i % BLOCK_SIZE == 0) && (j % BLOCK_SIZE == 0))
-      {
-        float xx0 = ofs.x + (float)(j+0) * scale.x;
-        float xx1 = ofs.x + (float)(j+BLOCK_SIZE) * scale.x;
-        float zz0 = ofs.z + (float)(i+0) * scale.z;
-        float zz1 = ofs.z + (float)(i+BLOCK_SIZE) * scale.z;
-
-        if (!GridInsideFrustum(planes, 
-          Vector3(xx0, +scale.y, zz0), Vector3(xx0, +scale.y, zz1), Vector3(xx1, +scale.y, zz1), Vector3(xx1, +scale.y, zz0),
-          Vector3(xx0, -scale.y, zz0), Vector3(xx0, -scale.y, zz1), Vector3(xx1, -scale.y, zz1), Vector3(xx1, -scale.y, zz0)))
-        {
-          int ie = i+BLOCK_SIZE >= 1024 ? 1024 : i+BLOCK_SIZE;
-          int je = j+BLOCK_SIZE >= 1024 ? 1024 : j+BLOCK_SIZE;
-          for (int ii = i; ii < ie; ++ii)
-          {
-            for (int jj = j; jj < je; ++jj)
-            {
-              culled[ii*width+jj] = 1;
-            }
-          }
-          continue;
-        }
-      }
-
-      v0.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz0 / size.z);
-      v1.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz1 / size.z);
-      v2.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz1 / size.z);
-      v3.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz0 / size.z);
-
-      Vector3 e1, e2;
-      e1 = v2 - v1;
-      e2 = v0 - v1;
-      n0 = Cross(e1, e2);
-      n0.Normalize();
-
-      e1 = v0 - v3;
-      e2 = v2 - v3;
-      n1 = Cross(e1, e2);
-      n1.Normalize();
-
-
-      // 0, 1, 3
-      Vector3ToFloat(&verts[triIdx*18+0], v0);
-      Vector3ToFloat(&verts[triIdx*18+3], n0);
-      Vector3ToFloat(&verts[triIdx*18+6], v1);
-      Vector3ToFloat(&verts[triIdx*18+9], n0);
-      Vector3ToFloat(&verts[triIdx*18+12], v3);
-      Vector3ToFloat(&verts[triIdx*18+15], n0);
-      ++triIdx;
-
-      Vector3ToFloat(&verts[triIdx*18+0], v3);
-      Vector3ToFloat(&verts[triIdx*18+3], n1);
-      Vector3ToFloat(&verts[triIdx*18+6], v1);
-      Vector3ToFloat(&verts[triIdx*18+9], n1);
-      Vector3ToFloat(&verts[triIdx*18+12], v2);
-      Vector3ToFloat(&verts[triIdx*18+15], n1);
-      ++triIdx;
-    }
-  }
-
-  *numVerts = triIdx * 3;
-}
-
-
-void AddLandscapeQuad(
-  float xx0, float xx1, float zz0, float zz1,
-  float scaleX, float scaleZ, float scaleY,
-  float* verts)
-{
-  Vector3 v0(xx0, 0, zz0);
-  Vector3 v1(xx0, 0, zz1);
-  Vector3 v2(xx1, 0, zz1);
-  Vector3 v3(xx1, 0, zz0);
-
-  v0.y = scaleY * stb_perlin_noise3(scaleX * xx0, 0, scaleZ * zz0);
-  v1.y = scaleY * stb_perlin_noise3(scaleX * xx0, 0, scaleZ * zz1);
-  v2.y = scaleY * stb_perlin_noise3(scaleX * xx1, 0, scaleZ * zz1);
-  v3.y = scaleY * stb_perlin_noise3(scaleX * xx1, 0, scaleZ * zz0);
-
-  Vector3 e1, e2;
-  e1 = v2 - v1;
-  e2 = v0 - v1;
-  Vector3 n0 = Cross(e1, e2);
-  n0.Normalize();
-
-  e1 = v0 - v3;
-  e2 = v2 - v3;
-  Vector3 n1 = Cross(e1, e2);
-  n1.Normalize();
-
-  // 0, 1, 3
-  Vector3ToFloat(&verts[0], v0);
-  Vector3ToFloat(&verts[3], n0);
-  Vector3ToFloat(&verts[6], v1);
-  Vector3ToFloat(&verts[9], n0);
-  Vector3ToFloat(&verts[12], v3);
-  Vector3ToFloat(&verts[15], n0);
-  verts += 18;
-
-  // 3, 1, 2
-  Vector3ToFloat(&verts[0], v3);
-  Vector3ToFloat(&verts[3], n1);
-  Vector3ToFloat(&verts[6], v1);
-  Vector3ToFloat(&verts[9], n1);
-  Vector3ToFloat(&verts[12], v2);
-  Vector3ToFloat(&verts[15], n1);
 }
 
 //------------------------------------------------------------------------------
@@ -580,6 +203,89 @@ void Landscape::UpdateCameraMatrix()
   _cbPerFrame.cameraLookAt = _camera._target;
   _cbPerFrame.cameraUp = _camera._up;
 }
+//------------------------------------------------------------------------------
+void Landscape::RasterizeLandscape(float* buf)
+{
+  Vector3 corners[6];
+  _camera.GetFrustumCenter(&corners[0]);
+
+  Plane planes[6];
+  ExtractPlanes(_camera._view * _camera._proj, true, planes);
+
+  float ofs = 2 * _camera._farPlane;
+  Vector3 c = _camera._pos;
+  c.y = 0;
+  Vector3 buf0[16] ={
+    c + Vector3(-ofs, 0, +ofs),
+    c + Vector3(+ofs, 0, +ofs),
+    c + Vector3(+ofs, 0, -ofs),
+    c + Vector3(-ofs, 0, -ofs)
+  };
+  Vector3 buf1[16];
+
+  int numVerts = 4;
+  for (int i = 0; i < 6; ++i)
+  {
+    numVerts = ClipPolygonAgainstPlane(numVerts, buf0, planes[i], buf1);
+    if (numVerts == 0)
+      break;
+    memcpy(buf0, buf1, numVerts * sizeof(Vector3));
+  }
+
+  Vector3 minValues = buf0[0];
+  Vector3 maxValues = buf0[0];
+
+  for (int i = 1; i < numVerts; ++i)
+  {
+    minValues = Vector3::Min(minValues, buf0[i]);
+    maxValues = Vector3::Max(maxValues, buf0[i]);
+  }
+
+  // create span array, and scan convert all the edges
+  int maxZ = lround(maxValues.z / 10);
+  int minZ = lround(minValues.z / 10);
+  int sizeZ = maxZ - minZ + 1;
+  vector<pair<int, int>> spans(sizeZ);
+
+  for (int i = 0; i < sizeZ; ++i)
+  {
+    spans[i].first = INT_MAX;
+    spans[i].second = -INT_MAX;
+  }
+
+  for (int i = 0; i < numVerts; ++i)
+  {
+    Vector3 vv0 = buf0[i] / 10;
+    Vector3 vv1 = buf0[(i+1) % numVerts] / 10;
+
+    Vector3& v0 = vv0.z > vv1.z ? vv0 : vv1;
+    Vector3& v1 = vv0.z > vv1.z ? vv1 : vv0;
+
+    int sy = lround(v0.z);
+    int ey = lround(v1.z);
+    int cy = sy - ey;
+    if (cy == 0)
+      continue;
+
+    float dz = fabsf(v1.z - v0.z);
+    float dx = v1.x - v0.x;
+    float dxdz = dx / dz;
+
+    float z = v0.z;
+    float x = v0.x;
+
+    for (int y = sy; y >= ey; --y)
+    {
+      int intX = lround(x);
+      int yy = y - minZ;
+      spans[yy].first = min(spans[yy].first, intX);
+      spans[yy].second = max(spans[yy].second, intX);
+      x += dxdz;
+    }
+  }
+
+  Rasterize(Vector3(10, 30, 10), minZ, spans, buf, &_numVerts);
+}
 
 //------------------------------------------------------------------------------
 bool Landscape::Render()
@@ -606,178 +312,12 @@ bool Landscape::Render()
   _ctx->SetRenderTarget(rt._handle, nullptr);
 
   float* buf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
-
-  Vector3 corners[6];
-  _camera.GetFrustumCenter(&corners[0]);
-
-  Plane planes[6];
-  ExtractPlanes(_camera._view * _camera._proj, true, planes);
-
-  float ofs = 2 * _camera._farPlane;
-  Vector3 c = _camera._pos;
-  Vector3 buf0[16] = {
-    c + Vector3(-ofs, 0, +ofs),
-    c + Vector3(+ofs, 0, +ofs),
-    c + Vector3(+ofs, 0, -ofs),
-    c + Vector3(-ofs, 0, -ofs)
-  };
-  Vector3 buf1[16];
-
-  int numVerts = 4;
-  for (int i = 0; i < 4; ++i)
-  {
-    numVerts = ClipPolygonAgainstPlane(numVerts, buf0, planes[i], buf1);
-    if (numVerts == 0)
-      break;
-    memcpy(buf0, buf1, numVerts * sizeof(Vector3));
-  }
-
-  Vector3 minValues = buf0[0];
-  Vector3 maxValues = buf0[0];
-
-  for (int i = 1; i < numVerts; ++i)
-  {
-    minValues = Vector3::Min(minValues, buf0[i]);
-    maxValues = Vector3::Max(maxValues, buf0[i]);
-  }
-
-  vector<pair<int, int>> spans;
-  int sy = lround(maxValues.z / 10);
-  int cy = sy - lround(minValues.z / 10);
-  for (int i = 0; i < cy; ++i)
-  {
-    spans.push_back(make_pair(lround(minValues.x / 10), lround(maxValues.x / 10)));
-  }
-
-  Rasterize(_camera._view * _camera._proj, Vector3(10, 30, 10), sy, spans, buf, &_numVerts);
-
-
-#if 0
-  // what we want to do is rasterize the triangle between the 2 frustum corners, and the
-  // camera position
-
-  Vector3 dd = corners[5] - corners[4];
-  dd.Normalize();
-  Vector3 behind = corners[5];
-  behind.z += 1.25f * dd.z;
-
-  Vector2 verts[] = {
-    Vector2(corners[0].x / 10, corners[0].z / 10),
-    Vector2(corners[1].x / 10, corners[1].z / 10),
-    Vector2(corners[5].x / 10, corners[5].z / 10)
-  };
-
-  // 3 edges, a->b, b->c, c->a
-  struct {
-    int a, b;
-  } edges[3] = {
-      { 0, 1 },
-      { 1, 2 },
-      { 2, 0 },
-  };
-
-  for (int i = 0; i < 3; ++i)
-  {
-    if (verts[edges[i].a].y < verts[edges[i].b].y) 
-      swap(edges[i].a, edges[i].b);
-  }
-
-  int sorted[3];
-  {
-    // sort the edges, so 0 is the longest, and then 1 is above 2
-    float aa = fabsf(verts[edges[0].a].y - verts[edges[0].b].y);
-    float bb = fabsf(verts[edges[1].a].y - verts[edges[1].b].y);
-    float cc = fabsf(verts[edges[2].a].y - verts[edges[2].b].y);
-
-    if (aa >= bb && aa >= cc)
-    {
-      sorted[0] = 0;
-      sorted[1] = verts[edges[1].a].y > verts[edges[2].a].y ? 1 : 2;
-      sorted[2] = verts[edges[1].a].y > verts[edges[2].a].y ? 2 : 1;
-    }
-    else if (bb >= aa && bb >= cc)
-    {
-      sorted[0] = 1;
-      sorted[1] = verts[edges[0].a].y > verts[edges[2].a].y ? 0 : 2;
-      sorted[2] = verts[edges[0].a].y > verts[edges[2].a].y ? 2 : 0;
-    }
-    else
-    {
-      sorted[0] = 2;
-      sorted[1] = verts[edges[0].a].y > verts[edges[1].a].y ? 0 : 1;
-      sorted[2] = verts[edges[0].a].y > verts[edges[1].a].y ? 1 : 0;
-    }
-  }
-
-  int aa = sorted[0];
-  int bb = sorted[1];
-  int cc = sorted[2];
-
-  // rasterize 0 -> 1, and then 0 -> 2
-  float dx0 = verts[edges[aa].b].x - verts[edges[aa].a].x;
-  float dy0 = verts[edges[aa].a].y - verts[edges[aa].b].y;
-  float dxdy0 = dy0 <= 0 ? -1 : dx0 / dy0;
-
-  float dx1 = verts[edges[bb].b].x - verts[edges[bb].a].x;
-  float dy1 = verts[edges[bb].a].y - verts[edges[bb].b].y;
-  float dxdy1 = dy1 <= 0 ? -1 : dx1 / dy1;
-
-  float dx2 = verts[edges[cc].b].x - verts[edges[cc].a].x;
-  float dy2 = verts[edges[cc].a].y - verts[edges[cc].b].y;
-  float dxdy2 = dy2 <= 0 ? -1 : dx2 / dy2;
-
-  int sy, ey, y;
-  // rasterize edge 1
-  sy = lround(verts[edges[bb].a].y);
-  ey = lround(verts[edges[bb].b].y);
-  float x0 = verts[edges[aa].a].x;
-  float x1 = verts[edges[bb].a].x;
-  vector<pair<int, int>> spans;
-
-  if (dxdy1 != -1)
-  {
-    for (y = sy; y >= ey; --y)
-    {
-      int a = lround(x0);
-      int b = lround(x1);
-      spans.push_back(make_pair(min(a, b), max(a, b)));
-      x0 += dxdy0;
-      x1 += dxdy1;
-    }
-  }
-
-  // rasterize edge 2
-  sy = lround(verts[edges[cc].a].y);
-  ey = lround(verts[edges[cc].b].y);
-
-  if (dxdy2 != -1)
-  {
-    for (y = sy; y >= ey; --y)
-    {
-      int a = lround(x0);
-      int b = lround(x1);
-      spans.push_back(make_pair(min(a, b), max(a, b)));
-      x0 += dxdy0;
-      x1 += dxdy2;
-    }
-  }
-
-  sy = lround(verts[edges[aa].a].y);
-  Rasterize(_camera._view * _camera._proj, Vector3(10, 30, 10), sy, spans, buf, &_numVerts);
-#endif
-// 
-//   // vector from far the near plane
-//   Vector3 nn = corners[5] - corners[4];
-//   int steps = (int)(nn.Length() / 10);
-//   nn.Normalize();
-//   DynamicFill(_camera._view * _camera._proj, corners[0], corners[1], nn, steps, Vector3(10, 30, 10), buf, &_numVerts);
-  //SlowAndSteady(1024, 1024, _camera._view * _camera._proj, Vector3(10, 30, 10), buf, &_numVerts);
+  RasterizeLandscape(buf);
   _ctx->Unmap(_landscapeGpuObjects._vb);
 
   _ctx->SetGpuObjects(_landscapeGpuObjects);
   _ctx->SetGpuState(_landscapeState);
 
-  //_ctx->Draw(_landscapeGpuObjects._numVerts, 0);
   _ctx->Draw(_numVerts, 0);
 
   // outline

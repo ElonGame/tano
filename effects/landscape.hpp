@@ -34,6 +34,7 @@ namespace tano
 #endif
 
     void UpdateCameraMatrix();
+    void RasterizeLandscape(float* buf);
 
     struct CBufferPerFrame
     {
