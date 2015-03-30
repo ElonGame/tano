@@ -26,7 +26,6 @@ namespace tano
     bool CreateVertexBuffer(u32 vbSize, u32 vbElemSize, const  void* vbData);
     bool CreateIndexBuffer(u32 ibSize, DXGI_FORMAT ibFormat, const  void* ibData);
 
-    // TODO: replace the flags with a list of semnatic/format tuples
     bool LoadShadersFromFile(
       const char* filename,
       const char* vsEntry,

@@ -17,6 +17,18 @@ cbuffer PerFrame : register(b0)
   float3 cameraUp;
 };
 
+struct VsBoidsIn
+{
+  float3 pos : Position;
+  float3 normal : Normal;
+};
+
+struct VsBoidsOut
+{
+  float4 pos : SV_Position;
+  float3 normal : Normal;
+};
+
 struct VsLandscapeIn
 {
   float3 pos : Position;
@@ -31,6 +43,7 @@ struct VsLandscapeOut
   float distance : TexCoord1;
 };
 
+static float4 BOID_COLOR = float4(0.4, 0.2, 0.2, 1);
 static float3 FOG_COLOR = 0.5 * float3(0.5, 0.6, 0.7);
 static float3 SUN_COLOR = 0.5 * float3(1.5, 0.9, 0.3);
 static float3 SUN_DIR = normalize(float3(-0.5, -0.2, -0.4));
@@ -126,6 +139,24 @@ float4 PsEdgeDetect(VSQuadOut input) : SV_Target
   float3 e = sqrt(gx*gx+gy*gy);
   float t = max(e.x, e.y);
   return t > 0.2 ? 1 : 0;
+}
+
+//------------------------------------------------------
+// boids
+//------------------------------------------------------
+VsBoidsOut VsBoids(VsBoidsIn input)
+{
+  VsBoidsOut output;
+  float4x4 mtxWorldViewProj = mul(world, viewProj);
+  output.pos = mul(float4(input.pos, 1), mtxWorldViewProj);
+  output.normal = mul(float4(input.normal, 0), world).xyz;
+  output.normal = input.normal;
+  return output;
+}
+
+float4 PsBoids(VsBoidsOut p) : SV_Target
+{
+  return BOID_COLOR * max(0,(dot(normalize(p.normal), float3(0,-1,0))));
 }
 
 //------------------------------------------------------

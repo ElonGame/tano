@@ -9,10 +9,12 @@ shaders/out/blur_BoxBlurXD.cso	d:/projects/tano/shaders/out/blur_BoxBlurXD.cso
 shaders/out/blur_CopyTransposeD.cso	d:/projects/tano/shaders/out/blur_CopyTransposeD.cso
 shaders/out/imgui_PsMainD.pso	d:/projects/tano/shaders/out/imgui_PsMainD.pso
 shaders/out/imgui_VsMainD.vso	d:/projects/tano/shaders/out/imgui_VsMainD.vso
+shaders/out/landscape_PsBoidsD.pso	d:/projects/tano/shaders/out/landscape_PsBoidsD.pso
 shaders/out/landscape_PsCompositeD.pso	d:/projects/tano/shaders/out/landscape_PsCompositeD.pso
 shaders/out/landscape_PsEdgeDetectD.pso	d:/projects/tano/shaders/out/landscape_PsEdgeDetectD.pso
 shaders/out/landscape_PsLandscapeD.pso	d:/projects/tano/shaders/out/landscape_PsLandscapeD.pso
 shaders/out/landscape_PsSkyD.pso	d:/projects/tano/shaders/out/landscape_PsSkyD.pso
+shaders/out/landscape_VsBoidsD.vso	d:/projects/tano/shaders/out/landscape_VsBoidsD.vso
 shaders/out/landscape_VsLandscapeD.vso	d:/projects/tano/shaders/out/landscape_VsLandscapeD.vso
 shaders/out/landscape_VsQuadD.vso	d:/projects/tano/shaders/out/landscape_VsQuadD.vso
 shaders/out/particle_tunnel_GsLinesD.gso	d:/projects/tano/shaders/out/particle_tunnel_GsLinesD.gso

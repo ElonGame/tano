@@ -16,6 +16,9 @@ using namespace bristol;
 
 extern "C" float stb_perlin_noise3(float x, float y, float z, int x_wrap=0, int y_wrap=0, int z_wrap=0);
 
+static const Vector3 ZERO3(0,0,0);
+
+int Landscape::Boid::nextId;
 
 void Vector3ToFloat(float* buf, const Vector3& v)
 {
@@ -136,13 +139,8 @@ bool Landscape::Init(const char* configFile)
   _camera._roll = _settings.camera.roll;
   _camera._pos = _settings.camera.pos;
 
-//   INIT_FATAL(RESOURCE_MANAGER.LoadFile("gfx/landscape1.png", &buf));
-//   int x, y, n;
-//   u8* data = stbi_load_from_memory((const u8*)buf.data(), (int)buf.size(), &x, &y, &n, 4);
-
   // create mesh from landscape
   u32 vertexFlags = VF_POS | VF_NORMAL;
-  //INIT(CreateBuffersFromBitmapFaceted(data, x, y, Vector3(10, 30, 10), &vertexFlags, &_landscapeGpuObjects));
   u32 vertexSize = sizeof(PosNormal);
   INIT(_landscapeGpuObjects.CreateDynamicVb(1024*1024*6*vertexSize, vertexSize));
 
@@ -155,6 +153,13 @@ bool Landscape::Init(const char* configFile)
   INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsComposite"));
   INIT(_compositeState.Create());
 
+  MeshLoader loader;
+  INIT(loader.Load("gfx/boids.boba"));
+  u32 boidsVertexFlags = 0;
+  INIT(CreateBuffersFromMesh(loader, "Pyramid", &boidsVertexFlags, &_boidsMesh));
+  INIT(_boidsMesh.LoadShadersFromFile("shaders/out/landscape", "VsBoids", nullptr, "PsBoids", boidsVertexFlags));
+  InitBoids();
+
   int w, h;
   INIT(_cbPerFrame.Create());
   GRAPHICS.GetBackBufferSize(&w, &h);
@@ -165,10 +170,146 @@ bool Landscape::Init(const char* configFile)
 }
 
 //------------------------------------------------------------------------------
+void Landscape::InitBoids()
+{
+  for (int i = 0; i < 10; ++i)
+  {
+    Boid boid;
+    boid.pos = Vector3(randf(-20.f, 20.f), 10, randf(-20.f, 20.f));
+    boid.force = 10 * Vector3(randf(-20.f, 20.f), 10, randf(-20.f, 20.f));
+    _boids.push_back(boid);
+  }
+}
+
+//------------------------------------------------------------------------------
+Vector3 Landscape::BoidSeparation(const Boid& boid)
+{
+  // return a force away from any close boids
+  Vector3 avg(0, 0, 0);
+
+  float cnt = 0.f;
+  for (const Boid& b : _boids)
+  {
+    if (b.id == boid.id)
+      continue;
+
+    float dist = Vector3::Distance(boid.pos, b.pos);
+    if (dist > _separationDistance)
+      continue;
+
+    Vector3 f = Normalize(boid.pos - b.pos);
+    avg += 1.f / dist * f;
+    cnt += 1.f;
+  }
+
+  if (cnt == 0.f)
+    return avg;
+
+  avg /= cnt;
+
+  // Reynolds uses: steering = desired - current
+  Vector3 desired = Normalize(avg) * _maxSpeed;
+  Vector3 steering = desired - boid.vel;
+  return steering;
+}
+
+//------------------------------------------------------------------------------
+Vector3 Landscape::BoidCohesion(const Boid& boid)
+{
+  // Return a force towards the average boid position
+  Vector3 avg(0, 0, 0);
+  
+  float cnt = 0.f;
+  for (const Boid& b : _boids)
+  {
+    if (b.id == boid.id)
+      continue;
+
+    float dist = Vector3::Distance(boid.pos, b.pos);
+    if (dist > _cohesionDistance)
+      continue;
+
+    avg += b.pos;
+    cnt += 1.f;
+  }
+
+  if (cnt == 0.f)
+    return avg;
+
+  avg /= cnt;
+  return Seek(boid, avg);
+}
+
+//------------------------------------------------------------------------------
+Vector3 Landscape::BoidAlignment(const Boid& boid)
+{
+  // return a force to align the boids velocity with the average velocity
+  Vector3 avg(0, 0, 0);
+
+  float cnt = 0.f;
+  for (const Boid& b : _boids)
+  {
+    if (b.id == boid.id)
+      continue;
+
+    float dist = Vector3::Distance(boid.pos, b.pos);
+    if (dist > _cohesionDistance)
+      continue;
+
+    avg += b.vel;
+    cnt += 1.f;
+  }
+
+  if (cnt == 0.f)
+    return avg;
+
+  avg /= cnt;
+  Vector3 desired = Normalize(avg) * _maxSpeed;
+  Vector3 steering = desired - boid.vel;
+  return steering;
+}
+
+//------------------------------------------------------------------------------
+Vector3 Landscape::Seek(const Boid& boid, const Vector3& target)
+{
+  Vector3 desiredVel = Normalize(target - boid.pos) * _maxSpeed;
+  return desiredVel - boid.vel;
+}
+
+//------------------------------------------------------------------------------
+void Landscape::UpdateBoids(const UpdateState& state)
+{
+  rmt_ScopedCPUSample(Boids_Update);
+
+  float dt = 1.0f / state.frequency;
+
+  for (Boid& b : _boids)
+  {
+    b.force = 
+      _separationScale * BoidSeparation(b) + 
+      _cohesionScale * BoidCohesion(b) + 
+      _alignmentScale * BoidAlignment(b);
+
+    // f = m * a
+    b.acc = b.force;
+
+    // v += dt * a;
+    b.vel += dt * b.acc;
+
+    // p += dt * v;
+    b.pos += dt * b.vel;
+
+    b.force = ZERO3;
+    b.acc = ZERO3;
+
+    //b.force = 1.f * -b.vel;
+  }
+}
+
+//------------------------------------------------------------------------------
 bool Landscape::Update(const UpdateState& state)
 {
-  rmt_ScopedCPUSample(Landscape_Update);
-
+  UpdateBoids(state);
   UpdateCameraMatrix();
   return true;
 }
@@ -203,9 +344,18 @@ void Landscape::UpdateCameraMatrix()
   _cbPerFrame.cameraLookAt = _camera._target;
   _cbPerFrame.cameraUp = _camera._up;
 }
+
+//------------------------------------------------------------------------------
+int Round(float v)
+{
+  return v < 0 ? (int)floor(v) : (int)ceil(v);
+}
+
 //------------------------------------------------------------------------------
 void Landscape::RasterizeLandscape(float* buf)
 {
+  rmt_ScopedCPUSample(Landscape_Rasterize);
+
   Vector3 corners[6];
   _camera.GetFrustumCenter(&corners[0]);
 
@@ -242,8 +392,8 @@ void Landscape::RasterizeLandscape(float* buf)
   }
 
   // create span array, and scan convert all the edges
-  int maxZ = lround(maxValues.z / 10);
-  int minZ = lround(minValues.z / 10);
+  int maxZ = Round(maxValues.z / 10);
+  int minZ = Round(minValues.z / 10);
   int sizeZ = maxZ - minZ + 1;
   vector<pair<int, int>> spans(sizeZ);
 
@@ -261,8 +411,8 @@ void Landscape::RasterizeLandscape(float* buf)
     Vector3& v0 = vv0.z > vv1.z ? vv0 : vv1;
     Vector3& v1 = vv0.z > vv1.z ? vv1 : vv0;
 
-    int sy = lround(v0.z);
-    int ey = lround(v1.z);
+    int sy = Round(v0.z);
+    int ey = Round(v1.z);
     int cy = sy - ey;
     if (cy == 0)
       continue;
@@ -276,7 +426,7 @@ void Landscape::RasterizeLandscape(float* buf)
 
     for (int y = sy; y >= ey; --y)
     {
-      int intX = lround(x);
+      int intX = Round(x);
       int yy = y - minZ;
       spans[yy].first = min(spans[yy].first, intX);
       spans[yy].second = max(spans[yy].second, intX);
@@ -296,6 +446,8 @@ bool Landscape::Render()
 
   ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateDepthBuffer);
 
+  _cbPerFrame.world = Matrix::Identity();
+
   u32 dimX, dimY;
   GRAPHICS.GetTextureSize(rt._handle, &dimX, &dimY);
   _cbPerFrame.dim.x = (float)dimX;
@@ -311,14 +463,32 @@ bool Landscape::Render()
   // Render the landscape
   _ctx->SetRenderTarget(rt._handle, nullptr);
 
-  float* buf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
-  RasterizeLandscape(buf);
-  _ctx->Unmap(_landscapeGpuObjects._vb);
 
-  _ctx->SetGpuObjects(_landscapeGpuObjects);
-  _ctx->SetGpuState(_landscapeState);
+  if (_drawLandscape)
+  {
+    float* buf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
+    RasterizeLandscape(buf);
+    _ctx->Unmap(_landscapeGpuObjects._vb);
 
-  _ctx->Draw(_numVerts, 0);
+    _ctx->SetGpuObjects(_landscapeGpuObjects);
+    _ctx->SetGpuState(_landscapeState);
+    _ctx->Draw(_numVerts, 0);
+  }
+  else
+  {
+    _ctx->SetGpuState(_landscapeState);
+  }
+
+  _ctx->SetGpuObjects(_boidsMesh);
+  for (const Boid& boid: _boids)
+  {
+    Vector3 vv = Normalize(boid.vel);
+    Matrix mtxRot = Matrix::Identity();
+    Matrix mtxTrans = Matrix::CreateTranslation(boid.pos);
+    _cbPerFrame.world = (mtxRot * mtxTrans).Transpose();
+    _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+    _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
+  }
 
   // outline
   ScopedRenderTarget rtOutline(DXGI_FORMAT_R16G16B16A16_FLOAT);
@@ -340,8 +510,13 @@ bool Landscape::InitAnimatedParameters()
 #if WITH_IMGUI
 void Landscape::RenderParameterSet()
 {
+  ImGui::Checkbox("Render landscape", &_drawLandscape);
   ImGui::InputInt("NumVerts", (int*)&_numVerts);
-  ImGui::InputFloat("Pitch", &_camera._pitch);
+  ImGui::SliderFloat("Separation", &_separationScale, 0.1f, 10.f);
+  ImGui::SliderFloat("Cohension", &_cohesionScale, 0.1f, 10.f);
+  ImGui::SliderFloat("Alignment", &_alignmentScale, 0.1f, 10.f);
+  ImGui::SliderFloat("SepDist", &_separationDistance, 1.f, 100.f);
+  ImGui::SliderFloat("CohDist", &_cohesionDistance, 1.f, 100.f);
 
   if (ImGui::Button("Reset"))
     Reset();
