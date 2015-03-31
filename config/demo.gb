@@ -16,7 +16,16 @@
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/landscape.gb';
+    force: false;
+  },
+  {
+    name: 'blob';
+    factory: 'blob';
+    start_time: 1300000;
+    end_time: 1300000;
+    settings: 'config/blob.gb';
     force: true;
   },
+
   ];
 }

@@ -157,9 +157,6 @@
     <ClCompile Include="..\graphics_context.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\cluster.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\mesh_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -169,11 +166,17 @@
     <ClCompile Include="..\lz4\lz4.c">
       <Filter>lz4</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\landscape.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\camera.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\landscape.cpp">
+      <Filter>effects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\cluster.cpp">
+      <Filter>effects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\blob.cpp">
+      <Filter>effects</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -330,9 +333,6 @@
     <ClInclude Include="..\graphics_context.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\effects\cluster.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\mesh_utils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -345,14 +345,20 @@
     <ClInclude Include="..\lz4\lz4.h">
       <Filter>lz4</Filter>
     </ClInclude>
-    <ClInclude Include="..\effects\landscape.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\stb\stb_image.h">
       <Filter>stb</Filter>
     </ClInclude>
     <ClInclude Include="..\camera.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\cluster.hpp">
+      <Filter>effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\landscape.hpp">
+      <Filter>effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\blob.hpp">
+      <Filter>effects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

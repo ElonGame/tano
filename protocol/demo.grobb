@@ -52,7 +52,27 @@ struct camera_settings
   vec3 pos = {0, 0, 0};
 };
 
+struct boid_settings
+{
+  float separation_scale = 1.5;
+  float cohesion_scale = 1.0;
+  float alignment_scale = 1.0;
+  float wander_scale = 10.0;
+  float follow_scale = 5.0;
+  float cohesion_distance = 500.0;
+  float separation_distance = 10.0;
+  float max_speed = 10.0;
+  float max_force = 10.0;
+  float waypoint_radius = 10.0;
+};
+
 struct landscape_settings
 {
   camera_settings camera;
+  boid_settings boids;
+};
+
+struct blob_settings
+{
+    camera_settings camera;
 };

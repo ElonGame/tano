@@ -1,9 +1,12 @@
+config/blob.gb	d:/projects/tano/config/blob.gb
 config/demo.gb	d:/projects/tano/config/demo.gb
 config/landscape.gb	d:/projects/tano/config/landscape.gb
 config/particle_tunnel.gb	d:/projects/tano/config/particle_tunnel.gb
 d:\projects\tano\app.gb	d:/projects/tano/app.gb
 gfx/line.png	d:/projects/tano/gfx/line.png
 gfx/particle1_pre.png	d:/projects/tano/gfx/particle1_pre.png
+shaders/out/blob_PsMeshD.pso	d:/projects/tano/shaders/out/blob_PsMeshD.pso
+shaders/out/blob_VsMeshD.vso	d:/projects/tano/shaders/out/blob_VsMeshD.vso
 shaders/out/blur_BlurTransposeD.cso	d:/projects/tano/shaders/out/blur_BlurTransposeD.cso
 shaders/out/blur_BoxBlurXD.cso	d:/projects/tano/shaders/out/blur_BoxBlurXD.cso
 shaders/out/blur_CopyTransposeD.cso	d:/projects/tano/shaders/out/blur_CopyTransposeD.cso

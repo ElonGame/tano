@@ -1,8 +1,19 @@
 {
   camera: {
-    yaw: 3.565073;
-    pitch: 0.636620;
+    yaw: 3.756059;
+    pitch: 0.604789;
     roll: 0.000000;
-    pos: { 6.262397, 18.687685, 29.166668 };
+    pos: { -64.603249, 205.146027, -24.972473 };
+  };
+  boids: {
+    separation_scale: 3.774000;
+    cohesion_scale: 1.724000;
+    alignment_scale: 1.763000;
+    wander_scale: 9.156000;
+    cohesion_distance: 500.000000;
+    separation_distance: 24.977001;
+    max_speed: 94.062004;
+    max_force: 22.070002;
+    waypoint_radius: 10.000000;
   };
 };

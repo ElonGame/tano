@@ -35,6 +35,14 @@ struct NoiseValues
 
 unordered_map<u32, NoiseValues> noiseCache;
 
+Vector3 NOISE_SCALE(10.f, 30.f, 10.f);
+
+float NoiseAtPoint(const Vector3& v)
+{
+  Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
+  return NOISE_SCALE.y * stb_perlin_noise3(256 * v.x / size.x, 0, 256 * v.z / size.z);
+}
+
 void Rasterize(
   const Vector3& scale,
   int startZ, const vector<pair<int, int>>& spans, 
@@ -174,11 +182,29 @@ void Landscape::InitBoids()
 {
   for (int i = 0; i < 10; ++i)
   {
-    Boid boid;
-    boid.pos = Vector3(randf(-20.f, 20.f), 10, randf(-20.f, 20.f));
-    boid.force = 10 * Vector3(randf(-20.f, 20.f), 10, randf(-20.f, 20.f));
-    _boids.push_back(boid);
+    Flock* flock = new Flock();
+    vector<Boid>& boids = flock->boids;
+
+    float s = 200.f;
+    Vector3 center(randf(-s, s), 0, randf(-s, s));
+    // Create a waypoint for the flock
+    float angle = randf(-XM_PI, XM_PI);
+    float dist = randf(100.f, 200.f);
+    flock->nextWaypoint = center + Vector3(dist * cos(angle), 0, dist * sin(angle));
+    flock->wanderAngle = angle;
+
+    // Create the boids
+    for (int j = 0; j < 50; ++j)
+    {
+      Boid boid(flock);
+      boid.pos = center + Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      boid.pos.y = 20 + NoiseAtPoint(boid.pos);
+      boid.force = 10 * Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      boids.push_back(boid);
+    }
+    _flocks.push_back(flock);
   }
+
 }
 
 //------------------------------------------------------------------------------
@@ -188,13 +214,13 @@ Vector3 Landscape::BoidSeparation(const Boid& boid)
   Vector3 avg(0, 0, 0);
 
   float cnt = 0.f;
-  for (const Boid& b : _boids)
+  for (const Boid& b : boid.flock->boids)
   {
     if (b.id == boid.id)
       continue;
 
     float dist = Vector3::Distance(boid.pos, b.pos);
-    if (dist > _separationDistance)
+    if (dist > _settings.boids.separation_distance)
       continue;
 
     Vector3 f = Normalize(boid.pos - b.pos);
@@ -208,7 +234,7 @@ Vector3 Landscape::BoidSeparation(const Boid& boid)
   avg /= cnt;
 
   // Reynolds uses: steering = desired - current
-  Vector3 desired = Normalize(avg) * _maxSpeed;
+  Vector3 desired = Normalize(avg) * _settings.boids.max_speed;
   Vector3 steering = desired - boid.vel;
   return steering;
 }
@@ -220,13 +246,13 @@ Vector3 Landscape::BoidCohesion(const Boid& boid)
   Vector3 avg(0, 0, 0);
   
   float cnt = 0.f;
-  for (const Boid& b : _boids)
+  for (const Boid& b : boid.flock->boids)
   {
     if (b.id == boid.id)
       continue;
 
     float dist = Vector3::Distance(boid.pos, b.pos);
-    if (dist > _cohesionDistance)
+    if (dist > _settings.boids.cohesion_distance)
       continue;
 
     avg += b.pos;
@@ -247,13 +273,13 @@ Vector3 Landscape::BoidAlignment(const Boid& boid)
   Vector3 avg(0, 0, 0);
 
   float cnt = 0.f;
-  for (const Boid& b : _boids)
+  for (const Boid& b : boid.flock->boids)
   {
     if (b.id == boid.id)
       continue;
 
     float dist = Vector3::Distance(boid.pos, b.pos);
-    if (dist > _cohesionDistance)
+    if (dist > _settings.boids.cohesion_distance)
       continue;
 
     avg += b.vel;
@@ -264,16 +290,43 @@ Vector3 Landscape::BoidAlignment(const Boid& boid)
     return avg;
 
   avg /= cnt;
-  Vector3 desired = Normalize(avg) * _maxSpeed;
+  Vector3 desired = Normalize(avg) * _settings.boids.max_speed;
   Vector3 steering = desired - boid.vel;
   return steering;
 }
 
 //------------------------------------------------------------------------------
+Vector3 Landscape::LandscapeFollow(const Boid& boid)
+{
+  // return a force to keep the boid above the ground
+
+  Vector3 probe = boid.pos + 0.001f * boid.vel;
+  Vector3 d = probe;
+  d.y = 20 + NoiseAtPoint(probe);
+
+  // if the probe is above the terrain height, move towards the average
+  if (probe.y > d.y)
+    d.y = 0.5f * (probe.y + d.y);
+
+  Vector3 desiredVel = Normalize(d - probe) * _settings.boids.max_speed;
+  return desiredVel - boid.vel;
+}
+
+//------------------------------------------------------------------------------
 Vector3 Landscape::Seek(const Boid& boid, const Vector3& target)
 {
-  Vector3 desiredVel = Normalize(target - boid.pos) * _maxSpeed;
+  Vector3 desiredVel = Normalize(target - boid.pos) * _settings.boids.max_speed;
   return desiredVel - boid.vel;
+}
+
+//------------------------------------------------------------------------------
+Vector3 Landscape::ClampVector(const Vector3& force, float maxLength)
+{
+  float len = force.Length();
+  if (len <= maxLength)
+    return force;
+
+  return maxLength * Normalize(force);
 }
 
 //------------------------------------------------------------------------------
@@ -283,26 +336,49 @@ void Landscape::UpdateBoids(const UpdateState& state)
 
   float dt = 1.0f / state.frequency;
 
-  for (Boid& b : _boids)
+  for (Flock* flock : _flocks)
   {
-    b.force = 
-      _separationScale * BoidSeparation(b) + 
-      _cohesionScale * BoidCohesion(b) + 
-      _alignmentScale * BoidAlignment(b);
+    // check if the flock has reached its waypoint
+    float closestDist = FLT_MAX;
+    for (Boid& b : flock->boids)
+    {
+      closestDist = min(closestDist, Vector3::Distance(b.pos, flock->nextWaypoint));
+      if (closestDist < _settings.boids.waypoint_radius)
+      {
+        // new waypoint
+        float angle = flock->wanderAngle + randf(-XM_PI/4, XM_PI/4);
+        float dist = randf(100.f, 200.f);
+        flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
+        flock->wanderAngle = angle;
+        break;
+      }
+    }
 
-    // f = m * a
-    b.acc = b.force;
+    for (Boid& b : flock->boids)
+    {
+      b.force =
+        _settings.boids.separation_scale * BoidSeparation(b) +
+        _settings.boids.cohesion_scale * BoidCohesion(b) +
+        _settings.boids.alignment_scale * BoidAlignment(b) +
+        _settings.boids.follow_scale * LandscapeFollow(b) +
+        _settings.boids.wander_scale * Seek(b, flock->nextWaypoint);
 
-    // v += dt * a;
-    b.vel += dt * b.acc;
+      b.force = ClampVector(b.force, _settings.boids.max_force);
 
-    // p += dt * v;
-    b.pos += dt * b.vel;
+      // f = m * a
+      b.acc = b.force;
 
-    b.force = ZERO3;
-    b.acc = ZERO3;
+      // v += dt * a;
+      b.vel = ClampVector(b.vel + dt * b.acc, _settings.boids.max_speed);
 
-    //b.force = 1.f * -b.vel;
+      // p += dt * v;
+      b.pos += dt * b.vel;
+
+      b.force = ZERO3;
+      b.acc = ZERO3;
+
+      //b.force = 1.f * -b.vel;
+    }
   }
 }
 
@@ -480,14 +556,24 @@ bool Landscape::Render()
   }
 
   _ctx->SetGpuObjects(_boidsMesh);
-  for (const Boid& boid: _boids)
+
+  for (const Flock* flock : _flocks)
   {
-    Vector3 vv = Normalize(boid.vel);
-    Matrix mtxRot = Matrix::Identity();
-    Matrix mtxTrans = Matrix::CreateTranslation(boid.pos);
-    _cbPerFrame.world = (mtxRot * mtxTrans).Transpose();
-    _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
-    _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
+    for (const Boid& boid: flock->boids)
+    {
+      Matrix mtxRot = Matrix::Identity();
+      Vector3 dir = Normalize(boid.vel);
+      Vector3 up(0,1,0);
+      Vector3 right = Cross(up, dir);
+      up = Cross(dir, right);
+      mtxRot.Backward(dir);
+      mtxRot.Up(up);
+      mtxRot.Right(right);
+      mtxRot.Translation(boid.pos);
+      _cbPerFrame.world = mtxRot.Transpose();
+      _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+      _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
+    }
   }
 
   // outline
@@ -512,15 +598,18 @@ void Landscape::RenderParameterSet()
 {
   ImGui::Checkbox("Render landscape", &_drawLandscape);
   ImGui::InputInt("NumVerts", (int*)&_numVerts);
-  ImGui::SliderFloat("Separation", &_separationScale, 0.1f, 10.f);
-  ImGui::SliderFloat("Cohension", &_cohesionScale, 0.1f, 10.f);
-  ImGui::SliderFloat("Alignment", &_alignmentScale, 0.1f, 10.f);
-  ImGui::SliderFloat("SepDist", &_separationDistance, 1.f, 100.f);
-  ImGui::SliderFloat("CohDist", &_cohesionDistance, 1.f, 100.f);
+  ImGui::SliderFloat("Separation", &_settings.boids.separation_scale, 0.1f, 10.f);
+  ImGui::SliderFloat("Cohension", &_settings.boids.cohesion_scale, 0.1f, 10.f);
+  ImGui::SliderFloat("Alignment", &_settings.boids.alignment_scale, 0.1f, 10.f);
+  ImGui::SliderFloat("Wander", &_settings.boids.wander_scale, 1.f, 25.f);
+  ImGui::SliderFloat("Follow", &_settings.boids.follow_scale, 1.f, 25.f);
+  ImGui::SliderFloat("MaxSpeed", &_settings.boids.max_speed, 5.f, 100.f);
+  ImGui::SliderFloat("MaxForce", &_settings.boids.max_force, 5.f, 100.f);
+  ImGui::SliderFloat("SepDist", &_settings.boids.separation_distance, 1.f, 100.f);
+  ImGui::SliderFloat("CohDist", &_settings.boids.cohesion_distance, 1.f, 100.f);
 
   if (ImGui::Button("Reset"))
     Reset();
-
 }
 #endif
 

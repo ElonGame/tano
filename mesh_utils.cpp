@@ -30,19 +30,22 @@ namespace tano
       float* dst = buf.data();
       for (u32 i = 0; i < numVerts; ++i)
       {
+        // Copy a vertex at a time (dst[0], dst[1], dst[2] etc refers to x, y, z)
         dst[0] = mesh->verts[i*3+0];
         dst[1] = mesh->verts[i*3+1];
         dst[2] = mesh->verts[i*3+2];
         dst += 3;
 
-        if (vertexFormat & VF_NORMAL) {
+        if (vertexFormat & VF_NORMAL)
+        {
           dst[0] = mesh->normals[i*3+0];
           dst[1] = mesh->normals[i*3+1];
           dst[2] = mesh->normals[i*3+2];
           dst += 3;
         }
 
-        if (vertexFormat & VF_TEX2_0) {
+        if (vertexFormat & VF_TEX2_0)
+        {
           dst[0] = mesh->uv[i*2+0];
           dst[1] = mesh->uv[i*2+1];
           dst += 2;

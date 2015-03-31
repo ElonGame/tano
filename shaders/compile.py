@@ -18,6 +18,7 @@ vs = {
     'imgui' : ['VsMain'],
     'quad' : ['VsMain'],
     'cluster' : ['VsMesh'],
+    'blob' : ['VsMesh'],
     'landscape' : ['VsQuad', 'VsLandscape', 'VsBoids'],
 }
 
@@ -26,6 +27,7 @@ ps = {
     'raymarcher' : ['PsRaymarcher'],
     'imgui' : ['PsMain'],
     'cluster' : ['PsMesh'],
+    'blob' : ['PsMesh'],
     'landscape' : ['PsLandscape', 'PsEdgeDetect', 'PsComposite', 'PsSky', 'PsBoids'],
 }
 

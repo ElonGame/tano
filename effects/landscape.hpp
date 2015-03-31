@@ -43,34 +43,33 @@ namespace tano
     Vector3 BoidSeparation(const Boid& boid);
     Vector3 BoidCohesion(const Boid& boid);
     Vector3 BoidAlignment(const Boid& boid);
+    Vector3 LandscapeFollow(const Boid& boid);
     Vector3 Seek(const Boid& boid, const Vector3& target);
 
-    float _separationScale = 1.5f;
-    float _cohesionScale = 1.f;
-    float _alignmentScale = 1.f;
-    float _cohesionDistance = 500.f;
-    float _separationDistance = 10.f;
-    float _maxSpeed = 10.f;
+    Vector3 ClampVector(const Vector3& force, float maxLength);
 
+    struct Flock;
     struct Boid
     {
-      Boid() : id(nextId++) {}
+      Boid(Flock* flock) : flock(flock), id(nextId++) {}
       Vector3 pos = Vector3(0, 0, 0);
       Vector3 vel = Vector3(0, 0, 0);
       Vector3 acc = Vector3(0, 0, 0);
       Vector3 force = Vector3(0, 0, 0);
       float mass = 1;
+      Flock* flock = nullptr;
       int id;
-      int flockId;
       static int nextId;
     };
 
     struct Flock
     {
-
+      vector<Boid> boids;
+      Vector3 nextWaypoint;
+      float wanderAngle = 0;
     };
 
-    vector<Boid> _boids;
+    vector<Flock*> _flocks;
 
     struct CBufferPerFrame
     {

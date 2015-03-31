@@ -10,6 +10,7 @@
 #include "effects/raymarcher.hpp"
 #include "effects/cluster.hpp"
 #include "effects/landscape.hpp"
+#include "effects/blob.hpp"
 
 #if WITH_IMGUI
 #include "imgui_helpers.hpp"
@@ -134,6 +135,7 @@ bool App::Init(HINSTANCE hinstance)
   RayMarcher::Register();
   Cluster::Register();
   Landscape::Register();
+  Blob::Register();
 
   INIT(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
 

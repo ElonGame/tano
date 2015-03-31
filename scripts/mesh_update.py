@@ -12,7 +12,7 @@ SETTINGS = {
 	'Windows': { 
 		'input_dir': 'd:/onedrive/tano/c4d', 
 		'output_dir': 'd:/projects/tano/gfx',
-		'conv': 'D:/projects/melange_exporter/_win32/Release/exporter.exe'
+		'conv': 'D:/projects/melange_exporter/_win32/x64/Release/exporter.exe'
 	}
 }
 
