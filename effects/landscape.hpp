@@ -84,6 +84,7 @@ namespace tano
       float pad2;
       Vector3 cameraUp;
     };
+
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 
     GpuState _landscapeState;

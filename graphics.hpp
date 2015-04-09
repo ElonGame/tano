@@ -126,7 +126,7 @@ namespace tano
         ObjectHandle* gs,
         ObjectHandle* ps,
         ObjectHandle* inputLayout,
-        u32 vertexFlags,
+        vector<D3D11_INPUT_ELEMENT_DESC>* elements,
         const char* vsEntry = "VsMain",
         const char* gsEntry = "GsMain",
         const char* psEntry = "PsMain");

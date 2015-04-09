@@ -31,7 +31,8 @@ namespace tano
       const char* vsEntry,
       const char* gsEntry,
       const char* psEntry,
-      u32 flags = 0);
+      u32 flags = 0,
+      vector<D3D11_INPUT_ELEMENT_DESC>* elements = nullptr);
 
     D3D11_PRIMITIVE_TOPOLOGY _topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 

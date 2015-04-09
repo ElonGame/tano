@@ -91,8 +91,13 @@ bool InitDeviceD3D()
 #endif
 
   // Create shaders
-  u32 vertexFlags = VertexFlags::VF_POS_XY | VertexFlags::VF_COLOR_U32 | VertexFlags::VF_TEX2_0 | VertexFlags::VF_ORDER_TEX_COL;
-  INIT(g_gpuObjects.LoadShadersFromFile("shaders/out/imgui", "VsMain", nullptr, "PsMain", vertexFlags));
+  vector<D3D11_INPUT_ELEMENT_DESC> inputDesc = { 
+    CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32_FLOAT),
+    CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
+    CD3D11_INPUT_ELEMENT_DESC("COLOR", DXGI_FORMAT_R8G8B8A8_UNORM),
+  };
+  INIT(g_gpuObjects.LoadShadersFromFile("shaders/out/imgui", "VsMain", nullptr, "PsMain", 
+    0, &inputDesc));
 
   // Create the constant buffer
   INIT(g_cb.Create());

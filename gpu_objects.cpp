@@ -67,17 +67,35 @@ bool GpuObjects::LoadShadersFromFile(
     const char* vsEntry,
     const char* gsEntry,
     const char* psEntry,
-    u32 flags)
+    u32 flags,
+    vector<D3D11_INPUT_ELEMENT_DESC>* elements)
 {
-  return GRAPHICS.LoadShadersFromFile(filename, 
-      vsEntry ? &_vs : nullptr, 
-      gsEntry ? &_gs : nullptr,
-      psEntry ? &_ps : nullptr, 
-      flags ? &_layout : nullptr, 
-      flags,
-      vsEntry,
-      gsEntry,
-      psEntry);
+  ObjectHandle* vs = vsEntry ? &_vs : nullptr;
+  ObjectHandle* gs = gsEntry ? &_gs : nullptr;
+  ObjectHandle* ps = psEntry ? &_ps : nullptr;
+  ObjectHandle* layout = (flags || elements) ? &_layout : nullptr;
+
+  if (flags || elements)
+  {
+    if (flags)
+    {
+      vector<D3D11_INPUT_ELEMENT_DESC> desc;
+      VertexFlagsToLayoutDesc(flags, &desc);
+      return GRAPHICS.LoadShadersFromFile(filename, vs, gs, ps, layout, &desc, vsEntry, gsEntry, psEntry);
+    }
+
+    // fix up the offsets on the elements
+    u32 ofs = 0;
+    for (D3D11_INPUT_ELEMENT_DESC& e : *elements)
+    {
+      e.AlignedByteOffset = ofs;
+      ofs += SizeFromFormat(e.Format);
+    }
+    return GRAPHICS.LoadShadersFromFile(filename, vs, gs, ps, layout, elements, vsEntry, gsEntry, psEntry);
+  }
+
+
+  return GRAPHICS.LoadShadersFromFile(filename, vs, gs, ps, layout, nullptr, vsEntry, gsEntry, psEntry);
 }
 
 //------------------------------------------------------------------------------

@@ -1065,7 +1065,7 @@ bool Graphics::LoadShadersFromFile(
     ObjectHandle* gs,
     ObjectHandle* ps,
     ObjectHandle* inputLayout,
-    u32 vertexFlags,
+    vector<D3D11_INPUT_ELEMENT_DESC>* elements,
     const char* vsEntry,
     const char* gsEntry,
     const char* psEntry)
@@ -1102,9 +1102,7 @@ bool Graphics::LoadShadersFromFile(
         _vertexShaders.Update(vsHandle, vs);
         if (inputLayout)
         {
-          vector<D3D11_INPUT_ELEMENT_DESC> desc;
-          VertexFlagsToLayoutDesc(vertexFlags, &desc);
-          *inputLayout = GRAPHICS.CreateInputLayout(desc, buf);
+          *inputLayout = GRAPHICS.CreateInputLayout(*elements, buf);
           if (!inputLayout->IsValid())
             return false;
         }

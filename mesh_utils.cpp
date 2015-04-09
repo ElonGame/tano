@@ -14,7 +14,8 @@ namespace tano
   {
     for (const MeshLoader::MeshElement* mesh : loader.meshes)
     {
-      if (strcmp(name, mesh->name) != 0)
+      // if a name is given, check against this
+      if (name && strcmp(name, mesh->name) != 0)
         continue;
 
       // mesh found, allocate the vertex/index buffer

@@ -9,7 +9,8 @@ import glob
 import subprocess
 import collections
 
-out_dir = 'out'
+SHADER_DIR = os.path.join('..', 'shaders')
+OUT_DIR = os.path.join(SHADER_DIR, 'out' )
 
 ## shaders and entry points
 vs = {
@@ -20,6 +21,7 @@ vs = {
     'cluster' : ['VsMesh'],
     'blob' : ['VsMesh'],
     'landscape' : ['VsQuad', 'VsLandscape', 'VsBoids'],
+    'lines': ['VsMain']
 }
 
 ps = {
@@ -29,6 +31,7 @@ ps = {
     'cluster' : ['PsMesh'],
     'blob' : ['PsMesh'],
     'landscape' : ['PsLandscape', 'PsEdgeDetect', 'PsComposite', 'PsSky', 'PsBoids'],
+    'lines': ['PsMain']
 }
 
 cs = {
@@ -74,48 +77,51 @@ def compile(data):
     obj_ext = data['obj_ext']
     asm_ext = data['asm_ext']
 
-    for filename, entry_points in data['shaders'].iteritems():
-        hlsl_file_time = os.path.getmtime(filename + '.hlsl')
+    for basename, entry_points in data['shaders'].iteritems():
+        shader_file = os.path.join(SHADER_DIR, basename)
+        hlsl_file_time = os.path.getmtime(shader_file + '.hlsl')
 
         # if the compilation has failed, don't try again if the hlsl file hasn't updated
-        if filename in last_fail_time and last_fail_time[filename] == hlsl_file_time:
+        if shader_file in last_fail_time and last_fail_time[shader_file] == hlsl_file_time:
             continue
 
         # check for old or missing files (each entry point gets its own file)
-        for output, entry_point, is_debug in generate_files(filename, entry_points, obj_ext, asm_ext):
-            if filetime_is_newer(hlsl_file_time, os.path.join(out_dir, output)):
-                out_name = os.path.join(out_dir, filename + '_' + entry_point)
+        for output, entry_point, is_debug in generate_files(basename, entry_points, obj_ext, asm_ext):
+            if filetime_is_newer(hlsl_file_time, os.path.join(OUT_DIR, output)):
+                out_name = os.path.join(OUT_DIR, basename + '_' + entry_point)
 
                 if is_debug:
                     # create debug shader
                     # returns 0 on success, > 0 otherwise
                     res = subprocess.call([
-                        'fxc', 
+                        'fxc',
+                        '/nologo',
                         '/T%s_5_0' % profile,
                         '/Od', 
                         '/Zi', 
                         '/E%s' % entry_point, 
                         '/Fo%sD.%s' % (out_name, obj_ext),
                         '/Fc%sD.%s' % (out_name, asm_ext),
-                        '%s.hlsl' % filename])
+                        '%s.hlsl' % shader_file])
                 else:
                     # create optimized shader
                     res = subprocess.call([
                         'fxc', 
+                        '/nologo',
                         '/T%s_5_0' % profile,
                         '/O3',
                         '/E%s' % entry_point, 
                         '/Fo%s.%s' % (out_name, obj_ext),
                         '/Fc%s.%s' % (out_name, asm_ext),
-                        '%s.hlsl' % filename])
+                        '%s.hlsl' % shader_file])
 
                 if res:
                     # if compilation failed, don't try again until the .hlsl file has been updated
-                    last_fail_time[filename] = hlsl_file_time
-                elif filename in last_fail_time: 
-                    del(last_fail_time[filename])
+                    last_fail_time[shader_file] = hlsl_file_time
+                elif shader_file in last_fail_time: 
+                    del(last_fail_time[shader_file])
 
-safe_mkdir(out_dir)
+safe_mkdir(OUT_DIR)
 
 while True:
     compile(vs_data)

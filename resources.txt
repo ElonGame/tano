@@ -20,6 +20,8 @@ shaders/out/landscape_PsSkyD.pso	d:/projects/tano/shaders/out/landscape_PsSkyD.p
 shaders/out/landscape_VsBoidsD.vso	d:/projects/tano/shaders/out/landscape_VsBoidsD.vso
 shaders/out/landscape_VsLandscapeD.vso	d:/projects/tano/shaders/out/landscape_VsLandscapeD.vso
 shaders/out/landscape_VsQuadD.vso	d:/projects/tano/shaders/out/landscape_VsQuadD.vso
+shaders/out/lines_PsMainD.pso	d:/projects/tano/shaders/out/lines_PsMainD.pso
+shaders/out/lines_VsMainD.vso	d:/projects/tano/shaders/out/lines_VsMainD.vso
 shaders/out/particle_tunnel_GsLinesD.gso	d:/projects/tano/shaders/out/particle_tunnel_GsLinesD.gso
 shaders/out/particle_tunnel_PsBackgroundD.pso	d:/projects/tano/shaders/out/particle_tunnel_PsBackgroundD.pso
 shaders/out/particle_tunnel_PsCompositeD.pso	d:/projects/tano/shaders/out/particle_tunnel_PsCompositeD.pso

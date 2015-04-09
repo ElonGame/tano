@@ -27,6 +27,10 @@ namespace tano
 
   private:
 
+    void InitLines();
+    ObjectHandle _lineTexture;
+    GpuObjects _lineObjects;
+
     void Reset();
 #if WITH_IMGUI
     void RenderParameterSet();
@@ -47,6 +51,10 @@ namespace tano
       Vector3 cameraLookAt;
       float pad2;
       Vector3 cameraUp;
+      float pad3;
+      Vector4 cook = Vector4(0.1f, 0.1f, 0, 0);
+      //float roughness_value = 0.1f;
+      //float ref_at_norm_incidence = 0.1f;
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 

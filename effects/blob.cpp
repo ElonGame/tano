@@ -51,7 +51,7 @@ bool Blob::Init(const char* configFile)
   MeshLoader loader;
   INIT(loader.Load("gfx/blob1.boba"));
   u32 blobVertexFlags = 0;
-  INIT(CreateBuffersFromMesh(loader, "Blob", &blobVertexFlags, &_blobGpuObjects));
+  INIT(CreateBuffersFromMesh(loader, nullptr, &blobVertexFlags, &_blobGpuObjects));
   INIT(_blobGpuObjects.LoadShadersFromFile("shaders/out/blob", "VsMesh", nullptr, "PsMesh", blobVertexFlags));
   INIT(_blobState.Create());
 
@@ -61,7 +61,34 @@ bool Blob::Init(const char* configFile)
   _cbPerFrame.dim.x = (float)w;
   _cbPerFrame.dim.y = (float)h;
 
+  InitLines();
+  INIT(_lineObjects.LoadShadersFromFile("shaders/out/lines", "VsMain", nullptr, "PsMain"));
+
+
   END_INIT_SEQUENCE();
+}
+
+//------------------------------------------------------------------------------
+void Blob::InitLines()
+{
+  int textureSize = 16;
+  vector<u32> bytes(textureSize * textureSize);
+
+  for (int i = 0; i < textureSize; ++i)
+  {
+    for (int j = 0; j < textureSize; ++j)
+    {
+      float t = sqrt(float(i*i) + float(j*j)) / float(textureSize);
+      t = Clamp(0.f, 1.f, t);
+      t = SmoothStep(0.0f, 1.0f, t);
+      u32 val = 255 - (u32)(255.0f * t);
+
+      bytes[i*textureSize+j] = 0x00ffffff + (val<<24);
+    }
+  }
+
+  _lineTexture = GRAPHICS.CreateTexture(
+    textureSize, textureSize, DXGI_FORMAT_R8G8B8A8_UNORM, bytes.data(), textureSize * sizeof(u32));
 }
 
 //------------------------------------------------------------------------------
@@ -107,10 +134,11 @@ bool Blob::Render()
 {
   rmt_ScopedCPUSample(Blob_Render);
 
-  static Color black(0, 0, 0, 0);
+  static Color black(.1f, .1f, .1f, 0);
 
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
   _ctx->SetGpuObjects(_blobGpuObjects);
   _ctx->SetGpuState(_blobState);
@@ -129,6 +157,9 @@ bool Blob::InitAnimatedParameters()
 #if WITH_IMGUI
 void Blob::RenderParameterSet()
 {
+  ImGui::SliderFloat("roughness", &_cbPerFrame.cook.x, 0.f, 2.0f);
+  ImGui::SliderFloat("F0", &_cbPerFrame.cook.y, 0.f, 1.f);
+
   if (ImGui::Button("Reset"))
     Reset();
 }
