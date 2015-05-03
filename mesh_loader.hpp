@@ -28,8 +28,8 @@ namespace tano
       struct MaterialGroup
       {
         u32 materialId;
-        u32 startTri;
-        u32 numTris;
+        u32 startIndex;
+        u32 numIndices;
       };
 
       const char* name;

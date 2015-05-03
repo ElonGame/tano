@@ -9,6 +9,15 @@ extern "C" float stb_perlin_noise3(float x, float y, float z, int x_wrap=0, int 
 
 namespace tano
 {
+
+  //------------------------------------------------------------------------------
+  bool CreateBufferFromScene(const MeshLoader& loader)
+  {
+    for (const MeshLoader::MeshBlob* mesh : loader.meshes)
+    {
+    }
+  }
+
   //------------------------------------------------------------------------------
   bool CreateBuffersFromMesh(const MeshLoader& loader, const char* name, u32* vertexFlags, GpuObjects* objects)
   {

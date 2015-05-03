@@ -30,6 +30,7 @@ bool MeshLoader::Load(const char* filename)
     materials.push_back(materialBlob);
     ptr += materialBlob->blobSize;
   }
+
   return true;
 }
 
