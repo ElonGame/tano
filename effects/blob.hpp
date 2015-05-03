@@ -28,8 +28,6 @@ namespace tano
   private:
 
     void InitLines();
-    ObjectHandle _lineTexture;
-    GpuObjects _lineObjects;
 
     void Reset();
 #if WITH_IMGUI
@@ -52,11 +50,28 @@ namespace tano
       float pad2;
       Vector3 cameraUp;
       float pad3;
-      Vector4 cook = Vector4(0.1f, 0.1f, 0, 0);
-      //float roughness_value = 0.1f;
-      //float ref_at_norm_incidence = 0.1f;
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
+
+    void AddLine(const Vector3& p0, const Vector3& p1, float radius, float aspectRatio);
+
+    struct LineElement
+    {
+      Vector3 p0;
+      Vector3 p1;
+      float radius;
+      float aspectRatio;
+      Vector4 weights;
+    };
+
+    static const u32 MAX_LINES = 16000;
+    LineElement _lineElements[MAX_LINES];
+    u32 _numLineTris = 0;
+    u32 _vtxIndex = 0;
+
+    ObjectHandle _lineTexture;
+    GpuObjects _lineObjects;
+    ObjectHandle _lineSampler;
 
     GpuState _blobState;
     GpuObjects _blobGpuObjects;

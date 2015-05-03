@@ -86,9 +86,11 @@ bool GpuObjects::LoadShadersFromFile(
 
     // fix up the offsets on the elements
     u32 ofs = 0;
+    map<string, u32> semanticIndex;
     for (D3D11_INPUT_ELEMENT_DESC& e : *elements)
     {
       e.AlignedByteOffset = ofs;
+      e.SemanticIndex = semanticIndex[e.SemanticName]++;
       ofs += SizeFromFormat(e.Format);
     }
     return GRAPHICS.LoadShadersFromFile(filename, vs, gs, ps, layout, elements, vsEntry, gsEntry, psEntry);

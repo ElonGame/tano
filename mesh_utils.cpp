@@ -12,14 +12,14 @@ namespace tano
   //------------------------------------------------------------------------------
   bool CreateBuffersFromMesh(const MeshLoader& loader, const char* name, u32* vertexFlags, GpuObjects* objects)
   {
-    for (const MeshLoader::MeshElement* mesh : loader.meshes)
+    for (const MeshLoader::MeshBlob* mesh : loader.meshes)
     {
       // if a name is given, check against this
       if (name && strcmp(name, mesh->name) != 0)
         continue;
 
       // mesh found, allocate the vertex/index buffer
-      u32 vertexFormat = mesh->GetVertexFormat();
+      u32 vertexFormat = MeshLoader::GetVertexFormat(*mesh);
       if (vertexFlags)
         *vertexFlags = vertexFormat;
 
@@ -82,13 +82,13 @@ namespace tano
   //------------------------------------------------------------------------------
   bool CreateBuffersFromMeshFaceted(const MeshLoader& loader, const char* name, u32* vertexFlags, GpuObjects* objects)
   {
-    for (const MeshLoader::MeshElement* mesh : loader.meshes)
+    for (const MeshLoader::MeshBlob* mesh : loader.meshes)
     {
       if (strcmp(name, mesh->name) != 0)
         continue;
 
       // mesh found, allocate the vertex/index buffer
-      u32 vertexFormat = mesh->GetVertexFormat();
+      u32 vertexFormat = MeshLoader::GetVertexFormat(*mesh);
       // Note, normals are automatically added, so adjust vertexFlags to show this
       vertexFormat |= VF_NORMAL;
 

@@ -395,7 +395,7 @@ void GraphicsContext::SetUnorderedAccessView(ObjectHandle h, Color* clearColor)
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetSamplerState(ObjectHandle h, u32 slot, ShaderType shaderType)
+void GraphicsContext::SetSamplerState(ObjectHandle h, ShaderType shaderType, u32 slot)
 {
   ID3D11SamplerState* samplerState = GRAPHICS._sampler_states.Get(h);
 

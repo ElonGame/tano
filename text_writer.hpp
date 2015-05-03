@@ -14,9 +14,9 @@ namespace tano
       void CalcBounds();
       float width = 0;
       float height = 0;
-      MeshLoader::MeshElement* outline = nullptr;
-      MeshLoader::MeshElement* cap1 = nullptr;
-      MeshLoader::MeshElement* cap2 = nullptr;
+      MeshLoader::MeshBlob* outline = nullptr;
+      MeshLoader::MeshBlob* cap1 = nullptr;
+      MeshLoader::MeshBlob* cap2 = nullptr;
     };
 
     vector<Letter> _letters;

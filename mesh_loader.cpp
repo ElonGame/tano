@@ -9,7 +9,7 @@ bool MeshLoader::Load(const char* filename)
   if (!LoadFile(filename, &buf))
     return false;
 
-  const Scene* scene = (const Scene*)&buf[0];
+  const SceneBlob* scene = (const SceneBlob*)&buf[0];
 
   if (strncmp(scene->id, "boba", 4) != 0)
     return false;
@@ -17,12 +17,18 @@ bool MeshLoader::Load(const char* filename)
   ProcessFixups(scene->fixupOffset);
 
   // add meshes
-  char* ptr = &buf[scene->elementOffset[(u32)SceneElement::Mesh]];
-  u32 numMeshes = *(u32*)ptr;
-  MeshElement* element = (MeshElement*)(ptr + 4);
-  for (u32 i = 0; i < numMeshes; ++i, ++element)
+  MeshBlob* meshBlob = (MeshBlob*)&buf[scene->meshDataStart];
+  for (u32 i = 0; i < scene->numMeshes; ++i, ++meshBlob)
   {
-    meshes.push_back(element);
+    meshes.push_back(meshBlob);
+  }
+
+  char* ptr = &buf[scene->materialDataStart];
+  for (u32 i = 0; i < scene->numMaterials; ++i)
+  {
+    MaterialBlob* materialBlob = (MaterialBlob*)ptr;
+    materials.push_back(materialBlob);
+    ptr += materialBlob->blobSize;
   }
   return true;
 }
@@ -40,18 +46,20 @@ void MeshLoader::ProcessFixups(u32 fixupOffset)
   u32* fixupList = (u32*)&buf[fixupOffset];
   u32 numFixups = *fixupList++;
   intptr_t base = (intptr_t)&buf[0];
+  u32* base32 = (u32*)base;
   for (u32 i = 0; i < numFixups; ++i)
   {
-    u32 fixup = fixupList[i];
+    // get the offset in the file that needs to be adjusted
+    u32 src = fixupList[i];
 
-    // this is a bit cheesy, but the offsets are stored as 32 bits
-    u32 ofs = *(u32*)(base + fixup);
-    *(intptr_t*)(base + fixup) = base + ofs;
+    // adjust the offset from being a relativer pointer into the file
+    // to being an absolute ptr into memory
+    *(intptr_t*)(base + src) += base;
   }
 }
 
 //------------------------------------------------------------------------------
-u32 MeshLoader::MeshElement::GetVertexFormat() const
+u32 MeshLoader::GetVertexFormat(const MeshBlob& mesh)
 {
-  return (verts ? VF_POS : 0) | (normals ? VF_NORMAL : 0) | (uv ? VF_TEX2_0 : 0);
+  return (mesh.verts ? VF_POS : 0) | (mesh.normals ? VF_NORMAL : 0) | (mesh.uv ? VF_TEX2_0 : 0);
 }

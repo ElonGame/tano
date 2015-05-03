@@ -11,8 +11,8 @@ SETTINGS = {
 	'Darwin': { 'dir': '/Users/dooz/OneDrive/gfx', 'conv': None },
 	'Windows': { 
 		'input_dir': 'd:/onedrive/tano/c4d', 
-		'output_dir': 'd:/projects/tano/gfx',
-		'conv': 'D:/projects/melange_exporter/_win32/x64/Release/exporter.exe'
+		'output_dir': 'c:/projects/tano/gfx',
+		'conv': 'c:/projects/melange_exporter/_win32/x64/Release/exporter.exe'
 	}
 }
 
@@ -34,21 +34,31 @@ if conv is None:
 	print 'Unable to find converter'
 	exit(1)
 
+conv_last_time = os.path.getmtime(conv)
+
 while True:
+	# check if the converter has been updated
+	conv_cur_time = os.path.getmtime(conv)
+	new_converter = conv_cur_time > conv_last_time
+	conv_last_time = conv_cur_time
+
 	for c4d_name in glob.glob(os.path.join(input_dir, '*.c4d')):
 		# check if the converted mesh is older than the c4d file
 		c4d_time = os.path.getmtime(c4d_name)
 		path, filename = os.path.split(c4d_name)
 		head, tail = os.path.splitext(filename)
 		mesh_name = os.path.join(output_dir, head) + '.boba'
-		should_convert = False
+		should_convert = new_converter
 		try:
 			mesh_time =  os.path.getmtime(mesh_name)
-			should_convert = c4d_time > mesh_time
+			should_convert = should_convert or c4d_time > mesh_time
 		except:
 			should_convert = True
 
 		if should_convert:
 			print '[%s] Converting: %s -> %s' % (time.ctime(), c4d_name, mesh_name)
-			res = subprocess.call([conv, c4d_name, mesh_name])
+			try:
+				res = subprocess.call([conv, c4d_name, mesh_name])
+			except WindowsError:
+				pass
 	time.sleep(1)

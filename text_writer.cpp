@@ -37,7 +37,7 @@ bool TextWriter::Init(const char* filename)
   for (u32 i = 0; i < _loader.meshes.size(); ++i)
   {
     // Letter mesh names are ['A'..'Z']
-    MeshLoader::MeshElement* e = _loader.meshes[i];
+    MeshLoader::MeshBlob* e = _loader.meshes[i];
     int t = (int)e->name[0] - 'A';
     if (strlen(e->name) == 1 && t >= 0 && t < (int)numLetters)
     {
@@ -132,7 +132,7 @@ void TextWriter::GenerateTris(
       // The actual mesh data uses indices, so we expand those here
       if (outlineTris)
       {
-        MeshLoader::MeshElement* elem = letter.outline;
+        MeshLoader::MeshBlob* elem = letter.outline;
         u32 numIndices = elem->numIndices;
         outlineTris->resize(outlineTris->size() + numIndices);
         for (u32 j = 0; j < numIndices; ++j)
@@ -149,7 +149,7 @@ void TextWriter::GenerateTris(
 
       if (capTris)
       {
-        MeshLoader::MeshElement* elem = letter.cap1;
+        MeshLoader::MeshBlob* elem = letter.cap1;
         u32 numIndices = elem->numIndices;
         capTris->resize(capTris->size() + numIndices);
         for (u32 j = 0; j < numIndices; ++j)

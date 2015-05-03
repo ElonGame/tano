@@ -1,10 +1,7 @@
 #include "common.hlsl"
 
 Texture2D Texture0 : register(t0);
-Texture2D Texture1 : register(t1);
-Texture2D Texture2 : register(t2);
-sampler PointSampler : register(s0);
-sampler LinearSampler : register(s1);
+sampler Sampler : register(s0);
 
 cbuffer PerFrame : register(b0)
 {
@@ -22,9 +19,9 @@ struct VsLinesIn
 {
   float3 pos0 : Position0;
   float3 pos1 : Position1;
-  float4 weights : TexCoord0;
-  float radius : TexCoord1;
-  float aspect : TexCoord2;
+  float radius : TexCoord0;
+  float aspect : TexCoord1;
+  float4 weights : TexCoord2;
 };
 
 struct VsLinesOut
@@ -45,6 +42,9 @@ VsLinesOut VsMain(VsLinesIn input)
   float aspect = input.aspect;
   float radius = input.radius;
   float4 weights = input.weights;
+
+  aspect = 1;
+  radius = 1;
 
     // Transform the input points.
   float4 p0 = mul(float4(input.pos0, 1.0f), worldViewProj);
@@ -105,7 +105,8 @@ VsLinesOut VsMain(VsLinesIn input)
 
 float4 PsMain(VsLinesOut input) : SV_Target
 {
+  //return 1;
   float2 uv = input.tex.xy / input.tex.w;
-  float4 col = Texture0.Sample(LinearSampler, uv);
+  float4 col = Texture0.Sample(Sampler, uv);
   return col;
 }

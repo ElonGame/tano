@@ -596,8 +596,8 @@ bool ParticleTunnel::Render()
   // Render particles
   _ctx->SetGpuObjects(_particleGpuObjects);
   _ctx->SetGpuState(_particleState);
-  _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
-  _ctx->SetShaderResource(_particleTexture, ShaderType::PixelShader);
+  _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear]);
+  _ctx->SetShaderResource(_particleTexture);
   _ctx->Draw(6 * _settings.num_particles, 0);
 
 #if WITH_TEXT
@@ -614,8 +614,8 @@ bool ParticleTunnel::Render()
   {
     _ctx->SetGpuObjects(_linesGpuObjects);
     _ctx->SetGpuState(_linesState);
-    _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear], 0, ShaderType::PixelShader);
-    _ctx->SetShaderResource(_lineTexture, ShaderType::PixelShader);
+    _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear]);
+    _ctx->SetShaderResource(_lineTexture);
     _ctx->Draw(_numLinesPoints, 0);
   }
   _ctx->UnsetRenderTargets(0, 1);
