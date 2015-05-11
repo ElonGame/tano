@@ -9,24 +9,46 @@ bool MeshLoader::Load(const char* filename)
   if (!LoadFile(filename, &buf))
     return false;
 
-  const SceneBlob* scene = (const SceneBlob*)&buf[0];
+  const protocol::SceneBlob* scene = (const protocol::SceneBlob*)&buf[0];
 
   if (strncmp(scene->id, "boba", 4) != 0)
     return false;
 
   ProcessFixups(scene->fixupOffset);
 
+  // null objects
+  protocol::NullObjectBlob* nullBlob = (protocol::NullObjectBlob*)&buf[scene->nullObjectDataStart];
+  for (u32 i = 0; i < scene->numNullObjects; ++i, ++nullBlob)
+  {
+    nullObjects.push_back(nullBlob);
+  }
+
   // add meshes
-  MeshBlob* meshBlob = (MeshBlob*)&buf[scene->meshDataStart];
+  protocol::MeshBlob* meshBlob = (protocol::MeshBlob*)&buf[scene->meshDataStart];
   for (u32 i = 0; i < scene->numMeshes; ++i, ++meshBlob)
   {
     meshes.push_back(meshBlob);
   }
 
+  // add lights
+  protocol::LightBlob* lightBlob = (protocol::LightBlob*)&buf[scene->lightDataStart];
+  for (u32 i = 0; i < scene->numLights; ++i, ++lightBlob)
+  {
+    lights.push_back(lightBlob);
+  }
+
+  // add cameras
+  protocol::CameraBlob* cameraBlob = (protocol::CameraBlob*)&buf[scene->cameraDataStart];
+  for (u32 i = 0; i < scene->numCameras; ++i, ++cameraBlob)
+  {
+    cameras.push_back(cameraBlob);
+  }
+
+  // add materials
   char* ptr = &buf[scene->materialDataStart];
   for (u32 i = 0; i < scene->numMaterials; ++i)
   {
-    MaterialBlob* materialBlob = (MaterialBlob*)ptr;
+    protocol::MaterialBlob* materialBlob = (protocol::MaterialBlob*)ptr;
     materials.push_back(materialBlob);
     ptr += materialBlob->blobSize;
   }
@@ -60,7 +82,7 @@ void MeshLoader::ProcessFixups(u32 fixupOffset)
 }
 
 //------------------------------------------------------------------------------
-u32 MeshLoader::GetVertexFormat(const MeshBlob& mesh)
+u32 MeshLoader::GetVertexFormat(const protocol::MeshBlob& mesh)
 {
   return (mesh.verts ? VF_POS : 0) | (mesh.normals ? VF_NORMAL : 0) | (mesh.uv ? VF_TEX2_0 : 0);
 }

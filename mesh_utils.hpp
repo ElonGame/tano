@@ -1,11 +1,13 @@
 #pragma once
+#include "gpu_objects.hpp"
+#include "scene.hpp"
 
 namespace tano
 {
   struct GpuObjects;
   struct MeshLoader;
 
-  bool CreateBufferFromScene(const MeshLoader& loader);
+  bool CreateScene(const MeshLoader& loader, scene::Scene* scene);
   bool CreateBuffersFromMesh(const MeshLoader& loader, const char* name, u32* vertexFlags, GpuObjects* objects);
   bool CreateBuffersFromMeshFaceted(const MeshLoader& loader, const char* name, u32* vertexFlags, GpuObjects* objects);
 

@@ -178,6 +178,9 @@
     <ClCompile Include="..\effects\blob.cpp">
       <Filter>effects</Filter>
     </ClCompile>
+    <ClCompile Include="..\scene.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -359,6 +362,9 @@
     </ClInclude>
     <ClInclude Include="..\effects\blob.hpp">
       <Filter>effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\scene.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

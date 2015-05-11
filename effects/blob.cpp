@@ -49,10 +49,11 @@ bool Blob::Init(const char* configFile)
 
   // load the blob mesh
   MeshLoader loader;
-  INIT(loader.Load("gfx/low_poly_island.boba"));
-  u32 blobVertexFlags = 0;
-  INIT(CreateBuffersFromMesh(loader, nullptr, &blobVertexFlags, &_blobGpuObjects));
-  INIT(_blobGpuObjects.LoadShadersFromFile("shaders/out/blob", "VsMesh", nullptr, "PsMesh", blobVertexFlags));
+  INIT(loader.Load("gfx/crystals_flat.boba"));
+  INIT(CreateScene(loader, &_scene));
+//   u32 blobVertexFlags = 0;
+//   INIT(CreateBuffersFromMesh(loader, nullptr, &blobVertexFlags, &_blobGpuObjects));
+   //INIT(_blobGpuObjects.LoadShadersFromFile("shaders/out/blob", "VsMesh", nullptr, "PsMesh", _scene.meshes[0].vertexFormat));
   {
     CD3D11_RASTERIZER_DESC rasterDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
     rasterDesc.CullMode = D3D11_CULL_NONE;
@@ -164,31 +165,47 @@ bool Blob::Update(const UpdateState& state)
 void Blob::UpdateCameraMatrix()
 {
   _camera.Update();
-  Matrix view = _camera._view;
-  Matrix proj = _camera._proj;
-  Matrix viewProj = view * proj;
 
-  // compute size of frustum
-  float farW = _camera._farPlane * tan(_camera._fov);
-  Vector3 v0(-farW, 0, _camera._farPlane);
-  Vector3 v1(+farW, 0, _camera._farPlane);
+  if (!_scene.cameras.empty())
+  {
+    const scene::Camera& cam = *_scene.cameras.back();
+    Vector3 pos = cam.mtx.Translation();
+    Vector3 target = pos + 1.f * cam.mtx.Backward();
+    Vector3 up = cam.mtx.Up();
+    Matrix view = Matrix::CreateLookAt(pos, target, up);
 
-  float nearW = _camera._nearPlane * tan(_camera._fov);
-  Vector3 v2(-nearW, 0, _camera._nearPlane);
-  Vector3 v3(+nearW, 0, _camera._nearPlane);
+    int w, h;
+    GRAPHICS.GetBackBufferSize(&w, &h);
+    float aspectRatio = (float)w / h;
 
-  v0 = Vector3::Transform(v0 + _camera._pos, _camera._mtx);
-  v1 = Vector3::Transform(v1 + _camera._pos, _camera._mtx);
-  v2 = Vector3::Transform(v2 + _camera._pos, _camera._mtx);
-  v3 = Vector3::Transform(v3 + _camera._pos, _camera._mtx);
+    Matrix proj = Matrix::CreatePerspectiveFieldOfView(cam.verticalFov, aspectRatio, cam.nearPlane, cam.farPlane);
 
-  _cbPerFrame.world = Matrix::Identity();
-  _cbPerFrame.view = view.Transpose();
-  _cbPerFrame.proj = proj.Transpose();
-  _cbPerFrame.viewProj = viewProj.Transpose();
-  _cbPerFrame.cameraPos = _camera._pos;
-  _cbPerFrame.cameraLookAt = _camera._target;
-  _cbPerFrame.cameraUp = _camera._up;
+    Matrix viewProj = view * proj;
+
+    _cbPerFrame.world = Matrix::Identity();
+    _cbPerFrame.view = view.Transpose();
+    _cbPerFrame.proj = proj.Transpose();
+    _cbPerFrame.viewProj = viewProj.Transpose();
+    _cbPerFrame.cameraPos = pos;
+    _cbPerFrame.cameraLookAt = target;
+    _cbPerFrame.cameraUp = up;
+
+  }
+  else
+  {
+    Matrix view = _camera._view;
+    Matrix proj = _camera._proj;
+
+    Matrix viewProj = view * proj;
+
+    _cbPerFrame.world = Matrix::Identity();
+    _cbPerFrame.view = view.Transpose();
+    _cbPerFrame.proj = proj.Transpose();
+    _cbPerFrame.viewProj = viewProj.Transpose();
+    _cbPerFrame.cameraPos = _camera._pos;
+    _cbPerFrame.cameraLookAt = _camera._target;
+    _cbPerFrame.cameraUp = _camera._up;
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -199,12 +216,39 @@ bool Blob::Render()
   static Color black(.1f, .1f, .1f, 0);
 
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
-  _ctx->SetGpuObjects(_blobGpuObjects);
   _ctx->SetGpuState(_blobState);
-  _ctx->DrawIndexed(_blobGpuObjects._numIndices, 0, 0);
+
+  for (const scene::Mesh* mesh : _scene.meshes)
+  {
+    Matrix mtx;
+    u32 parentId = mesh->parentId;
+    if (parentId != ~0u)
+    {
+      mtx = _scene.baseObjects[parentId]->mtx * mesh->mtx;
+    }
+    else
+    {
+      mtx = mesh->mtx;
+    }
+      
+    _cbPerFrame.world = mtx.Transpose();
+    _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+
+    _ctx->SetGpuObjects(mesh->gpuObjects);
+    for (const scene::Mesh::MaterialGroup& mg : mesh->materialGroups)
+    {
+      const scene::Material* mat = _scene.materials[mg.materialId];
+
+      _cbPerFrame.diffuse = mat->color.color;
+      _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
+
+      _ctx->DrawIndexed(mg.indexCount, mg.startIndex, 0);
+    }
+  }
+
+
 
 #if 0
 

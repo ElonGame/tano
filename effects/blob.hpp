@@ -6,6 +6,7 @@
 #include "../mesh_loader.hpp"
 #include "../animation_helpers.hpp"
 #include "../camera.hpp"
+#include "../scene.hpp"
 
 namespace tano
 {
@@ -50,6 +51,8 @@ namespace tano
       float pad2;
       Vector3 cameraUp;
       float pad3;
+      Vector4 cook;
+      Color diffuse;
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 
@@ -80,5 +83,6 @@ namespace tano
     MeshLoader _meshLoader;
 
     Camera _camera;
+    scene::Scene _scene;
   };
 }

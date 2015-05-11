@@ -4,10 +4,17 @@
 #pragma warning(disable: 4530)
 
 #define WITH_REMOTERY 0
-#define WITH_DXGI_DEBUG 1
+#define WITH_DXGI_DEBUG 0
 #define WITH_DEBUG_SHADERS 1
 #define WITH_ROCKET 1
 #define WITH_ROCKET_PLAYER 1
+
+#define BORDERLESS_WINDOW 1
+
+#ifndef BORDERLESS_WINDOW 
+#define BORDERLESS_WINDOW 0
+#endif
+
 
 #if WITH_ROCKET_PLAYER
   #define SYNC_PLAYER
@@ -17,7 +24,7 @@
   #endif
 #endif
 
-#define WITH_IMGUI 0
+#define WITH_IMGUI 1
 
 #define WITH_CONFIG_DLG 0
 #define WITH_UNPACKED_RESOUCES 1

@@ -19,3 +19,4 @@ nsight_profiler.cfg
 meshes/*
 resources.txt
 resources.dat
+_win32/Graphics*

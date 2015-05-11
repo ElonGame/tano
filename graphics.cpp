@@ -856,14 +856,29 @@ ObjectHandle Graphics::CreateSwapChain(
   if (!RegisterClassEx(&wcex))
     return emptyHandle;
 
-  const UINT windowStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+#if BORDERLESS_WINDOW
+  UINT windowStyle = WS_POPUP;
+#else
+  UINT windowStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+#endif
 
   // Create/resize the window
   _hwnd = CreateWindow(name, g_AppWindowTitle, windowStyle,
-    CW_USEDEFAULT, CW_USEDEFAULT, width, height, NULL, NULL,
-    instance, NULL);
+    CW_USEDEFAULT, CW_USEDEFAULT, width, height, NULL, NULL, instance, NULL);
 
   SetClientSize(_hwnd, width, height);
+
+  // if doing borderless, center the window as well
+#if BORDERLESS_WINDOW
+
+  int desktopWidth = GetSystemMetrics(SM_CXFULLSCREEN);
+  int dekstopHeight = GetSystemMetrics(SM_CYFULLSCREEN);
+
+  int centerX = (desktopWidth - width) / 2;
+  int centerY = (dekstopHeight - height) / 2;
+  SetWindowPos(_hwnd, NULL, centerX, centerY, - 1, -1, SWP_NOZORDER | SWP_NOSIZE);
+#endif
+
   ShowWindow(_hwnd, SW_SHOW);
 
   // Create the swap chain

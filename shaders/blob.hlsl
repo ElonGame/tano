@@ -14,6 +14,7 @@ cbuffer PerFrame : register(b0)
   float3 cameraLookAt;
   float3 cameraUp;
   float4 cook;
+  float4 diffuse;
   //float roughness_value;
   //float ref_at_norm_incidence;
 };
@@ -107,15 +108,15 @@ VsMeshOut VsMesh(VsMeshIn v)
 
 float4 PsMesh(VsMeshOut p) : SV_Target
 {
-  float3 LIGHT_POS = float3(0, 100, 0);
+  //float3 LIGHT_POS = float3(0, 100, 0);
   float3 normal = normalize(p.normal);
   float3 viewer = normalize(cameraPos - p.pos_world);
-  float3 light = normalize(LIGHT_POS - p.pos_world);
+  //float3 light = normalize(LIGHT_POS - p.pos_world);
 
-  float4 col = cook_torrance(normal, viewer, viewer);
+  //float4 col = DIFFUSE * cook_torrance(normal, viewer, viewer);
 
 //  return float4(normal, 1);
-  //col = dot(normal, viewer);
+  float col = dot(normal, viewer);
 
-  return pow(col, 1.0/2.2);
+  return pow(saturate(col * diffuse), 1.0/2.2);
 }

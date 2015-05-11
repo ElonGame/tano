@@ -274,6 +274,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
+    <ClCompile Include="..\scene.cpp" />
     <ClCompile Include="..\sync\data.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -375,6 +376,7 @@
     <ClInclude Include="..\Remotery\lib\Remotery.h" />
     <ClInclude Include="..\render_queue.hpp" />
     <ClInclude Include="..\resource_manager.hpp" />
+    <ClInclude Include="..\scene.hpp" />
     <ClInclude Include="..\stb\stb_image.h" />
     <ClInclude Include="..\sync\base.h" />
     <ClInclude Include="..\sync\data.h" />

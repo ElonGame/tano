@@ -1,6 +1,7 @@
 #include "mesh_utils.hpp"
 #include "mesh_loader.hpp"
 #include "gpu_objects.hpp"
+#include "init_sequence.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -9,19 +10,134 @@ extern "C" float stb_perlin_noise3(float x, float y, float z, int x_wrap=0, int 
 
 namespace tano
 {
-
   //------------------------------------------------------------------------------
-  bool CreateBufferFromScene(const MeshLoader& loader)
+  bool CreateScene(const MeshLoader& loader, scene::Scene* scene)
   {
-    for (const MeshLoader::MeshBlob* mesh : loader.meshes)
+    BEGIN_INIT_SEQUENCE();
+
+     u32 numObjects = (u32)(loader.meshes.size() + loader.nullObjects.size() + loader.cameras.size() + loader.lights.size() + 1);
+     scene->baseObjects.resize(numObjects, nullptr);
+
+    for (const protocol::MeshBlob* meshBlob : loader.meshes)
     {
+      // mesh found, allocate the vertex/index buffer
+      scene->meshes.push_back(new scene::Mesh(meshBlob->name, meshBlob->id, meshBlob->parentId));
+      scene->baseObjects[meshBlob->id] = scene->meshes.back();
+
+      scene::Mesh* mesh = scene->meshes.back();
+      u32 vertexFormat = MeshLoader::GetVertexFormat(*meshBlob);
+      u32 vertexSize = VertexSizeFromFlags(vertexFormat);
+      mesh->vertexFormat = vertexFormat;
+      mesh->mtx = {
+        meshBlob->mtx[0],   meshBlob->mtx[1],   meshBlob->mtx[2],   0,
+        meshBlob->mtx[3],   meshBlob->mtx[4],   meshBlob->mtx[5],   0,
+        meshBlob->mtx[6],   meshBlob->mtx[7],   meshBlob->mtx[8],   0,
+        meshBlob->mtx[9],   meshBlob->mtx[10],  meshBlob->mtx[11],  1 };
+
+      // create a temp array to interleave the vertex data
+      u32 numVerts = meshBlob->numVerts;
+      vector<float> buf(vertexSize * numVerts);
+      float* dst = buf.data();
+      for (u32 i = 0; i < numVerts; ++i)
+      {
+        const auto& fnCopy = [&dst, i, meshBlob](float* src, int n)
+        {
+          for (int j = 0; j < n; ++j)
+            dst[j] = *(src + i*3 + j);
+          dst += n;
+        };
+
+        fnCopy(meshBlob->verts, 3);
+
+        if (vertexFormat & VF_NORMAL)
+          fnCopy(meshBlob->normals, 3);
+
+        if (vertexFormat & VF_TEX2_0)
+          fnCopy(meshBlob->uv, 2);
+      }
+
+      for (u32 i = 0; i < meshBlob->numMaterialGroups; ++i)
+      {
+        protocol::MeshBlob::MaterialGroup* mg = &meshBlob->materialGroups[i];
+        mesh->materialGroups.push_back({ mg->materialId, mg->startIndex, mg->numIndices });
+      }
+
+      INIT(mesh->gpuObjects.LoadShadersFromFile("shaders/out/blob", "VsMesh", nullptr, "PsMesh", vertexFormat));
+
+      INIT(mesh->gpuObjects.CreateVertexBuffer(meshBlob->numVerts * vertexSize, vertexSize, buf.data()));
+      INIT(mesh->gpuObjects.CreateIndexBuffer(meshBlob->numIndices * sizeof(u32), DXGI_FORMAT_R32_UINT, meshBlob->indices));
     }
+
+    for (const protocol::MaterialBlob* materialBlob : loader.materials)
+    {
+      if (scene->materials.find(materialBlob->materialId) == scene->materials.end())
+        scene->materials[materialBlob->materialId] = new scene::Material();
+
+      scene::Material* mat = scene->materials[materialBlob->materialId];
+      mat->id = materialBlob->materialId;
+      mat->flags = materialBlob->flags;
+      mat->name = materialBlob->name;
+
+      if (mat->flags & scene::Material::FLAG_COLOR)
+      {
+        mat->color.color = { materialBlob->color->r, materialBlob->color->g, materialBlob->color->b };
+        mat->color.texture = materialBlob->color->texture;
+        mat->color.brightness = materialBlob->color->brightness;
+      }
+
+      if (mat->flags & scene::Material::FLAG_LUMINANCE)
+      {
+        mat->luminance.color = { materialBlob->luminance->r, materialBlob->luminance->g, materialBlob->luminance->b };
+        mat->luminance.texture = materialBlob->luminance->texture;
+        mat->luminance.brightness = materialBlob->luminance->brightness;
+      }
+
+      if (mat->flags & scene::Material::FLAG_REFLECTION)
+      {
+        mat->reflection.color = { materialBlob->reflection->r, materialBlob->reflection->g, materialBlob->reflection->b };
+        mat->reflection.texture = materialBlob->reflection->texture;
+        mat->reflection.brightness = materialBlob->reflection->brightness;
+      }
+    }
+
+    for (const protocol::CameraBlob* cameraBlob : loader.cameras)
+    {
+      scene->cameras.push_back(new scene::Camera(cameraBlob->name, cameraBlob->id, cameraBlob->parentId));
+      scene->baseObjects[cameraBlob->id] = scene->cameras.back();
+
+      scene::Camera* cam = scene->cameras.back();
+      cam->verticalFov = cameraBlob->verticalFov;
+      cam->nearPlane = cameraBlob->nearPlane;
+      cam->farPlane = cameraBlob->farPlane;
+
+      cam->mtx = {
+        cameraBlob->mtx[0], cameraBlob->mtx[1], cameraBlob->mtx[2], 0,
+        cameraBlob->mtx[3], cameraBlob->mtx[4], cameraBlob->mtx[5], 0,
+        cameraBlob->mtx[6], cameraBlob->mtx[7], cameraBlob->mtx[8], 0,
+        cameraBlob->mtx[9], cameraBlob->mtx[10], cameraBlob->mtx[11], 1 };
+    }
+
+    for (const protocol::NullObjectBlob* nullBlob : loader.nullObjects)
+    {
+      scene->nullObjects.push_back(new scene::NullObject(nullBlob->name, nullBlob->id, nullBlob->parentId));
+      scene->baseObjects[nullBlob->id] = scene->nullObjects.back();
+
+      scene::NullObject* obj = scene->nullObjects.back();
+
+      obj->mtx = {
+        nullBlob->mtx[0], nullBlob->mtx[1], nullBlob->mtx[2], 0,
+        nullBlob->mtx[3], nullBlob->mtx[4], nullBlob->mtx[5], 0,
+        nullBlob->mtx[6], nullBlob->mtx[7], nullBlob->mtx[8], 0,
+        nullBlob->mtx[9], nullBlob->mtx[10], nullBlob->mtx[11], 1 };
+    }
+
+    END_INIT_SEQUENCE();
   }
 
   //------------------------------------------------------------------------------
   bool CreateBuffersFromMesh(const MeshLoader& loader, const char* name, u32* vertexFlags, GpuObjects* objects)
   {
-    for (const MeshLoader::MeshBlob* mesh : loader.meshes)
+    for (const protocol::MeshBlob* mesh : loader.meshes)
     {
       // if a name is given, check against this
       if (name && strcmp(name, mesh->name) != 0)
@@ -91,7 +207,7 @@ namespace tano
   //------------------------------------------------------------------------------
   bool CreateBuffersFromMeshFaceted(const MeshLoader& loader, const char* name, u32* vertexFlags, GpuObjects* objects)
   {
-    for (const MeshLoader::MeshBlob* mesh : loader.meshes)
+    for (const protocol::MeshBlob* mesh : loader.meshes)
     {
       if (strcmp(name, mesh->name) != 0)
         continue;
