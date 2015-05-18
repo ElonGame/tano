@@ -28,11 +28,17 @@ namespace tano
       u32 vertexFormat = MeshLoader::GetVertexFormat(*meshBlob);
       u32 vertexSize = VertexSizeFromFlags(vertexFormat);
       mesh->vertexFormat = vertexFormat;
-      mesh->mtx = {
-        meshBlob->mtx[0],   meshBlob->mtx[1],   meshBlob->mtx[2],   0,
-        meshBlob->mtx[3],   meshBlob->mtx[4],   meshBlob->mtx[5],   0,
-        meshBlob->mtx[6],   meshBlob->mtx[7],   meshBlob->mtx[8],   0,
-        meshBlob->mtx[9],   meshBlob->mtx[10],  meshBlob->mtx[11],  1 };
+      mesh->mtxLocal = {
+        meshBlob->mtxLocal[0],   meshBlob->mtxLocal[1],   meshBlob->mtxLocal[2],   0,
+        meshBlob->mtxLocal[3],   meshBlob->mtxLocal[4],   meshBlob->mtxLocal[5],   0,
+        meshBlob->mtxLocal[6],   meshBlob->mtxLocal[7],   meshBlob->mtxLocal[8],   0,
+        meshBlob->mtxLocal[9],   meshBlob->mtxLocal[10],  meshBlob->mtxLocal[11],  1 };
+
+      mesh->mtxGlobal = {
+        meshBlob->mtxGlobal[0], meshBlob->mtxGlobal[1], meshBlob->mtxGlobal[2], 0,
+        meshBlob->mtxGlobal[3], meshBlob->mtxGlobal[4], meshBlob->mtxGlobal[5], 0,
+        meshBlob->mtxGlobal[6], meshBlob->mtxGlobal[7], meshBlob->mtxGlobal[8], 0,
+        meshBlob->mtxGlobal[9], meshBlob->mtxGlobal[10], meshBlob->mtxGlobal[11], 1 };
 
       // create a temp array to interleave the vertex data
       u32 numVerts = meshBlob->numVerts;
@@ -110,11 +116,17 @@ namespace tano
       cam->nearPlane = cameraBlob->nearPlane;
       cam->farPlane = cameraBlob->farPlane;
 
-      cam->mtx = {
-        cameraBlob->mtx[0], cameraBlob->mtx[1], cameraBlob->mtx[2], 0,
-        cameraBlob->mtx[3], cameraBlob->mtx[4], cameraBlob->mtx[5], 0,
-        cameraBlob->mtx[6], cameraBlob->mtx[7], cameraBlob->mtx[8], 0,
-        cameraBlob->mtx[9], cameraBlob->mtx[10], cameraBlob->mtx[11], 1 };
+      cam->mtxLocal = {
+        cameraBlob->mtxLocal[0], cameraBlob->mtxLocal[1], cameraBlob->mtxLocal[2], 0,
+        cameraBlob->mtxLocal[3], cameraBlob->mtxLocal[4], cameraBlob->mtxLocal[5], 0,
+        cameraBlob->mtxLocal[6], cameraBlob->mtxLocal[7], cameraBlob->mtxLocal[8], 0,
+        cameraBlob->mtxLocal[9], cameraBlob->mtxLocal[10], cameraBlob->mtxLocal[11], 1 };
+
+      cam->mtxGlobal = {
+        cameraBlob->mtxGlobal[0], cameraBlob->mtxGlobal[1], cameraBlob->mtxGlobal[2], 0,
+        cameraBlob->mtxGlobal[3], cameraBlob->mtxGlobal[4], cameraBlob->mtxGlobal[5], 0,
+        cameraBlob->mtxGlobal[6], cameraBlob->mtxGlobal[7], cameraBlob->mtxGlobal[8], 0,
+        cameraBlob->mtxGlobal[9], cameraBlob->mtxGlobal[10], cameraBlob->mtxGlobal[11], 1 };
     }
 
     for (const protocol::NullObjectBlob* nullBlob : loader.nullObjects)
@@ -124,11 +136,17 @@ namespace tano
 
       scene::NullObject* obj = scene->nullObjects.back();
 
-      obj->mtx = {
-        nullBlob->mtx[0], nullBlob->mtx[1], nullBlob->mtx[2], 0,
-        nullBlob->mtx[3], nullBlob->mtx[4], nullBlob->mtx[5], 0,
-        nullBlob->mtx[6], nullBlob->mtx[7], nullBlob->mtx[8], 0,
-        nullBlob->mtx[9], nullBlob->mtx[10], nullBlob->mtx[11], 1 };
+      obj->mtxLocal = {
+        nullBlob->mtxLocal[0], nullBlob->mtxLocal[1], nullBlob->mtxLocal[2], 0,
+        nullBlob->mtxLocal[3], nullBlob->mtxLocal[4], nullBlob->mtxLocal[5], 0,
+        nullBlob->mtxLocal[6], nullBlob->mtxLocal[7], nullBlob->mtxLocal[8], 0,
+        nullBlob->mtxLocal[9], nullBlob->mtxLocal[10], nullBlob->mtxLocal[11], 1 };
+
+      obj->mtxGlobal = {
+        nullBlob->mtxGlobal[0], nullBlob->mtxGlobal[1], nullBlob->mtxGlobal[2], 0,
+        nullBlob->mtxGlobal[3], nullBlob->mtxGlobal[4], nullBlob->mtxGlobal[5], 0,
+        nullBlob->mtxGlobal[6], nullBlob->mtxGlobal[7], nullBlob->mtxGlobal[8], 0,
+        nullBlob->mtxGlobal[9], nullBlob->mtxGlobal[10], nullBlob->mtxGlobal[11], 1 };
     }
 
     END_INIT_SEQUENCE();

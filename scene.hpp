@@ -8,7 +8,8 @@ namespace tano
     struct BaseObject
     {
       BaseObject(const string& name, u32 id, u32 parentId) : name(name), id(id), parentId(parentId) {}
-      Matrix mtx = Matrix::Identity();
+      Matrix mtxLocal = Matrix::Identity();
+      Matrix mtxGlobal = Matrix::Identity();
       BaseObject* parentPtr;
       string name;
       u32 id;

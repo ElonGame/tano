@@ -169,9 +169,9 @@ void Blob::UpdateCameraMatrix()
   if (!_scene.cameras.empty())
   {
     const scene::Camera& cam = *_scene.cameras.back();
-    Vector3 pos = cam.mtx.Translation();
-    Vector3 target = pos + 1.f * cam.mtx.Backward();
-    Vector3 up = cam.mtx.Up();
+    Vector3 pos = cam.mtxLocal.Translation();
+    Vector3 target = pos + 1.f * cam.mtxLocal.Backward();
+    Vector3 up = cam.mtxLocal.Up();
     Matrix view = Matrix::CreateLookAt(pos, target, up);
 
     int w, h;
@@ -222,16 +222,16 @@ bool Blob::Render()
 
   for (const scene::Mesh* mesh : _scene.meshes)
   {
-    Matrix mtx;
-    u32 parentId = mesh->parentId;
-    if (parentId != ~0u)
-    {
-      mtx = _scene.baseObjects[parentId]->mtx * mesh->mtx;
-    }
-    else
-    {
-      mtx = mesh->mtx;
-    }
+    Matrix mtx = mesh->mtxGlobal;
+//     u32 parentId = mesh->parentId;
+//     if (parentId != ~0u)
+//     {
+//       mtx = _scene.baseObjects[parentId]->mtx * mesh->mtx;
+//     }
+//     else
+//     {
+//       mtx = mesh->mtx;
+//     }
       
     _cbPerFrame.world = mtx.Transpose();
     _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);

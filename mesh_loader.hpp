@@ -26,7 +26,8 @@ namespace protocol
     const char* name;
     u32 id;
     u32 parentId;
-    float mtx[12];
+    float mtxLocal[12];
+    float mtxGlobal[12];
   };
 
   struct MeshBlob : public BlobBase
