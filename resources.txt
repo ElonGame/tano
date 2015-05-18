@@ -1,5 +1,6 @@
 c:\projects\tano\app.gb	c:/projects/tano/app.gb
 config/blob.gb	c:/projects/tano/config/blob.gb
+config/cloth.gb	c:/projects/tano/config/cloth.gb
 config/demo.gb	c:/projects/tano/config/demo.gb
 config/landscape.gb	c:/projects/tano/config/landscape.gb
 config/particle_tunnel.gb	c:/projects/tano/config/particle_tunnel.gb

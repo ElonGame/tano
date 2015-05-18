@@ -76,3 +76,8 @@ struct blob_settings
 {
     camera_settings camera;
 };
+
+struct cloth_settings
+{
+    camera_settings camera;
+};

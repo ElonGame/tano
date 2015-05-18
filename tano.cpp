@@ -11,6 +11,7 @@
 #include "effects/cluster.hpp"
 #include "effects/landscape.hpp"
 #include "effects/blob.hpp"
+#include "effects/cloth.hpp"
 
 #if WITH_IMGUI
 #include "imgui_helpers.hpp"
@@ -141,6 +142,7 @@ bool App::Init(HINSTANCE hinstance)
   Cluster::Register();
   Landscape::Register();
   Blob::Register();
+  Cloth::Register();
 
   INIT(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
 

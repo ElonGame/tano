@@ -181,6 +181,9 @@
     <ClCompile Include="..\scene.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\effects\cloth.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -364,6 +367,9 @@
       <Filter>effects</Filter>
     </ClInclude>
     <ClInclude Include="..\scene.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\cloth.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

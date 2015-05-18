@@ -94,6 +94,7 @@
     <ClCompile Include="..\animation_helpers.cpp" />
     <ClCompile Include="..\camera.cpp" />
     <ClCompile Include="..\effects\blob.cpp" />
+    <ClCompile Include="..\effects\cloth.cpp" />
     <ClCompile Include="..\effects\cluster.cpp" />
     <ClCompile Include="..\effects\landscape.cpp" />
     <ClCompile Include="..\effects\raymarcher.cpp" />
@@ -330,6 +331,7 @@
     <ClInclude Include="..\bass\bass.h" />
     <ClInclude Include="..\camera.hpp" />
     <ClInclude Include="..\effects\blob.hpp" />
+    <ClInclude Include="..\effects\cloth.hpp" />
     <ClInclude Include="..\effects\cluster.hpp" />
     <ClInclude Include="..\effects\landscape.hpp" />
     <ClInclude Include="..\effects\raymarcher.hpp" />

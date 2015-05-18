@@ -24,6 +24,14 @@
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/blob.gb';
+    force: false;
+  },
+  {
+    name: 'cloth';
+    factory: 'cloth';
+    start_time: 1300000;
+    end_time: 1300000;
+    settings: 'config/cloth.gb';
     force: true;
   },
 
