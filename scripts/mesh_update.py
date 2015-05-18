@@ -10,7 +10,8 @@ SETTINGS = {
 	# Darwin is broken for now
 	'Darwin': { 'dir': '/Users/dooz/OneDrive/gfx', 'conv': None },
 	'Windows': { 
-		'input_dir': 'd:/onedrive/tano/c4d', 
+#		'input_dir': 'd:/onedrive/tano/c4d', 
+		'input_dir': 'c:/box sync/tano/c4d', 
 		'output_dir': 'c:/projects/tano/gfx',
 		'conv': 'c:/projects/melange_exporter/_win32/x64/Release/exporter.exe'
 	}
