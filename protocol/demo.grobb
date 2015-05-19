@@ -81,4 +81,5 @@ struct cloth_settings
 {
     camera_settings camera;
     float damping = 0.01;
+    vec3 gravity = {0, -1, 0};
 };

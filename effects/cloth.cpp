@@ -14,6 +14,12 @@
 using namespace tano;
 using namespace bristol;
 
+namespace
+{
+  int GRID_SIZE = 20;
+  float CLOTH_SIZE = 10;
+}
+
 //------------------------------------------------------------------------------
 Cloth::Cloth(const string &name, u32 id)
 : Effect(name, id)
@@ -69,38 +75,50 @@ bool Cloth::Init(const char* configFile)
 void Cloth::UpdateParticles(const UpdateState& state)
 {
   size_t numParticles = _particles.size();
-  float dt = state.delta.TotalMilliseconds() / (float)1e6;
+  float dt = 1.f / state.frequency;
   float dt2 = dt * dt;
 
-  float s = 10;
   for (size_t i = 0; i < numParticles; ++i)
   {
-    _particles[i].acc = Vector3( randf(s, s), randf(s,s), randf(s,s));
-  }
-
-
-  // apply the constraints
-  for (const Constraint& c : _constraints)
-  {
-    Particle* p0 = c.p0;
-    Particle* p1 = c.p1;
-
-    float dist = Vector3::Distance(p0->pos, p1->pos);
-    Vector3 dir = (1.f - c.restLength / dist) * (p1->pos - p0->pos);
-    p0->pos += 0.5f * dir;
-    p1->pos -= 0.5f * dir;
+    //_particles[i].acc = Vector3(randf(s, s), randf(s, s), randf(s, s));
+    _particles[i].acc = _settings.gravity;
   }
 
   Particle* p = &_particles[0];
   for (size_t i = 0; i < numParticles; ++i)
   {
     // verlet integration
-    // pos = pos + (pos - old_pos) + acc * dt * dt;
     Vector3 tmp = p->pos;
-    p->pos = p->pos + (1 - _settings.damping) * (p->pos - p->lastPos) + p->acc * dt2;
+    p->pos = p->pos + (1.0f - _settings.damping) * (p->pos - p->lastPos) + p->acc * dt2;
     p->lastPos = tmp;
+    ++p;
 
     _particles[i].acc = Vector3(0, 0, 0);
+  }
+
+  // apply the constraints
+  for (int i = 0; i < 2; ++i)
+  {
+    for (const Constraint& c : _constraints)
+    {
+      Particle* p0 = c.p0;
+      Particle* p1 = c.p1;
+
+      float dist = Vector3::Distance(p0->pos, p1->pos);
+      Vector3 dir = ((dist - c.restLength) / dist) * (p1->pos - p0->pos);
+      p0->pos += 0.5f * dir;
+      p1->pos -= 0.5f * dir;
+    }
+  }
+
+  // top row is fixed
+  float incX = CLOTH_SIZE / (_clothDimX - 1);
+  Vector3 cur(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
+  for (u32 i = 0; i < _clothDimX; ++i)
+  {
+    _particles[i].pos = cur;
+    cur.x += incX;
+    ++p;
   }
 
   Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_clothGpuObjects._vb);
@@ -114,12 +132,14 @@ bool Cloth::InitParticles()
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
 
-  int GRID_SIZE = 20;
-  float CLOTH_SIZE = 10;
   int dimX = w / GRID_SIZE + 1;
   int dimY = h / GRID_SIZE + 1;
+  
   int numParticles = dimX * dimY;
   _clothGpuObjects.CreateDynamicVb(numParticles * sizeof(Particle), sizeof(Particle));
+
+  _clothDimX = dimX;
+  _clothDimY = dimY;
   _numParticles = numParticles;
 
   // create the grid
@@ -153,7 +173,9 @@ bool Cloth::InitParticles()
 
   _particles.resize(numParticles);
 
+  ResetParticles();
   // create grid around -1..+1
+/*
   float incX = CLOTH_SIZE / (dimX - 1);
   float incY = CLOTH_SIZE / (dimY - 1);
 
@@ -173,14 +195,13 @@ bool Cloth::InitParticles()
     }
     cur.y -= incY;
   }
-
+*/
   // create cloth constraints
   // each particle is connected to the left, diag, and down particles (both 1 and 2 steps away)
   for (int i = 0; i < dimY-2; ++i)
   {
     for (int j = 0; j < dimX-2; ++j)
     {
-
       Particle* p0 = &_particles[i*dimX + j];
       for (int k = 1; k <= 2; ++k)
       {
@@ -196,6 +217,31 @@ bool Cloth::InitParticles()
   }
 
   return true;
+}
+
+//------------------------------------------------------------------------------
+void Cloth::ResetParticles()
+{
+  // create grid around -1..+1
+  float incX = CLOTH_SIZE / (_clothDimX - 1);
+  float incY = CLOTH_SIZE / (_clothDimY - 1);
+
+  Vector3 org(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
+  Vector3 cur = org;
+  Particle* p = &_particles[0];
+  for (u32 i = 0; i < _clothDimY; ++i)
+  {
+    cur.x = org.x;
+    for (u32 j = 0; j < _clothDimX; ++j)
+    {
+      p->pos = cur;
+      p->lastPos = cur;
+      p->acc = Vector3(0, 0, 0);
+      cur.x += incX;
+      ++p;
+    }
+    cur.y -= incY;
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -261,6 +307,9 @@ bool Cloth::InitAnimatedParameters()
 #if WITH_IMGUI
 void Cloth::RenderParameterSet()
 {
+  ImGui::SliderFloat("Damping", &_settings.damping, 0, 1);
+  ImGui::SliderFloat3("Gravity", &_settings.gravity.x, -5, 0);
+
   if (ImGui::Button("Reset"))
     Reset();
 }
