@@ -75,6 +75,7 @@ namespace tano
     ObjectHandle _lineTexture;
     GpuObjects _lineObjects;
     ObjectHandle _lineSampler;
+    ObjectHandle _vbParticles;
 
     GpuState _blobState;
     GpuObjects _blobGpuObjects;

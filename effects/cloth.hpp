@@ -35,6 +35,8 @@ namespace tano
 #endif
 
     void UpdateCameraMatrix();
+    void UpdateParticles(const UpdateState& state);
+    bool InitParticles();
 
     struct CBufferPerFrame
     {
@@ -51,6 +53,26 @@ namespace tano
       float pad3;
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
+
+    struct Particle
+    {
+      Vector3 pos;
+      Vector3 lastPos;
+      Vector3 acc;
+    };
+
+    struct Constraint
+    {
+      Particle* p0;
+      Particle* p1;
+      float restLength;
+    };
+
+    vector<Particle> _particles;
+    vector<Constraint> _constraints;
+    u32 _numTris = 0;
+    u32 _numParticles = 0;
+//    GpuObjects _vbParticles;
 
     GpuState _clothState;
     GpuObjects _clothGpuObjects;

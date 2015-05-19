@@ -80,4 +80,5 @@ struct blob_settings
 struct cloth_settings
 {
     camera_settings camera;
+    float damping = 0.01;
 };
