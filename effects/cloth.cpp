@@ -11,6 +11,12 @@
 #include "../mesh_utils.hpp"
 #include "../post_process.hpp"
 
+/*
+  update timing:
+  doozblade
+  base: 6.9 ms
+*/
+
 using namespace tano;
 using namespace bristol;
 
@@ -20,9 +26,36 @@ namespace
   float CLOTH_SIZE = 10;
 }
 
+struct StopWatch
+{
+  StopWatch()
+  {
+    QueryPerformanceFrequency(&_frequency);
+  }
+
+  void Start()
+  {
+    QueryPerformanceCounter(&_start);
+  }
+
+  double Stop()
+  {
+    LARGE_INTEGER tmp;
+    QueryPerformanceCounter(&tmp);
+
+    return (double)(tmp.QuadPart - _start.QuadPart) / _frequency.QuadPart;
+  }
+
+  LARGE_INTEGER _frequency;
+  LARGE_INTEGER _start;
+};
+
+StopWatch g_stopWatch;
+
 //------------------------------------------------------------------------------
 Cloth::Cloth(const string &name, u32 id)
-: Effect(name, id)
+  : Effect(name, id)
+  , _avgUpdate(100)
 {
 #if WITH_IMGUI
   PROPERTIES.Register(Name(),
@@ -36,6 +69,7 @@ Cloth::Cloth(const string &name, u32 id)
 //------------------------------------------------------------------------------
 Cloth::~Cloth()
 {
+  SAFE_ADELETE(_distTable);
 }
 
 //------------------------------------------------------------------------------
@@ -74,6 +108,8 @@ bool Cloth::Init(const char* configFile)
 //------------------------------------------------------------------------------
 void Cloth::UpdateParticles(const UpdateState& state)
 {
+  g_stopWatch.Start();
+
   size_t numParticles = _particles.size();
   float dt = 1.f / state.frequency;
   float dt2 = dt * dt;
@@ -121,6 +157,8 @@ void Cloth::UpdateParticles(const UpdateState& state)
     ++p;
   }
 
+  _avgUpdate.AddSample(g_stopWatch.Stop());
+
   Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_clothGpuObjects._vb);
   memcpy(vtx, _particles.data(), _numParticles * sizeof(Particle));
   _ctx->Unmap(_clothGpuObjects._vb);
@@ -141,6 +179,8 @@ bool Cloth::InitParticles()
   _clothDimX = dimX;
   _clothDimY = dimY;
   _numParticles = numParticles;
+
+  _distTable = new float[_clothDimX*_clothDimY];
 
   // create the grid
   vector<u32> indices((dimX-1)*(dimY-1)*2*3);
@@ -174,49 +214,59 @@ bool Cloth::InitParticles()
   _particles.resize(numParticles);
 
   ResetParticles();
-  // create grid around -1..+1
-/*
-  float incX = CLOTH_SIZE / (dimX - 1);
-  float incY = CLOTH_SIZE / (dimY - 1);
 
-  Vector3 org(-CLOTH_SIZE/2.f, CLOTH_SIZE/2.f, 0);
-  Vector3 cur = org;
-  Particle* p = &_particles[0];
+  set<pair<u32, u32>> visited;
+
+  // create cloth constraints
+  // each particle is connected horiz, vert and diag (both 1 and 2 steps away)
   for (int i = 0; i < dimY; ++i)
   {
-    cur.x = org.x;
     for (int j = 0; j < dimX; ++j)
     {
-      p->pos = cur;
-      p->lastPos = cur;
-      p->acc = Vector3(0,0,0);
-      cur.x += incX;
-      ++p;
-    }
-    cur.y -= incY;
-  }
-*/
-  // create cloth constraints
-  // each particle is connected to the left, diag, and down particles (both 1 and 2 steps away)
-  for (int i = 0; i < dimY-2; ++i)
-  {
-    for (int j = 0; j < dimX-2; ++j)
-    {
-      Particle* p0 = &_particles[i*dimX + j];
-      for (int k = 1; k <= 2; ++k)
-      {
-        Particle* p1 = &_particles[(i + 0)*dimX + j + k];
-        Particle* p2 = &_particles[(i + k)*dimX + j + k];
-        Particle* p3 = &_particles[(i + k)*dimX + j + 0];
+      u32 idx0 = i*dimX + j;
+      Particle* p0 = &_particles[idx0];
 
-        _constraints.push_back({ p0, p1, Vector3::Distance(p0->pos, p1->pos) });
-        _constraints.push_back({ p0, p2, Vector3::Distance(p0->pos, p2->pos) });
-        _constraints.push_back({ p0, p3, Vector3::Distance(p0->pos, p3->pos) });
+      static int ofs[] = { 
+        -1, +0, 
+        -1, +1, 
+        +0, +1,
+        +1, +1,
+        +1, +0,
+        +1, -1,
+        +0, -1,
+        -1, -1
+      };
+
+      for (int idx = 0; idx < 8; ++idx)
+      {
+        for (int s = 1; s <= 2; ++s)
+        {
+          int xx = j + s * ofs[idx*2+0];
+          int yy = i + s * ofs[idx*2+1];
+          if (xx < 0 || xx >= dimX || yy < 0 || yy >= dimY)
+            continue;
+
+          u32 idx1 = yy*dimX + xx;
+          auto key = make_pair(min(idx0, idx1), max(idx0, idx1));
+
+//           if (visited.count(key) > 0)
+//             continue;
+//           visited.insert(key);
+
+          Particle* p1 = &_particles[idx1];
+          _constraints.push_back({ p0, p1, Vector3::Distance(p0->pos, p1->pos) });
+
+        }
       }
     }
   }
 
   return true;
+}
+
+//------------------------------------------------------------------------------
+void Cloth::UpdateDistTable()
+{
 }
 
 //------------------------------------------------------------------------------
@@ -307,8 +357,10 @@ bool Cloth::InitAnimatedParameters()
 #if WITH_IMGUI
 void Cloth::RenderParameterSet()
 {
+  double avg = _avgUpdate.GetAverage();
+  ImGui::Text("Avg update: %lfs (%.1lf fps)", avg, 1 / avg );
   ImGui::SliderFloat("Damping", &_settings.damping, 0, 1);
-  ImGui::SliderFloat3("Gravity", &_settings.gravity.x, -5, 0);
+  ImGui::SliderFloat3("Gravity", &_settings.gravity.x, -5, +5);
 
   if (ImGui::Button("Reset"))
     Reset();

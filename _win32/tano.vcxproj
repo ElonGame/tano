@@ -329,6 +329,7 @@
   <ItemGroup>
     <ClInclude Include="..\animation_helpers.hpp" />
     <ClInclude Include="..\bass\bass.h" />
+    <ClInclude Include="..\bristol\rolling_average.hpp" />
     <ClInclude Include="..\camera.hpp" />
     <ClInclude Include="..\effects\blob.hpp" />
     <ClInclude Include="..\effects\cloth.hpp" />

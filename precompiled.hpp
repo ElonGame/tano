@@ -132,6 +132,7 @@
 #include "bristol/flags.hpp"
 #include "bristol/utils.hpp"
 #include "bristol/error.hpp"
+#include "bristol/rolling_average.hpp"
 #include "bristol/file_utils.hpp"
 #include "bristol/time_utils.hpp"
 #include "bristol/file_watcher.hpp"
@@ -192,6 +193,7 @@ namespace tano
 
   using bristol::TimeStamp;
   using bristol::TimeDuration;
+  using bristol::RollingAverage;
 
   using bristol::Spherical;
 }

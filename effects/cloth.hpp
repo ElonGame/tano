@@ -38,6 +38,7 @@ namespace tano
     void UpdateParticles(const UpdateState& state);
     bool InitParticles();
     void ResetParticles();
+    void UpdateDistTable();
 
     struct CBufferPerFrame
     {
@@ -81,5 +82,8 @@ namespace tano
     ClothSettings _settings;
     string _configName;
     Camera _camera;
+
+    RollingAverage<double> _avgUpdate;
+    float* _distTable = nullptr;
   };
 }
