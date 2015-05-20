@@ -116,57 +116,115 @@ void Cloth::UpdateParticles(const UpdateState& state)
 {
   g_stopWatch.Start();
 
-  size_t numParticles = _particlePos.size();
+  size_t numParticles = _particles.size();
   float dt = 1.f / state.frequency;
   float dt2 = dt * dt;
 
   for (size_t i = 0; i < numParticles; ++i)
   {
     //_particles[i].acc = Vector3(randf(s, s), randf(s, s), randf(s, s));
-    _particleAcc[i] = _settings.gravity;
+    _particles[i].acc = _settings.gravity;
   }
 
-  //Particle* p = &_particles[0];
-  V3* pos = &_particlePos[0];
-  V3* lastPos = &_particleLastPos[0];
-  V3* acc = &_particleAcc[0];
+  Particle* p = &_particles[0];
+  //V3* pos = &_particlePos[0];
+  //V3* lastPos = &_particleLastPos[0];
+  //V3* acc = &_particleAcc[0];
   for (size_t i = 0; i < numParticles; ++i)
   {
     // verlet integration
-    V3 tmp = *pos;
-    *pos = *pos + (1.0f - _settings.damping) * (*pos - *lastPos) + dt2 * *acc;
-    *lastPos = tmp;
-    //++p;
+    V3 tmp = p->pos;
+    p->pos = p->pos + (1.0f - _settings.damping) * (p->pos - p->lastPos) + dt2 * p->acc;
+    p->lastPos = tmp;
+    ++p;
 
 //    _particles[i].acc = Vector3(0, 0, 0);
-    *acc = V3(0,0,0);
-    //_particles[i].acc = Vector3(0, 0, 0);
+//    *acc = V3(0,0,0);
+    _particles[i].acc = Vector3(0, 0, 0);
 
-    ++pos;
-    ++lastPos;
-    ++acc;
+//     ++pos;
+//     ++lastPos;
+//     ++acc;
   }
 
   // apply the constraints
 #if 1
-  V3* p = &_particlePos[0];
+  p = &_particles[0];
   for (int i = 0; i < 2; ++i)
   {
-    for (const Constraint& c : _constraints)
+    int num = (int)(_constraints.size() / 4);
+    for (int j = 0; j < num; ++j)
     {
-      V3* p0 = p + c.idx0;
-      V3* p1 = p + c.idx1;
+#if 1
+      const Constraint& c0 = _constraints[j * 4 + 0];
+      const Constraint& c1 = _constraints[j * 4 + 1];
+      const Constraint& c2 = _constraints[j * 4 + 2];
+      const Constraint& c3 = _constraints[j * 4 + 3];
 
-      V3 pp0 = *p0;
-      V3 pp1 = *p1;
+      V3 v0 = (c0.p1->pos - c0.p0->pos);
+      float dist0 = Length(v0);
+      float s0 = 1 - c0.restLength / dist0;
+      V3 dir0 = 0.5f * s0 * v0;
+      c0.p0->pos = c0.p0->pos + dir0;
+      c0.p1->pos = c0.p1->pos - dir0;
 
-      V3 v = (pp1 - pp0);
-      float dist = Length(v);
-      float s = 1 - c.restLength / dist;
-      V3 dir = 0.5f * s * v;
-      *p0 = pp0 + dir;
-      *p1 = pp1 - dir;
+      V3 v1 = (c1.p1->pos - c1.p0->pos);
+      float dist1 = Length(v1);
+      float s1 = 1 - c1.restLength / dist1;
+      V3 dir1 = 0.5f * s1 * v1;
+      c1.p0->pos = c1.p0->pos + dir1;
+      c1.p1->pos = c1.p1->pos - dir1;
+
+      V3 v2 = (c2.p1->pos - c2.p0->pos);
+      float dist2 = Length(v2);
+      float s2 = 1 - c2.restLength / dist2;
+      V3 dir2 = 0.5f * s2 * v2;
+      c2.p0->pos = c2.p0->pos + dir2;
+      c2.p1->pos = c2.p1->pos - dir2;
+
+      V3 v3 = (c3.p1->pos - c3.p0->pos);
+      float dist3 = Length(v3);
+      float s3 = 1 - c3.restLength / dist3;
+      V3 dir3 = 0.5f * s3 * v3;
+      c3.p0->pos = c3.p0->pos + dir3;
+      c3.p1->pos = c3.p1->pos - dir3;
+#else
+      const Constraint& c0 = _constraints[j * 4 + 0];
+      const Constraint& c1 = _constraints[j * 4 + 1];
+      const Constraint& c2 = _constraints[j * 4 + 2];
+      const Constraint& c3 = _constraints[j * 4 + 3];
+
+      V3 v0 = (c0.p1->pos - c0.p0->pos);
+      V3 v1 = (c1.p1->pos - c1.p0->pos);
+      V3 v2 = (c2.p1->pos - c2.p0->pos);
+      V3 v3 = (c3.p1->pos - c3.p0->pos);
+
+      float dist0 = Length(v0);
+      float dist1 = Length(v1);
+      float dist2 = Length(v2);
+      float dist3 = Length(v3);
+
+      float s0 = 1 - c0.restLength / dist0;
+      float s1 = 1 - c1.restLength / dist1;
+      float s2 = 1 - c2.restLength / dist2;
+      float s3 = 1 - c3.restLength / dist3;
+
+      V3 dir0 = 0.5f * s0 * v0;
+      V3 dir1 = 0.5f * s1 * v1;
+      V3 dir2 = 0.5f * s2 * v2;
+      V3 dir3 = 0.5f * s3 * v3;
+
+      c0.p0->pos = c0.p0->pos + dir0;
+      c0.p1->pos = c0.p1->pos - dir0;
+      c1.p0->pos = c1.p0->pos + dir1;
+      c1.p1->pos = c1.p1->pos - dir1;
+      c2.p0->pos = c2.p0->pos + dir2;
+      c2.p1->pos = c2.p1->pos - dir2;
+      c3.p0->pos = c3.p0->pos + dir3;
+      c3.p1->pos = c3.p1->pos - dir3;
+#endif
     }
+
   }
 #else
   for (int i = 0; i < 2; ++i)
@@ -193,8 +251,8 @@ void Cloth::UpdateParticles(const UpdateState& state)
   Vector3 cur(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
   for (u32 i = 0; i < _clothDimX; ++i)
   {
-    //_particles[i].pos = cur;
-    _particlePos[i] = cur;
+    _particles[i].pos = cur;
+    //_particlePos[i] = cur;
     cur.x += incX;
     //++p;
   }
@@ -202,7 +260,7 @@ void Cloth::UpdateParticles(const UpdateState& state)
   _avgUpdate.AddSample(g_stopWatch.Stop());
 
   V3* vtx = _ctx->MapWriteDiscard<V3>(_clothGpuObjects._vb);
-  memcpy(vtx, _particlePos.data(), _numParticles * sizeof(V3));
+  memcpy(vtx, _particles.data(), _numParticles * sizeof(Particle));
   _ctx->Unmap(_clothGpuObjects._vb);
 }
 
@@ -216,7 +274,7 @@ bool Cloth::InitParticles()
   int dimY = h / GRID_SIZE + 1;
   
   int numParticles = dimX * dimY;
-  _clothGpuObjects.CreateDynamicVb(numParticles * sizeof(V3), sizeof(V3));
+  _clothGpuObjects.CreateDynamicVb(numParticles * sizeof(Particle), sizeof(Particle));
 
   _clothDimX = dimX;
   _clothDimY = dimY;
@@ -253,9 +311,10 @@ bool Cloth::InitParticles()
   }
   _clothGpuObjects.CreateIndexBuffer((u32)indices.size() * sizeof(u32), DXGI_FORMAT_R32_UINT, indices.data());
 
-  _particlePos.resize(numParticles);
-  _particleAcc.resize(numParticles);
-  _particleLastPos.resize(numParticles);
+  _particles.resize(numParticles);
+  //_particlePos.resize(numParticles);
+  //_particleAcc.resize(numParticles);
+  //_particleLastPos.resize(numParticles);
 
   ResetParticles();
 
@@ -268,7 +327,8 @@ bool Cloth::InitParticles()
     for (int j = 0; j < dimX; ++j)
     {
       u32 idx0 = i*dimX + j;
-      V3* p0 = &_particlePos[idx0];
+      //V3* p0 = &_particlePos[idx0];
+      V3* p0 = &_particles[idx0].pos;
 
       static int ofs[] = { 
         -1, +0, 
@@ -291,14 +351,76 @@ bool Cloth::InitParticles()
             continue;
 
           u32 idx1 = yy*dimX + xx;
-          V3* p1 = &_particlePos[idx1];
+          //V3* p1 = &_particlePos[idx1];
+          V3* p1 = &_particles[idx1].pos;
 
           //constraintsByParticle[min(p0, p1)].push_back(max(p1, p0));
-          _constraints.push_back({ idx0, idx1, Distance(*p0, *p1) });
+          _constraints.push_back({ &_particles[idx0], &_particles[idx1], Distance(*p0, *p1) });
         }
       }
     }
   }
+
+  // make num constraints a multiple of 4
+  for (int i = 0; i < (_constraints.size() & 3); ++i)
+  {
+    _constraints.push_back({ &_particles[0], &_particles[0], 0 });
+  }
+
+  // reorder the constaints so no group of 4 refers to the same particles
+  int numConstraints = (int)_constraints.size();
+  int numChunks = (numConstraints / 4);
+  vector<u8> used(numConstraints);
+  vector<int> order(numConstraints);
+  memset(used.data(), 0, numConstraints);
+
+  for (int i = 0; i < numChunks; ++i)
+  {
+    Particle* curChunk[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    for (int j = 0; j < 4; ++j)
+    {
+      // find first unused constraint whose particles aren't used in the chunk
+      int constraintIdx = -1;
+      for (int k = 0; k < numConstraints; ++k)
+      {
+        if (used[k])
+          continue;
+
+        bool ok = true;
+        for (int cc = 0; cc < 8; ++cc)
+        {
+          if (_constraints[k].p0 == curChunk[cc] || _constraints[k].p1 == curChunk[cc])
+          {
+            ok = false;
+            break;
+          }
+        }
+
+        if (!ok)
+          continue;
+
+        constraintIdx = k;
+        break;
+      }
+
+      assert(constraintIdx != -1);
+      used[constraintIdx] = 1;
+      curChunk[j * 4 + 0] = _constraints[constraintIdx].p0;
+      curChunk[j * 4 + 1] = _constraints[constraintIdx].p1;
+
+      // found a constraint to use
+      order[i*4+j] = constraintIdx;
+    }
+  }
+
+  // reorder the constraints
+  vector<Constraint> reorderedConstraints(numConstraints);
+  for (int i = 0; i < numConstraints; ++i)
+  {
+    reorderedConstraints[i] = _constraints[order[i]];
+  }
+
+  _constraints.swap(reorderedConstraints);
 
   for (auto& kv : constraintsByParticle)
   {
@@ -326,26 +448,29 @@ void Cloth::ResetParticles()
 
   Vector3 org(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
   Vector3 cur = org;
-  //Particle* p = &_particles[0];
+  Particle* p = &_particles[0];
 
-  V3* pos = &_particlePos[0];
-  V3* lastPos = &_particleLastPos[0];
-  V3* acc = &_particleAcc[0];
+//   V3* pos = &_particlePos[0];
+//   V3* lastPos = &_particleLastPos[0];
+//   V3* acc = &_particleAcc[0];
 
   for (u32 i = 0; i < _clothDimY; ++i)
   {
     cur.x = org.x;
     for (u32 j = 0; j < _clothDimX; ++j)
     {
-      *pos = cur;
-      *lastPos = cur;
-      *acc = V3(0, 0, 0);
+//       *pos = cur;
+//       *lastPos = cur;
+//       *acc = V3(0, 0, 0);
+      p->pos = cur;
+      p->lastPos = cur;
+      p->acc = V3(0, 0, 0);
       cur.x += incX;
-      //++p;
+      ++p;
 
-      ++pos;
-      ++lastPos;
-      ++acc;
+//       ++pos;
+//       ++lastPos;
+//       ++acc;
     }
     cur.y -= incY;
   }

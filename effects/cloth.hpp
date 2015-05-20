@@ -103,12 +103,12 @@ namespace tano
 
     struct Constraint
     {
-//      Particle* p0;
-//      Particle* p1;
+      Particle* p0;
+      Particle* p1;
       //V3* p0;
       //V3* p1;
-      u32 idx0;
-      u32 idx1;
+      //u32 idx0;
+      //u32 idx1;
       float restLength;
     };
 
@@ -118,12 +118,12 @@ namespace tano
       float restLength;
     };
 
-    //vector<Particle> _particles;
+    vector<Particle> _particles;
     vector<Constraint> _constraints;
 
-    vector<V3> _particlePos;
-    vector<V3> _particleLastPos;
-    vector<V3> _particleAcc;
+    //vector<V3> _particlePos;
+    //vector<V3> _particleLastPos;
+    //vector<V3> _particleAcc;
 
     unordered_map<Particle*, vector<ConstraintByParticle>> _constraintsByParticle;
     u32 _numTris = 0;
