@@ -374,7 +374,7 @@ bool Cloth::InitParticles()
   vector<int> order(numConstraints);
   memset(used.data(), 0, numConstraints);
 
-  for (int i = 0; i < numChunks; ++i)
+  for (int i = 0; i < numChunks-2; ++i)
   {
     Particle* curChunk[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
     for (int j = 0; j < 4; ++j)
@@ -404,13 +404,16 @@ bool Cloth::InitParticles()
       }
 
       assert(constraintIdx != -1);
+        assert(j <= 4);
       used[constraintIdx] = 1;
-      curChunk[j * 4 + 0] = _constraints[constraintIdx].p0;
-      curChunk[j * 4 + 1] = _constraints[constraintIdx].p1;
+      curChunk[j * 2 + 0] = _constraints[constraintIdx].p0;
+      curChunk[j * 2 + 1] = _constraints[constraintIdx].p1;
 
       // found a constraint to use
-      order[i*4+j] = constraintIdx;
+      order[i * 4 + j] = constraintIdx;
     }
+
+   
   }
 
   // reorder the constraints
