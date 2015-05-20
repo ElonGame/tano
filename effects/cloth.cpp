@@ -13,8 +13,14 @@
 
 /*
   update timing:
+
   doozblade
   base: 6.9 ms
+  conversion to V3: 5.8 ms
+
+  mothership:
+  V3: 2.5 ms
+  back to p0/p1 constraints: 2.3 ms
 */
 
 using namespace tano;
@@ -110,42 +116,56 @@ void Cloth::UpdateParticles(const UpdateState& state)
 {
   g_stopWatch.Start();
 
-  size_t numParticles = _particles.size();
+  size_t numParticles = _particlePos.size();
   float dt = 1.f / state.frequency;
   float dt2 = dt * dt;
 
   for (size_t i = 0; i < numParticles; ++i)
   {
     //_particles[i].acc = Vector3(randf(s, s), randf(s, s), randf(s, s));
-    _particles[i].acc = _settings.gravity;
+    _particleAcc[i] = _settings.gravity;
   }
 
-  Particle* p = &_particles[0];
+  //Particle* p = &_particles[0];
+  V3* pos = &_particlePos[0];
+  V3* lastPos = &_particleLastPos[0];
+  V3* acc = &_particleAcc[0];
   for (size_t i = 0; i < numParticles; ++i)
   {
     // verlet integration
-    V3 tmp = p->pos;
-    p->pos = p->pos + (1.0f - _settings.damping) * (p->pos - p->lastPos) + dt2 * p->acc;
-    p->lastPos = tmp;
-    ++p;
+    V3 tmp = *pos;
+    *pos = *pos + (1.0f - _settings.damping) * (*pos - *lastPos) + dt2 * *acc;
+    *lastPos = tmp;
+    //++p;
 
-    _particles[i].acc = Vector3(0, 0, 0);
+//    _particles[i].acc = Vector3(0, 0, 0);
+    *acc = V3(0,0,0);
+    //_particles[i].acc = Vector3(0, 0, 0);
+
+    ++pos;
+    ++lastPos;
+    ++acc;
   }
 
   // apply the constraints
-#if 0
+#if 1
+  V3* p = &_particlePos[0];
   for (int i = 0; i < 2; ++i)
   {
     for (const Constraint& c : _constraints)
     {
-      Particle* p0 = c.p0;
-      Particle* p1 = c.p1;
+      V3* p0 = p + c.idx0;
+      V3* p1 = p + c.idx1;
 
-      float dist = Vector3::Distance(p0->pos, p1->pos);
+      V3 pp0 = *p0;
+      V3 pp1 = *p1;
+
+      V3 v = (pp1 - pp0);
+      float dist = Length(v);
       float s = 1 - c.restLength / dist;
-      Vector3 dir = s * (p1->pos - p0->pos);
-      p0->pos += 0.5f * dir;
-      p1->pos -= 0.5f * dir;
+      V3 dir = 0.5f * s * v;
+      *p0 = pp0 + dir;
+      *p1 = pp1 - dir;
     }
   }
 #else
@@ -173,15 +193,16 @@ void Cloth::UpdateParticles(const UpdateState& state)
   Vector3 cur(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
   for (u32 i = 0; i < _clothDimX; ++i)
   {
-    _particles[i].pos = cur;
+    //_particles[i].pos = cur;
+    _particlePos[i] = cur;
     cur.x += incX;
-    ++p;
+    //++p;
   }
 
   _avgUpdate.AddSample(g_stopWatch.Stop());
 
   V3* vtx = _ctx->MapWriteDiscard<V3>(_clothGpuObjects._vb);
-  memcpy(vtx, _particles.data(), _numParticles * sizeof(Particle));
+  memcpy(vtx, _particlePos.data(), _numParticles * sizeof(V3));
   _ctx->Unmap(_clothGpuObjects._vb);
 }
 
@@ -195,7 +216,7 @@ bool Cloth::InitParticles()
   int dimY = h / GRID_SIZE + 1;
   
   int numParticles = dimX * dimY;
-  _clothGpuObjects.CreateDynamicVb(numParticles * sizeof(Particle), sizeof(Particle));
+  _clothGpuObjects.CreateDynamicVb(numParticles * sizeof(V3), sizeof(V3));
 
   _clothDimX = dimX;
   _clothDimY = dimY;
@@ -232,7 +253,9 @@ bool Cloth::InitParticles()
   }
   _clothGpuObjects.CreateIndexBuffer((u32)indices.size() * sizeof(u32), DXGI_FORMAT_R32_UINT, indices.data());
 
-  _particles.resize(numParticles);
+  _particlePos.resize(numParticles);
+  _particleAcc.resize(numParticles);
+  _particleLastPos.resize(numParticles);
 
   ResetParticles();
 
@@ -245,7 +268,7 @@ bool Cloth::InitParticles()
     for (int j = 0; j < dimX; ++j)
     {
       u32 idx0 = i*dimX + j;
-      Particle* p0 = &_particles[idx0];
+      V3* p0 = &_particlePos[idx0];
 
       static int ofs[] = { 
         -1, +0, 
@@ -268,12 +291,10 @@ bool Cloth::InitParticles()
             continue;
 
           u32 idx1 = yy*dimX + xx;
-          Particle* p1 = &_particles[idx1];
+          V3* p1 = &_particlePos[idx1];
 
-          constraintsByParticle[min(p0, p1)].push_back(max(p1, p0));
-
-          _constraints.push_back({ p0, p1, Distance(p0->pos, p1->pos) });
-
+          //constraintsByParticle[min(p0, p1)].push_back(max(p1, p0));
+          _constraints.push_back({ idx0, idx1, Distance(*p0, *p1) });
         }
       }
     }
@@ -305,17 +326,26 @@ void Cloth::ResetParticles()
 
   Vector3 org(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
   Vector3 cur = org;
-  Particle* p = &_particles[0];
+  //Particle* p = &_particles[0];
+
+  V3* pos = &_particlePos[0];
+  V3* lastPos = &_particleLastPos[0];
+  V3* acc = &_particleAcc[0];
+
   for (u32 i = 0; i < _clothDimY; ++i)
   {
     cur.x = org.x;
     for (u32 j = 0; j < _clothDimX; ++j)
     {
-      p->pos = cur;
-      p->lastPos = cur;
-      p->acc = Vector3(0, 0, 0);
+      *pos = cur;
+      *lastPos = cur;
+      *acc = V3(0, 0, 0);
       cur.x += incX;
-      ++p;
+      //++p;
+
+      ++pos;
+      ++lastPos;
+      ++acc;
     }
     cur.y -= incY;
   }

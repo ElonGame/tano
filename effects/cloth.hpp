@@ -28,6 +28,11 @@ namespace tano
     return sqrtf(dx*dx+dy*dy+dz*dz);
   }
 
+  inline float Length(const V3& a)
+  {
+    return sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+  }
+
   inline V3 operator*(float s, const V3& v)
   {
     return V3(s*v.x, s*v.y, s*v.z);
@@ -98,8 +103,12 @@ namespace tano
 
     struct Constraint
     {
-      Particle* p0;
-      Particle* p1;
+//      Particle* p0;
+//      Particle* p1;
+      //V3* p0;
+      //V3* p1;
+      u32 idx0;
+      u32 idx1;
       float restLength;
     };
 
@@ -109,8 +118,13 @@ namespace tano
       float restLength;
     };
 
-    vector<Particle> _particles;
+    //vector<Particle> _particles;
     vector<Constraint> _constraints;
+
+    vector<V3> _particlePos;
+    vector<V3> _particleLastPos;
+    vector<V3> _particleAcc;
+
     unordered_map<Particle*, vector<ConstraintByParticle>> _constraintsByParticle;
     u32 _numTris = 0;
     u32 _numParticles = 0;
