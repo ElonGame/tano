@@ -124,8 +124,8 @@ void Cloth::UpdateParticles(const UpdateState& state)
   for (size_t i = 0; i < numParticles; ++i)
   {
     // verlet integration
-    Vector3 tmp = p->pos;
-    p->pos = p->pos + (1.0f - _settings.damping) * (p->pos - p->lastPos) + p->acc * dt2;
+    V3 tmp = p->pos;
+    p->pos = p->pos + (1.0f - _settings.damping) * (p->pos - p->lastPos) + dt2 * p->acc;
     p->lastPos = tmp;
     ++p;
 
@@ -133,6 +133,7 @@ void Cloth::UpdateParticles(const UpdateState& state)
   }
 
   // apply the constraints
+#if 0
   for (int i = 0; i < 2; ++i)
   {
     for (const Constraint& c : _constraints)
@@ -141,11 +142,31 @@ void Cloth::UpdateParticles(const UpdateState& state)
       Particle* p1 = c.p1;
 
       float dist = Vector3::Distance(p0->pos, p1->pos);
-      Vector3 dir = ((dist - c.restLength) / dist) * (p1->pos - p0->pos);
+      float s = 1 - c.restLength / dist;
+      Vector3 dir = s * (p1->pos - p0->pos);
       p0->pos += 0.5f * dir;
       p1->pos -= 0.5f * dir;
     }
   }
+#else
+  for (int i = 0; i < 2; ++i)
+  {
+    for (auto& kv : _constraintsByParticle)
+    {
+      Particle* p0 = kv.first;
+
+      for (const ConstraintByParticle& c: kv.second)
+      {
+        Particle* p1 = c.p1;
+        float dist = Distance(p0->pos, p1->pos);
+        float s = 1 - c.restLength / dist;
+        V3 dir = s * (p1->pos - p0->pos);
+        p0->pos = p0->pos + 0.5f * dir;
+        p1->pos = p1->pos - 0.5f * dir;
+      }
+    }
+  }
+#endif
 
   // top row is fixed
   float incX = CLOTH_SIZE / (_clothDimX - 1);
@@ -159,7 +180,7 @@ void Cloth::UpdateParticles(const UpdateState& state)
 
   _avgUpdate.AddSample(g_stopWatch.Stop());
 
-  Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_clothGpuObjects._vb);
+  V3* vtx = _ctx->MapWriteDiscard<V3>(_clothGpuObjects._vb);
   memcpy(vtx, _particles.data(), _numParticles * sizeof(Particle));
   _ctx->Unmap(_clothGpuObjects._vb);
 }
@@ -215,7 +236,7 @@ bool Cloth::InitParticles()
 
   ResetParticles();
 
-  set<pair<u32, u32>> visited;
+  map<Particle*, vector<Particle*>> constraintsByParticle;
 
   // create cloth constraints
   // each particle is connected horiz, vert and diag (both 1 and 2 steps away)
@@ -247,17 +268,23 @@ bool Cloth::InitParticles()
             continue;
 
           u32 idx1 = yy*dimX + xx;
-          auto key = make_pair(min(idx0, idx1), max(idx0, idx1));
-
-//           if (visited.count(key) > 0)
-//             continue;
-//           visited.insert(key);
-
           Particle* p1 = &_particles[idx1];
-          _constraints.push_back({ p0, p1, Vector3::Distance(p0->pos, p1->pos) });
+
+          constraintsByParticle[min(p0, p1)].push_back(max(p1, p0));
+
+          _constraints.push_back({ p0, p1, Distance(p0->pos, p1->pos) });
 
         }
       }
+    }
+  }
+
+  for (auto& kv : constraintsByParticle)
+  {
+    Particle* p0 = kv.first;
+    for (Particle* p1: kv.second)
+    {
+      _constraintsByParticle[p0].push_back({p1, Distance(p0->pos, p1->pos) });
     }
   }
 

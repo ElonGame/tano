@@ -10,6 +10,39 @@
 
 namespace tano
 {
+
+  struct V3
+  {
+    V3() {}
+    V3(float x, float y, float z) : x(x), y(y), z(z) {}
+    V3(const Vector3& v) : x(v.x), y(v.y), z(v.z) {}
+    float x, y, z;
+  };
+
+  inline float Distance(const V3& a, const V3& b)
+  {
+    float dx = a.x - b.x;
+    float dy = a.y - b.y;
+    float dz = a.z - b.z;
+
+    return sqrtf(dx*dx+dy*dy+dz*dz);
+  }
+
+  inline V3 operator*(float s, const V3& v)
+  {
+    return V3(s*v.x, s*v.y, s*v.z);
+  }
+
+  inline V3 operator-(const V3& a, const V3& b)
+  {
+    return V3(a.x - b.x, a.y - b.y, a.z - b.z);
+  }
+
+  inline V3 operator+(const V3& a, const V3& b)
+  {
+    return V3(a.x + b.x, a.y + b.y, a.z + b.z);
+  }
+
   class Cloth : public Effect
   {
   public:
@@ -58,9 +91,9 @@ namespace tano
 
     struct Particle
     {
-      Vector3 pos;
-      Vector3 lastPos;
-      Vector3 acc;
+      V3 pos;
+      V3 lastPos;
+      V3 acc;
     };
 
     struct Constraint
@@ -70,8 +103,15 @@ namespace tano
       float restLength;
     };
 
+    struct ConstraintByParticle
+    {
+      Particle* p1;
+      float restLength;
+    };
+
     vector<Particle> _particles;
     vector<Constraint> _constraints;
+    unordered_map<Particle*, vector<ConstraintByParticle>> _constraintsByParticle;
     u32 _numTris = 0;
     u32 _numParticles = 0;
     u32 _clothDimX = 0;
