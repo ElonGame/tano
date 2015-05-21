@@ -253,23 +253,42 @@ bool Cloth::InitParticles()
   {
     int num = *(int*)&buf[0];
     _constraints.resize(num);
-    memcpy(_constraints.data(), (Constraint*)&buf[4], num * sizeof(Constraint));
+    vector<u16> data(num*2);
+
+    memcpy(data.data(), (u16*)&buf[4], num * 2 * sizeof(u16));
+
+    for (int i = 0; i < num; ++i)
+    {
+      _constraints[i].p0 = &_particles[data[i * 2 + 0]];
+      _constraints[i].p1 = &_particles[data[i * 2 + 1]];
+      _constraints[i].restLength = Distance(_constraints[i].p0->pos, _constraints[i].p1->pos);
+    }
   }
   else
   {
     GroupConstraints();
     FILE* f = RESOURCE_MANAGER.OpenWriteFile("data/cloth_constraints.dat");
+
+    // note, for the constraints, just save a u16 particle index
+    vector<u16> data;
+    data.reserve(_constraints.size() * 2);
+    for (const Constraint& c : _constraints)
+    {
+      data.push_back((u16)c.idx0);
+      data.push_back((u16)c.idx1);
+    }
     RESOURCE_MANAGER.WriteFile(f, (int)_constraints.size());
-    RESOURCE_MANAGER.WriteFile(f, (const char*)&_constraints[0], (int)(_constraints.size() * sizeof(Constraint)));
+    RESOURCE_MANAGER.WriteFile(f, (const char*)&data[0], (int)(data.size() * sizeof(u16)));
     RESOURCE_MANAGER.CloseFile(f);
+
+    // apply the constaint fixup
+    for (Constraint& c : _constraints)
+    {
+      c.p0 = &_particles[c.idx0];
+      c.p1 = &_particles[c.idx1];
+    }
   }
 
-  // apply the constaint fixup
-  for (Constraint& c : _constraints)
-  {
-    c.p0 = &_particles[c.idx0];
-    c.p1 = &_particles[c.idx1];
-  }
 
   return true;
 }

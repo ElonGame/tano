@@ -21,3 +21,4 @@ resources.txt
 resources.dat
 imgui.ini
 _win32/Graphics*
+data/cloth_constraints.dat
