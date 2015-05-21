@@ -35,9 +35,6 @@ Blob::~Blob()
 //------------------------------------------------------------------------------
 bool Blob::Init(const char* configFile)
 {
-  // hack
-  return true;
-
   BEGIN_INIT_SEQUENCE();
 
   _configName = configFile;

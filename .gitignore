@@ -19,4 +19,5 @@ nsight_profiler.cfg
 meshes/*
 resources.txt
 resources.dat
+imgui.ini
 _win32/Graphics*
