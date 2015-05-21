@@ -33,6 +33,11 @@ namespace tano
     return sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
   }
 
+  inline float LengthSquared(const V3& a)
+  {
+    return a.x*a.x + a.y*a.y + a.z*a.z;
+  }
+
   inline V3 operator*(float s, const V3& v)
   {
     return V3(s*v.x, s*v.y, s*v.z);
@@ -76,7 +81,6 @@ namespace tano
     void UpdateParticles(const UpdateState& state);
     bool InitParticles();
     void ResetParticles();
-    void UpdateDistTable();
 
     struct CBufferPerFrame
     {
@@ -105,10 +109,6 @@ namespace tano
     {
       Particle* p0;
       Particle* p1;
-      //V3* p0;
-      //V3* p1;
-      //u32 idx0;
-      //u32 idx1;
       float restLength;
     };
 
@@ -121,11 +121,6 @@ namespace tano
     vector<Particle> _particles;
     vector<Constraint> _constraints;
 
-    //vector<V3> _particlePos;
-    //vector<V3> _particleLastPos;
-    //vector<V3> _particleAcc;
-
-    unordered_map<Particle*, vector<ConstraintByParticle>> _constraintsByParticle;
     u32 _numTris = 0;
     u32 _numParticles = 0;
     u32 _clothDimX = 0;
@@ -138,6 +133,5 @@ namespace tano
     Camera _camera;
 
     RollingAverage<double> _avgUpdate;
-    float* _distTable = nullptr;
   };
 }

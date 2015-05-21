@@ -21,6 +21,7 @@
   mothership:
   V3: 2.5 ms
   back to p0/p1 constraints: 2.3 ms
+  4 constraints at a time: 0.9 ms. Yeah, this is probably fast enough for now :)
 */
 
 using namespace tano;
@@ -75,7 +76,6 @@ Cloth::Cloth(const string &name, u32 id)
 //------------------------------------------------------------------------------
 Cloth::~Cloth()
 {
-  SAFE_ADELETE(_distTable);
 }
 
 //------------------------------------------------------------------------------
@@ -122,33 +122,21 @@ void Cloth::UpdateParticles(const UpdateState& state)
 
   for (size_t i = 0; i < numParticles; ++i)
   {
-    //_particles[i].acc = Vector3(randf(s, s), randf(s, s), randf(s, s));
     _particles[i].acc = _settings.gravity;
   }
 
   Particle* p = &_particles[0];
-  //V3* pos = &_particlePos[0];
-  //V3* lastPos = &_particleLastPos[0];
-  //V3* acc = &_particleAcc[0];
   for (size_t i = 0; i < numParticles; ++i)
   {
     // verlet integration
     V3 tmp = p->pos;
     p->pos = p->pos + (1.0f - _settings.damping) * (p->pos - p->lastPos) + dt2 * p->acc;
     p->lastPos = tmp;
+    p->acc = V3(0, 0, 0);
     ++p;
-
-//    _particles[i].acc = Vector3(0, 0, 0);
-//    *acc = V3(0,0,0);
-    _particles[i].acc = Vector3(0, 0, 0);
-
-//     ++pos;
-//     ++lastPos;
-//     ++acc;
   }
 
   // apply the constraints
-#if 1
   p = &_particles[0];
   Constraint* c = &_constraints[0];
   for (int i = 0; i < 2; ++i)
@@ -156,40 +144,6 @@ void Cloth::UpdateParticles(const UpdateState& state)
     int num = (int)(_constraints.size() / 4);
     for (int j = 0; j < num; ++j)
     {
-#if 0
-      const Constraint& c0 = _constraints[j * 4 + 0];
-      const Constraint& c1 = _constraints[j * 4 + 1];
-      const Constraint& c2 = _constraints[j * 4 + 2];
-      const Constraint& c3 = _constraints[j * 4 + 3];
-
-      V3 v0 = (c0.p1->pos - c0.p0->pos);
-      float dist0 = Length(v0);
-      float s0 = 1 - c0.restLength / dist0;
-      V3 dir0 = 0.5f * s0 * v0;
-      c0.p0->pos = c0.p0->pos + dir0;
-      c0.p1->pos = c0.p1->pos - dir0;
-
-      V3 v1 = (c1.p1->pos - c1.p0->pos);
-      float dist1 = Length(v1);
-      float s1 = 1 - c1.restLength / dist1;
-      V3 dir1 = 0.5f * s1 * v1;
-      c1.p0->pos = c1.p0->pos + dir1;
-      c1.p1->pos = c1.p1->pos - dir1;
-
-      V3 v2 = (c2.p1->pos - c2.p0->pos);
-      float dist2 = Length(v2);
-      float s2 = 1 - c2.restLength / dist2;
-      V3 dir2 = 0.5f * s2 * v2;
-      c2.p0->pos = c2.p0->pos + dir2;
-      c2.p1->pos = c2.p1->pos - dir2;
-
-      V3 v3 = (c3.p1->pos - c3.p0->pos);
-      float dist3 = Length(v3);
-      float s3 = 1 - c3.restLength / dist3;
-      V3 dir3 = 0.5f * s3 * v3;
-      c3.p0->pos = c3.p0->pos + dir3;
-      c3.p1->pos = c3.p1->pos - dir3;
-#else
       const Constraint& c0 = c[j * 4 + 0];
       const Constraint& c1 = c[j * 4 + 1];
       const Constraint& c2 = c[j * 4 + 2];
@@ -205,11 +159,10 @@ void Cloth::UpdateParticles(const UpdateState& state)
       float dist2 = Length(v2);
       float dist3 = Length(v3);
 
-      float eps = 0.01f;
-      float s0 = dist0 < eps ? 1 : 1 - c0.restLength / dist0;
-      float s1 = dist1 < eps ? 1 : 1 - c1.restLength / dist1;
-      float s2 = dist2 < eps ? 1 : 1 - c2.restLength / dist2;
-      float s3 = dist3 < eps ? 1 : 1 - c3.restLength / dist3;
+      float s0 = 1 - c0.restLength / dist0;
+      float s1 = 1 - c1.restLength / dist1;
+      float s2 = 1 - c2.restLength / dist2;
+      float s3 = 1 - c3.restLength / dist3;
 
       V3 dir0 = 0.5f * s0 * v0;
       V3 dir1 = 0.5f * s1 * v1;
@@ -224,39 +177,18 @@ void Cloth::UpdateParticles(const UpdateState& state)
       c2.p1->pos = c2.p1->pos - dir2;
       c3.p0->pos = c3.p0->pos + dir3;
       c3.p1->pos = c3.p1->pos - dir3;
-#endif
-    }
-
-  }
-#else
-  for (int i = 0; i < 2; ++i)
-  {
-    for (auto& kv : _constraintsByParticle)
-    {
-      Particle* p0 = kv.first;
-
-      for (const ConstraintByParticle& c: kv.second)
-      {
-        Particle* p1 = c.p1;
-        float dist = Distance(p0->pos, p1->pos);
-        float s = 1 - c.restLength / dist;
-        V3 dir = s * (p1->pos - p0->pos);
-        p0->pos = p0->pos + 0.5f * dir;
-        p1->pos = p1->pos - 0.5f * dir;
-      }
     }
   }
-#endif
 
   // top row is fixed
   float incX = CLOTH_SIZE / (_clothDimX - 1);
   Vector3 cur(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
+  p = &_particles[0];
   for (u32 i = 0; i < _clothDimX; ++i)
   {
-    _particles[i].pos = cur;
-    //_particlePos[i] = cur;
+    p->pos = cur;
     cur.x += incX;
-    //++p;
+    ++p;
   }
 
   _avgUpdate.AddSample(g_stopWatch.Stop());
@@ -281,8 +213,6 @@ bool Cloth::InitParticles()
   _clothDimX = dimX;
   _clothDimY = dimY;
   _numParticles = numParticles;
-
-  _distTable = new float[_clothDimX*_clothDimY];
 
   // create the grid
   vector<u32> indices((dimX-1)*(dimY-1)*2*3);
@@ -314,13 +244,8 @@ bool Cloth::InitParticles()
   _clothGpuObjects.CreateIndexBuffer((u32)indices.size() * sizeof(u32), DXGI_FORMAT_R32_UINT, indices.data());
 
   _particles.resize(numParticles);
-  //_particlePos.resize(numParticles);
-  //_particleAcc.resize(numParticles);
-  //_particleLastPos.resize(numParticles);
 
   ResetParticles();
-
-  map<Particle*, vector<Particle*>> constraintsByParticle;
 
   // create cloth constraints
   // each particle is connected horiz, vert and diag (both 1 and 2 steps away)
@@ -329,7 +254,6 @@ bool Cloth::InitParticles()
     for (int j = 0; j < dimX; ++j)
     {
       u32 idx0 = i*dimX + j;
-      //V3* p0 = &_particlePos[idx0];
       V3* p0 = &_particles[idx0].pos;
 
       static int ofs[] = { 
@@ -353,10 +277,8 @@ bool Cloth::InitParticles()
             continue;
 
           u32 idx1 = yy*dimX + xx;
-          //V3* p1 = &_particlePos[idx1];
           V3* p1 = &_particles[idx1].pos;
 
-          //constraintsByParticle[min(p0, p1)].push_back(max(p1, p0));
           _constraints.push_back({ &_particles[idx0], &_particles[idx1], Distance(*p0, *p1) });
         }
       }
@@ -448,21 +370,7 @@ bool Cloth::InitParticles()
 
   _constraints.swap(reorderedConstraints);
 
-  for (auto& kv : constraintsByParticle)
-  {
-    Particle* p0 = kv.first;
-    for (Particle* p1: kv.second)
-    {
-      _constraintsByParticle[p0].push_back({p1, Distance(p0->pos, p1->pos) });
-    }
-  }
-
   return true;
-}
-
-//------------------------------------------------------------------------------
-void Cloth::UpdateDistTable()
-{
 }
 
 //------------------------------------------------------------------------------
@@ -476,27 +384,16 @@ void Cloth::ResetParticles()
   Vector3 cur = org;
   Particle* p = &_particles[0];
 
-//   V3* pos = &_particlePos[0];
-//   V3* lastPos = &_particleLastPos[0];
-//   V3* acc = &_particleAcc[0];
-
   for (u32 i = 0; i < _clothDimY; ++i)
   {
     cur.x = org.x;
     for (u32 j = 0; j < _clothDimX; ++j)
     {
-//       *pos = cur;
-//       *lastPos = cur;
-//       *acc = V3(0, 0, 0);
       p->pos = cur;
       p->lastPos = cur;
       p->acc = V3(0, 0, 0);
       cur.x += incX;
       ++p;
-
-//       ++pos;
-//       ++lastPos;
-//       ++acc;
     }
     cur.y -= incY;
   }
