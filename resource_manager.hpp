@@ -19,7 +19,7 @@ namespace tano
     ~ResourceManager();
 
     static ResourceManager &Instance();
-    static bool Create(const char* outputFilename);
+    static bool Create(const char* outputFilename, const char* appRoot);
     static bool Destroy();
 
     bool FileExists(const char* filename);
@@ -27,6 +27,16 @@ namespace tano
     bool LoadFile(const char* filename, vector<char>* buf);
     bool LoadPartial(const char* filename, u32 ofs, u32 len, vector<char>* buf);
     bool LoadInplace(const char* filename, u32 ofs, u32 len, void* buf);
+
+    // file is opened relateive to the app root
+    FILE* OpenWriteFile(const char* filename);
+    template <typename T>
+    void WriteFile(FILE* f, const T& t)
+    {
+      WriteFile(f, (const char*)&t, sizeof(t));
+    }
+    void WriteFile(FILE* f, const char* buf, int len);
+    void CloseFile(FILE* f);
 
     ObjectHandle LoadTexture(
         const char* filename,
@@ -76,6 +86,7 @@ namespace tano
     };
 
     set<FileInfo> _readFiles;
+    string _appRoot;
 
   };
 #define RESOURCE_MANAGER ResourceManager::Instance()

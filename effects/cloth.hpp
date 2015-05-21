@@ -81,6 +81,7 @@ namespace tano
     void UpdateParticles(const UpdateState& state);
     bool InitParticles();
     void ResetParticles();
+    void GroupConstraints();
 
     struct CBufferPerFrame
     {
@@ -107,14 +108,17 @@ namespace tano
 
     struct Constraint
     {
-      Particle* p0;
-      Particle* p1;
-      float restLength;
-    };
+      Constraint() {}
+      Constraint(u32 idx0, u32 idx1, float length) : idx0(idx0), idx1(idx1), restLength(length) {}
+      union {
+        Particle* p0;
+        u32 idx0;
+      };
+      union {
+        Particle* p1;
+        u32 idx1;
+      };
 
-    struct ConstraintByParticle
-    {
-      Particle* p1;
       float restLength;
     };
 
@@ -123,8 +127,8 @@ namespace tano
 
     u32 _numTris = 0;
     u32 _numParticles = 0;
-    u32 _clothDimX = 0;
-    u32 _clothDimY = 0;
+    int _clothDimX = 0;
+    int _clothDimY = 0;
 
     GpuState _clothState;
     GpuObjects _clothGpuObjects;

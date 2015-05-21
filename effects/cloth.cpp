@@ -184,7 +184,7 @@ void Cloth::UpdateParticles(const UpdateState& state)
   float incX = CLOTH_SIZE / (_clothDimX - 1);
   Vector3 cur(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
   p = &_particles[0];
-  for (u32 i = 0; i < _clothDimX; ++i)
+  for (int i = 0; i < _clothDimX; ++i)
   {
     p->pos = cur;
     cur.x += incX;
@@ -247,6 +247,39 @@ bool Cloth::InitParticles()
 
   ResetParticles();
 
+  // Check if we've saved the grouped constraints
+  vector<char> buf;
+  if (RESOURCE_MANAGER.LoadFile("data/cloth_constraints.dat", &buf))
+  {
+    int num = *(int*)&buf[0];
+    _constraints.resize(num);
+    memcpy(_constraints.data(), (Constraint*)&buf[4], num * sizeof(Constraint));
+  }
+  else
+  {
+    GroupConstraints();
+    FILE* f = RESOURCE_MANAGER.OpenWriteFile("data/cloth_constraints.dat");
+    RESOURCE_MANAGER.WriteFile(f, (int)_constraints.size());
+    RESOURCE_MANAGER.WriteFile(f, (const char*)&_constraints[0], (int)(_constraints.size() * sizeof(Constraint)));
+    RESOURCE_MANAGER.CloseFile(f);
+  }
+
+  // apply the constaint fixup
+  for (Constraint& c : _constraints)
+  {
+    c.p0 = &_particles[c.idx0];
+    c.p1 = &_particles[c.idx1];
+  }
+
+  return true;
+}
+
+//------------------------------------------------------------------------------
+void Cloth::GroupConstraints()
+{
+  int dimX = _clothDimX;
+  int dimY = _clothDimY;
+
   // create cloth constraints
   // each particle is connected horiz, vert and diag (both 1 and 2 steps away)
   for (int i = 0; i < dimY; ++i)
@@ -256,9 +289,9 @@ bool Cloth::InitParticles()
       u32 idx0 = i*dimX + j;
       V3* p0 = &_particles[idx0].pos;
 
-      static int ofs[] = { 
-        -1, +0, 
-        -1, +1, 
+      static int ofs[] = {
+        -1, +0,
+        -1, +1,
         +0, +1,
         +1, +1,
         +1, +0,
@@ -271,15 +304,15 @@ bool Cloth::InitParticles()
       {
         for (int s = 1; s <= 2; ++s)
         {
-          int xx = j + s * ofs[idx*2+0];
-          int yy = i + s * ofs[idx*2+1];
+          int xx = j + s * ofs[idx * 2 + 0];
+          int yy = i + s * ofs[idx * 2 + 1];
           if (xx < 0 || xx >= dimX || yy < 0 || yy >= dimY)
             continue;
 
           u32 idx1 = yy*dimX + xx;
           V3* p1 = &_particles[idx1].pos;
 
-          _constraints.push_back({ &_particles[idx0], &_particles[idx1], Distance(*p0, *p1) });
+          _constraints.push_back(Constraint(idx0, idx1, Distance(*p0, *p1)));
         }
       }
     }
@@ -288,7 +321,7 @@ bool Cloth::InitParticles()
   // make num constraints a multiple of 4
   for (int i = 0; i < (_constraints.size() & 3); ++i)
   {
-    _constraints.push_back({ &_particles[0], &_particles[0], 0 });
+    _constraints.push_back(Constraint(0, 0, 0));
   }
 
   // reorder the constaints so no group of 4 refers to the same particles
@@ -302,7 +335,7 @@ bool Cloth::InitParticles()
   vector<int> unmatched;
   for (int i = 0; i < numChunks; ++i)
   {
-    Particle* curChunk[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    u32 curChunk[8] = { -1, -1, -1, -1, -1, -1, -1, -1 };
     for (int j = 0; j < 4; ++j)
     {
       // find first unused constraint whose particles aren't used in the chunk
@@ -315,9 +348,9 @@ bool Cloth::InitParticles()
           continue;
 
         bool found = true;
-        for (int cc = 0; cc < j*2; ++cc)
+        for (int cc = 0; cc < j * 2; ++cc)
         {
-          if (_constraints[idx].p0 == curChunk[cc] || _constraints[idx].p1 == curChunk[cc])
+          if (_constraints[idx].idx0 == curChunk[cc] || _constraints[idx].idx1 == curChunk[cc])
           {
             found = false;
             break;
@@ -348,14 +381,14 @@ bool Cloth::InitParticles()
 
       // store which chunk the constraint was used in
       used[constraintIdx] = i;
-      curChunk[j * 2 + 0] = _constraints[constraintIdx].p0;
-      curChunk[j * 2 + 1] = _constraints[constraintIdx].p1;
+      curChunk[j * 2 + 0] = _constraints[constraintIdx].idx0;
+      curChunk[j * 2 + 1] = _constraints[constraintIdx].idx1;
 
       // found a constraint to use
       order[i * 4 + j] = constraintIdx;
     }
   }
-  DONE:
+DONE:
 
   // reorder the constraints
   vector<Constraint> reorderedConstraints;
@@ -370,7 +403,6 @@ bool Cloth::InitParticles()
 
   _constraints.swap(reorderedConstraints);
 
-  return true;
 }
 
 //------------------------------------------------------------------------------
@@ -384,10 +416,10 @@ void Cloth::ResetParticles()
   Vector3 cur = org;
   Particle* p = &_particles[0];
 
-  for (u32 i = 0; i < _clothDimY; ++i)
+  for (int i = 0; i < _clothDimY; ++i)
   {
     cur.x = org.x;
-    for (u32 j = 0; j < _clothDimX; ++j)
+    for (int j = 0; j < _clothDimX; ++j)
     {
       p->pos = cur;
       p->lastPos = cur;

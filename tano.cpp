@@ -110,7 +110,7 @@ bool App::Init(HINSTANCE hinstance)
   }
 
 #if WITH_UNPACKED_RESOUCES
-  INIT(RESOURCE_MANAGER_STATIC::Create("resources.txt"));
+  INIT(RESOURCE_MANAGER_STATIC::Create("resources.txt", _appRoot.c_str()));
 #else
   INIT(RESOURCE_MANAGER_STATIC::Create("resources.dat"));
 #endif

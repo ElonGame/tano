@@ -16,7 +16,7 @@
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/landscape.gb';
-    force: true;
+    force: false;
   },
   {
     name: 'blob';
@@ -32,7 +32,7 @@
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/cloth.gb';
-    force: false;
+    force: true;
   },
 
   ];

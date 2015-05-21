@@ -47,9 +47,10 @@ ResourceManager &ResourceManager::Instance()
 }
 
 //------------------------------------------------------------------------------
-bool ResourceManager::Create(const char* outputFilename)
+bool ResourceManager::Create(const char* outputFilename, const char* appRoot)
 {
   g_instance = new ResourceManager(outputFilename);
+  g_instance->_appRoot = appRoot;
   return true;
 }
 
@@ -261,6 +262,29 @@ ObjectHandle ResourceManager::LoadTextureFromMemory(
 {
   return GRAPHICS.LoadTextureFromMemory(buf, len, friendlyName, srgb, info);
 }
+
+//------------------------------------------------------------------------------
+FILE* ResourceManager::OpenWriteFile(const char* filename)
+{
+  FILE* f = fopen(PathJoin(_appRoot.c_str(), filename).c_str(), "wb");
+  if (!f)
+    return nullptr;
+
+  return f;
+}
+
+//------------------------------------------------------------------------------
+void ResourceManager::WriteFile(FILE* f, const char* buf, int len)
+{
+  fwrite(buf, len, 1, f);
+}
+
+//------------------------------------------------------------------------------
+void ResourceManager::CloseFile(FILE* f)
+{
+  fclose(f);
+}
+
 
 #else
 
