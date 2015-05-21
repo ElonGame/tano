@@ -150,12 +150,13 @@ void Cloth::UpdateParticles(const UpdateState& state)
   // apply the constraints
 #if 1
   p = &_particles[0];
+  Constraint* c = &_constraints[0];
   for (int i = 0; i < 2; ++i)
   {
     int num = (int)(_constraints.size() / 4);
     for (int j = 0; j < num; ++j)
     {
-#if 1
+#if 0
       const Constraint& c0 = _constraints[j * 4 + 0];
       const Constraint& c1 = _constraints[j * 4 + 1];
       const Constraint& c2 = _constraints[j * 4 + 2];
@@ -189,10 +190,10 @@ void Cloth::UpdateParticles(const UpdateState& state)
       c3.p0->pos = c3.p0->pos + dir3;
       c3.p1->pos = c3.p1->pos - dir3;
 #else
-      const Constraint& c0 = _constraints[j * 4 + 0];
-      const Constraint& c1 = _constraints[j * 4 + 1];
-      const Constraint& c2 = _constraints[j * 4 + 2];
-      const Constraint& c3 = _constraints[j * 4 + 3];
+      const Constraint& c0 = c[j * 4 + 0];
+      const Constraint& c1 = c[j * 4 + 1];
+      const Constraint& c2 = c[j * 4 + 2];
+      const Constraint& c3 = c[j * 4 + 3];
 
       V3 v0 = (c0.p1->pos - c0.p0->pos);
       V3 v1 = (c1.p1->pos - c1.p0->pos);
@@ -204,10 +205,11 @@ void Cloth::UpdateParticles(const UpdateState& state)
       float dist2 = Length(v2);
       float dist3 = Length(v3);
 
-      float s0 = 1 - c0.restLength / dist0;
-      float s1 = 1 - c1.restLength / dist1;
-      float s2 = 1 - c2.restLength / dist2;
-      float s3 = 1 - c3.restLength / dist3;
+      float eps = 0.01f;
+      float s0 = dist0 < eps ? 1 : 1 - c0.restLength / dist0;
+      float s1 = dist1 < eps ? 1 : 1 - c1.restLength / dist1;
+      float s2 = dist2 < eps ? 1 : 1 - c2.restLength / dist2;
+      float s3 = dist3 < eps ? 1 : 1 - c3.restLength / dist3;
 
       V3 dir0 = 0.5f * s0 * v0;
       V3 dir1 = 0.5f * s1 * v1;
@@ -368,59 +370,80 @@ bool Cloth::InitParticles()
   }
 
   // reorder the constaints so no group of 4 refers to the same particles
+  // this allows us to process the whole block at once
   int numConstraints = (int)_constraints.size();
   int numChunks = (numConstraints / 4);
-  vector<u8> used(numConstraints);
+  vector<u32> used(numConstraints);
   vector<int> order(numConstraints);
-  memset(used.data(), 0, numConstraints);
+  memset(used.data(), 0xff, numConstraints * sizeof(u32));
 
-  for (int i = 0; i < numChunks-2; ++i)
+  vector<int> unmatched;
+  for (int i = 0; i < numChunks; ++i)
   {
     Particle* curChunk[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
     for (int j = 0; j < 4; ++j)
     {
       // find first unused constraint whose particles aren't used in the chunk
       int constraintIdx = -1;
+      int ofs = 0;
       for (int k = 0; k < numConstraints; ++k)
       {
-        if (used[k])
+        int idx = (k + ofs) % numConstraints;
+        if (used[idx] != 0xffffffff)
           continue;
 
-        bool ok = true;
-        for (int cc = 0; cc < 8; ++cc)
+        bool found = true;
+        for (int cc = 0; cc < j*2; ++cc)
         {
-          if (_constraints[k].p0 == curChunk[cc] || _constraints[k].p1 == curChunk[cc])
+          if (_constraints[idx].p0 == curChunk[cc] || _constraints[idx].p1 == curChunk[cc])
           {
-            ok = false;
+            found = false;
             break;
           }
         }
 
-        if (!ok)
-          continue;
-
-        constraintIdx = k;
-        break;
+        if (found)
+        {
+          constraintIdx = idx;
+          break;
+        }
       }
 
-      assert(constraintIdx != -1);
-        assert(j <= 4);
-      used[constraintIdx] = 1;
+      if (constraintIdx == -1)
+      {
+        // we've found constraints that can't be done in parallell, so store them
+        for (int k = 0; k < numConstraints; ++k)
+        {
+          if (used[k] == 0xffffffff || used[k] == i)
+          {
+            // unassigned constraint
+            unmatched.push_back(k);
+            used[k] = ~0xffffffff;
+          }
+        }
+        goto DONE;
+      }
+
+      // store which chunk the constraint was used in
+      used[constraintIdx] = i;
       curChunk[j * 2 + 0] = _constraints[constraintIdx].p0;
       curChunk[j * 2 + 1] = _constraints[constraintIdx].p1;
 
       // found a constraint to use
       order[i * 4 + j] = constraintIdx;
     }
-
-   
   }
+  DONE:
 
   // reorder the constraints
-  vector<Constraint> reorderedConstraints(numConstraints);
+  vector<Constraint> reorderedConstraints;
+  reorderedConstraints.reserve(numConstraints);
+
   for (int i = 0; i < numConstraints; ++i)
   {
-    reorderedConstraints[i] = _constraints[order[i]];
+    if (order[i] == 0xffffffff)
+      continue;
+    reorderedConstraints.push_back(_constraints[order[i]]);
   }
 
   _constraints.swap(reorderedConstraints);
