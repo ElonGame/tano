@@ -383,6 +383,12 @@ bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
     }
   }
 
+  // If a force effect is used, make his parameter set active
+  if (_forceEffect)
+  {
+    PROPERTIES.SetActive(_forceEffect->InstanceName().c_str());
+  }
+
   _settings = settings;
 
   END_INIT_SEQUENCE();

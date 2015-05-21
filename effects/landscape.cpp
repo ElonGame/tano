@@ -180,7 +180,9 @@ bool Landscape::Init(const char* configFile)
 //------------------------------------------------------------------------------
 void Landscape::InitBoids()
 {
-  for (int i = 0; i < 10; ++i)
+  SeqDelete(&_flocks);
+
+  for (int i = 0; i < _settings.boids.num_flocks; ++i)
   {
     Flock* flock = new Flock();
     vector<Boid>& boids = flock->boids;
@@ -194,7 +196,7 @@ void Landscape::InitBoids()
     flock->wanderAngle = angle;
 
     // Create the boids
-    for (int j = 0; j < 50; ++j)
+    for (int j = 0; j < _settings.boids.boids_per_flock; ++j)
     {
       Boid boid(flock);
       boid.pos = center + Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
@@ -539,7 +541,6 @@ bool Landscape::Render()
   // Render the landscape
   _ctx->SetRenderTarget(rt._handle, nullptr);
 
-
   if (_drawLandscape)
   {
     float* buf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
@@ -598,6 +599,8 @@ void Landscape::RenderParameterSet()
 {
   ImGui::Checkbox("Render landscape", &_drawLandscape);
   ImGui::InputInt("NumVerts", (int*)&_numVerts);
+  ImGui::InputInt("NumFlocks", &_settings.boids.num_flocks);
+  ImGui::InputInt("BoidsPerFlock", &_settings.boids.boids_per_flock);
   ImGui::SliderFloat("Separation", &_settings.boids.separation_scale, 0.1f, 10.f);
   ImGui::SliderFloat("Cohension", &_settings.boids.cohesion_scale, 0.1f, 10.f);
   ImGui::SliderFloat("Alignment", &_settings.boids.alignment_scale, 0.1f, 10.f);
@@ -636,6 +639,8 @@ void Landscape::Reset()
 {
   _camera._pos = Vector3(0.f, 0.f, 0.f);
   _camera._pitch = _camera._yaw = _camera._roll = 0.f;
+
+  InitBoids();
 }
 
 //------------------------------------------------------------------------------

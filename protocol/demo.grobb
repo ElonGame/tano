@@ -64,6 +64,8 @@ struct boid_settings
   float max_speed = 10.0;
   float max_force = 10.0;
   float waypoint_radius = 10.0;
+  int num_flocks = 1;
+  int boids_per_flock = 1;
 };
 
 struct landscape_settings
