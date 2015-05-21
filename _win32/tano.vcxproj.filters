@@ -184,6 +184,9 @@
     <ClCompile Include="..\effects\cloth.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\tano_math.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -374,6 +377,9 @@
     </ClInclude>
     <ClInclude Include="..\bristol\rolling_average.hpp">
       <Filter>bristol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\tano_math.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

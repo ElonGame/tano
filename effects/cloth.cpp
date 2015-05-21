@@ -169,14 +169,14 @@ void Cloth::UpdateParticles(const UpdateState& state)
       V3 dir2 = 0.5f * s2 * v2;
       V3 dir3 = 0.5f * s3 * v3;
 
-      c0.p0->pos = c0.p0->pos + dir0;
-      c0.p1->pos = c0.p1->pos - dir0;
-      c1.p0->pos = c1.p0->pos + dir1;
-      c1.p1->pos = c1.p1->pos - dir1;
-      c2.p0->pos = c2.p0->pos + dir2;
-      c2.p1->pos = c2.p1->pos - dir2;
-      c3.p0->pos = c3.p0->pos + dir3;
-      c3.p1->pos = c3.p1->pos - dir3;
+      c0.p0->pos += dir0;
+      c0.p1->pos -= dir0;
+      c1.p0->pos += dir1;
+      c1.p1->pos -= dir1;
+      c2.p0->pos += dir2;
+      c2.p1->pos -= dir2;
+      c3.p0->pos += dir3;
+      c3.p1->pos -= dir3;
     }
   }
 
