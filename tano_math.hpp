@@ -13,6 +13,14 @@ namespace tano
     float x, y, z;
   };
 
+  float Distance(const V3& a, const V3& b);
+  float Length(const V3& a);
+  float LengthSquared(const V3& a);
+  V3 Normalize(const V3& v);
+  V3 operator*(float s, const V3& v);
+  V3 operator-(const V3& a, const V3& b);
+  V3 operator+(const V3& a, const V3& b);
+
   inline float Distance(const V3& a, const V3& b)
   {
     float dx = a.x - b.x;
@@ -30,6 +38,12 @@ namespace tano
   inline float LengthSquared(const V3& a)
   {
     return a.x*a.x + a.y*a.y + a.z*a.z;
+  }
+
+  inline V3 Normalize(const V3& v)
+  {
+    float len = Length(v);
+    return 1 / len * v;
   }
 
   inline V3 operator*(float s, const V3& v)

@@ -130,7 +130,7 @@ void Cloth::UpdateParticles(const UpdateState& state)
   {
     // verlet integration
     V3 tmp = p->pos;
-    p->pos = p->pos + (1.0f - _settings.damping) * (p->pos - p->lastPos) + dt2 * p->acc;
+    p->pos += (1.0f - _settings.damping) * (p->pos - p->lastPos) + dt2 * p->acc;
     p->lastPos = tmp;
     p->acc = V3(0, 0, 0);
     ++p;
