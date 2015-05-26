@@ -166,7 +166,9 @@ bool Landscape::Init(const char* configFile)
   u32 boidsVertexFlags = 0;
   INIT(CreateBuffersFromMesh(loader, "Pyramid", &boidsVertexFlags, &_boidsMesh));
   INIT(_boidsMesh.LoadShadersFromFile("shaders/out/landscape", "VsBoids", nullptr, "PsBoids", boidsVertexFlags));
-  InitBoids();
+
+  Reset();
+  //InitBoids();
 
   int w, h;
   INIT(_cbPerFrame.Create());
@@ -181,7 +183,28 @@ bool Landscape::Init(const char* configFile)
 void Landscape::InitBoids()
 {
   SeqDelete(&_flocks);
+#if 1
+  Flock* flock = new Flock();
+  vector<Boid>& boids = flock->boids;
 
+  float s = 200.f;
+  Vector3 center(randf(-s, s), 0, randf(-s, s));
+  // Create a waypoint for the flock
+  float angle = randf(-XM_PI, XM_PI);
+  float dist = randf(100.f, 200.f);
+  flock->nextWaypoint = center + Vector3(dist * cos(angle), 0, dist * sin(angle));
+  flock->wanderAngle = angle;
+
+  // Create the boids
+  for (int j = 0; j < 1; ++j)
+  {
+    Boid boid(flock);
+    boid.pos = center + Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+    boid.pos = Vector3(0,0,0);
+    boids.push_back(boid);
+  }
+  _flocks.push_back(flock);
+#else
   for (int i = 0; i < _settings.boids.num_flocks; ++i)
   {
     Flock* flock = new Flock();
@@ -206,7 +229,7 @@ void Landscape::InitBoids()
     }
     _flocks.push_back(flock);
   }
-
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -341,20 +364,20 @@ void Landscape::UpdateBoids(const UpdateState& state)
   for (Flock* flock : _flocks)
   {
     // check if the flock has reached its waypoint
-    float closestDist = FLT_MAX;
-    for (Boid& b : flock->boids)
-    {
-      closestDist = min(closestDist, Vector3::Distance(b.pos, flock->nextWaypoint));
-      if (closestDist < _settings.boids.waypoint_radius)
-      {
-        // new waypoint
-        float angle = flock->wanderAngle + randf(-XM_PI/4, XM_PI/4);
-        float dist = randf(100.f, 200.f);
-        flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
-        flock->wanderAngle = angle;
-        break;
-      }
-    }
+    //float closestDist = FLT_MAX;
+    //for (Boid& b : flock->boids)
+    //{
+    //  closestDist = min(closestDist, Vector3::Distance(b.pos, flock->nextWaypoint));
+    //  if (closestDist < _settings.boids.waypoint_radius)
+    //  {
+    //    // new waypoint
+    //    float angle = flock->wanderAngle + randf(-XM_PI/4, XM_PI/4);
+    //    float dist = randf(100.f, 200.f);
+    //    flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
+    //    flock->wanderAngle = angle;
+    //    break;
+    //  }
+    //}
 
     for (Boid& b : flock->boids)
     {
@@ -367,6 +390,7 @@ void Landscape::UpdateBoids(const UpdateState& state)
 
       b.force = ClampVector(b.force, _settings.boids.max_force);
 
+      b.force = Vector3(0,0,0);
       // f = m * a
       b.acc = b.force;
 
@@ -563,7 +587,7 @@ bool Landscape::Render()
     for (const Boid& boid: flock->boids)
     {
       Matrix mtxRot = Matrix::Identity();
-      Vector3 dir = Normalize(boid.vel);
+      Vector3 dir = boid.vel.LengthSquared() ? Normalize(boid.vel) : Vector3(0,0,1);
       Vector3 up(0,1,0);
       Vector3 right = Cross(up, dir);
       up = Cross(dir, right);
@@ -637,8 +661,9 @@ void Landscape::SaveParameterSet()
 //------------------------------------------------------------------------------
 void Landscape::Reset()
 {
-  _camera._pos = Vector3(0.f, 0.f, 0.f);
+  _camera._pos = Vector3(0.f, 200.f, 0.f);
   _camera._pitch = _camera._yaw = _camera._roll = 0.f;
+  _camera._pitch = XM_PI / 2;
 
   InitBoids();
 }
