@@ -187,6 +187,9 @@
     <ClCompile Include="..\tano_math.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\debug_api.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -379,6 +382,9 @@
       <Filter>bristol</Filter>
     </ClInclude>
     <ClInclude Include="..\tano_math.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\debug_api.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -86,11 +86,10 @@ void DemoEngine::KillEffects()
 }
 
 //------------------------------------------------------------------------------
-bool DemoEngine::Create()
+void DemoEngine::Create()
 {
   assert(!_instance);
   _instance = new DemoEngine;
-  return true;
 }
 
 //------------------------------------------------------------------------------
@@ -329,10 +328,9 @@ void DemoEngine::UpdateEffects()
 }
 
 //------------------------------------------------------------------------------
-bool DemoEngine::Destroy()
+void DemoEngine::Destroy()
 {
   delete exch_null(_instance);
-  return true;
 }
 
 //------------------------------------------------------------------------------

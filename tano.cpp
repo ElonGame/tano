@@ -4,6 +4,7 @@
 #include "graphics.hpp"
 #include "graphics_context.hpp"
 #include "init_sequence.hpp"
+#include "debug_api.hpp"
 #include "generated/app.parse.hpp"
 #include "generated/input_buffer.hpp"
 #include "effects/particle_tunnel.hpp"
@@ -76,7 +77,8 @@ bool App::Destroy()
 #endif
 
   INIT(RESOURCE_MANAGER_STATIC::Destroy());
-  INIT(DemoEngine::Destroy());
+  DemoEngine::Destroy();
+  DebugApi::Destroy();
   INIT(Graphics::Destroy());
 
   delete exch_null(_instance);
@@ -117,6 +119,8 @@ bool App::Init(HINSTANCE hinstance)
   INIT(LoadSettings());
 
   INIT(Graphics::Create(_hinstance));
+  DebugApi::Create();
+  INIT(DEBUG_API.Init());
 
   int width = GetSystemMetrics(SM_CXFULLSCREEN);
   int height = GetSystemMetrics(SM_CYFULLSCREEN);
@@ -136,7 +140,8 @@ bool App::Init(HINSTANCE hinstance)
   rmt_CreateGlobalInstance(&g_rmt);
 #endif
 
-  INIT(DemoEngine::Create());
+  DemoEngine::Create();
+
   ParticleTunnel::Register();
   RayMarcher::Register();
   Cluster::Register();

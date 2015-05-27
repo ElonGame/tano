@@ -16,8 +16,8 @@ namespace tano
   {
   public:
     static DemoEngine &Instance();
-    static bool Create();
-    static bool Destroy();
+    static void Create();
+    static void Destroy();
 
     bool Init(const char* config, HINSTANCE instance);
     void RegisterFactory(const string& type, const EffectFactory& factory);

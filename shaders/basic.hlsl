@@ -13,6 +13,12 @@ struct VsPosIn
   float3 pos : Position;
 };
 
+struct VsPosColorIn
+{
+  float3 pos : Position;
+  float4 color : Color;
+};
+
 struct VsPosNormalIn
 {
   float3 pos : Position;
@@ -22,6 +28,12 @@ struct VsPosNormalIn
 struct VsPosOut
 {
   float4 pos : SV_Position;
+};
+
+struct VsPosColorOut
+{
+  float4 pos : SV_Position;
+  float4 color : Color;
 };
 
 struct VsPosNormalOut
@@ -50,9 +62,27 @@ float4 PsPos(VsPosOut p) : SV_Target
   return 1;
 }
 
+//------------------------------------------------------
+// pos-color
+//------------------------------------------------------
+
+VsPosColorOut VsPosColor(VsPosColorIn v)
+{
+  VsPosColorOut res;
+  matrix worldViewProj = mul(world, viewProj);
+  res.pos = mul(float4(v.pos, 1), worldViewProj);
+  res.color = v.color;
+  return res;
+}
+
+float4 PsPosColor(VsPosColorOut p) : SV_Target
+{
+  return p.color;
+}
+
 
 //------------------------------------------------------
-// pos
+// pos-normal
 //------------------------------------------------------
 
 VsPosNormalOut VsPosNormal(VsPosNormalIn v)
