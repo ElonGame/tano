@@ -55,6 +55,9 @@ App::App()
   : _hinstance(NULL)
 {
   memset(&_ioState, 0, sizeof(_ioState));
+  bristol::SetLogCallback([](const char* file, int line, const char* desc) {
+    InitSequence::AddFailure(file, line, desc, false);
+  });
 }
 
 //------------------------------------------------------------------------------
@@ -100,7 +103,7 @@ bool App::Init(HINSTANCE hinstance)
   BEGIN_INIT_SEQUENCE();
 
 #if WITH_UNPACKED_RESOUCES
-  INIT(FindAppRoot("app.gb"));
+  INIT_FATAL(FindAppRoot("app.gb"));
 #else
   INIT(FindAppRoot("resources.dat"));
 #endif
@@ -112,15 +115,15 @@ bool App::Init(HINSTANCE hinstance)
   }
 
 #if WITH_UNPACKED_RESOUCES
-  INIT(RESOURCE_MANAGER_STATIC::Create("resources.txt", _appRoot.c_str()));
+  INIT_FATAL(RESOURCE_MANAGER_STATIC::Create("resources.txt", _appRoot.c_str()));
 #else
-  INIT(RESOURCE_MANAGER_STATIC::Create("resources.dat"));
+  INIT_FATAL(RESOURCE_MANAGER_STATIC::Create("resources.dat"));
 #endif
-  INIT(LoadSettings());
+  INIT_FATAL(LoadSettings());
 
-  INIT(Graphics::Create(_hinstance));
+  INIT_FATAL(Graphics::Create(_hinstance));
   DebugApi::Create();
-  INIT(DEBUG_API.Init());
+  INIT_FATAL(DEBUG_API.Init(GRAPHICS.GetGraphicsContext()));
 
   int width = GetSystemMetrics(SM_CXFULLSCREEN);
   int height = GetSystemMetrics(SM_CYFULLSCREEN);
@@ -133,7 +136,7 @@ bool App::Init(HINSTANCE hinstance)
   GRAPHICS.CreateDefaultSwapChain(width, height, DXGI_FORMAT_R16G16B16A16_FLOAT, WndProc, hinstance);
 
 #if WITH_IMGUI
-  INIT(InitImGui());
+  INIT_FATAL(InitImGui());
 #endif
 
 #if WITH_REMOTERY
@@ -149,7 +152,7 @@ bool App::Init(HINSTANCE hinstance)
   Blob::Register();
   Cloth::Register();
 
-  INIT(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
+  INIT_FATAL(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
 
   END_INIT_SEQUENCE();
 }
@@ -173,6 +176,10 @@ bool App::Run()
 
     UpdateIoState();
 
+#if WITH_DEBUG_API
+    DEBUG_API.BeginFrame();
+#endif
+
 #if WITH_IMGUI
     UpdateImGui();
 #endif
@@ -181,6 +188,10 @@ bool App::Run()
 
 #if WITH_UNPACKED_RESOUCES
     RESOURCE_MANAGER.Tick();
+#endif
+
+#if WITH_DEBUG_API
+    DEBUG_API.EndFrame();
 #endif
 
 #if WITH_IMGUI

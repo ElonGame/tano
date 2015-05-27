@@ -8,6 +8,7 @@
 #define WITH_DEBUG_SHADERS 1
 #define WITH_ROCKET 1
 #define WITH_ROCKET_PLAYER 1
+#define WITH_DEBUG_API 1
 
 #define BORDERLESS_WINDOW 1
 

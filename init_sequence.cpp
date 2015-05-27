@@ -6,25 +6,25 @@ using namespace bristol;
 namespace
 {
   const int MAX_DEPTH = 32;
-  tano::InitSequence SEQUENCE_STACK[MAX_DEPTH];
-  int CUR_DEPTH = -1;
+  tano::InitSequence gSequenceStack[MAX_DEPTH];
+  int gCurDepth = -1;
 }
 
 //------------------------------------------------------------------------------
 void InitSequence::Enter()
 {
-  assert(CUR_DEPTH < MAX_DEPTH);
-  CUR_DEPTH++;
+  assert(gCurDepth < MAX_DEPTH);
+  gCurDepth++;
 
   // set the max depth for all lower levels
-  for (int i = 0; i <= CUR_DEPTH; ++i)
-    SEQUENCE_STACK[i]._maxDepth = CUR_DEPTH;
+  for (int i = 0; i <= gCurDepth; ++i)
+    gSequenceStack[i]._maxDepth = gCurDepth;
 }
 
 //------------------------------------------------------------------------------
 bool InitSequence::Exit()
 {
-  InitSequence* cur = &SEQUENCE_STACK[CUR_DEPTH--];
+  InitSequence* cur = &gSequenceStack[gCurDepth--];
 
   bool success = true;
   vector<string> failures;
@@ -32,9 +32,9 @@ bool InitSequence::Exit()
   string indent;
   for (int i = 0; i <= cur->_maxDepth; ++i)
   {
-    InitSequence* seq = &SEQUENCE_STACK[i];
+    InitSequence* seq = &gSequenceStack[i];
     success &= seq->_failures.empty();
-    if (CUR_DEPTH == -1)
+    if (gCurDepth == -1)
     {
       for (const InitFailure& f : seq->_failures)
       {
@@ -60,7 +60,10 @@ bool InitSequence::Exit()
 //------------------------------------------------------------------------------
 void InitSequence::AddFailure(const char* file, int line, const char* str, bool fatal)
 {
-  InitSequence* seq = &SEQUENCE_STACK[CUR_DEPTH];
+  if (gCurDepth < 0)
+    return;
+
+  InitSequence* seq = &gSequenceStack[gCurDepth];
   seq->_failures.push_back({ file, line, str });
   seq->_fatal |= fatal;
 }
