@@ -64,8 +64,8 @@ void DebugApi::EndFrame()
 
   for (const LineChunk& chunk : _lineChunks)
   {
-    _cbPerFrame.world = chunk.mtxWorld;
-    _cbPerFrame.viewProj = chunk.mtxViewProj;
+    _cbPerFrame.world = chunk.mtxWorld.Transpose();
+    _cbPerFrame.viewProj = chunk.mtxViewProj.Transpose();
     _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
     _ctx->Draw(chunk.numVertices, chunk.startOfs);
   }

@@ -10,6 +10,7 @@
 #include "../generated/output_buffer.hpp"
 #include "../mesh_utils.hpp"
 #include "../post_process.hpp"
+#include "../debug_api.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -582,6 +583,10 @@ bool Landscape::Render()
 
   _ctx->SetGpuObjects(_boidsMesh);
 
+  Matrix view = _camera._view;
+  Matrix proj = _camera._proj;
+  Matrix viewProj = view * proj;
+
   for (const Flock* flock : _flocks)
   {
     for (const Boid& boid: flock->boids)
@@ -598,6 +603,9 @@ bool Landscape::Render()
       _cbPerFrame.world = mtxRot.Transpose();
       _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
       _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
+
+      DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
+      DEBUG_API.AddDebugLine(boid.pos, boid.pos + 100 * Vector3(0,0,1), Color(1,1,1,1));
     }
   }
 
