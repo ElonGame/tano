@@ -11,6 +11,7 @@
 #include "../mesh_utils.hpp"
 #include "../post_process.hpp"
 #include "../debug_api.hpp"
+#include "../tano_math.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -20,6 +21,83 @@ extern "C" float stb_perlin_noise3(float x, float y, float z, int x_wrap=0, int 
 static const Vector3 ZERO3(0,0,0);
 
 int Landscape::Boid::nextId;
+
+struct Perlin2D
+{
+  static const int SIZE  = 256;
+  void Init()
+  {
+    // create random gradients
+    for (int i = 0; i < SIZE; ++i)
+      gradients[i] = Normalize(V2(randf(-1.f, 1.f), randf(-1.f, 1.f)));
+
+    // create permutation table
+    for (int i = 0; i < SIZE; ++i)
+      permutation[i] = i;
+
+    for (int i = 0; i < SIZE-1; ++i)
+      swap(permutation[i], permutation[randf(i+1, SIZE-1)]);
+  }
+
+  float Interp(float t)
+  {
+    float t2 = t * t;
+    float t3 = t2 * t;
+    return 6 * t3 * t2 - 15 * t3 * t + 10 * t3;
+  }
+
+  float Value(float x, float y)
+  {
+    int x0 = (int)floorf(x);
+    int y0 = (int)floorf(y);
+
+    int x1 = x0 + 1;
+    int y1 = y0 + 1;
+
+    // get gradients
+    // g00  g01
+    // g10  g11
+
+    V2 g00 = gradients[permutation[(permutation[x0 & 0xff] + y0) & 0xff]];
+    V2 g01 = gradients[permutation[(permutation[x1 & 0xff] + y0) & 0xff]];
+
+    V2 g10 = gradients[permutation[(permutation[x0 & 0xff] + y1) & 0xff]];
+    V2 g11 = gradients[permutation[(permutation[x1 & 0xff] + y1) & 0xff]];
+
+    // get vectors from corners to center
+    V2 p(x, y);
+    V2 c00((float)x0, (float)y0);
+    V2 c01((float)x1, (float)y0);
+    V2 c10((float)x0, (float)y1);
+    V2 c11((float)x1, (float)y1);
+
+    V2 v00 = p - c00;
+    V2 v01 = p - c01;
+    V2 v10 = p - c10;
+    V2 v11 = p - c11;
+
+    // dot products
+    float d00 = Dot(v00, g00);
+    float d01 = Dot(v01, g01);
+    float d10 = Dot(v10, g10);
+    float d11 = Dot(v11, g11);
+
+    // bilinear interpolation
+    float dx = Interp(x - (float)x0);
+    float dy = Interp(y - (float)y0);
+
+    float xUpper = lerp(d00, d01, dx);
+    float xLower = lerp(d10, d11, dx);
+
+    float value = lerp(xUpper, xLower, dy);
+    return value;
+  }
+
+  V2 gradients[SIZE];
+  int permutation[SIZE];
+};
+
+Perlin2D perlin;
 
 void Vector3ToFloat(float* buf, const Vector3& v)
 {
@@ -41,7 +119,8 @@ Vector3 NOISE_SCALE(10.f, 30.f, 10.f);
 float NoiseAtPoint(const Vector3& v)
 {
   Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
-  return NOISE_SCALE.y * stb_perlin_noise3(256 * v.x / size.x, 0, 256 * v.z / size.z);
+  //return NOISE_SCALE.y * stb_perlin_noise3(256 * v.x / size.x, 0, 256 * v.z / size.z);
+  return NOISE_SCALE.y * perlin.Value(256 * v.x / size.x, 256 * v.z / size.z);
 }
 
 void Rasterize(
@@ -75,10 +154,15 @@ void Rasterize(
       v2.x = xx1; v2.z = zz1;
       v3.x = xx1; v3.z = zz0;
 
-      v0.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz0 / size.z);
-      v1.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz1 / size.z);
-      v2.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz1 / size.z);
-      v3.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz0 / size.z);
+      //v0.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz0 / size.z);
+      //v1.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz1 / size.z);
+      //v2.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz1 / size.z);
+      //v3.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz0 / size.z);
+
+      v0.y = scale.y * perlin.Value(256 * xx0 / size.x, 256 * zz0 / size.z);
+      v1.y = scale.y * perlin.Value(256 * xx0 / size.x, 256 * zz1 / size.z);
+      v2.y = scale.y * perlin.Value(256 * xx1 / size.x, 256 * zz1 / size.z);
+      v3.y = scale.y * perlin.Value(256 * xx1 / size.x, 256 * zz0 / size.z);
 
       Vector3 e1, e2;
       e1 = v2 - v1;
@@ -126,6 +210,8 @@ Landscape::Landscape(const string &name, u32 id)
 
   PROPERTIES.SetActive(Name());
 #endif
+
+  perlin.Init();
 }
 
 //------------------------------------------------------------------------------
@@ -184,7 +270,7 @@ bool Landscape::Init(const char* configFile)
 void Landscape::InitBoids()
 {
   SeqDelete(&_flocks);
-#if 1
+#if 0
   Flock* flock = new Flock();
   vector<Boid>& boids = flock->boids;
 
@@ -249,7 +335,8 @@ Vector3 Landscape::BoidSeparation(const Boid& boid)
     if (dist > _settings.boids.separation_distance)
       continue;
 
-    Vector3 f = Normalize(boid.pos - b.pos);
+    Vector3 f = boid.pos - b.pos;
+    f.Normalize();
     avg += 1.f / dist * f;
     cnt += 1.f;
   }
@@ -260,7 +347,8 @@ Vector3 Landscape::BoidSeparation(const Boid& boid)
   avg /= cnt;
 
   // Reynolds uses: steering = desired - current
-  Vector3 desired = Normalize(avg) * _settings.boids.max_speed;
+  avg.Normalize();
+  Vector3 desired = avg * _settings.boids.max_speed;
   Vector3 steering = desired - boid.vel;
   return steering;
 }
@@ -316,7 +404,8 @@ Vector3 Landscape::BoidAlignment(const Boid& boid)
     return avg;
 
   avg /= cnt;
-  Vector3 desired = Normalize(avg) * _settings.boids.max_speed;
+  avg.Normalize();
+  Vector3 desired = avg * _settings.boids.max_speed;
   Vector3 steering = desired - boid.vel;
   return steering;
 }
@@ -326,22 +415,35 @@ Vector3 Landscape::LandscapeFollow(const Boid& boid)
 {
   // return a force to keep the boid above the ground
 
-  Vector3 probe = boid.pos + 0.001f * boid.vel;
+  Vector3 tmp = boid.vel;
+  tmp.Normalize();
+  Vector3 probe = boid.pos + tmp * _settings.boids.max_speed;
   Vector3 d = probe;
   d.y = 20 + NoiseAtPoint(probe);
 
+  Matrix view = _camera._view;
+  Matrix proj = _camera._proj;
+  Matrix viewProj = view * proj;
+
+  DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
+  DEBUG_API.AddDebugLine(boid.pos, d, Color(1,1,1));
+
   // if the probe is above the terrain height, move towards the average
   if (probe.y > d.y)
-    d.y = 0.5f * (probe.y + d.y);
+    d = 0.5f * (probe + d);
 
-  Vector3 desiredVel = Normalize(d - probe) * _settings.boids.max_speed;
+  tmp = d - probe;
+  tmp.Normalize();
+  Vector3 desiredVel = tmp * _settings.boids.max_speed;
   return desiredVel - boid.vel;
 }
 
 //------------------------------------------------------------------------------
 Vector3 Landscape::Seek(const Boid& boid, const Vector3& target)
 {
-  Vector3 desiredVel = Normalize(target - boid.pos) * _settings.boids.max_speed;
+  Vector3 tmp = target - boid.pos;
+  tmp.Normalize();
+  Vector3 desiredVel = tmp * _settings.boids.max_speed;
   return desiredVel - boid.vel;
 }
 
@@ -352,7 +454,9 @@ Vector3 Landscape::ClampVector(const Vector3& force, float maxLength)
   if (len <= maxLength)
     return force;
 
-  return maxLength * Normalize(force);
+  Vector3 forceN = force;
+  forceN.Normalize();
+  return maxLength * forceN;
 }
 
 //------------------------------------------------------------------------------
@@ -365,20 +469,20 @@ void Landscape::UpdateBoids(const UpdateState& state)
   for (Flock* flock : _flocks)
   {
     // check if the flock has reached its waypoint
-    //float closestDist = FLT_MAX;
-    //for (Boid& b : flock->boids)
-    //{
-    //  closestDist = min(closestDist, Vector3::Distance(b.pos, flock->nextWaypoint));
-    //  if (closestDist < _settings.boids.waypoint_radius)
-    //  {
-    //    // new waypoint
-    //    float angle = flock->wanderAngle + randf(-XM_PI/4, XM_PI/4);
-    //    float dist = randf(100.f, 200.f);
-    //    flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
-    //    flock->wanderAngle = angle;
-    //    break;
-    //  }
-    //}
+    float closestDist = FLT_MAX;
+    for (Boid& b : flock->boids)
+    {
+      closestDist = min(closestDist, Vector3::Distance(b.pos, flock->nextWaypoint));
+      if (closestDist < _settings.boids.waypoint_radius)
+      {
+        // new waypoint
+        float angle = flock->wanderAngle + randf(-XM_PI/4, XM_PI/4);
+        float dist = randf(100.f, 200.f);
+        flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
+        flock->wanderAngle = angle;
+        break;
+      }
+    }
 
     for (Boid& b : flock->boids)
     {
@@ -391,7 +495,7 @@ void Landscape::UpdateBoids(const UpdateState& state)
 
       b.force = ClampVector(b.force, _settings.boids.max_force);
 
-      b.force = Vector3(0,0,0);
+      //b.force = Vector3(0,0,0);
       // f = m * a
       b.acc = b.force;
 
@@ -592,7 +696,9 @@ bool Landscape::Render()
     for (const Boid& boid: flock->boids)
     {
       Matrix mtxRot = Matrix::Identity();
-      Vector3 dir = boid.vel.LengthSquared() ? Normalize(boid.vel) : Vector3(0,0,1);
+      Vector3 velN = boid.vel;
+      velN.Normalize();
+      Vector3 dir = boid.vel.LengthSquared() ? velN : Vector3(0, 0, 1);
       Vector3 up(0,1,0);
       Vector3 right = Cross(up, dir);
       up = Cross(dir, right);
@@ -605,7 +711,9 @@ bool Landscape::Render()
       _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
 
       DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
-      DEBUG_API.AddDebugLine(boid.pos, boid.pos + 100 * Vector3(0,0,1), Color(1,1,1,1));
+      DEBUG_API.AddDebugLine(boid.pos, boid.pos + boid.vel, Color(1, 0, 0));
+      DEBUG_API.AddDebugLine(boid.pos, boid.pos + 10 * up, Color(0, 1, 0));
+      DEBUG_API.AddDebugLine(boid.pos, boid.pos + 10 * right, Color(0, 0, 1));
     }
   }
 

@@ -2,11 +2,62 @@
 
 namespace tano
 {
+  struct V2
+  {
+    V2() {}
+    V2(float x, float y) : x(x), y(y) {}
+
+    float x, y;
+  };
+
+  V2 Normalize(const V2& v);
+  float Dot(const V2& a, const V2& b);
+  V2 operator*(float s, const V2& v);
+  V2 operator+(const V2& a, const V2& b);
+  V2 operator-(const V2& a, const V2& b);
+
+
+  inline float Length(const V2& a)
+  {
+    return sqrt(a.x*a.x + a.y*a.y);
+  }
+
+  inline float LengthSquared(const V2& a)
+  {
+    return a.x*a.x + a.y*a.y;
+  }
+
+  inline V2 Normalize(const V2& v)
+  {
+    float len = Length(v);
+    return 1 / len * v;
+  }
+
+  inline float Dot(const V2& a, const V2& b)
+  {
+    return a.x*b.x + a.y*b.y;
+  }
+
+  inline V2 operator*(float s, const V2& v)
+  {
+    return V2(s*v.x, s*v.y);
+  }
+
+  inline V2 operator+(const V2& a, const V2& b)
+  {
+    return V2(a.x+b.x, a.y+b.y);
+  }
+
+  inline V2 operator-(const V2& a, const V2& b)
+  {
+    return V2(a.x - b.x, a.y - b.y);
+  }
+
   struct V3
   {
     V3() {}
     V3(float x, float y, float z) : x(x), y(y), z(z) {}
-    V3(const Vector3& v) : x(v.x), y(v.y), z(v.z) {}
+    explicit V3(const Vector3& v) : x(v.x), y(v.y), z(v.z) {}
 
     V3& operator+=(const V3& v) { x += v.x; y += v.y; z += v.z; return *this; }
     V3& operator-=(const V3& v) { x -= v.x; y -= v.y; z -= v.z; return *this; }

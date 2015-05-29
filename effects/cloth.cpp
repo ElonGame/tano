@@ -122,7 +122,7 @@ void Cloth::UpdateParticles(const UpdateState& state)
 
   for (size_t i = 0; i < numParticles; ++i)
   {
-    _particles[i].acc = _settings.gravity;
+    _particles[i].acc = V3(_settings.gravity);
   }
 
   Particle* p = &_particles[0];
@@ -182,7 +182,7 @@ void Cloth::UpdateParticles(const UpdateState& state)
 
   // top row is fixed
   float incX = CLOTH_SIZE / (_clothDimX - 1);
-  Vector3 cur(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
+  V3 cur(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
   p = &_particles[0];
   for (int i = 0; i < _clothDimX; ++i)
   {
@@ -431,8 +431,8 @@ void Cloth::ResetParticles()
   float incX = CLOTH_SIZE / (_clothDimX - 1);
   float incY = CLOTH_SIZE / (_clothDimY - 1);
 
-  Vector3 org(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
-  Vector3 cur = org;
+  V3 org(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
+  V3 cur = org;
   Particle* p = &_particles[0];
 
   for (int i = 0; i < _clothDimY; ++i)

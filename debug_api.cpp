@@ -32,9 +32,12 @@ bool DebugApi::Init(GraphicsContext* ctx)
 
   BEGIN_INIT_SEQUENCE();
 
+  CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
+  dsDesc.DepthEnable = FALSE;
+
   CD3D11_RASTERIZER_DESC rasterDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
   rasterDesc.CullMode = D3D11_CULL_NONE;
-  INIT(_gpuState.Create(nullptr, nullptr, &rasterDesc));
+  INIT(_gpuState.Create(&dsDesc, nullptr, &rasterDesc));
 
   INIT(_cbPerFrame.Create());
 
@@ -75,7 +78,11 @@ void DebugApi::EndFrame()
 //------------------------------------------------------------------------------
 void DebugApi::SetTransform(const Matrix& world, const Matrix& viewProj)
 {
-  _lineChunks.push_back({world, viewProj, _numVerts, 0});
+  // if the transform is the same as the previous one, just append to it
+  if (_lineChunks.empty() || _lineChunks.back().mtxWorld != world || _lineChunks.back().mtxViewProj != viewProj)
+  {
+    _lineChunks.push_back({ world, viewProj, _numVerts, 0 });
+  }
 }
 
 //------------------------------------------------------------------------------
