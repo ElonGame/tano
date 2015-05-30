@@ -43,19 +43,31 @@ void DynParticles::AddKinematics(ParticleKinematics* kinematics)
 }
 
 //------------------------------------------------------------------------------
+
+void Seek(
+  DynParticles::Body* bodies,
+  int numBodies,
+  const Vector3& target,
+  float maxForce,
+  float maxSpeed,
+  const UpdateState& state)
+{
+  for (int i = 0; i < numBodies; ++i)
+  {
+    DynParticles::Body* b = &bodies[i];
+
+    Vector3 tmp = target - b->pos;
+    tmp.Normalize();
+    Vector3 desiredVel = tmp * maxSpeed;
+    b->force += ClampVector(desiredVel - b->vel, maxForce);
+  }
+}
+
 struct BehaviorSeek : public ParticleKinematics
 {
   virtual void Update(DynParticles::Body* bodies, int numBodies, const UpdateState& state)
   {
-    for (int i = 0; i < numBodies; ++i)
-    {
-      DynParticles::Body* b = &bodies[i];
-
-      Vector3 tmp = target - b->pos;
-      tmp.Normalize();
-      Vector3 desiredVel = tmp * maxSpeed;
-      b->force += ClampVector(desiredVel - b->vel, maxForce);
-    }
+    Seek(bodies, numBodies, target, maxForce, maxSpeed, state);
   }
 
   Vector3 target = { 0, 0, 0 };
@@ -113,8 +125,36 @@ struct BehaviorCohesion : public ParticleKinematics
     for (int i = 0; i < numBodies; ++i)
     {
       DynParticles::Body* b = &bodies[i];
+
+      // Return a force towards the average boid position
+      Vector3 avg(0, 0, 0);
+
+      float cnt = 0.f;
+
+      for (int j = 0; j < numBodies; ++j)
+      {
+        if (i == j)
+          continue;
+
+        DynParticles::Body* inner = &bodies[j];
+
+        float dist = Vector3::Distance(inner->pos, b->pos);
+        if (dist > cohesionDistaince)
+          continue;
+
+        avg += inner->pos;
+        cnt += 1.f;
+      }
+
+      if (cnt == 0.f)
+        continue;
+
+      avg /= cnt;
+      Seek(bodies, numBodies, avg, maxForce, maxSpeed, state);
     }
   }
+
+  float cohesionDistaince = 10;
 };
 
 struct BehaviorAlignment : public ParticleKinematics
@@ -124,65 +164,35 @@ struct BehaviorAlignment : public ParticleKinematics
     for (int i = 0; i < numBodies; ++i)
     {
       DynParticles::Body* b = &bodies[i];
+
+      // return a force to align the boids velocity with the average velocity
+      Vector3 avg(0, 0, 0);
+
+      float cnt = 0.f;
+      for (int j = 0; j < numBodies; ++j)
+      {
+        if (i == j)
+          continue;
+
+        DynParticles::Body* inner = &bodies[j];
+
+        float dist = Vector3::Distance(inner->pos, b->pos);
+        if (dist > cohesionDistaince)
+          continue;
+
+        avg += b->vel;
+        cnt += 1.f;
+      }
+
+      if (cnt == 0.f)
+        continue;
+
+      avg /= cnt;
+      avg.Normalize();
+      Vector3 desired = avg * maxSpeed;
+      b->force += ClampVector(desired - b->vel, maxForce);
     }
   }
+
+  float cohesionDistaince = 10;
 };
-
-#if 0
-//------------------------------------------------------------------------------
-Vector3 Landscape::BoidCohesion(const Boid& boid)
-{
-  // Return a force towards the average boid position
-  Vector3 avg(0, 0, 0);
-
-  float cnt = 0.f;
-  for (const Boid& b : boid.flock->boids)
-  {
-    if (b.id == boid.id)
-      continue;
-
-    float dist = Vector3::Distance(boid.pos, b.pos);
-    if (dist > _settings.boids.cohesion_distance)
-      continue;
-
-    avg += b.pos;
-    cnt += 1.f;
-  }
-
-  if (cnt == 0.f)
-    return avg;
-
-  avg /= cnt;
-  return Seek(boid, avg);
-}
-
-//------------------------------------------------------------------------------
-Vector3 Landscape::BoidAlignment(const Boid& boid)
-{
-  // return a force to align the boids velocity with the average velocity
-  Vector3 avg(0, 0, 0);
-
-  float cnt = 0.f;
-  for (const Boid& b : boid.flock->boids)
-  {
-    if (b.id == boid.id)
-      continue;
-
-    float dist = Vector3::Distance(boid.pos, b.pos);
-    if (dist > _settings.boids.cohesion_distance)
-      continue;
-
-    avg += b.vel;
-    cnt += 1.f;
-  }
-
-  if (cnt == 0.f)
-    return avg;
-
-  avg /= cnt;
-  avg.Normalize();
-  Vector3 desired = avg * _settings.boids.max_speed;
-  Vector3 steering = desired - boid.vel;
-  return steering;
-}
-#endif
