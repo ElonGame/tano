@@ -69,13 +69,13 @@ bool Cluster::Update(const UpdateState& state)
 {
   rmt_ScopedCPUSample(Cluster_Update);
 
-  UpdateCameraMatrix();
+  UpdateCameraMatrix(state);
 
   return true;
 }
 
 //------------------------------------------------------------------------------
-void Cluster::UpdateCameraMatrix()
+void Cluster::UpdateCameraMatrix(const UpdateState& state)
 {
   float x = distance * sin(angle);
   float y = height;

@@ -1,21 +1,12 @@
 #pragma once
 
 #include "object_handle.hpp"
+#include "update_state.hpp"
 
 namespace tano
 {
   class GraphicsContext;
 
-  struct UpdateState
-  {
-    TimeDuration globalTime;
-    TimeDuration localTime;
-    TimeDuration delta;
-    s64 frequency;
-    s32 numTicks;
-    float ticksFraction;
-    bool paused;
-  };
 
   class Effect
   {

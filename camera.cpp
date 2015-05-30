@@ -2,6 +2,7 @@
 #include "tano.hpp"
 #include "mesh_utils.hpp"
 #include "graphics.hpp"
+#include "update_state.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -13,11 +14,12 @@ Camera::Camera()
   GRAPHICS.GetBackBufferSize(&w, &h);
   _aspectRatio = (float)w / h;
   _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
-  Update();
+  UpdateState state;
+  Update(state);
 }
 
 //------------------------------------------------------------------------------
-void Camera::Update()
+void Camera::Update(const UpdateState& updateState)
 {
   const IoState& state = TANO.GetIoState();
 
@@ -56,7 +58,7 @@ void Camera::Update()
 
   if (state.keysPressed['W'])
     _pos += s * _dir;
-
+      
   if (state.keysPressed['S'])
     _pos -= s * _dir;
 
@@ -140,4 +142,20 @@ void Camera::GetFrustumCenter(Vector3* pts)
   // center points
   pts[4] = fc;
   pts[5] = nc;
+}
+
+//------------------------------------------------------------------------------
+void FollowCam::Update(const UpdateState& state)
+{
+  // Seek behavior
+  //Vector3 tmp = _followTarget - _pos;;
+  //tmp.Normalize();
+  //Vector3 desiredVel = tmp * 10.f; // _settings.boids.max_speed;
+  //return desiredVel - boid.vel;
+}
+
+//------------------------------------------------------------------------------
+void FollowCam::SetFollowTarget(const Vector3& followTarget)
+{
+  _followTarget = followTarget;
 }

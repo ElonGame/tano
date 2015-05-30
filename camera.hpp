@@ -2,10 +2,13 @@
 
 namespace tano
 {
+  struct UpdateState;
+
+  //------------------------------------------------------------------------------
   struct Camera
   {
     Camera();
-    void Update();
+    virtual void Update(const UpdateState& state);
 
     void GetFrustumCorners(Vector3* pts);
     void GetFrustumCenter(Vector3* pts);
@@ -27,5 +30,15 @@ namespace tano
     Matrix _mtx;
     Matrix _view;
     Matrix _proj;
+  };
+
+  //------------------------------------------------------------------------------
+  struct FollowCam : public Camera
+  {
+    virtual void Update(const UpdateState& state) override;
+
+    void SetFollowTarget(const Vector3& followTarget);
+
+    Vector3 _followTarget;
   };
 }

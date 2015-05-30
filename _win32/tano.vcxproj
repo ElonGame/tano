@@ -96,6 +96,7 @@
     <ClCompile Include="..\animation_helpers.cpp" />
     <ClCompile Include="..\camera.cpp" />
     <ClCompile Include="..\debug_api.cpp" />
+    <ClCompile Include="..\dyn_particles.cpp" />
     <ClCompile Include="..\effects\blob.cpp" />
     <ClCompile Include="..\effects\cloth.cpp" />
     <ClCompile Include="..\effects\cluster.cpp" />
@@ -256,6 +257,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="..\mesh_utils.cpp" />
+    <ClCompile Include="..\perlin2d.cpp" />
     <ClCompile Include="..\post_process.cpp" />
     <ClCompile Include="..\precompiled.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -336,6 +338,7 @@
     <ClInclude Include="..\bristol\rolling_average.hpp" />
     <ClInclude Include="..\camera.hpp" />
     <ClInclude Include="..\debug_api.hpp" />
+    <ClInclude Include="..\dyn_particles.hpp" />
     <ClInclude Include="..\effects\blob.hpp" />
     <ClInclude Include="..\effects\cloth.hpp" />
     <ClInclude Include="..\effects\cluster.hpp" />
@@ -378,6 +381,7 @@
     <ClInclude Include="..\init_sequence.hpp" />
     <ClInclude Include="..\mesh_utils.hpp" />
     <ClInclude Include="..\object_handle.hpp" />
+    <ClInclude Include="..\perlin2d.hpp" />
     <ClInclude Include="..\post_process.hpp" />
     <ClInclude Include="..\precompiled.hpp" />
     <ClInclude Include="..\property_manager.hpp" />
@@ -395,6 +399,7 @@
     <ClInclude Include="..\tano_math.hpp" />
     <ClInclude Include="..\text_writer.hpp" />
     <ClInclude Include="..\timer.hpp" />
+    <ClInclude Include="..\update_state.hpp" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

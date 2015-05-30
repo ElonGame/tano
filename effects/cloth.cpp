@@ -453,16 +453,16 @@ void Cloth::ResetParticles()
 //------------------------------------------------------------------------------
 bool Cloth::Update(const UpdateState& state)
 {
-  UpdateCameraMatrix();
+  UpdateCameraMatrix(state);
 
   UpdateParticles(state);
   return true;
 }
 
 //------------------------------------------------------------------------------
-void Cloth::UpdateCameraMatrix()
+void Cloth::UpdateCameraMatrix(const UpdateState& state)
 {
-  _camera.Update();
+  _camera.Update(state);
 
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);

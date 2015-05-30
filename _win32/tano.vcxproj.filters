@@ -190,6 +190,12 @@
     <ClCompile Include="..\debug_api.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\perlin2d.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dyn_particles.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -385,6 +391,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\debug_api.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\update_state.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\perlin2d.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dyn_particles.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

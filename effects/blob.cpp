@@ -157,14 +157,14 @@ void Blob::InitLines()
 //------------------------------------------------------------------------------
 bool Blob::Update(const UpdateState& state)
 {
-  UpdateCameraMatrix();
+  UpdateCameraMatrix(state);
   return true;
 }
 
 //------------------------------------------------------------------------------
-void Blob::UpdateCameraMatrix()
+void Blob::UpdateCameraMatrix(const UpdateState& state)
 {
-  _camera.Update();
+  _camera.Update(state);
 
   if (!_scene.cameras.empty())
   {

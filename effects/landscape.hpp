@@ -33,7 +33,7 @@ namespace tano
     void SaveParameterSet();
 #endif
 
-    void UpdateCameraMatrix();
+    void UpdateCameraMatrix(const UpdateState& state);
     void RasterizeLandscape(float* buf);
 
     void InitBoids();
@@ -66,6 +66,7 @@ namespace tano
     {
       vector<Boid> boids;
       Vector3 nextWaypoint;
+      Vector3 center;
       float wanderAngle = 0;
     };
 
@@ -107,5 +108,7 @@ namespace tano
 
     GpuObjects _boidsMesh;
     bool _drawLandscape = false;
+
+    int _followFlock = 0;
   };
 }

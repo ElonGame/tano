@@ -32,7 +32,7 @@ namespace tano
     void SaveParameterSet();
 #endif
 
-    void UpdateCameraMatrix();
+    void UpdateCameraMatrix(const UpdateState& state);
 
     struct CBufferPerFrame
     {

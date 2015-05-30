@@ -12,6 +12,7 @@
 #include "../post_process.hpp"
 #include "../debug_api.hpp"
 #include "../tano_math.hpp"
+#include "../perlin2d.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -22,80 +23,6 @@ static const Vector3 ZERO3(0,0,0);
 
 int Landscape::Boid::nextId;
 
-struct Perlin2D
-{
-  static const int SIZE  = 256;
-  void Init()
-  {
-    // create random gradients
-    for (int i = 0; i < SIZE; ++i)
-      gradients[i] = Normalize(V2(randf(-1.f, 1.f), randf(-1.f, 1.f)));
-
-    // create permutation table
-    for (int i = 0; i < SIZE; ++i)
-      permutation[i] = i;
-
-    for (int i = 0; i < SIZE-1; ++i)
-      swap(permutation[i], permutation[randf(i+1, SIZE-1)]);
-  }
-
-  float Interp(float t)
-  {
-    float t2 = t * t;
-    float t3 = t2 * t;
-    return 6 * t3 * t2 - 15 * t3 * t + 10 * t3;
-  }
-
-  float Value(float x, float y)
-  {
-    int x0 = (int)floorf(x);
-    int y0 = (int)floorf(y);
-
-    int x1 = x0 + 1;
-    int y1 = y0 + 1;
-
-    // get gradients
-    // g00  g01
-    // g10  g11
-
-    V2 g00 = gradients[permutation[(permutation[x0 & 0xff] + y0) & 0xff]];
-    V2 g01 = gradients[permutation[(permutation[x1 & 0xff] + y0) & 0xff]];
-
-    V2 g10 = gradients[permutation[(permutation[x0 & 0xff] + y1) & 0xff]];
-    V2 g11 = gradients[permutation[(permutation[x1 & 0xff] + y1) & 0xff]];
-
-    // get vectors from corners to center
-    V2 p(x, y);
-    V2 c00((float)x0, (float)y0);
-    V2 c01((float)x1, (float)y0);
-    V2 c10((float)x0, (float)y1);
-    V2 c11((float)x1, (float)y1);
-
-    V2 v00 = p - c00;
-    V2 v01 = p - c01;
-    V2 v10 = p - c10;
-    V2 v11 = p - c11;
-
-    // dot products
-    float d00 = Dot(v00, g00);
-    float d01 = Dot(v01, g01);
-    float d10 = Dot(v10, g10);
-    float d11 = Dot(v11, g11);
-
-    // bilinear interpolation
-    float dx = Interp(x - (float)x0);
-    float dy = Interp(y - (float)y0);
-
-    float xUpper = lerp(d00, d01, dx);
-    float xLower = lerp(d10, d11, dx);
-
-    float value = lerp(xUpper, xLower, dy);
-    return value;
-  }
-
-  V2 gradients[SIZE];
-  int permutation[SIZE];
-};
 
 Perlin2D perlin;
 
@@ -127,7 +54,7 @@ void Rasterize(
   const Vector3& scale,
   int startZ, const vector<pair<int, int>>& spans, 
   float* verts, u32* numVerts)
-{
+  {
   Vector3 v0, v1, v2, v3;
   Vector3 n0, n1;
   Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
@@ -454,9 +381,7 @@ Vector3 Landscape::ClampVector(const Vector3& force, float maxLength)
   if (len <= maxLength)
     return force;
 
-  Vector3 forceN = force;
-  forceN.Normalize();
-  return maxLength * forceN;
+  return maxLength / len * force;
 }
 
 //------------------------------------------------------------------------------
@@ -470,22 +395,31 @@ void Landscape::UpdateBoids(const UpdateState& state)
   {
     // check if the flock has reached its waypoint
     float closestDist = FLT_MAX;
+    Vector3 center(0,0,0);
+    bool newWaypoint = false;
     for (Boid& b : flock->boids)
     {
-      closestDist = min(closestDist, Vector3::Distance(b.pos, flock->nextWaypoint));
-      if (closestDist < _settings.boids.waypoint_radius)
+      if (!newWaypoint)
       {
-        // new waypoint
-        float angle = flock->wanderAngle + randf(-XM_PI/4, XM_PI/4);
-        float dist = randf(100.f, 200.f);
-        flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
-        flock->wanderAngle = angle;
-        break;
+        closestDist = min(closestDist, Vector3::Distance(b.pos, flock->nextWaypoint));
+        newWaypoint |= closestDist < _settings.boids.waypoint_radius;
       }
+      center += b.pos;
+    }
+
+    flock->center = center / (float)flock->boids.size();
+
+    if (newWaypoint)
+    {
+      float angle = flock->wanderAngle + randf(-XM_PI / 4, XM_PI / 4);
+      float dist = randf(100.f, 200.f);
+      flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
+      flock->wanderAngle = angle;
     }
 
     for (Boid& b : flock->boids)
     {
+      // TODO: clamp each individual force?
       b.force =
         _settings.boids.separation_scale * BoidSeparation(b) +
         _settings.boids.cohesion_scale * BoidCohesion(b) +
@@ -517,14 +451,19 @@ void Landscape::UpdateBoids(const UpdateState& state)
 bool Landscape::Update(const UpdateState& state)
 {
   UpdateBoids(state);
-  UpdateCameraMatrix();
+  UpdateCameraMatrix(state);
   return true;
 }
 
 //------------------------------------------------------------------------------
-void Landscape::UpdateCameraMatrix()
+void Landscape::UpdateCameraMatrix(const UpdateState& state)
 {
-  _camera.Update();
+  if (_followFlock != -1 && _followFlock < _flocks.size())
+  {
+    _camera._pos = _flocks[_followFlock]->center;
+  }
+
+  _camera.Update(state);
   Matrix view = _camera._view;
   Matrix proj = _camera._proj;
   Matrix viewProj = view * proj;
