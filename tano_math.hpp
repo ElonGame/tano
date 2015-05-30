@@ -120,4 +120,13 @@ namespace tano
 
     return maxLength / len * force;
   }
+
+  inline Vector3 Normalize(const Vector3& v)
+  {
+    float len = v.Length();
+    if (len == 0.f)
+      return Vector3(0, 0, 0);
+    return 1 / len * v;
+  }
+
 }

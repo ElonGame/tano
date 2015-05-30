@@ -9,6 +9,7 @@
 #include "../generated/input_buffer.hpp"
 #include "../generated/output_buffer.hpp"
 #include "../mesh_utils.hpp"
+#include "../tano_math.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -83,8 +84,7 @@ void Cluster::UpdateCameraMatrix(const UpdateState& state)
 
   Vector3 pos = Vector3(x, y, z);
   Vector3 target = Vector3(0, 0, 0);
-  Vector3 dir = target - pos;
-  dir.Normalize();
+  Vector3 dir = Normalize(target - pos);
 
   Matrix view = Matrix::CreateLookAt(pos, Vector3(0, 0, 0), Vector3(0, 1, 0));
   Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 2000.f);

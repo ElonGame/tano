@@ -17,12 +17,7 @@
 using namespace tano;
 using namespace bristol;
 
-extern "C" float stb_perlin_noise3(float x, float y, float z, int x_wrap=0, int y_wrap=0, int z_wrap=0);
-
 static const Vector3 ZERO3(0,0,0);
-
-int Landscape::Boid::nextId;
-
 
 Perlin2D perlin;
 
@@ -126,6 +121,12 @@ void Rasterize(
 }
 
 //------------------------------------------------------------------------------
+Landscape::Flock::Flock(int numBoids)
+{
+  boids.Init(numBoids);
+}
+
+//------------------------------------------------------------------------------
 Landscape::Landscape(const string &name, u32 id)
   : Effect(name, id)
   , _blinkFace("blinkface")
@@ -197,6 +198,17 @@ bool Landscape::Init(const char* configFile)
 void Landscape::InitBoids()
 {
   SeqDelete(&_flocks);
+  SAFE_DELETE(_behaviorSeek);
+  SAFE_DELETE(_behaviorSeparataion);
+  SAFE_DELETE(_behaviorCohesion);
+  SAFE_DELETE(_behaviorAlignment);
+
+  const BoidSettings& b = _settings.boids;
+  _behaviorSeek = new BehaviorSeek(b.max_force, b.max_speed);
+  _behaviorSeparataion = new BehaviorSeparataion(b.max_force, b.max_speed, b.separation_distance);
+  _behaviorCohesion = new BehaviorCohesion(b.max_force, b.max_speed, b.cohesion_distance);
+  _behaviorAlignment = new BehaviorAlignment(b.max_force, b.max_speed, b.cohesion_distance);
+
 #if 0
   Flock* flock = new Flock();
   vector<Boid>& boids = flock->boids;
@@ -221,8 +233,14 @@ void Landscape::InitBoids()
 #else
   for (int i = 0; i < _settings.boids.num_flocks; ++i)
   {
-    Flock* flock = new Flock();
-    vector<Boid>& boids = flock->boids;
+    Flock* flock = new Flock(_settings.boids.boids_per_flock);
+    flock->boids._maxSpeed = b.max_speed;
+    flock->boids.AddKinematics(_behaviorSeek, _settings.boids.wander_scale);
+    flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale);
+    flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale);
+    flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale);
+
+    //vector<Boid>& boids = flock->boids;
 
     float s = 200.f;
     Vector3 center(randf(-s, s), 0, randf(-s, s));
@@ -232,14 +250,14 @@ void Landscape::InitBoids()
     flock->nextWaypoint = center + Vector3(dist * cos(angle), 0, dist * sin(angle));
     flock->wanderAngle = angle;
 
+    _behaviorSeek->target = flock->nextWaypoint;
+
     // Create the boids
-    for (int j = 0; j < _settings.boids.boids_per_flock; ++j)
+    for (DynParticles::Body& b : flock->boids)
     {
-      Boid boid(flock);
-      boid.pos = center + Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-      boid.pos.y = 20 + NoiseAtPoint(boid.pos);
-      boid.force = 10 * Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-      boids.push_back(boid);
+      b.pos = center + Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      b.pos.y = 20 + NoiseAtPoint(b.pos);
+      b.force = 10 * Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
     }
     _flocks.push_back(flock);
   }
@@ -247,95 +265,7 @@ void Landscape::InitBoids()
 }
 
 //------------------------------------------------------------------------------
-Vector3 Landscape::BoidSeparation(const Boid& boid)
-{
-  // return a force away from any close boids
-  Vector3 avg(0, 0, 0);
-
-  float cnt = 0.f;
-  for (const Boid& b : boid.flock->boids)
-  {
-    if (b.id == boid.id)
-      continue;
-
-    float dist = Vector3::Distance(boid.pos, b.pos);
-    if (dist > _settings.boids.separation_distance)
-      continue;
-
-    Vector3 f = boid.pos - b.pos;
-    f.Normalize();
-    avg += 1.f / dist * f;
-    cnt += 1.f;
-  }
-
-  if (cnt == 0.f)
-    return avg;
-
-  avg /= cnt;
-
-  // Reynolds uses: steering = desired - current
-  avg.Normalize();
-  Vector3 desired = avg * _settings.boids.max_speed;
-  Vector3 steering = desired - boid.vel;
-  return steering;
-}
-
-//------------------------------------------------------------------------------
-Vector3 Landscape::BoidCohesion(const Boid& boid)
-{
-  // Return a force towards the average boid position
-  Vector3 avg(0, 0, 0);
-  
-  float cnt = 0.f;
-  for (const Boid& b : boid.flock->boids)
-  {
-    if (b.id == boid.id)
-      continue;
-
-    float dist = Vector3::Distance(boid.pos, b.pos);
-    if (dist > _settings.boids.cohesion_distance)
-      continue;
-
-    avg += b.pos;
-    cnt += 1.f;
-  }
-
-  if (cnt == 0.f)
-    return avg;
-
-  avg /= cnt;
-  return Seek(boid, avg);
-}
-
-//------------------------------------------------------------------------------
-Vector3 Landscape::BoidAlignment(const Boid& boid)
-{
-  // return a force to align the boids velocity with the average velocity
-  Vector3 avg(0, 0, 0);
-
-  float cnt = 0.f;
-  for (const Boid& b : boid.flock->boids)
-  {
-    if (b.id == boid.id)
-      continue;
-
-    float dist = Vector3::Distance(boid.pos, b.pos);
-    if (dist > _settings.boids.cohesion_distance)
-      continue;
-
-    avg += b.vel;
-    cnt += 1.f;
-  }
-
-  if (cnt == 0.f)
-    return avg;
-
-  avg /= cnt;
-  avg.Normalize();
-  Vector3 desired = avg * _settings.boids.max_speed;
-  Vector3 steering = desired - boid.vel;
-  return steering;
-}
+#if 0
 
 //------------------------------------------------------------------------------
 Vector3 Landscape::LandscapeFollow(const Boid& boid)
@@ -365,15 +295,7 @@ Vector3 Landscape::LandscapeFollow(const Boid& boid)
   return desiredVel - boid.vel;
 }
 
-//------------------------------------------------------------------------------
-Vector3 Landscape::Seek(const Boid& boid, const Vector3& target)
-{
-  Vector3 tmp = target - boid.pos;
-  tmp.Normalize();
-  Vector3 desiredVel = tmp * _settings.boids.max_speed;
-  return desiredVel - boid.vel;
-}
-
+#endif
 //------------------------------------------------------------------------------
 void Landscape::UpdateBoids(const UpdateState& state)
 {
@@ -387,17 +309,17 @@ void Landscape::UpdateBoids(const UpdateState& state)
     float closestDist = FLT_MAX;
     Vector3 center(0,0,0);
     bool newWaypoint = false;
-    for (Boid& b : flock->boids)
+    for (DynParticles::Body& b : flock->boids)
     {
       if (!newWaypoint)
       {
         closestDist = min(closestDist, Vector3::Distance(b.pos, flock->nextWaypoint));
         newWaypoint |= closestDist < _settings.boids.waypoint_radius;
       }
-      center += b.pos;
+      //center += b.pos;
     }
 
-    flock->center = center / (float)flock->boids.size();
+    //flock->center = center / (float)flock->boids.size();
 
     if (newWaypoint)
     {
@@ -407,33 +329,37 @@ void Landscape::UpdateBoids(const UpdateState& state)
       flock->wanderAngle = angle;
     }
 
-    for (Boid& b : flock->boids)
-    {
-      // TODO: clamp each individual force?
-      b.force =
-        _settings.boids.separation_scale * BoidSeparation(b) +
-        _settings.boids.cohesion_scale * BoidCohesion(b) +
-        _settings.boids.alignment_scale * BoidAlignment(b) +
-        _settings.boids.follow_scale * LandscapeFollow(b) +
-        _settings.boids.wander_scale * Seek(b, flock->nextWaypoint);
+    _behaviorSeek->target = flock->nextWaypoint;
 
-      b.force = ClampVector(b.force, _settings.boids.max_force);
+    flock->boids.Update(state);
 
-      //b.force = Vector3(0,0,0);
-      // f = m * a
-      b.acc = b.force;
+    //for (Boid& b : flock->boids)
+    //{
+    //  // TODO: clamp each individual force?
+    //  b.force =
+    //    _settings.boids.separation_scale * BoidSeparation(b) +
+    //    _settings.boids.cohesion_scale * BoidCohesion(b) +
+    //    _settings.boids.alignment_scale * BoidAlignment(b) +
+    //    _settings.boids.follow_scale * LandscapeFollow(b) +
+    //    _settings.boids.wander_scale * Seek(b, flock->nextWaypoint);
 
-      // v += dt * a;
-      b.vel = ClampVector(b.vel + dt * b.acc, _settings.boids.max_speed);
+    //  b.force = ClampVector(b.force, _settings.boids.max_force);
 
-      // p += dt * v;
-      b.pos += dt * b.vel;
+    //  //b.force = Vector3(0,0,0);
+    //  // f = m * a
+    //  b.acc = b.force;
 
-      b.force = ZERO3;
-      b.acc = ZERO3;
+    //  // v += dt * a;
+    //  b.vel = ClampVector(b.vel + dt * b.acc, _settings.boids.max_speed);
 
-      //b.force = 1.f * -b.vel;
-    }
+    //  // p += dt * v;
+    //  b.pos += dt * b.vel;
+
+    //  b.force = ZERO3;
+    //  b.acc = ZERO3;
+
+    //  //b.force = 1.f * -b.vel;
+    //}
   }
 }
 
@@ -448,11 +374,11 @@ bool Landscape::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 void Landscape::UpdateCameraMatrix(const UpdateState& state)
 {
-  if (_followFlock != -1 && _followFlock < _flocks.size())
+  /*if (_followFlock != -1 && _followFlock < _flocks.size())
   {
     _camera._pos = _flocks[_followFlock]->center;
   }
-
+*/
   _camera.Update(state);
   Matrix view = _camera._view;
   Matrix proj = _camera._proj;
@@ -622,27 +548,27 @@ bool Landscape::Render()
 
   for (const Flock* flock : _flocks)
   {
-    for (const Boid& boid: flock->boids)
+    for (const DynParticles::Body& b: flock->boids)
     {
       Matrix mtxRot = Matrix::Identity();
-      Vector3 velN = boid.vel;
+      Vector3 velN = b.vel;
       velN.Normalize();
-      Vector3 dir = boid.vel.LengthSquared() ? velN : Vector3(0, 0, 1);
+      Vector3 dir = b.vel.LengthSquared() ? velN : Vector3(0, 0, 1);
       Vector3 up(0,1,0);
       Vector3 right = Cross(up, dir);
       up = Cross(dir, right);
       mtxRot.Backward(dir);
       mtxRot.Up(up);
       mtxRot.Right(right);
-      mtxRot.Translation(boid.pos);
+      mtxRot.Translation(b.pos);
       _cbPerFrame.world = mtxRot.Transpose();
       _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
       _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
 
       DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
-      DEBUG_API.AddDebugLine(boid.pos, boid.pos + boid.vel, Color(1, 0, 0));
-      DEBUG_API.AddDebugLine(boid.pos, boid.pos + 10 * up, Color(0, 1, 0));
-      DEBUG_API.AddDebugLine(boid.pos, boid.pos + 10 * right, Color(0, 0, 1));
+      DEBUG_API.AddDebugLine(b.pos, b.pos + b.vel, Color(1, 0, 0));
+      DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * up, Color(0, 1, 0));
+      DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * right, Color(0, 0, 1));
     }
   }
 
@@ -666,14 +592,25 @@ bool Landscape::InitAnimatedParameters()
 #if WITH_IMGUI
 void Landscape::RenderParameterSet()
 {
+  auto UpdateWeight = [this](ParticleKinematics* k, float w) {
+    for (Flock* f : _flocks)
+    {
+      f->boids.UpdateWeight(k, w);
+    }
+  };
+
   ImGui::Checkbox("Render landscape", &_drawLandscape);
   ImGui::InputInt("NumVerts", (int*)&_numVerts);
   ImGui::InputInt("NumFlocks", &_settings.boids.num_flocks);
   ImGui::InputInt("BoidsPerFlock", &_settings.boids.boids_per_flock);
-  ImGui::SliderFloat("Separation", &_settings.boids.separation_scale, 0.1f, 10.f);
-  ImGui::SliderFloat("Cohension", &_settings.boids.cohesion_scale, 0.1f, 10.f);
-  ImGui::SliderFloat("Alignment", &_settings.boids.alignment_scale, 0.1f, 10.f);
-  ImGui::SliderFloat("Wander", &_settings.boids.wander_scale, 1.f, 25.f);
+  if (ImGui::SliderFloat("Separation", &_settings.boids.separation_scale, 0.1f, 10.f))
+    UpdateWeight(_behaviorSeparataion, _settings.boids.separation_scale);
+  if (ImGui::SliderFloat("Cohension", &_settings.boids.cohesion_scale, 0.1f, 10.f))
+    UpdateWeight(_behaviorCohesion, _settings.boids.cohesion_scale);
+  if (ImGui::SliderFloat("Alignment", &_settings.boids.alignment_scale, 0.1f, 10.f))
+    UpdateWeight(_behaviorAlignment, _settings.boids.alignment_scale);
+  if (ImGui::SliderFloat("Wander", &_settings.boids.wander_scale, 1.f, 25.f))
+    UpdateWeight(_behaviorSeek, _settings.boids.wander_scale);
   ImGui::SliderFloat("Follow", &_settings.boids.follow_scale, 1.f, 25.f);
   ImGui::SliderFloat("MaxSpeed", &_settings.boids.max_speed, 5.f, 100.f);
   ImGui::SliderFloat("MaxForce", &_settings.boids.max_force, 5.f, 100.f);

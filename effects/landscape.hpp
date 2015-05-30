@@ -6,6 +6,7 @@
 #include "../mesh_loader.hpp"
 #include "../animation_helpers.hpp"
 #include "../camera.hpp"
+#include "../dyn_particles.hpp"
 
 namespace tano
 {
@@ -40,31 +41,15 @@ namespace tano
     void UpdateBoids(const UpdateState& state);
 
     struct Boid;
-    Vector3 BoidSeparation(const Boid& boid);
-    Vector3 BoidCohesion(const Boid& boid);
-    Vector3 BoidAlignment(const Boid& boid);
     Vector3 LandscapeFollow(const Boid& boid);
-    Vector3 Seek(const Boid& boid, const Vector3& target);
 
     struct Flock;
-    struct Boid
-    {
-      Boid(Flock* flock) : flock(flock), id(nextId++) {}
-      Vector3 pos = Vector3(0, 0, 0);
-      Vector3 vel = Vector3(0, 0, 0);
-      Vector3 acc = Vector3(0, 0, 0);
-      Vector3 force = Vector3(0, 0, 0);
-      float mass = 1;
-      Flock* flock = nullptr;
-      int id;
-      static int nextId;
-    };
 
     struct Flock
     {
-      vector<Boid> boids;
+      Flock(int numBoids);
+      DynParticles boids;
       Vector3 nextWaypoint;
-      Vector3 center;
       float wanderAngle = 0;
     };
 
@@ -106,6 +91,11 @@ namespace tano
 
     GpuObjects _boidsMesh;
     bool _drawLandscape = false;
+
+    BehaviorSeek* _behaviorSeek = nullptr;
+    BehaviorSeparataion* _behaviorSeparataion = nullptr;
+    BehaviorCohesion* _behaviorCohesion = nullptr;
+    BehaviorAlignment* _behaviorAlignment = nullptr;
 
     int _followFlock = 0;
   };

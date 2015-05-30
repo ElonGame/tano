@@ -9,7 +9,6 @@ using namespace bristol;
 DynParticles::~DynParticles()
 {
   SAFE_ADELETE(_bodies);
-  SeqDelete(&_kinematics);
 }
 
 //------------------------------------------------------------------------------
@@ -23,176 +22,169 @@ void DynParticles::Init(int numBodies)
 //------------------------------------------------------------------------------
 void DynParticles::Update(const UpdateState& updateState)
 {
+  if (!_numBodies)
+    return;
 
+  Vector3 center(0,0,0);
   for (int i = 0; i < _numBodies; ++i)
   {
-    _bodies[i].acc = { 0, 0, 0 };
     _bodies[i].force = { 0, 0, 0 };
+    center += _bodies[i].pos;
   }
 
-  for (ParticleKinematics* p : _kinematics)
+  _center /= (float)_numBodies;
+
+  for (Kinematic& k : _kinematics)
   {
-    p->Update(_bodies, _numBodies, updateState);
+    k.kinematic->Update(_bodies, _numBodies, k.weight, updateState);
+  }
+
+  float dt = 1.0f / updateState.frequency;
+  for (int i = 0; i < _numBodies; ++i)
+  {
+    Body& b = _bodies[i];
+    b.acc = b.force;
+    b.vel = ClampVector(b.vel + dt * b.acc, _maxSpeed);
+    b.pos += dt * b.vel;
   }
 }
 
 //------------------------------------------------------------------------------
-void DynParticles::AddKinematics(ParticleKinematics* kinematics)
+void DynParticles::AddKinematics(ParticleKinematics* kinematics, float weight)
 {
-  _kinematics.push_back(kinematics);
+  _kinematics.push_back({kinematics, weight});
 }
 
 //------------------------------------------------------------------------------
+void DynParticles::UpdateWeight(ParticleKinematics* kinematics, float weight)
+{
+  for (Kinematic& k : _kinematics)
+  {
+    if (k.kinematic == kinematics)
+    {
+      k.weight = weight;
+      return;
+    }
+  }
+}
 
-void Seek(
-  DynParticles::Body* bodies,
-  int numBodies,
-  const Vector3& target,
-  float maxForce,
-  float maxSpeed,
-  const UpdateState& state)
+//------------------------------------------------------------------------------
+void BehaviorSeek::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state)
 {
   for (int i = 0; i < numBodies; ++i)
   {
     DynParticles::Body* b = &bodies[i];
 
-    Vector3 tmp = target - b->pos;
-    tmp.Normalize();
-    Vector3 desiredVel = tmp * maxSpeed;
-    b->force += ClampVector(desiredVel - b->vel, maxForce);
+    Vector3 desiredVel = Normalize(target - b->pos) * maxSpeed;
+    b->force += weight * ClampVector(desiredVel - b->vel, maxForce);
   }
 }
 
-struct BehaviorSeek : public ParticleKinematics
+//------------------------------------------------------------------------------
+void BehaviorSeparataion::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state)
 {
-  virtual void Update(DynParticles::Body* bodies, int numBodies, const UpdateState& state)
+  for (int i = 0; i < numBodies; ++i)
   {
-    Seek(bodies, numBodies, target, maxForce, maxSpeed, state);
-  }
+    DynParticles::Body* b = &bodies[i];
 
-  Vector3 target = { 0, 0, 0 };
-};
+    // return a force away from any close boids
+    Vector3 avg(0, 0, 0);
+
+    float cnt = 0.f;
+    for (int j = 0; j < numBodies; ++j)
+    {
+      if (i == j)
+        continue;
+
+      DynParticles::Body* inner = &bodies[j];
+
+      float dist = Vector3::Distance(inner->pos, b->pos);
+      if (dist > separationDistance)
+        continue;
+
+      avg += 1.f / dist * Normalize(b->pos - inner->pos);
+      cnt += 1.f;
+    }
+
+    if (cnt == 0.f)
+      continue;
+
+    avg /= cnt;
+
+    // Reynolds uses: steering = desired - current
+    Vector3 desired = Normalize(avg) * maxSpeed;
+    b->force += weight * ClampVector(desired - b->vel, maxForce);
+  }
+}
 
 //------------------------------------------------------------------------------
-struct BehaviorSeparataion : public ParticleKinematics
+void BehaviorCohesion::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state)
 {
-  virtual void Update(DynParticles::Body* bodies, int numBodies, const UpdateState& state)
+  for (int i = 0; i < numBodies; ++i)
   {
-    for (int i = 0; i < numBodies; ++i)
+    DynParticles::Body* b = &bodies[i];
+
+    // Return a force towards the average boid position
+    Vector3 avg(0, 0, 0);
+
+    float cnt = 0.f;
+
+    for (int j = 0; j < numBodies; ++j)
     {
-      DynParticles::Body* b = &bodies[i];
-
-      // return a force away from any close boids
-      Vector3 avg(0, 0, 0);
-
-      float cnt = 0.f;
-      for (int j = 0; j < numBodies; ++j)
-      {
-        if (i == j)
-          continue;
-
-        DynParticles::Body* inner = &bodies[j];
-
-        float dist = Vector3::Distance(inner->pos, b->pos);
-        if (dist > separationDistance)
-          continue;
-
-        Vector3 f = b->pos - inner->pos;
-        f.Normalize();
-        avg += 1.f / dist * f;
-        cnt += 1.f;
-      }
-
-      if (cnt == 0.f)
+      if (i == j)
         continue;
 
-      avg /= cnt;
+      DynParticles::Body* inner = &bodies[j];
 
-      // Reynolds uses: steering = desired - current
-      avg.Normalize();
-      Vector3 desired = avg * maxSpeed;
-      b->force += ClampVector(desired - b->vel, maxForce);
-    }
-  }
-
-  float separationDistance = 10;
-};
-
-struct BehaviorCohesion : public ParticleKinematics
-{
-  virtual void Update(DynParticles::Body* bodies, int numBodies, const UpdateState& state)
-  {
-    for (int i = 0; i < numBodies; ++i)
-    {
-      DynParticles::Body* b = &bodies[i];
-
-      // Return a force towards the average boid position
-      Vector3 avg(0, 0, 0);
-
-      float cnt = 0.f;
-
-      for (int j = 0; j < numBodies; ++j)
-      {
-        if (i == j)
-          continue;
-
-        DynParticles::Body* inner = &bodies[j];
-
-        float dist = Vector3::Distance(inner->pos, b->pos);
-        if (dist > cohesionDistaince)
-          continue;
-
-        avg += inner->pos;
-        cnt += 1.f;
-      }
-
-      if (cnt == 0.f)
+      float dist = Vector3::Distance(inner->pos, b->pos);
+      if (dist > cohesionDistance)
         continue;
 
-      avg /= cnt;
-      Seek(bodies, numBodies, avg, maxForce, maxSpeed, state);
+      avg += inner->pos;
+      cnt += 1.f;
     }
+
+    if (cnt == 0.f)
+      continue;
+
+    avg /= cnt;
+
+    Vector3 desiredVel = Normalize(avg - b->pos) * maxSpeed;
+    b->force += weight * ClampVector(desiredVel - b->vel, maxForce);
   }
+}
 
-  float cohesionDistaince = 10;
-};
-
-struct BehaviorAlignment : public ParticleKinematics
+//------------------------------------------------------------------------------
+void BehaviorAlignment::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state)
 {
-  virtual void Update(DynParticles::Body* bodies, int numBodies, const UpdateState& state)
+  for (int i = 0; i < numBodies; ++i)
   {
-    for (int i = 0; i < numBodies; ++i)
+    DynParticles::Body* b = &bodies[i];
+
+    // return a force to align the boids velocity with the average velocity
+    Vector3 avg(0, 0, 0);
+
+    float cnt = 0.f;
+    for (int j = 0; j < numBodies; ++j)
     {
-      DynParticles::Body* b = &bodies[i];
-
-      // return a force to align the boids velocity with the average velocity
-      Vector3 avg(0, 0, 0);
-
-      float cnt = 0.f;
-      for (int j = 0; j < numBodies; ++j)
-      {
-        if (i == j)
-          continue;
-
-        DynParticles::Body* inner = &bodies[j];
-
-        float dist = Vector3::Distance(inner->pos, b->pos);
-        if (dist > cohesionDistaince)
-          continue;
-
-        avg += b->vel;
-        cnt += 1.f;
-      }
-
-      if (cnt == 0.f)
+      if (i == j)
         continue;
 
-      avg /= cnt;
-      avg.Normalize();
-      Vector3 desired = avg * maxSpeed;
-      b->force += ClampVector(desired - b->vel, maxForce);
-    }
-  }
+      DynParticles::Body* inner = &bodies[j];
 
-  float cohesionDistaince = 10;
-};
+      float dist = Vector3::Distance(inner->pos, b->pos);
+      if (dist > cohesionDistance)
+        continue;
+
+      avg += inner->vel;
+      cnt += 1.f;
+    }
+
+    if (cnt == 0.f)
+      continue;
+
+    avg /= cnt;
+    Vector3 desired = Normalize(avg) * maxSpeed;
+    b->force += weight * ClampVector(desired - b->vel, maxForce);
+  }
+}
