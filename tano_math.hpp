@@ -111,4 +111,13 @@ namespace tano
   {
     return V3(a.x + b.x, a.y + b.y, a.z + b.z);
   }
+
+  inline Vector3 ClampVector(const Vector3& force, float maxLength)
+  {
+    float len = force.Length();
+    if (len <= maxLength)
+      return force;
+
+    return maxLength / len * force;
+  }
 }

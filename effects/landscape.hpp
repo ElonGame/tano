@@ -46,8 +46,6 @@ namespace tano
     Vector3 LandscapeFollow(const Boid& boid);
     Vector3 Seek(const Boid& boid, const Vector3& target);
 
-    Vector3 ClampVector(const Vector3& force, float maxLength);
-
     struct Flock;
     struct Boid
     {

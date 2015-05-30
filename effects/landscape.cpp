@@ -375,16 +375,6 @@ Vector3 Landscape::Seek(const Boid& boid, const Vector3& target)
 }
 
 //------------------------------------------------------------------------------
-Vector3 Landscape::ClampVector(const Vector3& force, float maxLength)
-{
-  float len = force.Length();
-  if (len <= maxLength)
-    return force;
-
-  return maxLength / len * force;
-}
-
-//------------------------------------------------------------------------------
 void Landscape::UpdateBoids(const UpdateState& state)
 {
   rmt_ScopedCPUSample(Boids_Update);
