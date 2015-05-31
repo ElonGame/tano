@@ -97,6 +97,7 @@ namespace tano
     BehaviorCohesion* _behaviorCohesion = nullptr;
     BehaviorAlignment* _behaviorAlignment = nullptr;
 
+    FollowCam _followCam;
     int _followFlock = 0;
   };
 }

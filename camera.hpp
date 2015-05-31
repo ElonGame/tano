@@ -1,4 +1,5 @@
 #pragma once
+#include "dyn_particles.hpp"
 
 namespace tano
 {
@@ -35,10 +36,11 @@ namespace tano
   //------------------------------------------------------------------------------
   struct FollowCam : public Camera
   {
+    FollowCam();
     virtual void Update(const UpdateState& state) override;
-
     void SetFollowTarget(const Vector3& followTarget);
 
-    Vector3 _followTarget;
+    DynParticles _particle;
+    BehaviorSeek _seek;
   };
 }

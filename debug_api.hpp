@@ -18,9 +18,13 @@ namespace tano
 
     void SetTransform(const Matrix& world, const Matrix& viewProj);
     void AddDebugLine(const Vector3& start, const Vector3& end, const Color& color);
+    void AddDebugSphere(const Vector3& center, float radius, const Color& color);
+    void AddDebugCube(const Vector3& center, const Vector3& extents, const Color& color);
 
     u32 AddDebugAnchor();
     void UpdateDebugAnchor(u32 id);
+
+    void CreateDebugGeometry();
 
     struct LineChunk
     {
@@ -31,6 +35,7 @@ namespace tano
     };
 
     vector<LineChunk> _lineChunks;
+    vector<Vector3> _unitSphere;
 
     static const int MAX_VERTS = 128 * 1024;
     bristol::PosCol _vertices[MAX_VERTS];
@@ -47,7 +52,8 @@ namespace tano
 
     static DebugApi* _instance;
 
-    GpuState _gpuState;
+    GpuState _gpuStateDepthTestDisabled;
+    GpuState _gpuStateDepthTestEnabled;
     GpuObjects _gpuObjects;
 
     GraphicsContext* _ctx = nullptr;

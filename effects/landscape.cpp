@@ -209,41 +209,20 @@ void Landscape::InitBoids()
   _behaviorCohesion = new BehaviorCohesion(b.max_force, b.max_speed, b.cohesion_distance);
   _behaviorAlignment = new BehaviorAlignment(b.max_force, b.max_speed, b.cohesion_distance);
 
-#if 0
-  Flock* flock = new Flock();
-  vector<Boid>& boids = flock->boids;
-
-  float s = 200.f;
-  Vector3 center(randf(-s, s), 0, randf(-s, s));
-  // Create a waypoint for the flock
-  float angle = randf(-XM_PI, XM_PI);
-  float dist = randf(100.f, 200.f);
-  flock->nextWaypoint = center + Vector3(dist * cos(angle), 0, dist * sin(angle));
-  flock->wanderAngle = angle;
-
-  // Create the boids
-  for (int j = 0; j < 1; ++j)
-  {
-    Boid boid(flock);
-    boid.pos = center + Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-    boid.pos = Vector3(0,0,0);
-    boids.push_back(boid);
-  }
-  _flocks.push_back(flock);
-#else
   for (int i = 0; i < _settings.boids.num_flocks; ++i)
   {
     Flock* flock = new Flock(_settings.boids.boids_per_flock);
     flock->boids._maxSpeed = b.max_speed;
-    flock->boids.AddKinematics(_behaviorSeek, _settings.boids.wander_scale);
-    flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale);
-    flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale);
-    flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale);
 
-    //vector<Boid>& boids = flock->boids;
+    float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale;
+    flock->boids.AddKinematics(_behaviorSeek, _settings.boids.wander_scale / sum);
+    flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
+    flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
+    flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
 
     float s = 200.f;
     Vector3 center(randf(-s, s), 0, randf(-s, s));
+
     // Create a waypoint for the flock
     float angle = randf(-XM_PI, XM_PI);
     float dist = randf(100.f, 200.f);
@@ -252,7 +231,7 @@ void Landscape::InitBoids()
 
     _behaviorSeek->target = flock->nextWaypoint;
 
-    // Create the boids
+    // Init the boids
     for (DynParticles::Body& b : flock->boids)
     {
       b.pos = center + Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
@@ -261,7 +240,6 @@ void Landscape::InitBoids()
     }
     _flocks.push_back(flock);
   }
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -308,58 +286,20 @@ void Landscape::UpdateBoids(const UpdateState& state)
     // check if the flock has reached its waypoint
     float closestDist = FLT_MAX;
     Vector3 center(0,0,0);
-    bool newWaypoint = false;
     for (DynParticles::Body& b : flock->boids)
     {
-      if (!newWaypoint)
+      if (Vector3::Distance(b.pos, flock->nextWaypoint) < _settings.boids.waypoint_radius)
       {
-        closestDist = min(closestDist, Vector3::Distance(b.pos, flock->nextWaypoint));
-        newWaypoint |= closestDist < _settings.boids.waypoint_radius;
+        float angle = flock->wanderAngle + randf(-XM_PI / 2, XM_PI / 2);
+        float dist = randf(300.f, 400.f);
+        flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
+        flock->wanderAngle = angle;
+        break;
       }
-      //center += b.pos;
-    }
-
-    //flock->center = center / (float)flock->boids.size();
-
-    if (newWaypoint)
-    {
-      float angle = flock->wanderAngle + randf(-XM_PI / 4, XM_PI / 4);
-      float dist = randf(100.f, 200.f);
-      flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
-      flock->wanderAngle = angle;
     }
 
     _behaviorSeek->target = flock->nextWaypoint;
-
     flock->boids.Update(state);
-
-    //for (Boid& b : flock->boids)
-    //{
-    //  // TODO: clamp each individual force?
-    //  b.force =
-    //    _settings.boids.separation_scale * BoidSeparation(b) +
-    //    _settings.boids.cohesion_scale * BoidCohesion(b) +
-    //    _settings.boids.alignment_scale * BoidAlignment(b) +
-    //    _settings.boids.follow_scale * LandscapeFollow(b) +
-    //    _settings.boids.wander_scale * Seek(b, flock->nextWaypoint);
-
-    //  b.force = ClampVector(b.force, _settings.boids.max_force);
-
-    //  //b.force = Vector3(0,0,0);
-    //  // f = m * a
-    //  b.acc = b.force;
-
-    //  // v += dt * a;
-    //  b.vel = ClampVector(b.vel + dt * b.acc, _settings.boids.max_speed);
-
-    //  // p += dt * v;
-    //  b.pos += dt * b.vel;
-
-    //  b.force = ZERO3;
-    //  b.acc = ZERO3;
-
-    //  //b.force = 1.f * -b.vel;
-    //}
   }
 }
 
@@ -374,37 +314,42 @@ bool Landscape::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 void Landscape::UpdateCameraMatrix(const UpdateState& state)
 {
-  /*if (_followFlock != -1 && _followFlock < _flocks.size())
+  Camera* cam = &_camera;
+
+  if (_followFlock != -1 && _followFlock < _flocks.size())
   {
-    _camera._pos = _flocks[_followFlock]->center;
+    _followCam.SetFollowTarget(_flocks[_followFlock]->nextWaypoint);
+    cam = &_followCam;
   }
-*/
-  _camera.Update(state);
-  Matrix view = _camera._view;
-  Matrix proj = _camera._proj;
+
+  cam->Update(state);
+  Matrix view = cam->_view;
+  Matrix proj = cam->_proj;
   Matrix viewProj = view * proj;
 
   // compute size of frustum
-  float farW = _camera._farPlane * tan(_camera._fov);
-  Vector3 v0(-farW, 0, _camera._farPlane);
-  Vector3 v1(+farW, 0, _camera._farPlane);
+  float farW = cam->_farPlane * tan(cam->_fov);
+  Vector3 v0(-farW, 0, cam->_farPlane);
+  Vector3 v1(+farW, 0, cam->_farPlane);
 
-  float nearW = _camera._nearPlane * tan(_camera._fov);
-  Vector3 v2(-nearW, 0, _camera._nearPlane);
-  Vector3 v3(+nearW, 0, _camera._nearPlane);
+  float nearW = cam->_nearPlane * tan(cam->_fov);
+  Vector3 v2(-nearW, 0, cam->_nearPlane);
+  Vector3 v3(+nearW, 0, cam->_nearPlane);
 
-  v0 = Vector3::Transform(v0 + _camera._pos, _camera._mtx);
-  v1 = Vector3::Transform(v1 + _camera._pos, _camera._mtx);
-  v2 = Vector3::Transform(v2 + _camera._pos, _camera._mtx);
-  v3 = Vector3::Transform(v3 + _camera._pos, _camera._mtx);
+  v0 = Vector3::Transform(v0 + cam->_pos, cam->_mtx);
+  v1 = Vector3::Transform(v1 + cam->_pos, cam->_mtx);
+  v2 = Vector3::Transform(v2 + cam->_pos, cam->_mtx);
+  v3 = Vector3::Transform(v3 + cam->_pos, cam->_mtx);
 
   _cbPerFrame.world = Matrix::Identity();
   _cbPerFrame.view = view.Transpose();
   _cbPerFrame.proj = proj.Transpose();
   _cbPerFrame.viewProj = viewProj.Transpose();
-  _cbPerFrame.cameraPos = _camera._pos;
-  _cbPerFrame.cameraLookAt = _camera._target;
-  _cbPerFrame.cameraUp = _camera._up;
+  _cbPerFrame.cameraPos = cam->_pos;
+  _cbPerFrame.cameraLookAt = cam->_target;
+  _cbPerFrame.cameraUp = cam->_up;
+
+  DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
 }
 
 //------------------------------------------------------------------------------
@@ -548,6 +493,9 @@ bool Landscape::Render()
 
   for (const Flock* flock : _flocks)
   {
+    DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
+    DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1,1,1));
+
     for (const DynParticles::Body& b: flock->boids)
     {
       Matrix mtxRot = Matrix::Identity();
@@ -565,7 +513,6 @@ bool Landscape::Render()
       _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
       _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
 
-      DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
       DEBUG_API.AddDebugLine(b.pos, b.pos + b.vel, Color(1, 0, 0));
       DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * up, Color(0, 1, 0));
       DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * right, Color(0, 0, 1));
@@ -603,17 +550,25 @@ void Landscape::RenderParameterSet()
   ImGui::InputInt("NumVerts", (int*)&_numVerts);
   ImGui::InputInt("NumFlocks", &_settings.boids.num_flocks);
   ImGui::InputInt("BoidsPerFlock", &_settings.boids.boids_per_flock);
-  if (ImGui::SliderFloat("Separation", &_settings.boids.separation_scale, 0.1f, 10.f))
-    UpdateWeight(_behaviorSeparataion, _settings.boids.separation_scale);
-  if (ImGui::SliderFloat("Cohension", &_settings.boids.cohesion_scale, 0.1f, 10.f))
-    UpdateWeight(_behaviorCohesion, _settings.boids.cohesion_scale);
-  if (ImGui::SliderFloat("Alignment", &_settings.boids.alignment_scale, 0.1f, 10.f))
-    UpdateWeight(_behaviorAlignment, _settings.boids.alignment_scale);
-  if (ImGui::SliderFloat("Wander", &_settings.boids.wander_scale, 1.f, 25.f))
-    UpdateWeight(_behaviorSeek, _settings.boids.wander_scale);
+  bool newWeights = false;
+  newWeights |= ImGui::SliderFloat("Separation", &_settings.boids.separation_scale, 0, 100);
+  newWeights |= ImGui::SliderFloat("Cohension", &_settings.boids.cohesion_scale, 0, 100);
+  newWeights |= ImGui::SliderFloat("Alignment", &_settings.boids.alignment_scale, 0, 100);
+  newWeights |= ImGui::SliderFloat("Wander", &_settings.boids.wander_scale, 0, 100);
+
+  if (newWeights)
+  {
+    BoidSettings& b = _settings.boids;
+    float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale;
+    UpdateWeight(_behaviorSeparataion, _settings.boids.separation_scale / sum);
+    UpdateWeight(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
+    UpdateWeight(_behaviorAlignment, _settings.boids.alignment_scale / sum);
+    UpdateWeight(_behaviorSeek, _settings.boids.wander_scale / sum);
+  }
+
   ImGui::SliderFloat("Follow", &_settings.boids.follow_scale, 1.f, 25.f);
-  ImGui::SliderFloat("MaxSpeed", &_settings.boids.max_speed, 5.f, 100.f);
-  ImGui::SliderFloat("MaxForce", &_settings.boids.max_force, 5.f, 100.f);
+  ImGui::SliderFloat("MaxSpeed", &_settings.boids.max_speed, 10.f, 1000.f);
+  ImGui::SliderFloat("MaxForce", &_settings.boids.max_force, 10.f, 1000.f);
   ImGui::SliderFloat("SepDist", &_settings.boids.separation_distance, 1.f, 100.f);
   ImGui::SliderFloat("CohDist", &_settings.boids.cohesion_distance, 1.f, 100.f);
 

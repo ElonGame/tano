@@ -5,6 +5,7 @@ namespace tano
   struct UpdateState;
   struct ParticleKinematics;
 
+  //------------------------------------------------------------------------------
   struct DynParticles
   {
     ~DynParticles();
@@ -47,6 +48,7 @@ namespace tano
     float _maxSpeed = 10.f;
   };
 
+  //------------------------------------------------------------------------------
   struct ParticleKinematics
   {
     ParticleKinematics(float maxForce, float maxSpeed) : maxForce(maxForce), maxSpeed(maxSpeed) {}
@@ -55,6 +57,7 @@ namespace tano
     float maxSpeed = 10.f;
   };
 
+  //------------------------------------------------------------------------------
   struct BehaviorSeek : public ParticleKinematics
   {
     BehaviorSeek(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
@@ -62,6 +65,7 @@ namespace tano
     Vector3 target = { 0, 0, 0 };
   };
 
+  //------------------------------------------------------------------------------
   struct BehaviorSeparataion : public ParticleKinematics
   {
     BehaviorSeparataion(float maxForce, float maxSpeed, float separationDistance) 
@@ -70,6 +74,7 @@ namespace tano
     float separationDistance = 10;
   };
 
+  //------------------------------------------------------------------------------
   struct BehaviorCohesion : public ParticleKinematics
   {
     BehaviorCohesion(float maxForce, float maxSpeed, float cohesionDistance) 
@@ -78,6 +83,7 @@ namespace tano
     float cohesionDistance = 10;
   };
 
+  //------------------------------------------------------------------------------
   struct BehaviorAlignment : public ParticleKinematics
   {
     BehaviorAlignment(float maxForce, float maxSpeedfloat, float cohesionDistance) 

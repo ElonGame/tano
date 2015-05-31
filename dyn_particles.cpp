@@ -32,7 +32,7 @@ void DynParticles::Update(const UpdateState& updateState)
     center += _bodies[i].pos;
   }
 
-  _center /= (float)_numBodies;
+  _center = center /  (float)_numBodies;
 
   for (Kinematic& k : _kinematics)
   {

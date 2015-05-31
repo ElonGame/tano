@@ -145,17 +145,28 @@ void Camera::GetFrustumCenter(Vector3* pts)
 }
 
 //------------------------------------------------------------------------------
+FollowCam::FollowCam()
+  : _seek(50, 50)
+{
+  _particle.Init(1);
+  _particle._bodies[0].pos = {0, 0, 0};
+  _particle.AddKinematics(&_seek, 1);
+  _particle._maxSpeed = 50;
+}
+
+//------------------------------------------------------------------------------
 void FollowCam::Update(const UpdateState& state)
 {
-  // Seek behavior
-  //Vector3 tmp = _followTarget - _pos;;
-  //tmp.Normalize();
-  //Vector3 desiredVel = tmp * 10.f; // _settings.boids.max_speed;
-  //return desiredVel - boid.vel;
+  _particle.Update(state);
+  const DynParticles::Body& b = _particle._bodies[0];
+  _pos = b.pos;
+
+  _target = _pos + b.vel;
+  _view = Matrix::CreateLookAt(_pos, _target, _up);
 }
 
 //------------------------------------------------------------------------------
 void FollowCam::SetFollowTarget(const Vector3& followTarget)
 {
-  _followTarget = followTarget;
+  _seek.target = followTarget;
 }
