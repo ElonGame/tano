@@ -112,6 +112,14 @@ namespace tano
     return V3(a.x + b.x, a.y + b.y, a.z + b.z);
   }
 
+  inline V3 Cross(const V3& a, const V3& b)
+  {
+    return V3(
+      (a.y * b.z) - (a.z * b.y),
+      (a.z * b.x) - (a.x * b.z),
+      (a.x * b.y) - (a.y * b.x));
+  }
+
   inline Vector3 ClampVector(const Vector3& force, float maxLength)
   {
     float len = force.Length();
@@ -127,6 +135,14 @@ namespace tano
     if (len == 0.f)
       return Vector3(0, 0, 0);
     return 1 / len * v;
+  }
+
+  inline Vector3 Cross(const Vector3& a, const Vector3& b)
+  {
+    return Vector3(
+      (a.y * b.z) - (a.z * b.y),
+      (a.z * b.x) - (a.x * b.z),
+      (a.x * b.y) - (a.y * b.x));
   }
 
 }

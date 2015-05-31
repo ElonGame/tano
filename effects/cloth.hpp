@@ -93,7 +93,7 @@ namespace tano
     GpuObjects _clothGpuObjects;
     ClothSettings _settings;
     string _configName;
-    Camera _camera;
+    FreeFlyCamera _camera;
 
     RollingAverage<double> _avgUpdate;
   };

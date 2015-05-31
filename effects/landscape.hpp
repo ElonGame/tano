@@ -92,11 +92,12 @@ namespace tano
 
     AnimatedInt _blinkFace;
 
-    Camera _camera;
     u32 _numVerts;
 
     GpuObjects _boidsMesh;
-    bool _drawLandscape = false;
+    bool _renderLandscape = true;
+    bool _renderBoids = false;
+    bool _useFreeFlyCamera = true;
 
     BehaviorSeek* _behaviorSeek = nullptr;
     BehaviorSeparataion* _behaviorSeparataion = nullptr;
@@ -104,7 +105,9 @@ namespace tano
     BehaviorAlignment* _behaviorAlignment = nullptr;
     BehaviorLandscapeFollow* _landscapeFollow = nullptr;
 
-    FollowCam _followCam;
+    FreeFlyCamera _freeflyCamera;
+    FollowCam _followCamera;
+    Camera* _curCamera = &_followCamera;
     int _followFlock = 0;
   };
 }

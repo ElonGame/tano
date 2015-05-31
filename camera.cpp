@@ -3,6 +3,7 @@
 #include "mesh_utils.hpp"
 #include "graphics.hpp"
 #include "update_state.hpp"
+#include "tano_math.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -18,54 +19,7 @@ Camera::Camera()
   Update(state);
 }
 
-//------------------------------------------------------------------------------
-void Camera::Update(const UpdateState& updateState)
-{
-  const IoState& state = TANO.GetIoState();
-
-  // rotation
-  if (state.keysPressed['A'])
-    _yaw -= 0.1f / XM_PI;
-
-  if (state.keysPressed['D'])
-    _yaw += 0.1f / XM_PI;
-
-  if (state.keysPressed['Q'])
-    _pitch -= 0.1f / XM_PI;
-
-  if (state.keysPressed['E'])
-    _pitch += 0.1f / XM_PI;
-
-  if (state.keysPressed['R'])
-    _roll += 0.1f / XM_PI;
-
-  if (state.keysPressed['T'])
-    _roll -= 0.1f / XM_PI;
-
-  _mtx = Matrix::CreateFromYawPitchRoll(_yaw, _pitch, _roll);
-  _dir = Vector3::Transform(Vector3(0, 0, 1), _mtx);
-  _up = Vector3::Transform(Vector3(0, 1, 0), _mtx);
-  _right = Cross(_up, _dir);
-
-  // movement
-  float s = state.shiftPressed ? 5.f : 1.f;
-
-  if (state.keysPressed['Z'])
-    _pos -= s * _right;
-
-  if (state.keysPressed['C'])
-    _pos += s * _right;
-
-  if (state.keysPressed['W'])
-    _pos += s * _dir;
-      
-  if (state.keysPressed['S'])
-    _pos -= s * _dir;
-
-  _target = _pos + _dir;
-  _view = Matrix::CreateLookAt(_pos, _target, _up);
-}
-
+#if 0
 //------------------------------------------------------------------------------
 void Camera::GetFrustumCorners(Vector3* pts)
 {
@@ -142,6 +96,55 @@ void Camera::GetFrustumCenter(Vector3* pts)
   // center points
   pts[4] = fc;
   pts[5] = nc;
+}
+#endif
+
+//------------------------------------------------------------------------------
+void FreeFlyCamera::Update(const UpdateState& updateState)
+{
+  const IoState& state = TANO.GetIoState();
+
+  // rotation
+  if (state.keysPressed['A'])
+    _yaw -= 0.1f / XM_PI;
+
+  if (state.keysPressed['D'])
+    _yaw += 0.1f / XM_PI;
+
+  if (state.keysPressed['Q'])
+    _pitch -= 0.1f / XM_PI;
+
+  if (state.keysPressed['E'])
+    _pitch += 0.1f / XM_PI;
+
+  if (state.keysPressed['R'])
+    _roll += 0.1f / XM_PI;
+
+  if (state.keysPressed['T'])
+    _roll -= 0.1f / XM_PI;
+
+  _mtx = Matrix::CreateFromYawPitchRoll(_yaw, _pitch, _roll);
+  _dir = Vector3::Transform(Vector3(0, 0, 1), _mtx);
+  _up = Vector3::Transform(Vector3(0, 1, 0), _mtx);
+  _right = Cross(_up, _dir);
+
+  // movement
+  float s = state.shiftPressed ? 5.f : 1.f;
+
+  if (state.keysPressed['Z'])
+    _pos -= s * _right;
+
+  if (state.keysPressed['C'])
+    _pos += s * _right;
+
+  if (state.keysPressed['W'])
+    _pos += s * _dir;
+
+  if (state.keysPressed['S'])
+    _pos -= s * _dir;
+
+  _target = _pos + _dir;
+  _view = Matrix::CreateLookAt(_pos, _target, _up);
 }
 
 //------------------------------------------------------------------------------

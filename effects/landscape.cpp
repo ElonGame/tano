@@ -21,38 +21,31 @@ static const Vector3 ZERO3(0,0,0);
 
 Perlin2D perlin;
 
-void Vector3ToFloat(float* buf, const Vector3& v)
+//------------------------------------------------------------------------------
+void Vector3ToFloat(float* buf, const V3& v)
 {
   buf[0] = v.x;
   buf[1] = v.y;
   buf[2] = v.z;
 }
 
-struct NoiseValues
-{
-  float v0, v1, v2, v3;
-  Vector3 n0, n1;
-};
-
-unordered_map<u32, NoiseValues> noiseCache;
-
-Vector3 NOISE_SCALE(10.f, 30.f, 10.f);
-
+//------------------------------------------------------------------------------
 float NoiseAtPoint(const Vector3& v)
 {
-  Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
-  //return NOISE_SCALE.y * stb_perlin_noise3(256 * v.x / size.x, 0, 256 * v.z / size.z);
+  static const Vector3 NOISE_SCALE(10.f, 30.f, 10.f);
+  static const Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
   return NOISE_SCALE.y * perlin.Value(256 * v.x / size.x, 256 * v.z / size.z);
 }
 
+//------------------------------------------------------------------------------
 void Rasterize(
   const Vector3& scale,
-  int startZ, const vector<pair<int, int>>& spans, 
+  int startZ, const vector<pair<int, int>>& spans,
   float* verts, u32* numVerts)
-  {
-  Vector3 v0, v1, v2, v3;
-  Vector3 n0, n1;
-  Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
+{
+  V3 v0, v1, v2, v3;
+  V3 n0, n1;
+  V3 size(10 * 1024, 10 * 1024, 10 * 1024);
 
   int triIdx = 0;
   for (int idx = 0; idx < (int)spans.size(); ++idx)
@@ -66,53 +59,47 @@ void Rasterize(
       // |  |
       // 0--3
 
-      float xx0 = (float)(j+0) * scale.x;
-      float xx1 = (float)(j+1) * scale.x;
-      float zz0 = (float)(i+0) * scale.z;
-      float zz1 = (float)(i+1) * scale.z;
+      float xx0 = (float)(j + 0) * scale.x;
+      float xx1 = (float)(j + 1) * scale.x;
+      float zz0 = (float)(i + 0) * scale.z;
+      float zz1 = (float)(i + 1) * scale.z;
 
       v0.x = xx0; v0.z = zz0;
       v1.x = xx0; v1.z = zz1;
       v2.x = xx1; v2.z = zz1;
       v3.x = xx1; v3.z = zz0;
 
-      //v0.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz0 / size.z);
-      //v1.y = scale.y * stb_perlin_noise3(256 * xx0 / size.x, 0, 256 * zz1 / size.z);
-      //v2.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz1 / size.z);
-      //v3.y = scale.y * stb_perlin_noise3(256 * xx1 / size.x, 0, 256 * zz0 / size.z);
-
       v0.y = scale.y * perlin.Value(256 * xx0 / size.x, 256 * zz0 / size.z);
       v1.y = scale.y * perlin.Value(256 * xx0 / size.x, 256 * zz1 / size.z);
       v2.y = scale.y * perlin.Value(256 * xx1 / size.x, 256 * zz1 / size.z);
       v3.y = scale.y * perlin.Value(256 * xx1 / size.x, 256 * zz0 / size.z);
 
-      Vector3 e1, e2;
+      V3 e1, e2;
       e1 = v2 - v1;
       e2 = v0 - v1;
       n0 = Cross(e1, e2);
-      n0.Normalize();
+      n0 = Normalize(n0);
 
       e1 = v0 - v3;
       e2 = v2 - v3;
       n1 = Cross(e1, e2);
-      n1.Normalize();
-
+      n1 = Normalize(n1);
 
       // 0, 1, 3
-      Vector3ToFloat(&verts[triIdx*18+0], v0);
-      Vector3ToFloat(&verts[triIdx*18+3], n0);
-      Vector3ToFloat(&verts[triIdx*18+6], v1);
-      Vector3ToFloat(&verts[triIdx*18+9], n0);
-      Vector3ToFloat(&verts[triIdx*18+12], v3);
-      Vector3ToFloat(&verts[triIdx*18+15], n0);
+      Vector3ToFloat(&verts[triIdx * 18 + 0], v0);
+      Vector3ToFloat(&verts[triIdx * 18 + 3], n0);
+      Vector3ToFloat(&verts[triIdx * 18 + 6], v1);
+      Vector3ToFloat(&verts[triIdx * 18 + 9], n0);
+      Vector3ToFloat(&verts[triIdx * 18 + 12], v3);
+      Vector3ToFloat(&verts[triIdx * 18 + 15], n0);
       ++triIdx;
 
-      Vector3ToFloat(&verts[triIdx*18+0], v3);
-      Vector3ToFloat(&verts[triIdx*18+3], n1);
-      Vector3ToFloat(&verts[triIdx*18+6], v1);
-      Vector3ToFloat(&verts[triIdx*18+9], n1);
-      Vector3ToFloat(&verts[triIdx*18+12], v2);
-      Vector3ToFloat(&verts[triIdx*18+15], n1);
+      Vector3ToFloat(&verts[triIdx * 18 + 0], v3);
+      Vector3ToFloat(&verts[triIdx * 18 + 3], n1);
+      Vector3ToFloat(&verts[triIdx * 18 + 6], v1);
+      Vector3ToFloat(&verts[triIdx * 18 + 9], n1);
+      Vector3ToFloat(&verts[triIdx * 18 + 12], v2);
+      Vector3ToFloat(&verts[triIdx * 18 + 15], n1);
       ++triIdx;
     }
   }
@@ -157,10 +144,10 @@ bool Landscape::Init(const char* configFile)
   INIT_FATAL(RESOURCE_MANAGER.LoadFile(configFile, &buf));
 
   INIT(ParseLandscapeSettings(InputBuffer(buf), &_settings));
-  _camera._pitch = _settings.camera.pitch;
-  _camera._yaw = _settings.camera.yaw;
-  _camera._roll = _settings.camera.roll;
-  _camera._pos = _settings.camera.pos;
+  _freeflyCamera._pitch = _settings.camera.pitch;
+  _freeflyCamera._yaw = _settings.camera.yaw;
+  _freeflyCamera._roll = _settings.camera.roll;
+  _freeflyCamera._pos = _settings.camera.pos;
 
   // create mesh from landscape
   u32 vertexFlags = VF_POS | VF_NORMAL;
@@ -338,48 +325,70 @@ bool Landscape::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 void Landscape::UpdateCameraMatrix(const UpdateState& state)
 {
-  Camera* cam = &_camera;
-
-  if (_followFlock != -1 && _followFlock < _flocks.size())
+  if (!_flocks.empty())
   {
-    _followCam.SetFollowTarget(_flocks[_followFlock]->nextWaypoint);
-    cam = &_followCam;
+    const IoState& state = TANO.GetIoState();
+    if (state.keysPressed['1'])
+      _followFlock = (_followFlock + 1) % _flocks.size();
+
+    if (state.keysPressed['2'])
+      _followFlock = (_followFlock - 1) % _flocks.size();
+
+    if (_followFlock != -1 && _followFlock < _flocks.size())
+    {
+      _followCamera.SetFollowTarget(_flocks[_followFlock]->boids._center);
+    }
   }
 
-  cam->Update(state);
-  Matrix view = cam->_view;
-  Matrix proj = cam->_proj;
+  if (_useFreeFlyCamera || _flocks.empty())
+    _curCamera = &_freeflyCamera;
+  else
+    _curCamera = &_followCamera;
+
+  _curCamera->Update(state);
+  Matrix view = _curCamera->_view;
+  Matrix proj = _curCamera->_proj;
   Matrix viewProj = view * proj;
 
   // compute size of frustum
-  float farW = cam->_farPlane * tan(cam->_fov);
-  Vector3 v0(-farW, 0, cam->_farPlane);
-  Vector3 v1(+farW, 0, cam->_farPlane);
+  float farW = _curCamera->_farPlane * tan(_curCamera->_fov);
+  Vector3 v0(-farW, 0, _curCamera->_farPlane);
+  Vector3 v1(+farW, 0, _curCamera->_farPlane);
 
-  float nearW = cam->_nearPlane * tan(cam->_fov);
-  Vector3 v2(-nearW, 0, cam->_nearPlane);
-  Vector3 v3(+nearW, 0, cam->_nearPlane);
+  float nearW = _curCamera->_nearPlane * tan(_curCamera->_fov);
+  Vector3 v2(-nearW, 0, _curCamera->_nearPlane);
+  Vector3 v3(+nearW, 0, _curCamera->_nearPlane);
 
-  v0 = Vector3::Transform(v0 + cam->_pos, cam->_mtx);
-  v1 = Vector3::Transform(v1 + cam->_pos, cam->_mtx);
-  v2 = Vector3::Transform(v2 + cam->_pos, cam->_mtx);
-  v3 = Vector3::Transform(v3 + cam->_pos, cam->_mtx);
+  v0 = Vector3::Transform(v0 + _curCamera->_pos, _curCamera->_mtx);
+  v1 = Vector3::Transform(v1 + _curCamera->_pos, _curCamera->_mtx);
+  v2 = Vector3::Transform(v2 + _curCamera->_pos, _curCamera->_mtx);
+  v3 = Vector3::Transform(v3 + _curCamera->_pos, _curCamera->_mtx);
 
   _cbPerFrame.world = Matrix::Identity();
   _cbPerFrame.view = view.Transpose();
   _cbPerFrame.proj = proj.Transpose();
   _cbPerFrame.viewProj = viewProj.Transpose();
-  _cbPerFrame.cameraPos = cam->_pos;
-  _cbPerFrame.cameraLookAt = cam->_target;
-  _cbPerFrame.cameraUp = cam->_up;
+  _cbPerFrame.cameraPos = _curCamera->_pos;
+  _cbPerFrame.cameraLookAt = _curCamera->_target;
+  _cbPerFrame.cameraUp = _curCamera->_up;
 
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
 }
 
 //------------------------------------------------------------------------------
-int Round(float v)
+inline int Round(float v)
 {
-  return v < 0 ? (int)floor(v) : (int)ceil(v);
+  return v < 0 ? (int)floorf(v) : (int)ceilf(v);
+}
+
+inline int RoundUp(float v)
+{
+  return v < 0 ? (int)floorf(v) : (int)ceilf(v);
+}
+
+inline int RoundDown(float v)
+{
+  return v < 0 ? (int)ceilf(v) : (int)floorf(v);
 }
 
 //------------------------------------------------------------------------------
@@ -387,15 +396,13 @@ void Landscape::RasterizeLandscape(float* buf)
 {
   rmt_ScopedCPUSample(Landscape_Rasterize);
 
-  Vector3 corners[6];
-  _camera.GetFrustumCenter(&corners[0]);
-
+  // Create a large rect around the camera, and clip it using the camera planes
   Plane planes[6];
-  ExtractPlanes(_camera._view * _camera._proj, true, planes);
+  ExtractPlanes(_curCamera->_view * _curCamera->_proj, true, planes);
 
-  float ofs = 2 * _camera._farPlane;
-  Vector3 c = _camera._pos;
-  c.y = 0;
+  float ofs = 2 * _curCamera->_farPlane;
+  Vector3 c = _curCamera->_pos;
+  //c.y = 0;
   Vector3 buf0[16] ={
     c + Vector3(-ofs, 0, +ofs),
     c + Vector3(+ofs, 0, +ofs),
@@ -434,6 +441,7 @@ void Landscape::RasterizeLandscape(float* buf)
     spans[i].second = -INT_MAX;
   }
 
+  // scan convert between each pair of edges
   for (int i = 0; i < numVerts; ++i)
   {
     Vector3 vv0 = buf0[i] / 10;
@@ -457,10 +465,10 @@ void Landscape::RasterizeLandscape(float* buf)
 
     for (int y = sy; y >= ey; --y)
     {
-      int intX = Round(x);
+      //int intX = Round(x);
       int yy = y - minZ;
-      spans[yy].first = min(spans[yy].first, intX);
-      spans[yy].second = max(spans[yy].second, intX);
+      spans[yy].first = min(spans[yy].first, RoundUp(x));
+      spans[yy].second = max(spans[yy].second, RoundUp(x));
       x += dxdz;
     }
   }
@@ -494,7 +502,7 @@ bool Landscape::Render()
   // Render the landscape
   _ctx->SetRenderTarget(rt._handle, nullptr);
 
-  if (_drawLandscape)
+  if (_renderLandscape)
   {
     float* buf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
     RasterizeLandscape(buf);
@@ -509,41 +517,45 @@ bool Landscape::Render()
     _ctx->SetGpuState(_landscapeState);
   }
 
-  _ctx->SetGpuObjects(_boidsMesh);
-
-  Matrix view = _camera._view;
-  Matrix proj = _camera._proj;
-  Matrix viewProj = view * proj;
-
-  for (const Flock* flock : _flocks)
+  if (_renderBoids)
   {
-    DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
-    DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1,1,1));
+    _ctx->SetGpuObjects(_boidsMesh);
 
-    for (const DynParticles::Body& b: flock->boids)
+    Matrix view = _curCamera->_view;
+    Matrix proj = _curCamera->_proj;
+    Matrix viewProj = view * proj;
+
+    for (const Flock* flock : _flocks)
     {
-      Matrix mtxRot = Matrix::Identity();
-      Vector3 velN = b.vel;
-      velN.Normalize();
-      Vector3 dir = b.vel.LengthSquared() ? velN : Vector3(0, 0, 1);
-      Vector3 up(0,1,0);
-      Vector3 right = Cross(up, dir);
-      up = Cross(dir, right);
-      mtxRot.Backward(dir);
-      mtxRot.Up(up);
-      mtxRot.Right(right);
-      mtxRot.Translation(b.pos);
-      _cbPerFrame.world = mtxRot.Transpose();
-      _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
-      _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
+      DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
+      DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1, 1, 1));
 
-      DEBUG_API.AddDebugLine(b.pos, b.pos + b.vel, Color(1, 0, 0));
-      DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * up, Color(0, 1, 0));
-      DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * right, Color(0, 0, 1));
+      for (const DynParticles::Body& b : flock->boids)
+      {
+        Matrix mtxRot = Matrix::Identity();
+        Vector3 velN = b.vel;
+        velN.Normalize();
+        Vector3 dir = b.vel.LengthSquared() ? velN : Vector3(0, 0, 1);
+        Vector3 up(0, 1, 0);
+        Vector3 right = Cross(up, dir);
+        up = Cross(dir, right);
+        mtxRot.Backward(dir);
+        mtxRot.Up(up);
+        mtxRot.Right(right);
+        mtxRot.Translation(b.pos);
+        _cbPerFrame.world = mtxRot.Transpose();
+        _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+        _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
+
+        DEBUG_API.AddDebugLine(b.pos, b.pos + b.vel, Color(1, 0, 0));
+        DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * up, Color(0, 1, 0));
+        DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * right, Color(0, 0, 1));
+      }
     }
+
   }
 
-  // outline
+  // outline. wtf is this thing? :)
   ScopedRenderTarget rtOutline(DXGI_FORMAT_R16G16B16A16_FLOAT);
   postProcess->Execute({ rt._handle }, rtOutline._handle, _edgeGpuObjects._ps, false);
 
@@ -570,7 +582,8 @@ void Landscape::RenderParameterSet()
     }
   };
 
-  ImGui::Checkbox("Render landscape", &_drawLandscape);
+  ImGui::Checkbox("Render landscape", &_renderLandscape);
+  ImGui::Checkbox("Render boids", &_renderBoids);
   ImGui::InputInt("NumVerts", (int*)&_numVerts);
   ImGui::InputInt("NumFlocks", &_settings.boids.num_flocks);
   ImGui::InputInt("BoidsPerFlock", &_settings.boids.boids_per_flock);
@@ -607,10 +620,10 @@ void Landscape::RenderParameterSet()
 void Landscape::SaveParameterSet()
 {
   OutputBuffer buf;
-  _settings.camera.pos = _camera._pos;
-  _settings.camera.yaw = _camera._yaw;
-  _settings.camera.pitch = _camera._pitch;
-  _settings.camera.roll = _camera._roll;
+  _settings.camera.pos = _freeflyCamera._pos;
+  _settings.camera.yaw = _freeflyCamera._yaw;
+  _settings.camera.pitch = _freeflyCamera._pitch;
+  _settings.camera.roll = _freeflyCamera._roll;
   Serialize(buf, _settings);
   if (FILE* f = fopen(_configName.c_str(), "wt"))
   {
@@ -623,9 +636,10 @@ void Landscape::SaveParameterSet()
 //------------------------------------------------------------------------------
 void Landscape::Reset()
 {
-  _camera._pos = Vector3(0.f, 200.f, 0.f);
-  _camera._pitch = _camera._yaw = _camera._roll = 0.f;
-  _camera._pitch = XM_PI / 2;
+  _freeflyCamera._pos = Vector3(0.f, 10.f, 0.f);
+  _freeflyCamera._pitch = 0.f;
+  _freeflyCamera._yaw = 0.f;
+  _freeflyCamera._roll = 0.f;
 
   InitBoids();
 }

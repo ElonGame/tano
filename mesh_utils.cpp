@@ -8,6 +8,14 @@ using namespace bristol;
 
 extern "C" float stb_perlin_noise3(float x, float y, float z, int x_wrap=0, int y_wrap=0, int z_wrap=0);
 
+static DirectX::SimpleMath::Vector3 Cross(const DirectX::SimpleMath::Vector3& a, const DirectX::SimpleMath::Vector3& b)
+{
+  return DirectX::SimpleMath::Vector3(
+    (a.y * b.z) - (a.z * b.y),
+    (a.z * b.x) - (a.x * b.z),
+    (a.x * b.y) - (a.y * b.x));
+}
+
 namespace tano
 {
   //------------------------------------------------------------------------------

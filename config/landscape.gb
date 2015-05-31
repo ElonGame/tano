@@ -10,7 +10,7 @@
     cohesion_scale: 20.000000;
     alignment_scale: 20.000000;
     wander_scale: 60.000000;
-    follow_scale: 0.000000;
+    follow_scale: 10.000000;
     cohesion_distance: 25.000000;
     separation_distance: 20.000000;
     max_speed: 300.000000;

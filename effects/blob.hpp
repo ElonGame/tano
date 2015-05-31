@@ -83,7 +83,7 @@ namespace tano
     string _configName;
     MeshLoader _meshLoader;
 
-    Camera _camera;
+    FreeFlyCamera _camera;
     scene::Scene _scene;
   };
 }

@@ -9,14 +9,13 @@ namespace tano
   struct Camera
   {
     Camera();
-    virtual void Update(const UpdateState& state);
+    virtual void Update(const UpdateState& state) {}
 
+#if 0
     void GetFrustumCorners(Vector3* pts);
     void GetFrustumCenter(Vector3* pts);
+#endif
 
-    float _yaw = 0;
-    float _pitch = 0;
-    float _roll = 0;
     Vector3 _pos = Vector3(0,0,0);
     Vector3 _target;
     Vector3 _dir = Vector3(0, 0, 1);
@@ -31,6 +30,16 @@ namespace tano
     Matrix _mtx;
     Matrix _view;
     Matrix _proj;
+  };
+
+  //------------------------------------------------------------------------------
+  struct FreeFlyCamera : public Camera
+  {
+    virtual void Update(const UpdateState& state) override;
+
+    float _yaw = 0;
+    float _pitch = 0;
+    float _roll = 0;
   };
 
   //------------------------------------------------------------------------------

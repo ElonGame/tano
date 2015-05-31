@@ -3,6 +3,7 @@
 using namespace tano;
 using namespace bristol;
 
+//------------------------------------------------------------------------------
 void Perlin2D::Init()
 {
   // create random gradients
@@ -17,15 +18,18 @@ void Perlin2D::Init()
     swap(permutation[i], permutation[randf(i + 1, SIZE - 1)]);
 }
 
-float Perlin2D::Interp(float t)
+//------------------------------------------------------------------------------
+inline float Perlin2D::Interp(float t)
 {
   float t2 = t * t;
   float t3 = t2 * t;
   return 6 * t3 * t2 - 15 * t3 * t + 10 * t3;
 }
 
+//------------------------------------------------------------------------------
 float Perlin2D::Value(float x, float y)
 {
+  return 0;
   int x0 = (int)floorf(x);
   int y0 = (int)floorf(y);
 
