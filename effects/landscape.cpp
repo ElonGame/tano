@@ -202,12 +202,14 @@ void Landscape::InitBoids()
   SAFE_DELETE(_behaviorSeparataion);
   SAFE_DELETE(_behaviorCohesion);
   SAFE_DELETE(_behaviorAlignment);
+  SAFE_DELETE(_landscapeFollow);
 
   const BoidSettings& b = _settings.boids;
   _behaviorSeek = new BehaviorSeek(b.max_force, b.max_speed);
   _behaviorSeparataion = new BehaviorSeparataion(b.max_force, b.max_speed, b.separation_distance);
   _behaviorCohesion = new BehaviorCohesion(b.max_force, b.max_speed, b.cohesion_distance);
   _behaviorAlignment = new BehaviorAlignment(b.max_force, b.max_speed, b.cohesion_distance);
+  _landscapeFollow = new BehaviorLandscapeFollow(b.max_force, b.max_speed);
 
   for (int i = 0; i < _settings.boids.num_flocks; ++i)
   {
@@ -219,6 +221,7 @@ void Landscape::InitBoids()
     flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
     flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
     flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
+    flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
 
     float s = 200.f;
     Vector3 center(randf(-s, s), 0, randf(-s, s));
@@ -227,6 +230,7 @@ void Landscape::InitBoids()
     float angle = randf(-XM_PI, XM_PI);
     float dist = randf(100.f, 200.f);
     flock->nextWaypoint = center + Vector3(dist * cos(angle), 0, dist * sin(angle));
+    flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
     flock->wanderAngle = angle;
 
     _behaviorSeek->target = flock->nextWaypoint;
@@ -243,6 +247,24 @@ void Landscape::InitBoids()
 }
 
 //------------------------------------------------------------------------------
+void BehaviorLandscapeFollow::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state)
+{
+  for (DynParticles::Body* b = bodies; b != bodies + numBodies; ++b)
+  {
+    // return a force to keep the boid above the ground
+
+    Vector3 probe = b->pos + Normalize(b->vel) * maxSpeed;
+    Vector3 d = probe;
+    d.y = 20 + NoiseAtPoint(probe);
+
+    // if the probe is above the terrain height, move towards the average
+    if (probe.y > d.y)
+      d = 0.5f * (probe + d);
+
+    Vector3 desiredVel = Normalize(d - probe) * maxSpeed;
+    b->force += ClampVector(desiredVel - b->vel, maxForce);
+  }
+}
 #if 0
 
 //------------------------------------------------------------------------------
@@ -293,6 +315,8 @@ void Landscape::UpdateBoids(const UpdateState& state)
         float angle = flock->wanderAngle + randf(-XM_PI / 2, XM_PI / 2);
         float dist = randf(300.f, 400.f);
         flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
+        flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
+
         flock->wanderAngle = angle;
         break;
       }
@@ -555,18 +579,19 @@ void Landscape::RenderParameterSet()
   newWeights |= ImGui::SliderFloat("Cohension", &_settings.boids.cohesion_scale, 0, 100);
   newWeights |= ImGui::SliderFloat("Alignment", &_settings.boids.alignment_scale, 0, 100);
   newWeights |= ImGui::SliderFloat("Wander", &_settings.boids.wander_scale, 0, 100);
+  newWeights |= ImGui::SliderFloat("Follow", &_settings.boids.follow_scale, 0, 100);
 
   if (newWeights)
   {
     BoidSettings& b = _settings.boids;
-    float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale;
+    float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
     UpdateWeight(_behaviorSeparataion, _settings.boids.separation_scale / sum);
     UpdateWeight(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
     UpdateWeight(_behaviorAlignment, _settings.boids.alignment_scale / sum);
     UpdateWeight(_behaviorSeek, _settings.boids.wander_scale / sum);
+    UpdateWeight(_landscapeFollow, _settings.boids.follow_scale / sum);
   }
 
-  ImGui::SliderFloat("Follow", &_settings.boids.follow_scale, 1.f, 25.f);
   ImGui::SliderFloat("MaxSpeed", &_settings.boids.max_speed, 10.f, 1000.f);
   ImGui::SliderFloat("MaxForce", &_settings.boids.max_force, 10.f, 1000.f);
   ImGui::SliderFloat("SepDist", &_settings.boids.separation_distance, 1.f, 100.f);

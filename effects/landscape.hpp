@@ -10,6 +10,12 @@
 
 namespace tano
 {
+  struct BehaviorLandscapeFollow : public ParticleKinematics
+  {
+    BehaviorLandscapeFollow(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
+    void Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state);
+  };
+
   class Landscape : public Effect
   {
   public:
@@ -96,6 +102,7 @@ namespace tano
     BehaviorSeparataion* _behaviorSeparataion = nullptr;
     BehaviorCohesion* _behaviorCohesion = nullptr;
     BehaviorAlignment* _behaviorAlignment = nullptr;
+    BehaviorLandscapeFollow* _landscapeFollow = nullptr;
 
     FollowCam _followCam;
     int _followFlock = 0;
