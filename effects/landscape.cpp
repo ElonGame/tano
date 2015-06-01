@@ -19,93 +19,11 @@ using namespace bristol;
 
 static const Vector3 ZERO3(0,0,0);
 
+static float GRID_SIZE = 10;
+
 Perlin2D perlin;
 
-//------------------------------------------------------------------------------
-void Vector3ToFloat(float* buf, const V3& v)
-{
-  buf[0] = v.x;
-  buf[1] = v.y;
-  buf[2] = v.z;
-}
-
-//------------------------------------------------------------------------------
-float NoiseAtPoint(const Vector3& v)
-{
-  static const Vector3 NOISE_SCALE(10.f, 30.f, 10.f);
-  static const Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
-  return NOISE_SCALE.y * perlin.Value(256 * v.x / size.x, 256 * v.z / size.z);
-}
-
-//------------------------------------------------------------------------------
-void Rasterize(
-  const Vector3& scale,
-  int startZ, const vector<pair<int, int>>& spans,
-  float* verts, u32* numVerts)
-{
-  V3 v0, v1, v2, v3;
-  V3 n0, n1;
-  V3 size(10 * 1024, 10 * 1024, 10 * 1024);
-
-  int triIdx = 0;
-  for (int idx = 0; idx < (int)spans.size(); ++idx)
-  {
-    int i = startZ + idx;
-    int a = spans[idx].first;
-    int b = spans[idx].second;
-    for (int j = a; j <= b; ++j)
-    {
-      // 1--2
-      // |  |
-      // 0--3
-
-      float xx0 = (float)(j + 0) * scale.x;
-      float xx1 = (float)(j + 1) * scale.x;
-      float zz0 = (float)(i + 0) * scale.z;
-      float zz1 = (float)(i + 1) * scale.z;
-
-      v0.x = xx0; v0.z = zz0;
-      v1.x = xx0; v1.z = zz1;
-      v2.x = xx1; v2.z = zz1;
-      v3.x = xx1; v3.z = zz0;
-
-      v0.y = scale.y * perlin.Value(256 * xx0 / size.x, 256 * zz0 / size.z);
-      v1.y = scale.y * perlin.Value(256 * xx0 / size.x, 256 * zz1 / size.z);
-      v2.y = scale.y * perlin.Value(256 * xx1 / size.x, 256 * zz1 / size.z);
-      v3.y = scale.y * perlin.Value(256 * xx1 / size.x, 256 * zz0 / size.z);
-
-      V3 e1, e2;
-      e1 = v2 - v1;
-      e2 = v0 - v1;
-      n0 = Cross(e1, e2);
-      n0 = Normalize(n0);
-
-      e1 = v0 - v3;
-      e2 = v2 - v3;
-      n1 = Cross(e1, e2);
-      n1 = Normalize(n1);
-
-      // 0, 1, 3
-      Vector3ToFloat(&verts[triIdx * 18 + 0], v0);
-      Vector3ToFloat(&verts[triIdx * 18 + 3], n0);
-      Vector3ToFloat(&verts[triIdx * 18 + 6], v1);
-      Vector3ToFloat(&verts[triIdx * 18 + 9], n0);
-      Vector3ToFloat(&verts[triIdx * 18 + 12], v3);
-      Vector3ToFloat(&verts[triIdx * 18 + 15], n0);
-      ++triIdx;
-
-      Vector3ToFloat(&verts[triIdx * 18 + 0], v3);
-      Vector3ToFloat(&verts[triIdx * 18 + 3], n1);
-      Vector3ToFloat(&verts[triIdx * 18 + 6], v1);
-      Vector3ToFloat(&verts[triIdx * 18 + 9], n1);
-      Vector3ToFloat(&verts[triIdx * 18 + 12], v2);
-      Vector3ToFloat(&verts[triIdx * 18 + 15], n1);
-      ++triIdx;
-    }
-  }
-
-  *numVerts = triIdx * 3;
-}
+float NoiseAtPoint(const Vector3& v);
 
 //------------------------------------------------------------------------------
 Landscape::Flock::Flock(int numBoids)
@@ -376,7 +294,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-inline int Round(float v)
+inline int Expand(float v)
 {
   return v < 0 ? (int)floorf(v) : (int)ceilf(v);
 }
@@ -389,6 +307,96 @@ inline int RoundUp(float v)
 inline int RoundDown(float v)
 {
   return v < 0 ? (int)ceilf(v) : (int)floorf(v);
+}
+
+//------------------------------------------------------------------------------
+void Vector3ToFloat(float* buf, const V3& v)
+{
+  buf[0] = v.x;
+  buf[1] = v.y;
+  buf[2] = v.z;
+}
+
+//------------------------------------------------------------------------------
+float NoiseAtPoint(const Vector3& v)
+{
+  static const Vector3 NOISE_SCALE(10.f, 30.f, 10.f);
+  static const Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
+  return NOISE_SCALE.y * perlin.Value(256 * v.x / size.x, 256 * v.z / size.z);
+}
+
+//------------------------------------------------------------------------------
+void Rasterize(
+  const Vector3& scale,
+  int startZ, const vector<pair<float, float>>& spans,
+  float* verts, u32* numVerts)
+{
+  V3 v0, v1, v2, v3;
+  V3 n0, n1;
+  V3 size(10 * 1024, 10 * 1024, 10 * 1024);
+
+  int triIdx = 0;
+  for (int idx = 0; idx < (int)spans.size(); ++idx)
+  {
+    int i = startZ + idx;
+    int a = floorf(spans[idx].first / GRID_SIZE);
+    int b = ceilf(spans[idx].second / GRID_SIZE);
+    for (int j = a; j <= b; ++j)
+    {
+      // 1--2
+      // |  |
+      // 0--3
+
+      float xx0 = (float)(j + 0) * scale.x;
+      float xx1 = (float)(j + 1) * scale.x;
+      float zz0 = (float)(i + 0) * scale.z;
+      float zz1 = (float)(i + 1) * scale.z;
+
+      v0.x = xx0; 
+      v0.z = zz0;
+      v1.x = xx0; 
+      v1.z = zz1;
+      v2.x = xx1; 
+      v2.z = zz1;
+      v3.x = xx1; 
+      v3.z = zz0;
+
+      v0.y = scale.y * perlin.Value(256 * xx0 / size.x, 256 * zz0 / size.z);
+      v1.y = scale.y * perlin.Value(256 * xx0 / size.x, 256 * zz1 / size.z);
+      v2.y = scale.y * perlin.Value(256 * xx1 / size.x, 256 * zz1 / size.z);
+      v3.y = scale.y * perlin.Value(256 * xx1 / size.x, 256 * zz0 / size.z);
+
+      V3 e1, e2;
+      e1 = v2 - v1;
+      e2 = v0 - v1;
+      n0 = Cross(e1, e2);
+      n0 = Normalize(n0);
+
+      e1 = v0 - v3;
+      e2 = v2 - v3;
+      n1 = Cross(e1, e2);
+      n1 = Normalize(n1);
+
+      // 0, 1, 3
+      Vector3ToFloat(&verts[triIdx * 18 + 0], v0);
+      Vector3ToFloat(&verts[triIdx * 18 + 3], n0);
+      Vector3ToFloat(&verts[triIdx * 18 + 6], v1);
+      Vector3ToFloat(&verts[triIdx * 18 + 9], n0);
+      Vector3ToFloat(&verts[triIdx * 18 + 12], v3);
+      Vector3ToFloat(&verts[triIdx * 18 + 15], n0);
+      ++triIdx;
+
+      Vector3ToFloat(&verts[triIdx * 18 + 0], v3);
+      Vector3ToFloat(&verts[triIdx * 18 + 3], n1);
+      Vector3ToFloat(&verts[triIdx * 18 + 6], v1);
+      Vector3ToFloat(&verts[triIdx * 18 + 9], n1);
+      Vector3ToFloat(&verts[triIdx * 18 + 12], v2);
+      Vector3ToFloat(&verts[triIdx * 18 + 15], n1);
+      ++triIdx;
+    }
+  }
+
+  *numVerts = triIdx * 3;
 }
 
 //------------------------------------------------------------------------------
@@ -416,60 +424,88 @@ void Landscape::RasterizeLandscape(float* buf)
   {
     numVerts = ClipPolygonAgainstPlane(numVerts, buf0, planes[i], buf1);
     if (numVerts == 0)
-      break;
+      return;
     memcpy(buf0, buf1, numVerts * sizeof(Vector3));
   }
 
-  Vector3 minValues = buf0[0];
-  Vector3 maxValues = buf0[0];
+  struct Edge
+  {
+    Vector3 a, b;
+  };
+
+  // Create edges, and sort them based on distance to camera (furthest point first)
+  //vector<Edge> edges;
+  //Vector3 camPos = _curCamera->_pos;
+  //for (int i = 0; i < numVerts; ++i)
+  //{
+  //  Vector3 a = buf0[i];
+  //  Vector3 b = buf0[(i+1) % numVerts];
+
+  //  if (a.z == b.z)
+  //    continue;
+
+  //  if (Vector3::DistanceSquared(camPos, a) > Vector3::DistanceSquared(camPos, b))
+  //    edges.push_back({a, b});
+  //  else
+  //    edges.push_back({b, a});
+  //}
+
+  //Vector3 minValues = buf0[0];
+  //Vector3 maxValues = buf0[0];
+
+  Vector3 camPos = _curCamera->_pos;
+  float maxDist = Vector3::Distance(buf0[0], camPos);
+  float minDist = Vector3::Distance(buf0[0], camPos);
 
   for (int i = 1; i < numVerts; ++i)
   {
-    minValues = Vector3::Min(minValues, buf0[i]);
-    maxValues = Vector3::Max(maxValues, buf0[i]);
+    minDist = min(minDist, Vector3::Distance(buf0[i], camPos));
+    maxDist = max(maxDist, Vector3::Distance(buf0[i], camPos));
   }
 
-  // create span array, and scan convert all the edges
-  int maxZ = Round(maxValues.z / 10);
-  int minZ = Round(minValues.z / 10);
-  int sizeZ = maxZ - minZ + 1;
-  vector<pair<int, int>> spans(sizeZ);
+  int maxZ = ceilf(maxDist / GRID_SIZE);
+  int minZ = floorf(minDist / GRID_SIZE);
+  //int sizeZ = Expand((maxValues.z - minValues.z)) / GRID_SIZE;
+  int sizeZ = maxZ - minZ;
+  vector<pair<float, float>> spans(sizeZ);
 
   for (int i = 0; i < sizeZ; ++i)
   {
-    spans[i].first = INT_MAX;
-    spans[i].second = -INT_MAX;
+    spans[i].first = FLT_MAX;
+    spans[i].second = -FLT_MAX;
   }
 
-  // scan convert between each pair of edges
+  // scan convert all the edges, and save min/max values
   for (int i = 0; i < numVerts; ++i)
   {
-    Vector3 vv0 = buf0[i] / 10;
-    Vector3 vv1 = buf0[(i+1) % numVerts] / 10;
+    Vector3 vv0 = buf0[i];
+    Vector3 vv1 = buf0[(i+1) % numVerts];
 
+    // v0.z > v1.z
     Vector3& v0 = vv0.z > vv1.z ? vv0 : vv1;
     Vector3& v1 = vv0.z > vv1.z ? vv1 : vv0;
 
-    int sy = Round(v0.z);
-    int ey = Round(v1.z);
-    int cy = sy - ey;
-    if (cy == 0)
+    // calc number of grids this edge spans
+    int numGrids = ceilf((v0.z - v1.z) / GRID_SIZE);
+    if (numGrids == 0)
       continue;
 
-    float dz = fabsf(v1.z - v0.z);
-    float dx = v1.x - v0.x;
-    float dxdz = dx / dz;
+    float dz = v0.z - v1.z;
+    float dx = v0.x - v1.x;
+    float dxdz = dx / numGrids;
+    float dzdc = dz / numGrids;
 
-    float z = v0.z;
     float x = v0.x;
+    float z = v0.z;
 
-    for (int y = sy; y >= ey; --y)
+    for (int i = 0; i < numGrids; ++i)
     {
-      //int intX = Round(x);
-      int yy = y - minZ;
-      spans[yy].first = min(spans[yy].first, RoundUp(x));
-      spans[yy].second = max(spans[yy].second, RoundUp(x));
-      x += dxdz;
+      //int idx = (z - minValues.z) / GRID_SIZE;
+      int idx = ((z - camPos.z) - minDist) / GRID_SIZE;
+      spans[idx].first = min(spans[idx].first, x);
+      spans[idx].second = max(spans[idx].second, x);
+      x -= dxdz;
+      z -= dzdc;
     }
   }
 
@@ -640,6 +676,7 @@ void Landscape::Reset()
   _freeflyCamera._pitch = 0.f;
   _freeflyCamera._yaw = 0.f;
   _freeflyCamera._roll = 0.f;
+  _freeflyCamera._yaw = XM_PI;
 
   InitBoids();
 }
