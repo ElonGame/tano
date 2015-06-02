@@ -326,78 +326,16 @@ float NoiseAtPoint(const Vector3& v)
 }
 
 //------------------------------------------------------------------------------
-void Rasterize(
-  const Vector3& scale,
-  int startZ, const vector<pair<float, float>>& spans,
-  float* verts, u32* numVerts)
-{
-  V3 v0, v1, v2, v3;
-  V3 n0, n1;
-  V3 size(10 * 1024, 10 * 1024, 10 * 1024);
+inline float Up(float v)
+{ 
+  return GRID_SIZE * ceilf(v / GRID_SIZE); 
+};
 
-  int triIdx = 0;
-  for (int idx = 0; idx < (int)spans.size(); ++idx)
-  {
-    int i = startZ + idx;
-    int a = floorf(spans[idx].first / GRID_SIZE);
-    int b = ceilf(spans[idx].second / GRID_SIZE);
-    for (int j = a; j <= b; ++j)
-    {
-      // 1--2
-      // |  |
-      // 0--3
-
-      float xx0 = (float)(j + 0) * scale.x;
-      float xx1 = (float)(j + 1) * scale.x;
-      float zz0 = (float)(i + 0) * scale.z;
-      float zz1 = (float)(i + 1) * scale.z;
-
-      v0.x = xx0; 
-      v0.z = zz0;
-      v1.x = xx0; 
-      v1.z = zz1;
-      v2.x = xx1; 
-      v2.z = zz1;
-      v3.x = xx1; 
-      v3.z = zz0;
-
-      v0.y = scale.y * perlin.Value(256 * xx0 / size.x, 256 * zz0 / size.z);
-      v1.y = scale.y * perlin.Value(256 * xx0 / size.x, 256 * zz1 / size.z);
-      v2.y = scale.y * perlin.Value(256 * xx1 / size.x, 256 * zz1 / size.z);
-      v3.y = scale.y * perlin.Value(256 * xx1 / size.x, 256 * zz0 / size.z);
-
-      V3 e1, e2;
-      e1 = v2 - v1;
-      e2 = v0 - v1;
-      n0 = Cross(e1, e2);
-      n0 = Normalize(n0);
-
-      e1 = v0 - v3;
-      e2 = v2 - v3;
-      n1 = Cross(e1, e2);
-      n1 = Normalize(n1);
-
-      // 0, 1, 3
-      Vector3ToFloat(&verts[triIdx * 18 + 0], v0);
-      Vector3ToFloat(&verts[triIdx * 18 + 3], n0);
-      Vector3ToFloat(&verts[triIdx * 18 + 6], v1);
-      Vector3ToFloat(&verts[triIdx * 18 + 9], n0);
-      Vector3ToFloat(&verts[triIdx * 18 + 12], v3);
-      Vector3ToFloat(&verts[triIdx * 18 + 15], n0);
-      ++triIdx;
-
-      Vector3ToFloat(&verts[triIdx * 18 + 0], v3);
-      Vector3ToFloat(&verts[triIdx * 18 + 3], n1);
-      Vector3ToFloat(&verts[triIdx * 18 + 6], v1);
-      Vector3ToFloat(&verts[triIdx * 18 + 9], n1);
-      Vector3ToFloat(&verts[triIdx * 18 + 12], v2);
-      Vector3ToFloat(&verts[triIdx * 18 + 15], n1);
-      ++triIdx;
-    }
-  }
-
-  *numVerts = triIdx * 3;
-}
+//------------------------------------------------------------------------------
+inline float Dn(float v)
+{ 
+  return GRID_SIZE * floorf(v / GRID_SIZE); 
+};
 
 //------------------------------------------------------------------------------
 void Landscape::RasterizeLandscape(float* buf)
@@ -411,7 +349,7 @@ void Landscape::RasterizeLandscape(float* buf)
 
   float ofs = 2 * _curCamera->_farPlane;
   Vector3 c = _curCamera->_pos;
-  //c.y = 0;
+  c.y = 30;
   Vector3 buf0[16] ={
     c + Vector3(-ofs, 0, +ofs),
     c + Vector3(+ofs, 0, +ofs),
@@ -429,8 +367,8 @@ void Landscape::RasterizeLandscape(float* buf)
     memcpy(buf0, buf1, numVerts * sizeof(Vector3));
   }
 
-  Vector3 minPos(buf[0]);
-  Vector3 maxPos(buf[0]);
+  Vector3 minPos(buf0[0]);
+  Vector3 maxPos(buf0[0]);
 
   for (int i = 1; i < numVerts; ++i)
   {
@@ -438,8 +376,6 @@ void Landscape::RasterizeLandscape(float* buf)
     maxPos = Vector3::Max(maxPos, buf0[i]);
   }
 
-  auto Up = [](float v) { return GRID_SIZE * ceilf(v/GRID_SIZE); };
-  auto Dn = [](float v) { return GRID_SIZE * floorf(v/GRID_SIZE); };
   // create a AABB for the clipped polygon
   Vector3 topLeft(Dn(minPos.x), 0, Up(maxPos.z));
   Vector3 topRight(Up(maxPos.x), 0, Up(maxPos.z));
@@ -448,27 +384,18 @@ void Landscape::RasterizeLandscape(float* buf)
 
   float dx = bottomRight.x - bottomLeft.x;
   float dz = topLeft.z - bottomLeft.z;
-  int width = fabsf(dx) / GRID_SIZE;
-  int height = fabsf(dz) / GRID_SIZE;
+  int width = (int)(dx / GRID_SIZE);
+  int height = (int)(dz / GRID_SIZE);
 
   float incX = dx / width;
   float incZ = dz / height;
 
-  ImGui::Begin("rasterizer");
-  ImGui::InputFloat3("top-left", &topLeft.x);
-  ImGui::InputFloat3("top-right", &topRight.x);
-  ImGui::InputFloat3("bottom-left", &bottomLeft.x);
-  ImGui::InputFloat3("bottom-right", &bottomRight.x);
-  ImGui::End();
-
-
-//  Rasterize(Vector3(10, 30, 10), minZ, spans, buf, &_numVerts);
-
   int triIdx = 0;
+  float x = bottomLeft.x;
   float z = bottomLeft.z;
   for (int i = 0; i < height; ++i)
   {
-    float x = bottomLeft.x;
+    x = bottomLeft.x;
     for (int j = 0; j < width; ++j)
     {
       V3 v0, v1, v2, v3;
@@ -527,62 +454,13 @@ void Landscape::RasterizeLandscape(float* buf)
       Vector3ToFloat(&buf[triIdx * 18 + 15], n1);
       ++triIdx;
 
-      x += incX;
+      x += GRID_SIZE;
     }
-    z += incZ;
+    z += GRID_SIZE;
   }
 
   _numVerts = triIdx * 3;
 
-#if 0
-  int maxZ = ceilf(maxDist / GRID_SIZE);
-  int minZ = floorf(minDist / GRID_SIZE);
-  //int sizeZ = Expand((maxValues.z - minValues.z)) / GRID_SIZE;
-  int sizeZ = maxZ - minZ;
-  vector<pair<float, float>> spans(sizeZ);
-
-  for (int i = 0; i < sizeZ; ++i)
-  {
-    spans[i].first = FLT_MAX;
-    spans[i].second = -FLT_MAX;
-  }
-
-  // scan convert all the edges, and save min/max values
-  for (int i = 0; i < numVerts; ++i)
-  {
-    Vector3 vv0 = buf0[i];
-    Vector3 vv1 = buf0[(i+1) % numVerts];
-
-    // v0.z > v1.z
-    Vector3& v0 = vv0.z > vv1.z ? vv0 : vv1;
-    Vector3& v1 = vv0.z > vv1.z ? vv1 : vv0;
-
-    // calc number of grids this edge spans
-    int numGrids = ceilf((v0.z - v1.z) / GRID_SIZE);
-    if (numGrids == 0)
-      continue;
-
-    float dz = v0.z - v1.z;
-    float dx = v0.x - v1.x;
-    float dxdz = dx / numGrids;
-    float dzdc = dz / numGrids;
-
-    float x = v0.x;
-    float z = v0.z;
-
-    for (int i = 0; i < numGrids; ++i)
-    {
-      //int idx = (z - minValues.z) / GRID_SIZE;
-      int idx = ((z - camPos.z) - minDist) / GRID_SIZE;
-      spans[idx].first = min(spans[idx].first, x);
-      spans[idx].second = max(spans[idx].second, x);
-      x -= dxdz;
-      z -= dzdc;
-    }
-  }
-
-  Rasterize(Vector3(10, 30, 10), minZ, spans, buf, &_numVerts);
-#endif
 }
 
 //------------------------------------------------------------------------------
