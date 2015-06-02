@@ -406,6 +406,7 @@ void Landscape::RasterizeLandscape(float* buf)
 
   // Create a large rect around the camera, and clip it using the camera planes
   Plane planes[6];
+  //ExtractPlanes(_curCamera->_view * _curCamera->_proj, true, planes);
   ExtractPlanes(_curCamera->_view * _curCamera->_proj, true, planes);
 
   float ofs = 2 * _curCamera->_farPlane;
@@ -428,41 +429,112 @@ void Landscape::RasterizeLandscape(float* buf)
     memcpy(buf0, buf1, numVerts * sizeof(Vector3));
   }
 
-  struct Edge
-  {
-    Vector3 a, b;
-  };
-
-  // Create edges, and sort them based on distance to camera (furthest point first)
-  //vector<Edge> edges;
-  //Vector3 camPos = _curCamera->_pos;
-  //for (int i = 0; i < numVerts; ++i)
-  //{
-  //  Vector3 a = buf0[i];
-  //  Vector3 b = buf0[(i+1) % numVerts];
-
-  //  if (a.z == b.z)
-  //    continue;
-
-  //  if (Vector3::DistanceSquared(camPos, a) > Vector3::DistanceSquared(camPos, b))
-  //    edges.push_back({a, b});
-  //  else
-  //    edges.push_back({b, a});
-  //}
-
-  //Vector3 minValues = buf0[0];
-  //Vector3 maxValues = buf0[0];
-
-  Vector3 camPos = _curCamera->_pos;
-  float maxDist = Vector3::Distance(buf0[0], camPos);
-  float minDist = Vector3::Distance(buf0[0], camPos);
+  Vector3 minPos(buf[0]);
+  Vector3 maxPos(buf[0]);
 
   for (int i = 1; i < numVerts; ++i)
   {
-    minDist = min(minDist, Vector3::Distance(buf0[i], camPos));
-    maxDist = max(maxDist, Vector3::Distance(buf0[i], camPos));
+    minPos = Vector3::Min(minPos, buf0[i]);
+    maxPos = Vector3::Max(maxPos, buf0[i]);
   }
 
+  auto Up = [](float v) { return GRID_SIZE * ceilf(v/GRID_SIZE); };
+  auto Dn = [](float v) { return GRID_SIZE * floorf(v/GRID_SIZE); };
+  // create a AABB for the clipped polygon
+  Vector3 topLeft(Dn(minPos.x), 0, Up(maxPos.z));
+  Vector3 topRight(Up(maxPos.x), 0, Up(maxPos.z));
+  Vector3 bottomLeft(Dn(minPos.x), 0, Dn(minPos.z));
+  Vector3 bottomRight(Up(maxPos.x), 0, Dn(minPos.z));
+
+  float dx = bottomRight.x - bottomLeft.x;
+  float dz = topLeft.z - bottomLeft.z;
+  int width = fabsf(dx) / GRID_SIZE;
+  int height = fabsf(dz) / GRID_SIZE;
+
+  float incX = dx / width;
+  float incZ = dz / height;
+
+  ImGui::Begin("rasterizer");
+  ImGui::InputFloat3("top-left", &topLeft.x);
+  ImGui::InputFloat3("top-right", &topRight.x);
+  ImGui::InputFloat3("bottom-left", &bottomLeft.x);
+  ImGui::InputFloat3("bottom-right", &bottomRight.x);
+  ImGui::End();
+
+
+//  Rasterize(Vector3(10, 30, 10), minZ, spans, buf, &_numVerts);
+
+  int triIdx = 0;
+  float z = bottomLeft.z;
+  for (int i = 0; i < height; ++i)
+  {
+    float x = bottomLeft.x;
+    for (int j = 0; j < width; ++j)
+    {
+      V3 v0, v1, v2, v3;
+      V3 n0, n1;
+      V3 size(10 * 1024, 10 * 1024, 10 * 1024);
+
+      // 1--2
+      // |  |
+      // 0--3
+
+      float xx0 = x;
+      float xx1 = x + incX;
+      float zz0 = z;
+      float zz1 = z + incZ;
+
+      v0.x = xx0;
+      v0.z = zz0;
+      v1.x = xx0;
+      v1.z = zz1;
+      v2.x = xx1;
+      v2.z = zz1;
+      v3.x = xx1;
+      v3.z = zz0;
+
+      float scaleY = 30;
+      v0.y = scaleY * perlin.Value(256 * xx0 / size.x, 256 * zz0 / size.z);
+      v1.y = scaleY * perlin.Value(256 * xx0 / size.x, 256 * zz1 / size.z);
+      v2.y = scaleY * perlin.Value(256 * xx1 / size.x, 256 * zz1 / size.z);
+      v3.y = scaleY * perlin.Value(256 * xx1 / size.x, 256 * zz0 / size.z);
+
+      V3 e1, e2;
+      e1 = v2 - v1;
+      e2 = v0 - v1;
+      n0 = Cross(e1, e2);
+      n0 = Normalize(n0);
+
+      e1 = v0 - v3;
+      e2 = v2 - v3;
+      n1 = Cross(e1, e2);
+      n1 = Normalize(n1);
+
+      // 0, 1, 3
+      Vector3ToFloat(&buf[triIdx * 18 + 0], v0);
+      Vector3ToFloat(&buf[triIdx * 18 + 3], n0);
+      Vector3ToFloat(&buf[triIdx * 18 + 6], v1);
+      Vector3ToFloat(&buf[triIdx * 18 + 9], n0);
+      Vector3ToFloat(&buf[triIdx * 18 + 12], v3);
+      Vector3ToFloat(&buf[triIdx * 18 + 15], n0);
+      ++triIdx;
+
+      Vector3ToFloat(&buf[triIdx * 18 + 0], v3);
+      Vector3ToFloat(&buf[triIdx * 18 + 3], n1);
+      Vector3ToFloat(&buf[triIdx * 18 + 6], v1);
+      Vector3ToFloat(&buf[triIdx * 18 + 9], n1);
+      Vector3ToFloat(&buf[triIdx * 18 + 12], v2);
+      Vector3ToFloat(&buf[triIdx * 18 + 15], n1);
+      ++triIdx;
+
+      x += incX;
+    }
+    z += incZ;
+  }
+
+  _numVerts = triIdx * 3;
+
+#if 0
   int maxZ = ceilf(maxDist / GRID_SIZE);
   int minZ = floorf(minDist / GRID_SIZE);
   //int sizeZ = Expand((maxValues.z - minValues.z)) / GRID_SIZE;
@@ -510,6 +582,7 @@ void Landscape::RasterizeLandscape(float* buf)
   }
 
   Rasterize(Vector3(10, 30, 10), minZ, spans, buf, &_numVerts);
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -676,7 +749,7 @@ void Landscape::Reset()
   _freeflyCamera._pitch = 0.f;
   _freeflyCamera._yaw = 0.f;
   _freeflyCamera._roll = 0.f;
-  _freeflyCamera._yaw = XM_PI;
+  //_freeflyCamera._yaw = XM_PI;
 
   InitBoids();
 }
