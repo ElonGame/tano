@@ -376,50 +376,33 @@ void Landscape::RasterizeLandscape(float* buf)
   }
 
   // create a AABB for the clipped polygon
-  Vector3 topLeft(SnapDown(minPos.x, GRID_SIZE), 0, SnapUp(maxPos.z, GRID_SIZE));
-  Vector3 topRight(SnapUp(maxPos.x, GRID_SIZE), 0, SnapUp(maxPos.z, GRID_SIZE));
-  Vector3 bottomLeft(SnapDown(minPos.x, GRID_SIZE), 0, SnapDown(minPos.z, GRID_SIZE));
-  Vector3 bottomRight(SnapUp(maxPos.x, GRID_SIZE), 0, SnapDown(minPos.z, GRID_SIZE));
-
-  float dx = bottomRight.x - bottomLeft.x;
-  float dz = topLeft.z - bottomLeft.z;
-  int width = (int)(dx / GRID_SIZE);
-  int height = (int)(dz / GRID_SIZE);
-
-  float incX = dx / width;
-  float incZ = dz / height;
-
-  // snap the topleft corner to the chunk size
-  float top = SnapDown(maxPos.z, GRID_SIZE * CHUNK_SIZE);
-  float left = SnapDown(minPos.x, GRID_SIZE  * CHUNK_SIZE);
+  float s = GRID_SIZE * CHUNK_SIZE;
+  Vector3 topLeft(SnapDown(minPos.x, s), 0, SnapUp(maxPos.z, s));
+  Vector3 topRight(SnapUp(maxPos.x, s), 0, SnapUp(maxPos.z, s));
+  Vector3 bottomLeft(SnapDown(minPos.x, s), 0, SnapDown(minPos.z, s));
+  Vector3 bottomRight(SnapUp(maxPos.x, s), 0, SnapDown(minPos.z, s));
 
   int triIdx = 0;
   float x = topLeft.x;
   float z = topLeft.z;
-  z = top;
   int chunkHits = 0;
   int chunkMisses = 0;
 
   vector<Chunk*> chunks;
-  while (z >= bottomLeft.z)
+  for (float z = topLeft.z; z >= bottomLeft.z; z -= s)
   {
-    x = topLeft.x;
-    x = left;
-    while (x <= topRight.x)
+    for (float x = topLeft.x; x <= topRight.x; x += s)
     {
       // check if the current chunk exists in the cache
       Chunk* chunk = _chunkCache.FindChunk(x, z, _curTick);
       if (chunk)
       {
         chunks.push_back(chunk);
-        //memcpy(&buf[triIdx*18], chunk->data, Chunk::DATA_SIZE * sizeof(float));
-        //triIdx += 2 * CHUNK_SIZE * CHUNK_SIZE;
         ++chunkHits;
       }
       else
       {
         ++chunkMisses;
-        // 36 floats per quad
         Chunk* chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
         int chunkIdx = 0;
         for (int i = 0; i < CHUNK_SIZE; ++i)
@@ -434,20 +417,15 @@ void Landscape::RasterizeLandscape(float* buf)
             // |  |
             // 0--3
 
-            // TODO: Z should decrement, but I don't want to deal with winding issues right now :)
             float xx0 = x + (j+0) * GRID_SIZE;
             float xx1 = x + (j+1) * GRID_SIZE;
-            float zz0 = z + (i+0) * GRID_SIZE;
-            float zz1 = z + (i+1) * GRID_SIZE;
+            float zz0 = z + (i-1) * GRID_SIZE;
+            float zz1 = z + (i+0) * GRID_SIZE;
 
-            v0.x = xx0;
-            v0.z = zz0;
-            v1.x = xx0;
-            v1.z = zz1;
-            v2.x = xx1;
-            v2.z = zz1;
-            v3.x = xx1;
-            v3.z = zz0;
+            v0.x = xx0; v0.z = zz0;
+            v1.x = xx0; v1.z = zz1;
+            v2.x = xx1; v2.z = zz1;
+            v3.x = xx1; v3.z = zz0;
 
             float scaleY = 30;
             v0.y = scaleY * perlin.Value(256 * xx0 / size.x, 256 * zz0 / size.z);
@@ -484,14 +462,8 @@ void Landscape::RasterizeLandscape(float* buf)
             ++chunkIdx;
           }
         }
-
-        //memcpy(&buf[triIdx*18], chunk->data, Chunk::DATA_SIZE * sizeof(float));
-        //triIdx += 2 * CHUNK_SIZE * CHUNK_SIZE;
       }
-
-      x += CHUNK_SIZE * GRID_SIZE;
     }
-    z -= CHUNK_SIZE * GRID_SIZE;
   }
 
   // copy all the chunk data into the vertex buffer
