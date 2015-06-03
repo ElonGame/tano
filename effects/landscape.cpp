@@ -18,7 +18,7 @@ using namespace tano;
 using namespace bristol;
 
 static const Vector3 ZERO3(0,0,0);
-static const float GRID_SIZE = 10.f;
+static const float GRID_SIZE = 5;
 
 Perlin2D perlin;
 

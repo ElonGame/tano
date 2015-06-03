@@ -53,30 +53,26 @@ void PropertyManager::Tick()
   if (_callbacks.empty())
     return;
 
-  if (!ImGui::Begin("Properties", &_windowOpened))
+  if (ImGui::Begin("Properties", &_windowOpened, ImGuiWindowFlags_AlwaysAutoResize))
   {
-    // FIXME: this path is never taken
-    ImGui::End();
-    return;
+    ImGui::LabelText("Time", "%f", DEMO_ENGINE.Pos().TotalMilliseconds() / 1000.f);
+
+    // draw the combo box, and invoke the selected effects renderer
+    ImGui::Combo("parameter set", &_curItem, _comboString.data());
+    ImGui::Separator();
+    _callbacks[_curItem].render();
+    ImGui::Separator();
+    if (ImGui::Button("save"))
+      _callbacks[_curItem].save();
+
+    if (ImGui::Button("pause"))
+      DEMO_ENGINE.SetPaused(!DEMO_ENGINE.Paused());
+    ImGui::SameLine();
+
+    if (ImGui::Button("reset"))
+      DEMO_ENGINE.SetDuration(TimeDuration());
+    ImGui::SameLine();
   }
-
-  ImGui::LabelText("Time", "%f", DEMO_ENGINE.Pos().TotalMilliseconds() / 1000.f);
-
-  // draw the combo box, and invoke the selected effects renderer
-  ImGui::Combo("parameter set", &_curItem, _comboString.data());
-  ImGui::Separator();
-  _callbacks[_curItem].render();
-  ImGui::Separator();
-  if (ImGui::Button("save"))
-    _callbacks[_curItem].save();
-
-  if (ImGui::Button("pause"))
-    DEMO_ENGINE.SetPaused(!DEMO_ENGINE.Paused());
-  ImGui::SameLine();
-
-  if (ImGui::Button("reset"))
-    DEMO_ENGINE.SetDuration(TimeDuration());
-  ImGui::SameLine();
 
   ImGui::End();
 }

@@ -120,10 +120,31 @@ void Cloth::UpdateParticles(const UpdateState& state)
   float dt = 1.f / state.frequency;
   float dt2 = dt * dt;
 
-  for (size_t i = 0; i < numParticles; ++i)
+  const IoState& ioState = TANO.GetIoState();
+  if (ioState.keysPressed['1'])
   {
-    _particles[i].acc = V3(_settings.gravity);
+    int s = 20;
+    for (int i = 0; i <= s; ++i)
+    {
+      for (int j = 0; j <= s; ++j)
+      {
+        float dx = (float)i - s/2;
+        float dy = (float)j - s/2;
+        float r = Clamp(0.f, 1.f, s/2 - sqrtf(dx*dx+dy*dy));
+        _particles[(_clothDimY+i) / 2 * _clothDimX + _clothDimX / 2+j].acc = r * V3(0, 0, 50);
+      }
+    }
+
+    int a = 10;
   }
+  else
+  {
+    //for (size_t i = 0; i < numParticles; ++i)
+    //{
+    //  _particles[i].acc = V3(_settings.gravity);
+    //}
+  }
+
 
   Particle* p = &_particles[0];
   for (size_t i = 0; i < numParticles; ++i)
@@ -182,13 +203,14 @@ void Cloth::UpdateParticles(const UpdateState& state)
 
   // top row is fixed
   float incX = CLOTH_SIZE / (_clothDimX - 1);
-  V3 cur(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
-  p = &_particles[0];
+  V3 top(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
+  V3 bottom(-CLOTH_SIZE / 2.f, -CLOTH_SIZE / 2.f, 0);
   for (int i = 0; i < _clothDimX; ++i)
   {
-    p->pos = cur;
-    cur.x += incX;
-    ++p;
+    _particles[i].pos = top;
+    _particles[(_clothDimY-1)*_clothDimX+i].pos = bottom;
+    top.x += incX;
+    bottom.x += incX;
   }
 
   _avgUpdate.AddSample(g_stopWatch.Stop());
