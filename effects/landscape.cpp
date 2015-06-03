@@ -18,8 +18,7 @@ using namespace tano;
 using namespace bristol;
 
 static const Vector3 ZERO3(0,0,0);
-
-static float GRID_SIZE = 10;
+static const float GRID_SIZE = 10.f;
 
 Perlin2D perlin;
 
@@ -170,37 +169,7 @@ void BehaviorLandscapeFollow::Update(DynParticles::Body* bodies, int numBodies, 
     b->force += ClampVector(desiredVel - b->vel, maxForce);
   }
 }
-#if 0
 
-//------------------------------------------------------------------------------
-Vector3 Landscape::LandscapeFollow(const Boid& boid)
-{
-  // return a force to keep the boid above the ground
-
-  Vector3 tmp = boid.vel;
-  tmp.Normalize();
-  Vector3 probe = boid.pos + tmp * _settings.boids.max_speed;
-  Vector3 d = probe;
-  d.y = 20 + NoiseAtPoint(probe);
-
-  Matrix view = _camera._view;
-  Matrix proj = _camera._proj;
-  Matrix viewProj = view * proj;
-
-  DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
-  DEBUG_API.AddDebugLine(boid.pos, d, Color(1,1,1));
-
-  // if the probe is above the terrain height, move towards the average
-  if (probe.y > d.y)
-    d = 0.5f * (probe + d);
-
-  tmp = d - probe;
-  tmp.Normalize();
-  Vector3 desiredVel = tmp * _settings.boids.max_speed;
-  return desiredVel - boid.vel;
-}
-
-#endif
 //------------------------------------------------------------------------------
 void Landscape::UpdateBoids(const UpdateState& state)
 {
@@ -221,7 +190,6 @@ void Landscape::UpdateBoids(const UpdateState& state)
         float dist = randf(300.f, 400.f);
         flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
         flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
-
         flock->wanderAngle = angle;
         break;
       }
@@ -294,22 +262,6 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-inline int Expand(float v)
-{
-  return v < 0 ? (int)floorf(v) : (int)ceilf(v);
-}
-
-inline int RoundUp(float v)
-{
-  return v < 0 ? (int)floorf(v) : (int)ceilf(v);
-}
-
-inline int RoundDown(float v)
-{
-  return v < 0 ? (int)ceilf(v) : (int)floorf(v);
-}
-
-//------------------------------------------------------------------------------
 void Vector3ToFloat(float* buf, const V3& v)
 {
   buf[0] = v.x;
@@ -326,25 +278,72 @@ float NoiseAtPoint(const Vector3& v)
 }
 
 //------------------------------------------------------------------------------
-inline float Up(float v)
+inline float SnapUp(float v, float snapSize)
 { 
-  return GRID_SIZE * ceilf(v / GRID_SIZE); 
+  return snapSize * ceilf(v / snapSize); 
 };
 
 //------------------------------------------------------------------------------
-inline float Dn(float v)
+inline float SnapDown(float v, float snapSize)
 { 
-  return GRID_SIZE * floorf(v / GRID_SIZE); 
+  return snapSize * floorf(v / snapSize); 
 };
+
+//------------------------------------------------------------------------------
+Landscape::Chunk* Landscape::ChunkCache::FindChunk(float x, float y, int timestamp)
+{
+  auto it = _chunkLookup.find(make_pair(x, y));
+  if (it == _chunkLookup.end())
+    return nullptr;
+
+  // because we don't delete chunks when they're overwritten, this might not be
+  // the chunk we're looking for!
+  Chunk* chunk = it->second;
+  if (chunk->x != x || chunk->y != y)
+  {
+    _chunkLookup.erase(it);
+    return nullptr;
+  }
+
+  chunk->lastAccessed = timestamp;
+  return chunk;
+}
+
+//------------------------------------------------------------------------------
+Landscape::Chunk* Landscape::ChunkCache::GetFreeChunk(float x, float y, int timestamp)
+{
+  if (_used < CACHE_SIZE)
+  {
+    return &_cache[_used++];
+  }
+
+  // cache is full, so replace the oldest element
+  int oldestValue = _cache[0].lastAccessed;
+  Chunk* chunk = &_cache[0];
+  for (int i = 1; i < CACHE_SIZE; ++i)
+  {
+    if (_cache[i].lastAccessed < oldestValue)
+    {
+      oldestValue = _cache[i].lastAccessed;
+      chunk = &_cache[i];
+    }
+  }
+
+  chunk->x = x;
+  chunk->y = y;
+  chunk->lastAccessed = timestamp;
+  _chunkLookup[make_pair(x, y)] = chunk;
+  return chunk;
+}
 
 //------------------------------------------------------------------------------
 void Landscape::RasterizeLandscape(float* buf)
 {
+  _curTick++;
   rmt_ScopedCPUSample(Landscape_Rasterize);
 
   // Create a large rect around the camera, and clip it using the camera planes
   Plane planes[6];
-  //ExtractPlanes(_curCamera->_view * _curCamera->_proj, true, planes);
   ExtractPlanes(_curCamera->_view * _curCamera->_proj, true, planes);
 
   float ofs = 2 * _curCamera->_farPlane;
@@ -377,10 +376,10 @@ void Landscape::RasterizeLandscape(float* buf)
   }
 
   // create a AABB for the clipped polygon
-  Vector3 topLeft(Dn(minPos.x), 0, Up(maxPos.z));
-  Vector3 topRight(Up(maxPos.x), 0, Up(maxPos.z));
-  Vector3 bottomLeft(Dn(minPos.x), 0, Dn(minPos.z));
-  Vector3 bottomRight(Up(maxPos.x), 0, Dn(minPos.z));
+  Vector3 topLeft(SnapDown(minPos.x, GRID_SIZE), 0, SnapUp(maxPos.z, GRID_SIZE));
+  Vector3 topRight(SnapUp(maxPos.x, GRID_SIZE), 0, SnapUp(maxPos.z, GRID_SIZE));
+  Vector3 bottomLeft(SnapDown(minPos.x, GRID_SIZE), 0, SnapDown(minPos.z, GRID_SIZE));
+  Vector3 bottomRight(SnapUp(maxPos.x, GRID_SIZE), 0, SnapDown(minPos.z, GRID_SIZE));
 
   float dx = bottomRight.x - bottomLeft.x;
   float dz = topLeft.z - bottomLeft.z;
@@ -390,77 +389,123 @@ void Landscape::RasterizeLandscape(float* buf)
   float incX = dx / width;
   float incZ = dz / height;
 
+  // snap the topleft corner to the chunk size
+  float top = SnapDown(maxPos.z, GRID_SIZE * CHUNK_SIZE);
+  float left = SnapDown(minPos.x, GRID_SIZE  * CHUNK_SIZE);
+
   int triIdx = 0;
-  float x = bottomLeft.x;
-  float z = bottomLeft.z;
-  for (int i = 0; i < height; ++i)
+  float x = topLeft.x;
+  float z = topLeft.z;
+  z = top;
+  int chunkHits = 0;
+  int chunkMisses = 0;
+
+  vector<Chunk*> chunks;
+  while (z >= bottomLeft.z)
   {
-    x = bottomLeft.x;
-    for (int j = 0; j < width; ++j)
+    x = topLeft.x;
+    x = left;
+    while (x <= topRight.x)
     {
-      V3 v0, v1, v2, v3;
-      V3 n0, n1;
-      V3 size(10 * 1024, 10 * 1024, 10 * 1024);
+      // check if the current chunk exists in the cache
+      Chunk* chunk = _chunkCache.FindChunk(x, z, _curTick);
+      if (chunk)
+      {
+        chunks.push_back(chunk);
+        //memcpy(&buf[triIdx*18], chunk->data, Chunk::DATA_SIZE * sizeof(float));
+        //triIdx += 2 * CHUNK_SIZE * CHUNK_SIZE;
+        ++chunkHits;
+      }
+      else
+      {
+        ++chunkMisses;
+        // 36 floats per quad
+        Chunk* chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
+        int chunkIdx = 0;
+        for (int i = 0; i < CHUNK_SIZE; ++i)
+        {
+          for (int j = 0; j < CHUNK_SIZE; ++j)
+          {
+            V3 v0, v1, v2, v3;
+            V3 n0, n1;
+            V3 size(10 * 1024, 10 * 1024, 10 * 1024);
 
-      // 1--2
-      // |  |
-      // 0--3
+            // 1--2
+            // |  |
+            // 0--3
 
-      float xx0 = x;
-      float xx1 = x + incX;
-      float zz0 = z;
-      float zz1 = z + incZ;
+            // TODO: Z should decrement, but I don't want to deal with winding issues right now :)
+            float xx0 = x + (j+0) * GRID_SIZE;
+            float xx1 = x + (j+1) * GRID_SIZE;
+            float zz0 = z + (i+0) * GRID_SIZE;
+            float zz1 = z + (i+1) * GRID_SIZE;
 
-      v0.x = xx0;
-      v0.z = zz0;
-      v1.x = xx0;
-      v1.z = zz1;
-      v2.x = xx1;
-      v2.z = zz1;
-      v3.x = xx1;
-      v3.z = zz0;
+            v0.x = xx0;
+            v0.z = zz0;
+            v1.x = xx0;
+            v1.z = zz1;
+            v2.x = xx1;
+            v2.z = zz1;
+            v3.x = xx1;
+            v3.z = zz0;
 
-      float scaleY = 30;
-      v0.y = scaleY * perlin.Value(256 * xx0 / size.x, 256 * zz0 / size.z);
-      v1.y = scaleY * perlin.Value(256 * xx0 / size.x, 256 * zz1 / size.z);
-      v2.y = scaleY * perlin.Value(256 * xx1 / size.x, 256 * zz1 / size.z);
-      v3.y = scaleY * perlin.Value(256 * xx1 / size.x, 256 * zz0 / size.z);
+            float scaleY = 30;
+            v0.y = scaleY * perlin.Value(256 * xx0 / size.x, 256 * zz0 / size.z);
+            v1.y = scaleY * perlin.Value(256 * xx0 / size.x, 256 * zz1 / size.z);
+            v2.y = scaleY * perlin.Value(256 * xx1 / size.x, 256 * zz1 / size.z);
+            v3.y = scaleY * perlin.Value(256 * xx1 / size.x, 256 * zz0 / size.z);
 
-      V3 e1, e2;
-      e1 = v2 - v1;
-      e2 = v0 - v1;
-      n0 = Cross(e1, e2);
-      n0 = Normalize(n0);
+            V3 e1, e2;
+            e1 = v2 - v1;
+            e2 = v0 - v1;
+            n0 = Cross(e1, e2);
+            n0 = Normalize(n0);
 
-      e1 = v0 - v3;
-      e2 = v2 - v3;
-      n1 = Cross(e1, e2);
-      n1 = Normalize(n1);
+            e1 = v0 - v3;
+            e2 = v2 - v3;
+            n1 = Cross(e1, e2);
+            n1 = Normalize(n1);
 
-      // 0, 1, 3
-      Vector3ToFloat(&buf[triIdx * 18 + 0], v0);
-      Vector3ToFloat(&buf[triIdx * 18 + 3], n0);
-      Vector3ToFloat(&buf[triIdx * 18 + 6], v1);
-      Vector3ToFloat(&buf[triIdx * 18 + 9], n0);
-      Vector3ToFloat(&buf[triIdx * 18 + 12], v3);
-      Vector3ToFloat(&buf[triIdx * 18 + 15], n0);
-      ++triIdx;
+            // 0, 1, 3
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 0], v0);
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 3], n0);
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 6], v1);
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 9], n0);
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 12], v3);
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 15], n0);
+            ++chunkIdx;
 
-      Vector3ToFloat(&buf[triIdx * 18 + 0], v3);
-      Vector3ToFloat(&buf[triIdx * 18 + 3], n1);
-      Vector3ToFloat(&buf[triIdx * 18 + 6], v1);
-      Vector3ToFloat(&buf[triIdx * 18 + 9], n1);
-      Vector3ToFloat(&buf[triIdx * 18 + 12], v2);
-      Vector3ToFloat(&buf[triIdx * 18 + 15], n1);
-      ++triIdx;
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 0], v3);
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 3], n1);
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 6], v1);
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 9], n1);
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 12], v2);
+            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 15], n1);
+            ++chunkIdx;
+          }
+        }
 
-      x += GRID_SIZE;
+        //memcpy(&buf[triIdx*18], chunk->data, Chunk::DATA_SIZE * sizeof(float));
+        //triIdx += 2 * CHUNK_SIZE * CHUNK_SIZE;
+      }
+
+      x += CHUNK_SIZE * GRID_SIZE;
     }
-    z += GRID_SIZE;
+    z -= CHUNK_SIZE * GRID_SIZE;
+  }
+
+  // copy all the chunk data into the vertex buffer
+  for (const Chunk* chunk : chunks)
+  {
+    memcpy(&buf[triIdx * 18], chunk->data, Chunk::DATA_SIZE * sizeof(float));
+    triIdx += 2 * CHUNK_SIZE * CHUNK_SIZE;
   }
 
   _numVerts = triIdx * 3;
 
+  ImGui::Begin("chunk");
+  ImGui::LabelText("hits/misses", "%d/%d", chunkHits, chunkMisses);
+  ImGui::End();
 }
 
 //------------------------------------------------------------------------------

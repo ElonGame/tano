@@ -20,6 +20,8 @@ namespace tano
   {
   public:
 
+    static const int CHUNK_SIZE = 16;
+
     Landscape(const string &name, u32 id);
     ~Landscape();
     virtual bool Init(const char* configFile) override;
@@ -50,6 +52,27 @@ namespace tano
     Vector3 LandscapeFollow(const Boid& boid);
 
     struct Flock;
+
+    struct Chunk
+    {
+      float x, y;
+      int lastAccessed = 0;
+      static const int DATA_SIZE = CHUNK_SIZE*CHUNK_SIZE*2*18;
+      float data[DATA_SIZE];
+    };
+
+    struct ChunkCache
+    {
+      Chunk* FindChunk(float x, float y, int timestamp);
+      Chunk* GetFreeChunk(float x, float y, int timestamp);
+      static const int CACHE_SIZE = 2048;
+      Chunk _cache[CACHE_SIZE];
+      int _used = 0;
+      map<pair<float, float>, Chunk*> _chunkLookup;
+    };
+
+    ChunkCache _chunkCache;
+    int _curTick = 0;
 
     struct Flock
     {
@@ -96,8 +119,8 @@ namespace tano
 
     GpuObjects _boidsMesh;
     bool _renderLandscape = true;
-    bool _renderBoids = false;
-    bool _useFreeFlyCamera = true;
+    bool _renderBoids = true;
+    bool _useFreeFlyCamera = false;
 
     BehaviorSeek* _behaviorSeek = nullptr;
     BehaviorSeparataion* _behaviorSeparataion = nullptr;
