@@ -25,6 +25,99 @@ Perlin2D perlin;
 float NoiseAtPoint(const Vector3& v);
 
 //------------------------------------------------------------------------------
+LandscapeOverlay::LandscapeOverlay()
+{
+  memset(data, 0, sizeof(data));
+}
+
+//------------------------------------------------------------------------------
+void LandscapeOverlay::Create(int x, int y, float amp, int size)
+{
+  for (int i = 0; i < size; ++i)
+  {
+    for (int j = 0; j < size; ++j)
+    {
+      int xOfs = x - size/2 + j;
+      int yOfs = y - size/2 + i;
+      if (xOfs < 0 || xOfs >= SIZE || yOfs < 0 || yOfs >= SIZE)
+        continue;
+
+      float dx = (float)(-size/2+j);
+      float dy = (float)(-size/2+i);
+      float r = 1 - Clamp(0.f, 1.f, sqrtf(dx*dx+dy*dy) / (float)(size/2));
+      data[0][yOfs*SIZE+xOfs] = amp * r;
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+void LandscapeOverlay::BlurLine(float* x, float scale, int m, float alpha, float* y)
+{
+  float* buffers[] = { x, scratch, scratch, x, x, y };
+
+  for (int b = 0; b < 3; ++b)
+  {
+    float* src = buffers[b*2+0];
+    float* dst = buffers[b*2+1];
+
+    // set up initial pixel
+    float sum = src[0];
+    for (int i = 0; i < m; ++i)
+      sum += src[i];
+    sum += alpha * src[m];
+
+    if (b == 2)
+    {
+      // note, the final pass is written transposed
+      for (int i = 0; i < SIZE; ++i)
+      {
+        dst[i*SIZE] = scale * sum;
+        if (i + m + 2 < SIZE)
+          sum += lerp(src[i + m + 1], src[i + m + 2], alpha);
+
+        if (i - m - 1 > 0)
+          sum += lerp(src[i - m], src[i - m - 1], alpha);
+      }
+    }
+    else
+    {
+      // generate output pixel, then update running sum
+      for (int i = 0; i < SIZE; ++i)
+      {
+        dst[i] = scale * sum;
+        if (i + m + 2 < SIZE)
+          sum += lerp(src[i + m + 1], src[i + m + 2], alpha);
+
+        if (i - m - 1 > 0)
+          sum += lerp(src[i - m], src[i - m - 1], alpha);
+      }
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+void LandscapeOverlay::Update()
+{
+  // Blur the data
+  float r = 2.5f;
+  float scale = 1.f / (2.0f * r + 1.f);
+  int m = (int)r;
+  float alpha = r - m;
+
+  // horizontal pass
+  for (int i = 0; i < SIZE; ++i)
+  {
+    BlurLine(&data[0][i*SIZE], scale, m, alpha, &data[1][i]);
+  }
+
+  // vertical pass
+  for (int i = 0; i < SIZE; ++i)
+  {
+    BlurLine(&data[1][i*SIZE], scale, m, alpha, &data[0][i]);
+  }
+}
+
+//------------------------------------------------------------------------------
 Landscape::Flock::Flock(int numBoids)
 {
   boids.Init(numBoids);
@@ -44,6 +137,7 @@ Landscape::Landscape(const string &name, u32 id)
 #endif
 
   perlin.Init();
+  _overlay.Create(25, 25, 10, 10);
 }
 
 //------------------------------------------------------------------------------
@@ -203,6 +297,7 @@ void Landscape::UpdateBoids(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Landscape::Update(const UpdateState& state)
 {
+  _overlay.Update();
   UpdateBoids(state);
   UpdateCameraMatrix(state);
   return true;

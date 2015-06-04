@@ -128,10 +128,12 @@ void Cloth::UpdateParticles(const UpdateState& state)
     {
       for (int j = 0; j <= s; ++j)
       {
-        float dx = (float)i - s/2;
-        float dy = (float)j - s/2;
+        int xOfs = j - s/2;
+        int yOfs = i - s/2;
+        float dx = (float)xOfs;
+        float dy = (float)yOfs;
         float r = Clamp(0.f, 1.f, s/2 - sqrtf(dx*dx+dy*dy));
-        _particles[(_clothDimY+i) / 2 * _clothDimX + _clothDimX / 2+j].acc = r * V3(0, 0, 50);
+        _particles[(_clothDimY/2+yOfs) * _clothDimX + _clothDimX/2+xOfs].acc = r * V3(0, 0, 50);
       }
     }
 
@@ -271,7 +273,9 @@ bool Cloth::InitParticles()
 
   // Check if we've saved the grouped constraints
   vector<char> buf;
-  if (RESOURCE_MANAGER.LoadFile("data/cloth_constraints.dat", &buf))
+  char filename[MAX_PATH];
+  sprintf(filename, "data/cloth_constraints_%d.dat", GRID_SIZE);
+  if (RESOURCE_MANAGER.LoadFile(filename, &buf))
   {
     int num = *(int*)&buf[0];
     _constraints.resize(num);
@@ -289,7 +293,7 @@ bool Cloth::InitParticles()
   else
   {
     GroupConstraints();
-    FILE* f = RESOURCE_MANAGER.OpenWriteFile("data/cloth_constraints.dat");
+    FILE* f = RESOURCE_MANAGER.OpenWriteFile(filename);
 
     // note, for the constraints, just save a u16 particle index
     vector<u16> data;

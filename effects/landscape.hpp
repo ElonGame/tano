@@ -16,11 +16,23 @@ namespace tano
     void Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state);
   };
 
+  struct LandscapeOverlay
+  {
+    LandscapeOverlay();
+    void Create(int x, int y, float amp, int size);
+    void Update();
+    void BlurLine(float* x, float scale, int m, float alpha, float* y);
+    enum { SIZE = 50 };
+    float scratch[SIZE];
+    float data[2][SIZE*SIZE];
+    int curBuf = 0;
+  };
+
   class Landscape : public Effect
   {
   public:
 
-    static const int CHUNK_SIZE = 16;
+    enum { CHUNK_SIZE = 16 };
 
     Landscape(const string &name, u32 id);
     ~Landscape();
@@ -119,8 +131,8 @@ namespace tano
 
     GpuObjects _boidsMesh;
     bool _renderLandscape = true;
-    bool _renderBoids = true;
-    bool _useFreeFlyCamera = false;
+    bool _renderBoids = false;
+    bool _useFreeFlyCamera = true;
 
     BehaviorSeek* _behaviorSeek = nullptr;
     BehaviorSeparataion* _behaviorSeparataion = nullptr;
@@ -132,5 +144,7 @@ namespace tano
     FollowCam _followCamera;
     Camera* _curCamera = &_followCamera;
     int _followFlock = 0;
+
+    LandscapeOverlay _overlay;
   };
 }
