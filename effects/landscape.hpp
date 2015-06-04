@@ -70,6 +70,7 @@ namespace tano
       float x, y;
       int lastAccessed = 0;
       static const int DATA_SIZE = CHUNK_SIZE*CHUNK_SIZE*2*18;
+      float noiseValues[(CHUNK_SIZE+1)*(CHUNK_SIZE+1)];
       float data[DATA_SIZE];
     };
 

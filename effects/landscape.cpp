@@ -365,6 +365,17 @@ void Vector3ToFloat(float* buf, const V3& v)
 }
 
 //------------------------------------------------------------------------------
+inline void CopyPosNormal(float* buf, const V3& v, const V3& n)
+{
+  buf[0] = v.x;
+  buf[1] = v.y;
+  buf[2] = v.z;
+  buf[3] = n.x;
+  buf[4] = n.y;
+  buf[5] = n.z;
+}
+
+//------------------------------------------------------------------------------
 float NoiseAtPoint(const Vector3& v)
 {
   static const Vector3 NOISE_SCALE(10.f, 30.f, 10.f);
@@ -483,6 +494,12 @@ void Landscape::RasterizeLandscape(float* buf)
   int chunkHits = 0;
   int chunkMisses = 0;
 
+  V3 v0, v1, v2, v3;
+  V3 n0, n1;
+  float scaleX = 256.f / (10 * 1024);
+  float scaleY = 30;
+  float scaleZ = 256.f / (10 * 1024);
+
   vector<Chunk*> chunks;
   for (float z = topLeft.z; z >= bottomLeft.z; z -= s)
   {
@@ -499,14 +516,24 @@ void Landscape::RasterizeLandscape(float* buf)
       {
         ++chunkMisses;
         Chunk* chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
+
+        // first compute the noise values
+        float* noise = chunk->noiseValues;
+        for (int i = 0; i <= CHUNK_SIZE; ++i)
+        {
+          for (int j = 0; j <= CHUNK_SIZE; ++j)
+          {
+            float xx0 = x + (j + 0) * GRID_SIZE;
+            float zz0 = z + (i - 1) * GRID_SIZE;
+            *noise++ = scaleY * perlin.Value(scaleX * xx0, scaleZ * zz0);
+          }
+        }
+
         int chunkIdx = 0;
         for (int i = 0; i < CHUNK_SIZE; ++i)
         {
           for (int j = 0; j < CHUNK_SIZE; ++j)
           {
-            V3 v0, v1, v2, v3;
-            V3 n0, n1;
-            V3 size(10 * 1024, 10 * 1024, 10 * 1024);
 
             // 1--2
             // |  |
@@ -522,11 +549,10 @@ void Landscape::RasterizeLandscape(float* buf)
             v2.x = xx1; v2.z = zz1;
             v3.x = xx1; v3.z = zz0;
 
-            float scaleY = 30;
-            v0.y = scaleY * perlin.Value(256 * xx0 / size.x, 256 * zz0 / size.z);
-            v1.y = scaleY * perlin.Value(256 * xx0 / size.x, 256 * zz1 / size.z);
-            v2.y = scaleY * perlin.Value(256 * xx1 / size.x, 256 * zz1 / size.z);
-            v3.y = scaleY * perlin.Value(256 * xx1 / size.x, 256 * zz0 / size.z);
+            v0.y = chunk->noiseValues[(i + 0)*(CHUNK_SIZE + 1) + (j + 0)];
+            v1.y = chunk->noiseValues[(i + 1)*(CHUNK_SIZE + 1) + (j + 0)];
+            v2.y = chunk->noiseValues[(i + 1)*(CHUNK_SIZE + 1) + (j + 1)];
+            v3.y = chunk->noiseValues[(i + 0)*(CHUNK_SIZE + 1) + (j + 1)];
 
             V3 e1, e2;
             e1 = v2 - v1;
@@ -540,20 +566,14 @@ void Landscape::RasterizeLandscape(float* buf)
             n1 = Normalize(n1);
 
             // 0, 1, 3
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 0], v0);
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 3], n0);
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 6], v1);
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 9], n0);
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 12], v3);
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 15], n0);
+            CopyPosNormal(&chunk->data[chunkIdx * 18 + 0], v0, n0);
+            CopyPosNormal(&chunk->data[chunkIdx * 18 + 6], v1, n0);
+            CopyPosNormal(&chunk->data[chunkIdx * 18 + 12], v3, n0);
             ++chunkIdx;
 
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 0], v3);
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 3], n1);
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 6], v1);
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 9], n1);
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 12], v2);
-            Vector3ToFloat(&chunk->data[chunkIdx * 18 + 15], n1);
+            CopyPosNormal(&chunk->data[chunkIdx * 18 + 0], v3, n1);
+            CopyPosNormal(&chunk->data[chunkIdx * 18 + 6], v1, n1);
+            CopyPosNormal(&chunk->data[chunkIdx * 18 + 12], v2, n1);
             ++chunkIdx;
           }
         }
