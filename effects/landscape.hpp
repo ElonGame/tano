@@ -107,6 +107,7 @@ namespace tano
       Matrix view;
       Matrix proj;
       Matrix viewProj;
+      Vector4 time;
       Vector4 dim;
       Vector3 cameraPos;
       float pad1;
@@ -136,7 +137,7 @@ namespace tano
 
     GpuObjects _boidsMesh;
     bool _renderLandscape = true;
-    bool _renderBoids = false;
+    bool _renderBoids = true;
     bool _useFreeFlyCamera = true;
 
     BehaviorSeek* _behaviorSeek = nullptr;

@@ -42,8 +42,8 @@ void LandscapeOverlay::Create(int x, int y, float amp, int size)
       if (xOfs < 0 || xOfs >= SIZE || yOfs < 0 || yOfs >= SIZE)
         continue;
 
-      float dx = x - xOfs;
-      float dy = y - yOfs;
+      float dx = (float)(x - xOfs);
+      float dy = (float)(y - yOfs);
       float r = Clamp(1.f, 10.f, sqrtf(dx*dx+dy*dy));
       data[0][yOfs*SIZE+xOfs] += amp / (r*r);
     }
@@ -285,6 +285,10 @@ void Landscape::UpdateBoids(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Landscape::Update(const UpdateState& state)
 {
+  _cbPerFrame.time.x = (float)(state.localTime.TotalMilliseconds() / 1e6);
+  _cbPerFrame.time.y = _flocks[0]->boids._center.x;
+  _cbPerFrame.time.z = _flocks[0]->boids._center.y;
+  _cbPerFrame.time.w = _flocks[0]->boids._center.z;
   for (LandscapeOverlay& overlay : _overlays)
     overlay.Update();
   UpdateBoids(state);
@@ -581,95 +585,6 @@ void Landscape::RasterizeLandscape(float* buf)
       }
 
       chunks.push_back(chunk);
-
-      // check if the chunk overlaps any active overlay, in which case
-      // we need to recompute verts
-      float xEnd = x + CHUNK_SIZE * GRID_SIZE;
-      float zEnd = z + CHUNK_SIZE * GRID_SIZE;
-      LandscapeOverlay* overlap = nullptr;
-      for (LandscapeOverlay& overlay: _overlays)
-      {
-        float xx = overlay.x;
-        float zz = overlay.z;
-        
-        float xe = x + GRID_SIZE * CHUNK_SIZE;
-        float ze = z + GRID_SIZE * CHUNK_SIZE;
-        if (xe >= xx && x < xx + LandscapeOverlay::SIZE * CHUNK_SIZE && 
-            ze >= zz && z < zz + LandscapeOverlay::SIZE * CHUNK_SIZE)
-        {
-          overlap = &overlay;
-          break;
-        }
-      }
-
-      if (overlap)
-      {
-        int chunkIdx = 0;
-        for (int i = 0; i < CHUNK_SIZE; ++i)
-        {
-          for (int j = 0; j < CHUNK_SIZE; ++j)
-          {
-            // 1--2
-            // |  |
-            // 0--3
-
-            float xx0 = x + (j + 0) * GRID_SIZE;
-            float xx1 = x + (j + 1) * GRID_SIZE;
-            float zz0 = z + (i + 0) * GRID_SIZE;
-            float zz1 = z + (i + 1) * GRID_SIZE;
-
-            v0.x = xx0; v0.z = zz0;
-            v1.x = xx0; v1.z = zz1;
-            v2.x = xx1; v2.z = zz1;
-            v3.x = xx1; v3.z = zz0;
-
-            v0.y = chunk->noiseValues[(i + 0)*(CHUNK_SIZE + 1) + (j + 0)];
-            v1.y = chunk->noiseValues[(i + 1)*(CHUNK_SIZE + 1) + (j + 0)];
-            v2.y = chunk->noiseValues[(i + 1)*(CHUNK_SIZE + 1) + (j + 1)];
-            v3.y = chunk->noiseValues[(i + 0)*(CHUNK_SIZE + 1) + (j + 1)];
-
-            // add the overlap values
-            float s = LandscapeOverlay::SIZE * GRID_SIZE;
-
-            V3* verts[4] = { &v0, &v1, &v2, &v3 };
-            for (int i = 0; i < 4; ++i)
-            {
-              V3* p = verts[i];
-              if (p->x >= overlap->x && p->x < overlap->x + s && 
-                  p->z >= overlap->z && p->z < overlap->z + s)
-              {
-                int xx = (int)((p->x - overlap->x) / GRID_SIZE);
-                int yy = (int)((p->z - overlap->z) / GRID_SIZE);
-                float v = overlap->data[0][yy*LandscapeOverlay::SIZE + xx];
-                //p->y += 10 * sin(p->x * p->z * _curTick / 1000.f);
-                p->y += v;
-              }
-            }
-
-            V3 e1, e2;
-            e1 = v2 - v1;
-            e2 = v0 - v1;
-            n0 = Cross(e1, e2);
-            n0 = Normalize(n0);
-
-            e1 = v0 - v3;
-            e2 = v2 - v3;
-            n1 = Cross(e1, e2);
-            n1 = Normalize(n1);
-
-            // 0, 1, 3
-            CopyPosNormal(&chunk->data[chunkIdx * 18 + 0], v0, n0);
-            CopyPosNormal(&chunk->data[chunkIdx * 18 + 6], v1, n0);
-            CopyPosNormal(&chunk->data[chunkIdx * 18 + 12], v3, n0);
-            ++chunkIdx;
-
-            CopyPosNormal(&chunk->data[chunkIdx * 18 + 0], v3, n1);
-            CopyPosNormal(&chunk->data[chunkIdx * 18 + 6], v1, n1);
-            CopyPosNormal(&chunk->data[chunkIdx * 18 + 12], v2, n1);
-            ++chunkIdx;
-          }
-        }
-      }
     }
   }
 

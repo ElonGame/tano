@@ -11,6 +11,7 @@ cbuffer PerFrame : register(b0)
   matrix view;
   matrix proj;
   matrix viewProj;
+  float4 time;
   float4 dim;
   float3 cameraPos;
   float3 cameraLookAt;
@@ -41,6 +42,7 @@ struct VsLandscapeOut
   float3 normal : Normal;
   float3 rayDir : Texture0;
   float distance : TexCoord1;
+  float distance2 : Texture2;
 };
 
 static float4 BOID_COLOR = float4(0.4, 0.2, 0.2, 1);
@@ -92,11 +94,20 @@ VsLandscapeOut VsLandscape(VsLandscapeIn v)
 {
   VsLandscapeOut res;
   matrix worldViewProj = mul(world, viewProj);
-  res.pos = mul(float4(v.pos, 1), worldViewProj);
+
+  float3 pos = v.pos;
+  float3 center = float3(time.y, time.z, time.w);
+  float r = length(center - v.pos) / 10;
+//  pos.y += 100 * sin(20 * time.x) / (r*r);
+  // pos.y += pos.y / max(1, r);
+
+  res.pos = mul(float4(pos, 1), worldViewProj);
   res.normal = mul(float4(v.normal, 0), world).xyz;
-  float3 dir = v.pos - cameraPos;
+
+  float3 dir = pos - cameraPos;
   res.distance = length(dir);
   res.rayDir = dir * 1/res.distance;
+  res.distance2 = r;
   return res;
 }
 
@@ -104,7 +115,8 @@ float4 PsLandscape(VsLandscapeOut p) : SV_Target
 {
   float3 amb = float3(0.05, 0.05, 0.05);
   float dff = saturate(dot(-SUN_DIR, p.normal));
-  float3 col = amb + dff * float3(0.1, 0.1, 0.25);
+//  float3 col = amb + dff * float3(0.1, 0.1, 0.25);
+  float3 col = amb + dff * (1-saturate(p.distance2 / 10)) * float3(0.1, 0.1, 0.25);
 
   float b = 0.001;
   float fogAmount = max(0, 1 - exp(-(p.distance - 500) * b));
