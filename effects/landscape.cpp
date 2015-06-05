@@ -42,10 +42,10 @@ void LandscapeOverlay::Create(int x, int y, float amp, int size)
       if (xOfs < 0 || xOfs >= SIZE || yOfs < 0 || yOfs >= SIZE)
         continue;
 
-      float dx = (float)(-size/2+j);
-      float dy = (float)(-size/2+i);
-      float r = 1 - Clamp(0.f, 1.f, sqrtf(dx*dx+dy*dy) / (float)(size/2));
-      data[0][yOfs*SIZE+xOfs] = amp * r;
+      float dx = x - xOfs;
+      float dy = y - yOfs;
+      float r = Clamp(1.f, 10.f, sqrtf(dx*dx+dy*dy));
+      data[0][yOfs*SIZE+xOfs] += amp / (r*r);
     }
   }
 }
@@ -66,31 +66,17 @@ void LandscapeOverlay::BlurLine(float* x, float scale, int m, float alpha, float
       sum += src[i];
     sum += alpha * src[m];
 
-    if (b == 2)
+    // note, the final pass is written transposed
+    int dstInc = b < 2 ? 1 : SIZE;
+    for (int i = 0; i < SIZE; ++i)
     {
-      // note, the final pass is written transposed
-      for (int i = 0; i < SIZE; ++i)
-      {
-        dst[i*SIZE] = scale * sum;
-        if (i + m + 2 < SIZE)
-          sum += lerp(src[i + m + 1], src[i + m + 2], alpha);
+      *dst = scale * sum;
+      dst += dstInc;
+      if (i + m + 2 < SIZE)
+        sum += lerp(src[i + m + 1], src[i + m + 2], alpha);
 
-        if (i - m - 1 > 0)
-          sum += lerp(src[i - m], src[i - m - 1], alpha);
-      }
-    }
-    else
-    {
-      // generate output pixel, then update running sum
-      for (int i = 0; i < SIZE; ++i)
-      {
-        dst[i] = scale * sum;
-        if (i + m + 2 < SIZE)
-          sum += lerp(src[i + m + 1], src[i + m + 2], alpha);
-
-        if (i - m - 1 > 0)
-          sum += lerp(src[i - m], src[i - m - 1], alpha);
-      }
+      if (i - m - 1 > 0)
+        sum -= lerp(src[i - m], src[i - m - 1], alpha);
     }
   }
 }
@@ -99,7 +85,7 @@ void LandscapeOverlay::BlurLine(float* x, float scale, int m, float alpha, float
 void LandscapeOverlay::Update()
 {
   // Blur the data
-  float r = 2.5f;
+  float r = 5;
   float scale = 1.f / (2.0f * r + 1.f);
   int m = (int)r;
   float alpha = r - m;
@@ -137,7 +123,9 @@ Landscape::Landscape(const string &name, u32 id)
 #endif
 
   perlin.Init();
-  _overlay.Create(25, 25, 10, 10);
+  LandscapeOverlay overlay;
+  overlay.Create(25, 25, 100, 10);
+  _overlays.push_back(overlay);
 }
 
 //------------------------------------------------------------------------------
@@ -297,7 +285,8 @@ void Landscape::UpdateBoids(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Landscape::Update(const UpdateState& state)
 {
-  _overlay.Update();
+  for (LandscapeOverlay& overlay : _overlays)
+    overlay.Update();
   UpdateBoids(state);
   UpdateCameraMatrix(state);
   return true;
@@ -306,13 +295,16 @@ bool Landscape::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 void Landscape::UpdateCameraMatrix(const UpdateState& state)
 {
+  const IoState& ioState = TANO.GetIoState();
+  if (ioState.keysPressed['3'])
+    _overlays[0].Create(LandscapeOverlay::SIZE/2, LandscapeOverlay::SIZE/2, 30, 20);
+
   if (!_flocks.empty())
   {
-    const IoState& state = TANO.GetIoState();
-    if (state.keysPressed['1'])
+    if (ioState.keysPressed['1'])
       _followFlock = (_followFlock + 1) % _flocks.size();
 
-    if (state.keysPressed['2'])
+    if (ioState.keysPressed['2'])
       _followFlock = (_followFlock - 1) % _flocks.size();
 
     if (_followFlock != -1 && _followFlock < _flocks.size())
@@ -441,6 +433,76 @@ Landscape::Chunk* Landscape::ChunkCache::GetFreeChunk(float x, float y, int time
   _chunkLookup[make_pair(x, y)] = chunk;
   return chunk;
 }
+//------------------------------------------------------------------------------
+void Landscape::FillChunk(Chunk* chunk, float x, float z)
+{
+  V3 v0, v1, v2, v3;
+  V3 n0, n1;
+  float scaleX = 256.f / (10 * 1024);
+  float scaleY = 30;
+  float scaleZ = 256.f / (10 * 1024);
+
+  // first compute the noise values
+  float* noise = chunk->noiseValues;
+  for (int i = 0; i <= CHUNK_SIZE; ++i)
+  {
+    for (int j = 0; j <= CHUNK_SIZE; ++j)
+    {
+      float xx0 = x + (j + 0) * GRID_SIZE;
+      float zz0 = z + (i - 1) * GRID_SIZE;
+      *noise++ = scaleY * perlin.Value(scaleX * xx0, scaleZ * zz0);
+    }
+  }
+
+  int chunkIdx = 0;
+  for (int i = 0; i < CHUNK_SIZE; ++i)
+  {
+    for (int j = 0; j < CHUNK_SIZE; ++j)
+    {
+      // 1--2
+      // |  |
+      // 0--3
+
+      float xx0 = x + (j + 0) * GRID_SIZE;
+      float xx1 = x + (j + 1) * GRID_SIZE;
+      float zz0 = z + (i - 1) * GRID_SIZE;
+      float zz1 = z + (i + 0) * GRID_SIZE;
+
+      v0.x = xx0; v0.z = zz0;
+      v1.x = xx0; v1.z = zz1;
+      v2.x = xx1; v2.z = zz1;
+      v3.x = xx1; v3.z = zz0;
+
+      v0.y = chunk->noiseValues[(i + 0)*(CHUNK_SIZE + 1) + (j + 0)];
+      v1.y = chunk->noiseValues[(i + 1)*(CHUNK_SIZE + 1) + (j + 0)];
+      v2.y = chunk->noiseValues[(i + 1)*(CHUNK_SIZE + 1) + (j + 1)];
+      v3.y = chunk->noiseValues[(i + 0)*(CHUNK_SIZE + 1) + (j + 1)];
+
+      V3 e1, e2;
+      e1 = v2 - v1;
+      e2 = v0 - v1;
+      n0 = Cross(e1, e2);
+      n0 = Normalize(n0);
+
+      e1 = v0 - v3;
+      e2 = v2 - v3;
+      n1 = Cross(e1, e2);
+      n1 = Normalize(n1);
+
+      // 0, 1, 3
+      CopyPosNormal(&chunk->data[chunkIdx * 18 + 0], v0, n0);
+      CopyPosNormal(&chunk->data[chunkIdx * 18 + 6], v1, n0);
+      CopyPosNormal(&chunk->data[chunkIdx * 18 + 12], v3, n0);
+      ++chunkIdx;
+
+      CopyPosNormal(&chunk->data[chunkIdx * 18 + 0], v3, n1);
+      CopyPosNormal(&chunk->data[chunkIdx * 18 + 6], v1, n1);
+      CopyPosNormal(&chunk->data[chunkIdx * 18 + 12], v2, n1);
+      ++chunkIdx;
+    }
+  }
+
+}
 
 //------------------------------------------------------------------------------
 void Landscape::RasterizeLandscape(float* buf)
@@ -501,48 +563,60 @@ void Landscape::RasterizeLandscape(float* buf)
   float scaleZ = 256.f / (10 * 1024);
 
   vector<Chunk*> chunks;
-  for (float z = topLeft.z; z >= bottomLeft.z; z -= s)
+  for (float z = bottomLeft.z; z <= topLeft.z; z += s)
   {
-    for (float x = topLeft.x; x <= topRight.x; x += s)
+    for (float x = bottomLeft.x; x <= bottomRight.x; x += s)
     {
       // check if the current chunk exists in the cache
       Chunk* chunk = _chunkCache.FindChunk(x, z, _curTick);
       if (chunk)
       {
-        chunks.push_back(chunk);
         ++chunkHits;
       }
       else
       {
         ++chunkMisses;
-        Chunk* chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
+        chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
+        FillChunk(chunk, x, z);
+      }
 
-        // first compute the noise values
-        float* noise = chunk->noiseValues;
-        for (int i = 0; i <= CHUNK_SIZE; ++i)
+      chunks.push_back(chunk);
+
+      // check if the chunk overlaps any active overlay, in which case
+      // we need to recompute verts
+      float xEnd = x + CHUNK_SIZE * GRID_SIZE;
+      float zEnd = z + CHUNK_SIZE * GRID_SIZE;
+      LandscapeOverlay* overlap = nullptr;
+      for (LandscapeOverlay& overlay: _overlays)
+      {
+        float xx = overlay.x;
+        float zz = overlay.z;
+        
+        float xe = x + GRID_SIZE * CHUNK_SIZE;
+        float ze = z + GRID_SIZE * CHUNK_SIZE;
+        if (xe >= xx && x < xx + LandscapeOverlay::SIZE * CHUNK_SIZE && 
+            ze >= zz && z < zz + LandscapeOverlay::SIZE * CHUNK_SIZE)
         {
-          for (int j = 0; j <= CHUNK_SIZE; ++j)
-          {
-            float xx0 = x + (j + 0) * GRID_SIZE;
-            float zz0 = z + (i - 1) * GRID_SIZE;
-            *noise++ = scaleY * perlin.Value(scaleX * xx0, scaleZ * zz0);
-          }
+          overlap = &overlay;
+          break;
         }
+      }
 
+      if (overlap)
+      {
         int chunkIdx = 0;
         for (int i = 0; i < CHUNK_SIZE; ++i)
         {
           for (int j = 0; j < CHUNK_SIZE; ++j)
           {
-
             // 1--2
             // |  |
             // 0--3
 
-            float xx0 = x + (j+0) * GRID_SIZE;
-            float xx1 = x + (j+1) * GRID_SIZE;
-            float zz0 = z + (i-1) * GRID_SIZE;
-            float zz1 = z + (i+0) * GRID_SIZE;
+            float xx0 = x + (j + 0) * GRID_SIZE;
+            float xx1 = x + (j + 1) * GRID_SIZE;
+            float zz0 = z + (i + 0) * GRID_SIZE;
+            float zz1 = z + (i + 1) * GRID_SIZE;
 
             v0.x = xx0; v0.z = zz0;
             v1.x = xx0; v1.z = zz1;
@@ -553,6 +627,24 @@ void Landscape::RasterizeLandscape(float* buf)
             v1.y = chunk->noiseValues[(i + 1)*(CHUNK_SIZE + 1) + (j + 0)];
             v2.y = chunk->noiseValues[(i + 1)*(CHUNK_SIZE + 1) + (j + 1)];
             v3.y = chunk->noiseValues[(i + 0)*(CHUNK_SIZE + 1) + (j + 1)];
+
+            // add the overlap values
+            float s = LandscapeOverlay::SIZE * GRID_SIZE;
+
+            V3* verts[4] = { &v0, &v1, &v2, &v3 };
+            for (int i = 0; i < 4; ++i)
+            {
+              V3* p = verts[i];
+              if (p->x >= overlap->x && p->x < overlap->x + s && 
+                  p->z >= overlap->z && p->z < overlap->z + s)
+              {
+                int xx = (int)((p->x - overlap->x) / GRID_SIZE);
+                int yy = (int)((p->z - overlap->z) / GRID_SIZE);
+                float v = overlap->data[0][yy*LandscapeOverlay::SIZE + xx];
+                //p->y += 10 * sin(p->x * p->z * _curTick / 1000.f);
+                p->y += v;
+              }
+            }
 
             V3 e1, e2;
             e1 = v2 - v1;

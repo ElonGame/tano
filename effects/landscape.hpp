@@ -26,6 +26,8 @@ namespace tano
     float scratch[SIZE];
     float data[2][SIZE*SIZE];
     int curBuf = 0;
+    float x = 0;
+    float z = 0;
   };
 
   class Landscape : public Effect
@@ -73,6 +75,8 @@ namespace tano
       float noiseValues[(CHUNK_SIZE+1)*(CHUNK_SIZE+1)];
       float data[DATA_SIZE];
     };
+
+    void FillChunk(Chunk* chunk, float x, float z);
 
     struct ChunkCache
     {
@@ -146,6 +150,6 @@ namespace tano
     Camera* _curCamera = &_followCamera;
     int _followFlock = 0;
 
-    LandscapeOverlay _overlay;
+    vector<LandscapeOverlay> _overlays;
   };
 }
