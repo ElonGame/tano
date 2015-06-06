@@ -10,6 +10,11 @@
 
 namespace tano
 {
+  namespace scheduler
+  {
+    struct TaskData;
+  }
+
   struct BehaviorLandscapeFollow : public ParticleKinematics
   {
     BehaviorLandscapeFollow(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
@@ -76,7 +81,14 @@ namespace tano
       float data[DATA_SIZE];
     };
 
-    void FillChunk(Chunk* chunk, float x, float z);
+    static void FillChunk(Chunk* chunk, float x, float z);
+
+    struct ChunkKernelData
+    {
+      Chunk* chunk;
+      float x, z;
+    };
+    static void ChunkKernel(const scheduler::TaskData& data);
 
     struct ChunkCache
     {

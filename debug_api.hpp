@@ -8,10 +8,8 @@ namespace tano
   struct DebugApi
   {
     static DebugApi& Instance();
-    static void Create();
+    static bool Create(GraphicsContext* ctx);
     static void Destroy();
-
-    bool Init(GraphicsContext* ctx);
 
     void BeginFrame();
     void EndFrame();
@@ -25,6 +23,8 @@ namespace tano
     void UpdateDebugAnchor(u32 id);
 
     void CreateDebugGeometry();
+
+    bool Init(GraphicsContext* ctx);
 
     struct LineChunk
     {

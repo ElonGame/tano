@@ -14,9 +14,10 @@ DebugApi& DebugApi::Instance()
 }
 
 //------------------------------------------------------------------------------
-void DebugApi::Create()
+bool DebugApi::Create(GraphicsContext* ctx)
 {
   _instance = new DebugApi();
+  return _instance->Init(ctx);
 }
 
 //------------------------------------------------------------------------------

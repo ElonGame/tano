@@ -5,6 +5,8 @@
 #include "graphics_context.hpp"
 #include "init_sequence.hpp"
 #include "debug_api.hpp"
+#include "scheduler.hpp"
+#include "arena_allocator.hpp"
 #include "generated/app.parse.hpp"
 #include "generated/input_buffer.hpp"
 #include "effects/particle_tunnel.hpp"
@@ -20,12 +22,16 @@
 
 //------------------------------------------------------------------------------
 using namespace tano;
+using namespace tano::scheduler;
 using namespace bristol;
 
 static const int WM_APP_CLOSE = WM_APP + 2;
 
 const TCHAR* g_AppWindowClass = _T("TanoClass");
 const TCHAR* g_AppWindowTitle = _T("tano - neurotica e.f.s");
+
+const int ARENA_MEMORY_SIZE = 128 * 1024 * 1024;
+static u8 arenaMemory[ARENA_MEMORY_SIZE];
 
 #if WITH_REMOTERY
 Remotery* g_rmt;
@@ -83,6 +89,7 @@ bool App::Destroy()
   DemoEngine::Destroy();
   DebugApi::Destroy();
   INIT(Graphics::Destroy());
+  Scheduler::Destroy();
 
   delete exch_null(_instance);
 
@@ -121,9 +128,12 @@ bool App::Init(HINSTANCE hinstance)
 #endif
   INIT_FATAL(LoadSettings());
 
+  INIT_FATAL(Scheduler::Create());
+
   INIT_FATAL(Graphics::Create(_hinstance));
-  DebugApi::Create();
-  INIT_FATAL(DEBUG_API.Init(GRAPHICS.GetGraphicsContext()));
+  INIT_FATAL(DebugApi::Create(GRAPHICS.GetGraphicsContext()));
+
+  INIT_FATAL(ArenaAllocator::Create(arenaMemory, arenaMemory + ARENA_MEMORY_SIZE));
 
   int width = GetSystemMetrics(SM_CXFULLSCREEN);
   int height = GetSystemMetrics(SM_CYFULLSCREEN);
@@ -166,6 +176,7 @@ bool App::Run()
 
   while (WM_QUIT != msg.message)
   {
+    ARENA.NewFrame();
     if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
     {
       TranslateMessage(&msg);

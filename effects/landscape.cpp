@@ -13,8 +13,11 @@
 #include "../debug_api.hpp"
 #include "../tano_math.hpp"
 #include "../perlin2d.hpp"
+#include "../scheduler.hpp"
+#include "../arena_allocator.hpp"
 
 using namespace tano;
+using namespace tano::scheduler;
 using namespace bristol;
 
 static const Vector3 ZERO3(0,0,0);
@@ -505,7 +508,13 @@ void Landscape::FillChunk(Chunk* chunk, float x, float z)
       ++chunkIdx;
     }
   }
+}
 
+//------------------------------------------------------------------------------
+void Landscape::ChunkKernel(const TaskData& data)
+{
+  ChunkKernelData* chunkData = (ChunkKernelData*)data.kernelData.data;
+  FillChunk(chunkData->chunk, chunkData->x, chunkData->z);
 }
 
 //------------------------------------------------------------------------------
@@ -566,6 +575,7 @@ void Landscape::RasterizeLandscape(float* buf)
   float scaleY = 30;
   float scaleZ = 256.f / (10 * 1024);
 
+  vector<TaskId> chunkTasks;
   vector<Chunk*> chunks;
   for (float z = bottomLeft.z; z <= topLeft.z; z += s)
   {
@@ -581,12 +591,20 @@ void Landscape::RasterizeLandscape(float* buf)
       {
         ++chunkMisses;
         chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
-        FillChunk(chunk, x, z);
+        ChunkKernelData* data = (ChunkKernelData*)ARENA.Alloc(sizeof(ChunkKernelData));
+        *data = ChunkKernelData{ chunk, x, z };
+        KernelData kd;
+        kd.data = data;
+        kd.size = sizeof(ChunkKernelData);
+        chunkTasks.push_back(SCHEDULER.AddTask(kd, ChunkKernel));
       }
 
       chunks.push_back(chunk);
     }
   }
+
+  for (const TaskId& taskId : chunkTasks)
+    SCHEDULER.Wait(taskId);
 
   // copy all the chunk data into the vertex buffer
   for (const Chunk* chunk : chunks)

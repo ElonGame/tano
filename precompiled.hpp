@@ -16,6 +16,7 @@
 #define BORDERLESS_WINDOW 0
 #endif
 
+#define WITH_TESTS 0
 
 #if WITH_ROCKET_PLAYER
   #define SYNC_PLAYER
@@ -31,6 +32,8 @@
 #define WITH_UNPACKED_RESOUCES 1
 
 #define WITH_MUSIC 1
+
+#define WITH_SCHEDULER_STATS 0 
 
 #ifdef _PUBLIC
   #define WITH_UNPACKED_RESOUCES 0
@@ -118,6 +121,7 @@
 #include <queue>
 #include <functional>
 #include <memory>
+#include <thread>
 
 #if WITH_MUSIC
 #include <bass.h>
@@ -173,6 +177,7 @@ namespace tano
 
   using std::unique_ptr;
   using std::make_unique;
+  using std::thread;
 
   using DirectX::XMFLOAT3;
   using DirectX::BoundingSphere;

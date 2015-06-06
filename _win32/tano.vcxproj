@@ -95,7 +95,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\animation_helpers.cpp" />
+    <ClCompile Include="..\arena_allocator.cpp" />
     <ClCompile Include="..\camera.cpp" />
+    <ClCompile Include="..\circular_buffer.cpp" />
     <ClCompile Include="..\debug_api.cpp" />
     <ClCompile Include="..\dyn_particles.cpp" />
     <ClCompile Include="..\effects\blob.cpp" />
@@ -103,6 +105,7 @@
     <ClCompile Include="..\effects\cluster.cpp" />
     <ClCompile Include="..\effects\landscape.cpp" />
     <ClCompile Include="..\effects\raymarcher.cpp" />
+    <ClCompile Include="..\free_list.cpp" />
     <ClCompile Include="..\lz4\lz4.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -282,6 +285,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="..\scene.cpp" />
+    <ClCompile Include="..\scheduler.cpp" />
     <ClCompile Include="..\sync\data.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -335,9 +339,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\animation_helpers.hpp" />
+    <ClInclude Include="..\arena_allocator.hpp" />
     <ClInclude Include="..\bass\bass.h" />
     <ClInclude Include="..\bristol\rolling_average.hpp" />
     <ClInclude Include="..\camera.hpp" />
+    <ClInclude Include="..\circular_buffer.hpp" />
     <ClInclude Include="..\debug_api.hpp" />
     <ClInclude Include="..\dyn_particles.hpp" />
     <ClInclude Include="..\effects\blob.hpp" />
@@ -345,6 +351,7 @@
     <ClInclude Include="..\effects\cluster.hpp" />
     <ClInclude Include="..\effects\landscape.hpp" />
     <ClInclude Include="..\effects\raymarcher.hpp" />
+    <ClInclude Include="..\free_list.hpp" />
     <ClInclude Include="..\lz4\lz4.h" />
     <ClInclude Include="..\mesh_loader.hpp" />
     <ClInclude Include="..\bristol\bristol.hpp" />
@@ -390,6 +397,7 @@
     <ClInclude Include="..\render_queue.hpp" />
     <ClInclude Include="..\resource_manager.hpp" />
     <ClInclude Include="..\scene.hpp" />
+    <ClInclude Include="..\scheduler.hpp" />
     <ClInclude Include="..\stb\stb_image.h" />
     <ClInclude Include="..\sync\base.h" />
     <ClInclude Include="..\sync\data.h" />

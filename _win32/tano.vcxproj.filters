@@ -196,6 +196,18 @@
     <ClCompile Include="..\dyn_particles.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\scheduler.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\free_list.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\circular_buffer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\arena_allocator.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -400,6 +412,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\dyn_particles.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\scheduler.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\free_list.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\circular_buffer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\arena_allocator.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
