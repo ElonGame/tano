@@ -218,10 +218,10 @@ bool App::Run()
 #if WITH_IMGUI
     ImGui::Render();
 #endif
-    GRAPHICS.Present();
-
     double frameTime = stopWatch.Stop();
     avgFrameTime.AddSample((float)frameTime);
+
+    GRAPHICS.Present();
   }
 
   return true;
@@ -319,7 +319,7 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           break;
 
         case 'V':
-          GRAPHICS.SetVSync(!GRAPHICS.VSync());
+          GRAPHICS.SetVSync(!GRAPHICS.GetVSync());
           return 0;
 
         case 'M': {

@@ -99,7 +99,7 @@ namespace tano
     GraphicsContext *GetGraphicsContext();
     PostProcess* GetPostProcess();
 
-    bool VSync() const { return _vsync; }
+    bool GetVSync() const { return _vsync; }
     void SetVSync(bool value) { _vsync = value; }
 
     void GetRenderTargetTextureDesc(ObjectHandle handle, D3D11_TEXTURE2D_DESC* desc);

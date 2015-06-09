@@ -162,11 +162,11 @@ struct PS_INPUT_WIRE
     uint Case : TEXCOORD3;
 };
 
+
 static float4 LightVector = float4( 0, 0, 1, 0);
 static float4 FillColor = float4(0.1, 0.2, 0.4, 1);
 static float4 WireColor = float4(1, 1, 1, 1);
-//static float LineWidth = 1.5;
-static float LineWidth = 2.5;
+static float LineWidth = 1.5;
 
 uint infoA[]     = { 0, 0, 0, 0, 1, 1, 2 };
 uint infoB[]     = { 1, 1, 2, 0, 2, 1, 2 };
@@ -296,7 +296,7 @@ void GsSolidWire( triangle GS_INPUT input[3],
         output.EdgeA.xy = points[ infoA[output.Case] ];
         output.EdgeB.xy = points[ infoB[output.Case] ];
 
-    output.EdgeA.zw = normalize( output.EdgeA.xy - points[ infoAd[output.Case] ] ); 
+        output.EdgeA.zw = normalize( output.EdgeA.xy - points[ infoAd[output.Case] ] ); 
         output.EdgeB.zw = normalize( output.EdgeB.xy - points[ infoBd[output.Case] ] );
     
     // Generate vertices
@@ -358,7 +358,7 @@ float4 PsSolidWire( PS_INPUT_WIRE input) : SV_Target
     float dist = evalMinDistanceToEdges(input);
 
     // Cull fragments too far from the edge.
-    if (dist > 0.5*LineWidth+1) discard;
+//    if (dist > 0.5*LineWidth+1) discard;
 
     // Map the computed distance to the [0,2] range on the border of the line.
     dist = clamp((dist - (0.5*LineWidth - 1)), 0, 2);
@@ -369,8 +369,8 @@ float4 PsSolidWire( PS_INPUT_WIRE input) : SV_Target
 
     // Standard wire color
     float4 color = WireColor;
-//    return float4(lerp(WireColor, input.Col, alpha).xyz, 1);
-    color.a *= alpha;
+    return float4(lerp(input.Col, WireColor, alpha).xyz, 0.9);
+    //color.a *= alpha;
     return color;
 }
 

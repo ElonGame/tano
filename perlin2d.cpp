@@ -19,7 +19,7 @@ void Perlin2D::Init()
 }
 
 //------------------------------------------------------------------------------
-inline float Perlin2D::Interp(float t)
+inline float Perlin2D::Interp(float t) const
 {
   float t2 = t * t;
   float t3 = t2 * t;
@@ -27,7 +27,7 @@ inline float Perlin2D::Interp(float t)
 }
 
 //------------------------------------------------------------------------------
-float Perlin2D::Value(float x, float y)
+float Perlin2D::Value(float x, float y) const
 {
   //return 0;
   int x0 = (int)floorf(x);

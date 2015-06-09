@@ -1105,6 +1105,10 @@ bool Graphics::LoadShadersFromFile(
     ObjectHandle vsHandle = ReserveObjectHandle(vsId, ObjectHandle::kVertexShader);
     *vs = vsHandle;
 
+    vector<D3D11_INPUT_ELEMENT_DESC> localElementDesc;
+    if (elements)
+      localElementDesc = *elements;
+
     res = RESOURCE_MANAGER.AddFileWatch((filenameBase + vsSuffix).c_str(), nullptr, true, [=](const string& filename, void* token)
     {
       vector<char> buf;
@@ -1117,7 +1121,7 @@ bool Graphics::LoadShadersFromFile(
         _vertexShaders.Update(vsHandle, vs);
         if (inputLayout)
         {
-          *inputLayout = GRAPHICS.CreateInputLayout(*elements, buf);
+          *inputLayout = GRAPHICS.CreateInputLayout(localElementDesc, buf);
           if (!inputLayout->IsValid())
             return false;
         }

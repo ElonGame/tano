@@ -7,9 +7,9 @@ namespace tano
   struct Perlin2D
   {
     void Init();
-    float Value(float x, float y);
+    float Value(float x, float y) const;
 
-    float Interp(float t);
+    float Interp(float t) const;
 
     static const int SIZE = 256;
 
