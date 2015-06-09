@@ -7,7 +7,6 @@
 #include "../animation_helpers.hpp"
 #include "../camera.hpp"
 #include "../dyn_particles.hpp"
-#include "../perlin2d.hpp"
 
 namespace tano
 {
@@ -18,10 +17,8 @@ namespace tano
 
   struct BehaviorLandscapeFollow : public ParticleKinematics
   {
-    BehaviorLandscapeFollow(float maxForce, float maxSpeed, const Perlin2D& perlin) 
-      : ParticleKinematics(maxForce, maxSpeed), _perlin(perlin) {}
+    BehaviorLandscapeFollow(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
     void Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state);
-    const Perlin2D& _perlin;
   };
 
   struct LandscapeOverlay
@@ -84,15 +81,15 @@ namespace tano
       float data[DATA_SIZE];
     };
 
-    static void FillChunk(Chunk* chunk, float x, float z, const Perlin2D& perlin);
+    //static void FillChunk(Chunk* chunk, float x, float z);
+    static void FillChunk(const scheduler::TaskData& data);
 
     struct ChunkKernelData
     {
       Chunk* chunk;
-      const Perlin2D& perlin;
       float x, z;
     };
-    static void ChunkKernel(const scheduler::TaskData& data);
+    //static void ChunkKernel(const scheduler::TaskData& data);
 
     struct ChunkCache
     {
@@ -168,7 +165,5 @@ namespace tano
     int _followFlock = 0;
 
     vector<LandscapeOverlay> _overlays;
-
-    Perlin2D _perlin;
   };
 }

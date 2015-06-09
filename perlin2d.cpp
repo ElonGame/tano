@@ -3,23 +3,13 @@
 using namespace tano;
 using namespace bristol;
 
-//------------------------------------------------------------------------------
-void Perlin2D::Init()
-{
-  // create random gradients
-  for (int i = 0; i < SIZE; ++i)
-    gradients[i] = Normalize(V2(randf(-1.f, 1.f), randf(-1.f, 1.f)));
+static const int GRID_SIZE = 256;
 
-  // create permutation table
-  for (int i = 0; i < SIZE; ++i)
-    permutation[i] = i;
-
-  for (int i = 0; i < SIZE - 1; ++i)
-    swap(permutation[i], permutation[randf(i + 1, SIZE - 1)]);
-}
+static V2 gradients[GRID_SIZE];
+static int permutation[GRID_SIZE];
 
 //------------------------------------------------------------------------------
-inline float Perlin2D::Interp(float t) const
+static inline float Interp(float t)
 {
   float t2 = t * t;
   float t3 = t2 * t;
@@ -27,7 +17,23 @@ inline float Perlin2D::Interp(float t) const
 }
 
 //------------------------------------------------------------------------------
-float Perlin2D::Value(float x, float y) const
+void Perlin2D::Init()
+{
+  // create random gradients
+  for (int i = 0; i < GRID_SIZE; ++i)
+    gradients[i] = Normalize(V2(randf(-1.f, 1.f), randf(-1.f, 1.f)));
+
+  // create permutation table
+  for (int i = 0; i < GRID_SIZE; ++i)
+    permutation[i] = i;
+
+  for (int i = 0; i < GRID_SIZE - 1; ++i)
+    swap(permutation[i], permutation[randf(i + 1, GRID_SIZE - 1)]);
+}
+
+
+//------------------------------------------------------------------------------
+float Perlin2D::Value(float x, float y)
 {
   //return 0;
   int x0 = (int)floorf(x);

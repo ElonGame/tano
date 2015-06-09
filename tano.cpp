@@ -2,12 +2,14 @@
 #include "resource_manager.hpp"
 #include "demo_engine.hpp"
 #include "graphics.hpp"
+#include "graphics_extra.hpp"
 #include "graphics_context.hpp"
 #include "init_sequence.hpp"
 #include "debug_api.hpp"
 #include "scheduler.hpp"
 #include "arena_allocator.hpp"
 #include "stop_watch.hpp"
+#include "perlin2d.hpp"
 #include "generated/app.parse.hpp"
 #include "generated/input_buffer.hpp"
 #include "effects/particle_tunnel.hpp"
@@ -132,9 +134,11 @@ bool App::Init(HINSTANCE hinstance)
   INIT_FATAL(Scheduler::Create());
 
   INIT_FATAL(Graphics::Create(_hinstance));
+  InitDefaultDescs();
   INIT_FATAL(DebugApi::Create(GRAPHICS.GetGraphicsContext()));
 
   INIT_FATAL(ArenaAllocator::Create(arenaMemory, arenaMemory + ARENA_MEMORY_SIZE));
+  Perlin2D::Init();
 
   int width = GetSystemMetrics(SM_CXFULLSCREEN);
   int height = GetSystemMetrics(SM_CYFULLSCREEN);

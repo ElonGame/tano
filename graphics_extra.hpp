@@ -158,4 +158,9 @@ namespace tano
     GraphicsContext* _ctx = nullptr;
   };
 
+  //------------------------------------------------------------------------------
+  void InitDefaultDescs();
+  extern CD3D11_BLEND_DESC blendDescBlendSrcAlpha;
+  extern CD3D11_RASTERIZER_DESC rasterizeDescCullNone;
+
 }

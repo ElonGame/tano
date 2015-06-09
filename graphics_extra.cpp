@@ -8,6 +8,21 @@ using namespace bristol;
 
 namespace tano
 {
+  CD3D11_BLEND_DESC blendDescBlendSrcAlpha;
+  CD3D11_RASTERIZER_DESC rasterizeDescCullNone;
+
+  //------------------------------------------------------------------------------
+  void InitDefaultDescs()
+  {
+    blendDescBlendSrcAlpha = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+    blendDescBlendSrcAlpha.RenderTarget[0].BlendEnable = TRUE;
+    blendDescBlendSrcAlpha.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+    blendDescBlendSrcAlpha.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+
+    rasterizeDescCullNone = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
+    rasterizeDescCullNone.CullMode = D3D11_CULL_NONE;
+  }
+
   //------------------------------------------------------------------------------
   bool InitConfigDialog(HINSTANCE hInstance)
   {

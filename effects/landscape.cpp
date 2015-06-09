@@ -14,6 +14,7 @@
 #include "../tano_math.hpp"
 #include "../scheduler.hpp"
 #include "../arena_allocator.hpp"
+#include "../perlin2d.hpp"
 
 using namespace tano;
 using namespace tano::scheduler;
@@ -23,11 +24,11 @@ static const Vector3 ZERO3(0,0,0);
 static const float GRID_SIZE = 10;
 
 //------------------------------------------------------------------------------
-float NoiseAtPoint(const Perlin2D& perlin, const Vector3& v)
+float NoiseAtPoint(const Vector3& v)
 {
   static const Vector3 NOISE_SCALE(10.f, 30.f, 10.f);
   static const Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
-  return NOISE_SCALE.y * perlin.Value(256 * v.x / size.x, 256 * v.z / size.z);
+  return NOISE_SCALE.y * Perlin2D::Value(256 * v.x / size.x, 256 * v.z / size.z);
 }
 
 //------------------------------------------------------------------------------
@@ -128,7 +129,6 @@ Landscape::Landscape(const string &name, u32 id)
   PROPERTIES.SetActive(Name());
 #endif
 
-  _perlin.Init();
   LandscapeOverlay overlay;
   overlay.Create(25, 25, 100, 10);
   _overlays.push_back(overlay);
@@ -163,15 +163,7 @@ bool Landscape::Init(const char* configFile)
   INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape", 
     "VsLandscape2", "GsSolidWire", "PsSolidWire", vertexFlags));
 
-  {
-    CD3D11_RASTERIZER_DESC rasterizeDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
-    rasterizeDesc.CullMode = D3D11_CULL_NONE;
-    CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
-    blendDesc.RenderTarget[0].BlendEnable = TRUE;
-    blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-    blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    INIT(_landscapeState.Create(nullptr, &blendDesc, &rasterizeDesc));
-  }
+  INIT(_landscapeState.Create(nullptr, &blendDescBlendSrcAlpha, &rasterizeDescCullNone));
 
   INIT(_edgeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsEdgeDetect"));
   INIT(_skyGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsSky"));
@@ -212,7 +204,7 @@ void Landscape::InitBoids()
   _behaviorSeparataion = new BehaviorSeparataion(b.max_force, b.max_speed, b.separation_distance);
   _behaviorCohesion = new BehaviorCohesion(b.max_force, b.max_speed, b.cohesion_distance);
   _behaviorAlignment = new BehaviorAlignment(b.max_force, b.max_speed, b.cohesion_distance);
-  _landscapeFollow = new BehaviorLandscapeFollow(b.max_force, b.max_speed, _perlin);
+  _landscapeFollow = new BehaviorLandscapeFollow(b.max_force, b.max_speed);
 
   for (int i = 0; i < _settings.boids.num_flocks; ++i)
   {
@@ -233,7 +225,7 @@ void Landscape::InitBoids()
     float angle = randf(-XM_PI, XM_PI);
     float dist = randf(100.f, 200.f);
     flock->nextWaypoint = center + Vector3(dist * cos(angle), 0, dist * sin(angle));
-    flock->nextWaypoint.y = 20 + NoiseAtPoint(_perlin, flock->nextWaypoint);
+    flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
     flock->wanderAngle = angle;
 
     _behaviorSeek->target = flock->nextWaypoint;
@@ -242,7 +234,7 @@ void Landscape::InitBoids()
     for (DynParticles::Body& b : flock->boids)
     {
       b.pos = center + Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-      b.pos.y = 20 + NoiseAtPoint(_perlin, b.pos);
+      b.pos.y = 20 + NoiseAtPoint(b.pos);
       b.force = 10 * Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
     }
     _flocks.push_back(flock);
@@ -258,7 +250,7 @@ void BehaviorLandscapeFollow::Update(DynParticles::Body* bodies, int numBodies, 
 
     Vector3 probe = b->pos + Normalize(b->vel) * maxSpeed;
     Vector3 d = probe;
-    d.y = 20 + NoiseAtPoint(_perlin, probe);
+    d.y = 20 + NoiseAtPoint(probe);
 
     // if the probe is above the terrain height, move towards the average
     if (probe.y > d.y)
@@ -288,7 +280,7 @@ void Landscape::UpdateBoids(const UpdateState& state)
         float angle = flock->wanderAngle + randf(-XM_PI / 2, XM_PI / 2);
         float dist = randf(300.f, 400.f);
         flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
-        flock->nextWaypoint.y = 20 + NoiseAtPoint(_perlin, flock->nextWaypoint);
+        flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
         flock->wanderAngle = angle;
         break;
       }
@@ -447,8 +439,13 @@ Landscape::Chunk* Landscape::ChunkCache::GetFreeChunk(float x, float y, int time
   return chunk;
 }
 //------------------------------------------------------------------------------
-void Landscape::FillChunk(Chunk* chunk, float x, float z, const Perlin2D& perlin)
+void Landscape::FillChunk(const TaskData& data)
 {
+  ChunkKernelData* chunkData = (ChunkKernelData*)data.kernelData.data;
+  Chunk* chunk = chunkData->chunk;
+  float x = chunkData->x;
+  float z = chunkData->z;
+
   V3 v0, v1, v2, v3;
   V3 n0, n1;
   float scaleX = 256.f / (10 * 1024);
@@ -463,7 +460,7 @@ void Landscape::FillChunk(Chunk* chunk, float x, float z, const Perlin2D& perlin
     {
       float xx0 = x + (j + 0) * GRID_SIZE;
       float zz0 = z + (i - 1) * GRID_SIZE;
-      *noise++ = scaleY * perlin.Value(scaleX * xx0, scaleZ * zz0);
+      *noise++ = scaleY * Perlin2D::Value(scaleX * xx0, scaleZ * zz0);
     }
   }
 
@@ -516,12 +513,12 @@ void Landscape::FillChunk(Chunk* chunk, float x, float z, const Perlin2D& perlin
   }
 }
 
-//------------------------------------------------------------------------------
-void Landscape::ChunkKernel(const TaskData& data)
-{
-  ChunkKernelData* chunkData = (ChunkKernelData*)data.kernelData.data;
-  FillChunk(chunkData->chunk, chunkData->x, chunkData->z, chunkData->perlin);
-}
+////------------------------------------------------------------------------------
+//void Landscape::ChunkKernel(const TaskData& data)
+//{
+//  ChunkKernelData* chunkData = (ChunkKernelData*)data.kernelData.data;
+//  FillChunk(chunkData->chunk, chunkData->x, chunkData->z);
+//}
 
 //------------------------------------------------------------------------------
 void Landscape::RasterizeLandscape(float* buf)
@@ -598,11 +595,11 @@ void Landscape::RasterizeLandscape(float* buf)
         ++chunkMisses;
         chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
         ChunkKernelData* data = (ChunkKernelData*)ARENA.Alloc(sizeof(ChunkKernelData));
-        *data = ChunkKernelData{ chunk, _perlin, x, z };
+        *data = ChunkKernelData{ chunk, x, z };
         KernelData kd;
         kd.data = data;
         kd.size = sizeof(ChunkKernelData);
-        chunkTasks.push_back(SCHEDULER.AddTask(kd, ChunkKernel));
+        chunkTasks.push_back(SCHEDULER.AddTask(kd, FillChunk));
       }
 
       chunks.push_back(chunk);
