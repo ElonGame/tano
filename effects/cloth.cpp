@@ -10,6 +10,7 @@
 #include "../generated/output_buffer.hpp"
 #include "../mesh_utils.hpp"
 #include "../post_process.hpp"
+#include "../stop_watch.hpp"
 
 /*
   update timing:
@@ -32,30 +33,6 @@ namespace
   int GRID_SIZE = 20;
   float CLOTH_SIZE = 10;
 }
-
-struct StopWatch
-{
-  StopWatch()
-  {
-    QueryPerformanceFrequency(&_frequency);
-  }
-
-  void Start()
-  {
-    QueryPerformanceCounter(&_start);
-  }
-
-  double Stop()
-  {
-    LARGE_INTEGER tmp;
-    QueryPerformanceCounter(&tmp);
-
-    return (double)(tmp.QuadPart - _start.QuadPart) / _frequency.QuadPart;
-  }
-
-  LARGE_INTEGER _frequency;
-  LARGE_INTEGER _start;
-};
 
 StopWatch g_stopWatch;
 

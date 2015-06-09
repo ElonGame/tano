@@ -39,7 +39,7 @@ namespace tano
   {
   public:
 
-    enum { CHUNK_SIZE = 16 };
+    enum { CHUNK_SIZE = 32 };
 
     Landscape(const string &name, u32 id);
     ~Landscape();

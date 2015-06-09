@@ -286,6 +286,7 @@
     </ClCompile>
     <ClCompile Include="..\scene.cpp" />
     <ClCompile Include="..\scheduler.cpp" />
+    <ClCompile Include="..\stop_watch.cpp" />
     <ClCompile Include="..\sync\data.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -399,6 +400,7 @@
     <ClInclude Include="..\scene.hpp" />
     <ClInclude Include="..\scheduler.hpp" />
     <ClInclude Include="..\stb\stb_image.h" />
+    <ClInclude Include="..\stop_watch.hpp" />
     <ClInclude Include="..\sync\base.h" />
     <ClInclude Include="..\sync\data.h" />
     <ClInclude Include="..\sync\device.h" />

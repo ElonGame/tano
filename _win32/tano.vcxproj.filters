@@ -208,6 +208,9 @@
     <ClCompile Include="..\arena_allocator.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\stop_watch.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -424,6 +427,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\arena_allocator.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\stop_watch.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

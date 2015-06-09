@@ -7,6 +7,7 @@
 #include "debug_api.hpp"
 #include "scheduler.hpp"
 #include "arena_allocator.hpp"
+#include "stop_watch.hpp"
 #include "generated/app.parse.hpp"
 #include "generated/input_buffer.hpp"
 #include "effects/particle_tunnel.hpp"
@@ -174,6 +175,8 @@ bool App::Run()
 
   DEMO_ENGINE.Start();
 
+  RollingAverage<float> avgFrameTime(200);
+  StopWatch stopWatch;
   while (WM_QUIT != msg.message)
   {
     ARENA.NewFrame();
@@ -184,6 +187,7 @@ bool App::Run()
       continue;
     }
     rmt_ScopedCPUSample(App_Run);
+    stopWatch.Start();
 
     UpdateIoState();
 
@@ -205,10 +209,19 @@ bool App::Run()
     DEBUG_API.EndFrame();
 #endif
 
+    float times[200];
+    size_t numSamples;
+    avgFrameTime.CopySamples(times, &numSamples);
+    if (numSamples > 0)
+      ImGui::PlotLines("Frame time", times, (int)numSamples, 0, 0, FLT_MAX, FLT_MAX, ImVec2(200, 50));
+
 #if WITH_IMGUI
     ImGui::Render();
 #endif
     GRAPHICS.Present();
+
+    double frameTime = stopWatch.Stop();
+    avgFrameTime.AddSample((float)frameTime);
   }
 
   return true;

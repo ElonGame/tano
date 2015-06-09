@@ -156,7 +156,9 @@ bool Landscape::Init(const char* configFile)
   u32 vertexSize = sizeof(PosNormal);
   INIT(_landscapeGpuObjects.CreateDynamicVb(1024*1024*6*vertexSize, vertexSize));
 
-  INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsLandscape", nullptr, "PsLandscape", vertexFlags));
+//    INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsLandscape", nullptr, "PsLandscape", vertexFlags));
+  INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape", 
+    "VsLandscape2", "GsSolidWire", "PsSolidWire", vertexFlags));
   INIT(_landscapeState.Create());
 
   INIT(_edgeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsEdgeDetect"));
@@ -635,7 +637,10 @@ bool Landscape::Render()
   GRAPHICS.GetTextureSize(rt._handle, &dimX, &dimY);
   _cbPerFrame.dim.x = (float)dimX;
   _cbPerFrame.dim.y = (float)dimY;
+  _cbPerFrame.dim.z = 0;
+  _cbPerFrame.dim.w = 0;
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
   // Render the sky
