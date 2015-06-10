@@ -19,8 +19,16 @@ namespace tano
     blendDescBlendSrcAlpha.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
     blendDescBlendSrcAlpha.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
 
+    blendDescPreMultipliedAlpha = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+    blendDescPreMultipliedAlpha.RenderTarget[0].BlendEnable = TRUE;
+    blendDescPreMultipliedAlpha.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDescPreMultipliedAlpha.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+
     rasterizeDescCullNone = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
     rasterizeDescCullNone.CullMode = D3D11_CULL_NONE;
+
+    depthDescDepthDisabled = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
+    depthDescDepthDisabled.DepthEnable = FALSE;
   }
 
   //------------------------------------------------------------------------------

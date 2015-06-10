@@ -181,6 +181,7 @@ bool App::Run()
 
   RollingAverage<float> avgFrameTime(200);
   StopWatch stopWatch;
+  u64 numFrames = 0;
   while (WM_QUIT != msg.message)
   {
     ARENA.NewFrame();
@@ -228,7 +229,8 @@ bool App::Run()
     ImGui::Render();
 #endif
     double frameTime = stopWatch.Stop();
-    avgFrameTime.AddSample((float)frameTime);
+    if (++numFrames > 10)
+      avgFrameTime.AddSample((float)frameTime);
 
     GRAPHICS.Present();
   }

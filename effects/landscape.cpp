@@ -128,10 +128,6 @@ Landscape::Landscape(const string &name, u32 id)
 
   PROPERTIES.SetActive(Name());
 #endif
-
-  LandscapeOverlay overlay;
-  overlay.Create(25, 25, 100, 10);
-  _overlays.push_back(overlay);
 }
 
 //------------------------------------------------------------------------------
@@ -317,8 +313,6 @@ bool Landscape::Update(const UpdateState& state)
   _cbPerFrame.time.y = _flocks[0]->boids._center.x;
   _cbPerFrame.time.z = _flocks[0]->boids._center.y;
   _cbPerFrame.time.w = _flocks[0]->boids._center.z;
-  for (LandscapeOverlay& overlay : _overlays)
-    overlay.Update();
   UpdateBoids(state);
   UpdateCameraMatrix(state);
   return true;
@@ -328,8 +322,6 @@ bool Landscape::Update(const UpdateState& state)
 void Landscape::UpdateCameraMatrix(const UpdateState& state)
 {
   const IoState& ioState = TANO.GetIoState();
-  if (ioState.keysPressed['3'])
-    _overlays[0].Create(LandscapeOverlay::SIZE/2, LandscapeOverlay::SIZE/2, 30, 20);
 
   if (!_flocks.empty())
   {

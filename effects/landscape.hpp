@@ -178,7 +178,5 @@ namespace tano
     FollowCam _followCamera;
     Camera* _curCamera = &_followCamera;
     int _followFlock = 0;
-
-    vector<LandscapeOverlay> _overlays;
   };
 }

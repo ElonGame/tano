@@ -1,6 +1,7 @@
 #include "particle_tunnel.hpp"
 #include "../tano.hpp"
 #include "../graphics.hpp"
+#include "../graphics_extra.hpp"
 #include "../graphics_context.hpp"
 #include "../demo_engine.hpp"
 #include "../resource_manager.hpp"
@@ -254,22 +255,7 @@ bool ParticleTunnel::Init(const char* configFile)
     "shaders/out/particle_tunnel", "VsParticle", nullptr, "PsParticle", VertexFlags::VF_POS | VertexFlags::VF_TEX3_0));
   INIT(_particleGpuObjects.CreateDynamicVb(sizeof(PosTex3) * 6 * _settings.num_particles, sizeof(PosTex3)));
 
-  {
-    CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
-    rssDesc.CullMode = D3D11_CULL_NONE;
-
-    CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
-    dsDesc.DepthEnable = FALSE;
-
-    CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
-
-    // pre-multiplied alpha
-    D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
-    b.BlendEnable = TRUE;
-    b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    b.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
-    INIT(_particleState.Create(&dsDesc, &blendDesc, &rssDesc));
-  }
+  INIT(_particleState.Create(&depthDescDepthDisabled, &blendDescPreMultipliedAlpha, &rasterizeDescCullNone));
 
   _particles.Create(_settings.num_particles);
 
