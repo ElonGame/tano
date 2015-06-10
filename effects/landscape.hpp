@@ -81,8 +81,13 @@ namespace tano
       Vector3 center;
       int lastAccessed = 0;
       enum {
-        UPPER_DATA_SIZE = HALF_CHUNK_SIZE * HALF_CHUNK_SIZE * 2 * 12,
-        LOWER_DATA_SIZE = CHUNK_SIZE * CHUNK_SIZE * 2 * 12,
+        UPPER_INDICES = HALF_CHUNK_SIZE * HALF_CHUNK_SIZE * 2 * 3,
+        LOWER_INDICES = CHUNK_SIZE * CHUNK_SIZE * 2 * 3, 
+        UPPER_VERTS = HALF_CHUNK_SIZE * HALF_CHUNK_SIZE * 4,
+        LOWER_VERTS = CHUNK_SIZE * CHUNK_SIZE * 4,
+        // pos/normal, 3 components
+        UPPER_DATA_SIZE = UPPER_VERTS * 2 * 3,
+        LOWER_DATA_SIZE = LOWER_VERTS * 2 * 3,
       };
       float noiseValues[(CHUNK_SIZE+1)*(CHUNK_SIZE+1)];
       float upperData[UPPER_DATA_SIZE];
@@ -155,7 +160,7 @@ namespace tano
 
     AnimatedInt _blinkFace;
 
-    u32 _numUpperVerts = 0;
+    u32 _numUpperIndices = 0;
     u32 _numLowerVerts = 0;
 
     GpuObjects _boidsMesh;

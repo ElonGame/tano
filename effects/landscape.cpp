@@ -647,18 +647,17 @@ void Landscape::RasterizeLandscape()
   int triIdx = 0;
   for (const Chunk* chunk : chunks)
   {
-    memcpy(&buf[triIdx * 12], chunk->upperData, Chunk::UPPER_DATA_SIZE * sizeof(float));
-    triIdx += 2 * HALF_CHUNK_SIZE * HALF_CHUNK_SIZE;
+    memcpy(&buf[triIdx], chunk->upperData, Chunk::UPPER_DATA_SIZE * sizeof(float));
+    triIdx += Chunk::UPPER_DATA_SIZE;
   }
-  _numUpperVerts = triIdx * 3;
+  _numUpperIndices = (u32)chunks.size() * Chunk::UPPER_INDICES;
 
   for (const Chunk* chunk : chunks)
   {
-    memcpy(&buf[triIdx * 12], chunk->lowerData, Chunk::LOWER_DATA_SIZE * sizeof(float));
-    triIdx += 2 * CHUNK_SIZE * CHUNK_SIZE;
+    memcpy(&buf[triIdx], chunk->lowerData, Chunk::LOWER_DATA_SIZE * sizeof(float));
+    triIdx += Chunk::LOWER_DATA_SIZE;
   }
-
-  _numLowerVerts = triIdx * 3 - _numUpperVerts;
+  _numLowerVerts = (u32)chunks.size() * Chunk::LOWER_INDICES;
 
   _ctx->Unmap(_landscapeGpuObjects._vb);
 
@@ -704,12 +703,10 @@ bool Landscape::Render()
     _ctx->SetGpuObjects(_landscapeGpuObjects);
 
     _ctx->SetGpuState(_landscapeLowerState);
-    //_ctx->Draw(_numLowerVerts, _numUpperVerts);
-    _ctx->DrawIndexed(_numLowerVerts/3, _numLowerVerts/3, 0);
+    _ctx->DrawIndexed(_numLowerVerts, _numUpperIndices, 0);
 
     _ctx->SetGpuState(_landscapeState);
-    //_ctx->Draw(_numUpperVerts, 0);
-    _ctx->DrawIndexed(_numUpperVerts / 3, 0, 0);
+    _ctx->DrawIndexed(_numUpperIndices, 0, 0);
 
   }
   else
@@ -784,7 +781,7 @@ void Landscape::RenderParameterSet()
 
   ImGui::Checkbox("Render landscape", &_renderLandscape);
   ImGui::Checkbox("Render boids", &_renderBoids);
-  ImGui::InputInt("NumVerts", (int*)&_numUpperVerts);
+  ImGui::InputInt("NumVerts", (int*)&_numUpperIndices);
   ImGui::InputInt("NumFlocks", &_settings.boids.num_flocks);
   ImGui::InputInt("BoidsPerFlock", &_settings.boids.boids_per_flock);
   bool newWeights = false;
