@@ -531,17 +531,17 @@ void Landscape::FillChunk(const TaskData& data)
         n1 = Cross(e1, e2);
         n1 = Normalize(n1);
 
-        // 0, 1, 3
         CopyPosNormal(dest + 0, v0, n0);
         CopyPosNormal(dest + 6, v1, n0);
-        CopyPosNormal(dest + 12, v3, n0);
-        dest += 18;
+        CopyPosNormal(dest + 12, v2, n0);
+        CopyPosNormal(dest + 18, v3, n1);
+        dest += 24;
 
-        // 3, 1, 2
-        CopyPosNormal(dest + 0, v3, n1);
-        CopyPosNormal(dest + 6, v1, n1);
-        CopyPosNormal(dest + 12, v2, n1);
-        dest += 18;
+        //// 3, 1, 2
+        //CopyPosNormal(dest + 0, v3, n1);
+        //CopyPosNormal(dest + 6, v1, n1);
+        //CopyPosNormal(dest + 12, v2, n1);
+        //dest += 18;
       }
     }
   }
@@ -647,14 +647,14 @@ void Landscape::RasterizeLandscape()
   int triIdx = 0;
   for (const Chunk* chunk : chunks)
   {
-    memcpy(&buf[triIdx * 18], chunk->upperData, Chunk::UPPER_DATA_SIZE * sizeof(float));
+    memcpy(&buf[triIdx * 12], chunk->upperData, Chunk::UPPER_DATA_SIZE * sizeof(float));
     triIdx += 2 * HALF_CHUNK_SIZE * HALF_CHUNK_SIZE;
   }
   _numUpperVerts = triIdx * 3;
 
   for (const Chunk* chunk : chunks)
   {
-    memcpy(&buf[triIdx * 18], chunk->lowerData, Chunk::LOWER_DATA_SIZE * sizeof(float));
+    memcpy(&buf[triIdx * 12], chunk->lowerData, Chunk::LOWER_DATA_SIZE * sizeof(float));
     triIdx += 2 * CHUNK_SIZE * CHUNK_SIZE;
   }
 
@@ -704,10 +704,12 @@ bool Landscape::Render()
     _ctx->SetGpuObjects(_landscapeGpuObjects);
 
     _ctx->SetGpuState(_landscapeLowerState);
-    _ctx->Draw(_numLowerVerts, _numUpperVerts);
+    //_ctx->Draw(_numLowerVerts, _numUpperVerts);
+    _ctx->DrawIndexed(_numLowerVerts/3, _numLowerVerts/3, 0);
 
     _ctx->SetGpuState(_landscapeState);
-    _ctx->Draw(_numUpperVerts, 0);
+    //_ctx->Draw(_numUpperVerts, 0);
+    _ctx->DrawIndexed(_numUpperVerts / 3, 0, 0);
 
   }
   else

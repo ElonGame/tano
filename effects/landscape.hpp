@@ -81,8 +81,8 @@ namespace tano
       Vector3 center;
       int lastAccessed = 0;
       enum {
-        UPPER_DATA_SIZE = HALF_CHUNK_SIZE * HALF_CHUNK_SIZE * 2 * 18,
-        LOWER_DATA_SIZE = CHUNK_SIZE * CHUNK_SIZE * 2 * 18,
+        UPPER_DATA_SIZE = HALF_CHUNK_SIZE * HALF_CHUNK_SIZE * 2 * 12,
+        LOWER_DATA_SIZE = CHUNK_SIZE * CHUNK_SIZE * 2 * 12,
       };
       float noiseValues[(CHUNK_SIZE+1)*(CHUNK_SIZE+1)];
       float upperData[UPPER_DATA_SIZE];
