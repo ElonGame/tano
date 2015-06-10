@@ -154,16 +154,35 @@ bool Landscape::Init(const char* configFile)
   _freeflyCamera._roll = _settings.camera.roll;
   _freeflyCamera._pos = _settings.camera.pos;
 
-  // create mesh from landscape
   u32 vertexFlags = VF_POS | VF_NORMAL;
   u32 vertexSize = sizeof(PosNormal);
   INIT(_landscapeGpuObjects.CreateDynamicVb(1024*1024*6*vertexSize, vertexSize));
+
+  // Create index buffer for the max # triangles
+  u32 maxTris = 1024 * 1024;
+  u32 ibSize = maxTris * 6 * sizeof(u32);
+  u32* triangleIndices = (u32*)ARENA.Alloc(ibSize);
+  for (u32 i = 0; i < maxTris; ++i)
+  {
+    // 0, 1, 3
+    triangleIndices[i * 6 + 0] = i * 4 + 0;
+    triangleIndices[i * 6 + 1] = i * 4 + 1;
+    triangleIndices[i * 6 + 2] = i * 4 + 3;
+
+    // 3, 1, 2
+    triangleIndices[i * 6 + 3] = i * 4 + 3;
+    triangleIndices[i * 6 + 4] = i * 4 + 1;
+    triangleIndices[i * 6 + 5] = i * 4 + 2;
+  }
+  
+  INIT(_landscapeGpuObjects.CreateIndexBuffer(ibSize, DXGI_FORMAT_R32_UINT, triangleIndices));
 
 //    INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsLandscape", nullptr, "PsLandscape", vertexFlags));
   INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape", 
     "VsLandscape2", "GsSolidWire", "PsSolidWire", vertexFlags));
 
   INIT(_landscapeState.Create(nullptr, &blendDescBlendSrcAlpha, &rasterizeDescCullNone));
+  INIT(_landscapeLowerState.Create());
 
   INIT(_edgeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsEdgeDetect"));
   INIT(_skyGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsSky"));
@@ -415,25 +434,30 @@ Landscape::Chunk* Landscape::ChunkCache::FindChunk(float x, float y, int timesta
 //------------------------------------------------------------------------------
 Landscape::Chunk* Landscape::ChunkCache::GetFreeChunk(float x, float y, int timestamp)
 {
+  Chunk* chunk;
   if (_used < CACHE_SIZE)
   {
-    return &_cache[_used++];
+    chunk = &_cache[_used++];
   }
-
-  // cache is full, so replace the oldest element
-  int oldestValue = _cache[0].lastAccessed;
-  Chunk* chunk = &_cache[0];
-  for (int i = 1; i < CACHE_SIZE; ++i)
+  else
   {
-    if (_cache[i].lastAccessed < oldestValue)
+    // cache is full, so replace the oldest element
+    int oldestValue = _cache[0].lastAccessed;
+    chunk = &_cache[0];
+    for (int i = 1; i < CACHE_SIZE; ++i)
     {
-      oldestValue = _cache[i].lastAccessed;
-      chunk = &_cache[i];
+      if (_cache[i].lastAccessed < oldestValue)
+      {
+        oldestValue = _cache[i].lastAccessed;
+        chunk = &_cache[i];
+      }
     }
   }
 
   chunk->x = x;
   chunk->y = y;
+  float ofs = HALF_CHUNK_SIZE * GRID_SIZE;
+  chunk->center = Vector3(x + ofs, 0, y - ofs);
   chunk->lastAccessed = timestamp;
   _chunkLookup[make_pair(x, y)] = chunk;
   return chunk;
@@ -464,64 +488,67 @@ void Landscape::FillChunk(const TaskData& data)
     }
   }
 
-  int chunkIdx = 0;
-  for (int i = 0; i < CHUNK_SIZE; ++i)
+  int layerIncr[] = { 1, 2 };
+  float* layerDest[] = { chunk->lowerData, chunk->upperData };
+  float layerScale[] = { 0.5f, 1.0f };
+  for (int layer = 0; layer < 2; ++layer)
   {
-    for (int j = 0; j < CHUNK_SIZE; ++j)
+    int incr = layerIncr[layer];
+    float* dest = layerDest[layer];
+    float scale = layerScale[layer];
+
+    for (int i = 0; i < CHUNK_SIZE; i += incr)
     {
-      // 1--2
-      // |  |
-      // 0--3
+      for (int j = 0; j < CHUNK_SIZE; j += incr)
+      {
+        // 1--2
+        // |  |
+        // 0--3
 
-      float xx0 = x + (j + 0) * GRID_SIZE;
-      float xx1 = x + (j + 1) * GRID_SIZE;
-      float zz0 = z + (i - 1) * GRID_SIZE;
-      float zz1 = z + (i + 0) * GRID_SIZE;
+        float xx0 = x + (j + 0)     * GRID_SIZE;
+        float xx1 = x + (j + incr)  * GRID_SIZE;
+        float zz0 = z + (i - incr)  * GRID_SIZE;
+        float zz1 = z + (i + 0)     * GRID_SIZE;
 
-      v0.x = xx0; v0.z = zz0;
-      v1.x = xx0; v1.z = zz1;
-      v2.x = xx1; v2.z = zz1;
-      v3.x = xx1; v3.z = zz0;
+        v0.x = xx0; v0.z = zz0;
+        v1.x = xx0; v1.z = zz1;
+        v2.x = xx1; v2.z = zz1;
+        v3.x = xx1; v3.z = zz0;
 
-      v0.y = chunk->noiseValues[(i + 0)*(CHUNK_SIZE + 1) + (j + 0)];
-      v1.y = chunk->noiseValues[(i + 1)*(CHUNK_SIZE + 1) + (j + 0)];
-      v2.y = chunk->noiseValues[(i + 1)*(CHUNK_SIZE + 1) + (j + 1)];
-      v3.y = chunk->noiseValues[(i + 0)*(CHUNK_SIZE + 1) + (j + 1)];
+        v0.y = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + 0)];
+        v1.y = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + 0)];
+        v2.y = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + incr)];
+        v3.y = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + incr)];
 
-      V3 e1, e2;
-      e1 = v2 - v1;
-      e2 = v0 - v1;
-      n0 = Cross(e1, e2);
-      n0 = Normalize(n0);
+        V3 e1, e2;
+        e1 = v2 - v1;
+        e2 = v0 - v1;
+        n0 = Cross(e1, e2);
+        n0 = Normalize(n0);
 
-      e1 = v0 - v3;
-      e2 = v2 - v3;
-      n1 = Cross(e1, e2);
-      n1 = Normalize(n1);
+        e1 = v0 - v3;
+        e2 = v2 - v3;
+        n1 = Cross(e1, e2);
+        n1 = Normalize(n1);
 
-      // 0, 1, 3
-      CopyPosNormal(&chunk->data[chunkIdx * 18 + 0], v0, n0);
-      CopyPosNormal(&chunk->data[chunkIdx * 18 + 6], v1, n0);
-      CopyPosNormal(&chunk->data[chunkIdx * 18 + 12], v3, n0);
-      ++chunkIdx;
+        // 0, 1, 3
+        CopyPosNormal(dest + 0, v0, n0);
+        CopyPosNormal(dest + 6, v1, n0);
+        CopyPosNormal(dest + 12, v3, n0);
+        dest += 18;
 
-      CopyPosNormal(&chunk->data[chunkIdx * 18 + 0], v3, n1);
-      CopyPosNormal(&chunk->data[chunkIdx * 18 + 6], v1, n1);
-      CopyPosNormal(&chunk->data[chunkIdx * 18 + 12], v2, n1);
-      ++chunkIdx;
+        // 3, 1, 2
+        CopyPosNormal(dest + 0, v3, n1);
+        CopyPosNormal(dest + 6, v1, n1);
+        CopyPosNormal(dest + 12, v2, n1);
+        dest += 18;
+      }
     }
   }
 }
 
-////------------------------------------------------------------------------------
-//void Landscape::ChunkKernel(const TaskData& data)
-//{
-//  ChunkKernelData* chunkData = (ChunkKernelData*)data.kernelData.data;
-//  FillChunk(chunkData->chunk, chunkData->x, chunkData->z);
-//}
-
 //------------------------------------------------------------------------------
-void Landscape::RasterizeLandscape(float* buf)
+void Landscape::RasterizeLandscape()
 {
   _curTick++;
   rmt_ScopedCPUSample(Landscape_Rasterize);
@@ -566,7 +593,6 @@ void Landscape::RasterizeLandscape(float* buf)
   Vector3 bottomLeft(SnapDown(minPos.x, s), 0, SnapDown(minPos.z, s));
   Vector3 bottomRight(SnapUp(maxPos.x, s), 0, SnapDown(minPos.z, s));
 
-  int triIdx = 0;
   float x = topLeft.x;
   float z = topLeft.z;
   int chunkHits = 0;
@@ -610,13 +636,32 @@ void Landscape::RasterizeLandscape(float* buf)
     SCHEDULER.Wait(taskId);
 
   // copy all the chunk data into the vertex buffer
+  float* buf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
+
+  // sort the chunks by distance to camera (furthest first)
+  Vector3 camPos = _curCamera->_pos;
+  sort(chunks.begin(), chunks.end(), [&](const Chunk* a, const Chunk* b) {
+    return Vector3::DistanceSquared(camPos, a->center) > Vector3::DistanceSquared(camPos, b->center);
+  });
+
+  int triIdx = 0;
   for (const Chunk* chunk : chunks)
   {
-    memcpy(&buf[triIdx * 18], chunk->data, Chunk::DATA_SIZE * sizeof(float));
+    memcpy(&buf[triIdx * 18], chunk->upperData, Chunk::UPPER_DATA_SIZE * sizeof(float));
+    triIdx += 2 * HALF_CHUNK_SIZE * HALF_CHUNK_SIZE;
+  }
+  _numUpperVerts = triIdx * 3;
+
+  for (const Chunk* chunk : chunks)
+  {
+    memcpy(&buf[triIdx * 18], chunk->lowerData, Chunk::LOWER_DATA_SIZE * sizeof(float));
     triIdx += 2 * CHUNK_SIZE * CHUNK_SIZE;
   }
 
-  _numVerts = triIdx * 3;
+  _numLowerVerts = triIdx * 3 - _numUpperVerts;
+
+  _ctx->Unmap(_landscapeGpuObjects._vb);
+
 
   ImGui::Begin("chunk");
   ImGui::LabelText("hits/misses", "%d/%d", chunkHits, chunkMisses);
@@ -654,13 +699,16 @@ bool Landscape::Render()
 
   if (_renderLandscape)
   {
-    float* buf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
-    RasterizeLandscape(buf);
-    _ctx->Unmap(_landscapeGpuObjects._vb);
+    RasterizeLandscape();
 
     _ctx->SetGpuObjects(_landscapeGpuObjects);
+
+    _ctx->SetGpuState(_landscapeLowerState);
+    _ctx->Draw(_numLowerVerts, _numUpperVerts);
+
     _ctx->SetGpuState(_landscapeState);
-    _ctx->Draw(_numVerts, 0);
+    _ctx->Draw(_numUpperVerts, 0);
+
   }
   else
   {
@@ -734,7 +782,7 @@ void Landscape::RenderParameterSet()
 
   ImGui::Checkbox("Render landscape", &_renderLandscape);
   ImGui::Checkbox("Render boids", &_renderBoids);
-  ImGui::InputInt("NumVerts", (int*)&_numVerts);
+  ImGui::InputInt("NumVerts", (int*)&_numUpperVerts);
   ImGui::InputInt("NumFlocks", &_settings.boids.num_flocks);
   ImGui::InputInt("BoidsPerFlock", &_settings.boids.boids_per_flock);
   bool newWeights = false;

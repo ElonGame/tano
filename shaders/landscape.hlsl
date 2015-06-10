@@ -168,11 +168,11 @@ static float4 FillColor = float4(0.1, 0.2, 0.4, 1);
 static float4 WireColor = float4(1, 1, 1, 1);
 static float LineWidth = 1.5;
 
-uint infoA[]     = { 0, 0, 0, 0, 1, 1, 2 };
-uint infoB[]     = { 1, 1, 2, 0, 2, 1, 2 };
-uint infoAd[]    = { 2, 2, 1, 1, 0, 0, 0 };
-uint infoBd[]    = { 2, 2, 1, 2, 0, 2, 1 }; 
-uint infoEdge0[] = { 0, 2, 0, 0, 0, 0, 2 }; 
+static uint infoA[]     = { 0, 0, 0, 0, 1, 1, 2 };
+static uint infoB[]     = { 1, 1, 2, 0, 2, 1, 2 };
+static uint infoAd[]    = { 2, 2, 1, 1, 0, 0, 0 };
+static uint infoBd[]    = { 2, 2, 1, 2, 0, 2, 1 }; 
+static uint infoEdge0[] = { 0, 2, 0, 0, 0, 0, 2 }; 
 
 float2 projToWindow(in float4 pos)
 {

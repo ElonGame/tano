@@ -39,7 +39,10 @@ namespace tano
   {
   public:
 
-    enum { CHUNK_SIZE = 32 };
+    enum { 
+      CHUNK_SIZE = 32,
+      HALF_CHUNK_SIZE = CHUNK_SIZE / 2,
+    };
 
     Landscape(const string &name, u32 id);
     ~Landscape();
@@ -62,7 +65,7 @@ namespace tano
 #endif
 
     void UpdateCameraMatrix(const UpdateState& state);
-    void RasterizeLandscape(float* buf);
+    void RasterizeLandscape();
 
     void InitBoids();
     void UpdateBoids(const UpdateState& state);
@@ -75,10 +78,15 @@ namespace tano
     struct Chunk
     {
       float x, y;
+      Vector3 center;
       int lastAccessed = 0;
-      static const int DATA_SIZE = CHUNK_SIZE*CHUNK_SIZE*2*18;
+      enum {
+        UPPER_DATA_SIZE = HALF_CHUNK_SIZE * HALF_CHUNK_SIZE * 2 * 18,
+        LOWER_DATA_SIZE = CHUNK_SIZE * CHUNK_SIZE * 2 * 18,
+      };
       float noiseValues[(CHUNK_SIZE+1)*(CHUNK_SIZE+1)];
-      float data[DATA_SIZE];
+      float upperData[UPPER_DATA_SIZE];
+      float lowerData[LOWER_DATA_SIZE];
     };
 
     //static void FillChunk(Chunk* chunk, float x, float z);
@@ -132,6 +140,7 @@ namespace tano
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 
     GpuState _landscapeState;
+    GpuState _landscapeLowerState;
     GpuObjects _landscapeGpuObjects;
 
     LandscapeSettings _settings;
@@ -146,7 +155,8 @@ namespace tano
 
     AnimatedInt _blinkFace;
 
-    u32 _numVerts;
+    u32 _numUpperVerts = 0;
+    u32 _numLowerVerts = 0;
 
     GpuObjects _boidsMesh;
     bool _renderLandscape = true;

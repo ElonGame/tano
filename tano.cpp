@@ -217,7 +217,12 @@ bool App::Run()
     size_t numSamples;
     avgFrameTime.CopySamples(times, &numSamples);
     if (numSamples > 0)
+    {
+      float minValue, maxValue;
+      avgFrameTime.GetMinMax(&minValue, &maxValue);
+      ImGui::LabelText("Min/Max/Avg", "%.3f, %.3f, %.3f", minValue, maxValue, avgFrameTime.GetAverage());
       ImGui::PlotLines("Frame time", times, (int)numSamples, 0, 0, FLT_MAX, FLT_MAX, ImVec2(200, 50));
+    }
 
 #if WITH_IMGUI
     ImGui::Render();
