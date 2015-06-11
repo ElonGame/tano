@@ -159,11 +159,14 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
+  u32* GenerateQuadIndices(u32 numQuads, u32* ibSize);
+
+  //------------------------------------------------------------------------------
   void InitDefaultDescs();
   extern CD3D11_BLEND_DESC blendDescBlendSrcAlpha;
   extern CD3D11_BLEND_DESC blendDescPreMultipliedAlpha;
   
   extern CD3D11_RASTERIZER_DESC rasterizeDescCullNone;
 
-
+  extern CD3D11_DEPTH_STENCIL_DESC depthDescDepthDisabled;
 }

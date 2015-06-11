@@ -7,6 +7,7 @@
 #include "../animation_helpers.hpp"
 #include "../camera.hpp"
 #include "../dyn_particles.hpp"
+#include "../tano_math.hpp"
 
 namespace tano
 {
@@ -89,12 +90,11 @@ namespace tano
         UPPER_DATA_SIZE = UPPER_VERTS * 2 * 3,
         LOWER_DATA_SIZE = LOWER_VERTS * 2 * 3,
       };
-      float noiseValues[(CHUNK_SIZE+1)*(CHUNK_SIZE+1)];
+      V3 noiseValues[(CHUNK_SIZE+1)*(CHUNK_SIZE+1)];
       float upperData[UPPER_DATA_SIZE];
       float lowerData[LOWER_DATA_SIZE];
     };
 
-    //static void FillChunk(Chunk* chunk, float x, float z);
     static void FillChunk(const scheduler::TaskData& data);
 
     struct ChunkKernelData
@@ -102,7 +102,6 @@ namespace tano
       Chunk* chunk;
       float x, z;
     };
-    //static void ChunkKernel(const scheduler::TaskData& data);
 
     struct ChunkCache
     {
@@ -158,10 +157,15 @@ namespace tano
     GpuState _compositeState;
     GpuObjects _compositeGpuObjects;
 
+    ObjectHandle _particleTexture;
+    GpuState _particleState;
+    GpuObjects _particleGpuObjects;
+
     AnimatedInt _blinkFace;
 
     u32 _numUpperIndices = 0;
-    u32 _numLowerVerts = 0;
+    u32 _numLowerIndices = 0;
+    u32 _numParticleIndices = 0;
 
     GpuObjects _boidsMesh;
     bool _renderLandscape = true;

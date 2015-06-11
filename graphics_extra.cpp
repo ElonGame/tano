@@ -1,6 +1,7 @@
 #include "graphics_extra.hpp"
 #include "graphics.hpp"
 #include "graphics_context.hpp"
+#include "arena_allocator.hpp"
 #include "_win32/resource.h"
 
 using namespace tano;
@@ -9,7 +10,9 @@ using namespace bristol;
 namespace tano
 {
   CD3D11_BLEND_DESC blendDescBlendSrcAlpha;
+  CD3D11_BLEND_DESC blendDescPreMultipliedAlpha;
   CD3D11_RASTERIZER_DESC rasterizeDescCullNone;
+  CD3D11_DEPTH_STENCIL_DESC depthDescDepthDisabled;
 
   //------------------------------------------------------------------------------
   void InitDefaultDescs()
@@ -29,6 +32,28 @@ namespace tano
 
     depthDescDepthDisabled = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
     depthDescDepthDisabled.DepthEnable = FALSE;
+  }
+
+  //------------------------------------------------------------------------------
+  u32* GenerateQuadIndices(u32 numQuads, u32* ibSize)
+  {
+    u32 ibSizeLocal = numQuads * 6 * sizeof(u32);
+    u32* triangleIndices = (u32*)ARENA.Alloc(ibSizeLocal);
+    for (u32 i = 0; i < numQuads; ++i)
+    {
+      // 0, 1, 3
+      triangleIndices[i * 6 + 0] = i * 4 + 0;
+      triangleIndices[i * 6 + 1] = i * 4 + 1;
+      triangleIndices[i * 6 + 2] = i * 4 + 3;
+
+      // 3, 1, 2
+      triangleIndices[i * 6 + 3] = i * 4 + 3;
+      triangleIndices[i * 6 + 4] = i * 4 + 1;
+      triangleIndices[i * 6 + 5] = i * 4 + 2;
+    }
+
+    *ibSize = ibSizeLocal;
+    return triangleIndices;
   }
 
   //------------------------------------------------------------------------------

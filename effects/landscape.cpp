@@ -150,41 +150,48 @@ bool Landscape::Init(const char* configFile)
   _freeflyCamera._roll = _settings.camera.roll;
   _freeflyCamera._pos = _settings.camera.pos;
 
-  u32 vertexFlags = VF_POS | VF_NORMAL;
-  u32 vertexSize = sizeof(PosNormal);
-  INIT(_landscapeGpuObjects.CreateDynamicVb(1024*1024*6*vertexSize, vertexSize));
-
-  // Create index buffer for the max # triangles
-  u32 maxTris = 1024 * 1024;
-  u32 ibSize = maxTris * 6 * sizeof(u32);
-  u32* triangleIndices = (u32*)ARENA.Alloc(ibSize);
-  for (u32 i = 0; i < maxTris; ++i)
   {
-    // 0, 1, 3
-    triangleIndices[i * 6 + 0] = i * 4 + 0;
-    triangleIndices[i * 6 + 1] = i * 4 + 1;
-    triangleIndices[i * 6 + 2] = i * 4 + 3;
+    // Landscape
+    u32 vertexFlags = VF_POS | VF_NORMAL;
+    u32 vertexSize = sizeof(PosNormal);
+    INIT(_landscapeGpuObjects.CreateDynamicVb(1024 * 1024 * 6 * vertexSize, vertexSize));
 
-    // 3, 1, 2
-    triangleIndices[i * 6 + 3] = i * 4 + 3;
-    triangleIndices[i * 6 + 4] = i * 4 + 1;
-    triangleIndices[i * 6 + 5] = i * 4 + 2;
+    u32 ibSize;
+    u32 maxQuads = 1024 * 1024;
+    u32* indices = GenerateQuadIndices(maxQuads, &ibSize);
+    INIT(_landscapeGpuObjects.CreateIndexBuffer(ibSize, DXGI_FORMAT_R32_UINT, indices));
+
+    INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape",
+      "VsLandscape2", "GsSolidWire", "PsSolidWire", vertexFlags));
+
+    INIT(_landscapeState.Create(nullptr, &blendDescBlendSrcAlpha, &rasterizeDescCullNone));
+    INIT(_landscapeLowerState.Create());
   }
-  
-  INIT(_landscapeGpuObjects.CreateIndexBuffer(ibSize, DXGI_FORMAT_R32_UINT, triangleIndices));
-
-//    INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsLandscape", nullptr, "PsLandscape", vertexFlags));
-  INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape", 
-    "VsLandscape2", "GsSolidWire", "PsSolidWire", vertexFlags));
-
-  INIT(_landscapeState.Create(nullptr, &blendDescBlendSrcAlpha, &rasterizeDescCullNone));
-  INIT(_landscapeLowerState.Create());
 
   INIT(_edgeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsEdgeDetect"));
   INIT(_skyGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsSky"));
 
   INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsComposite"));
   INIT(_compositeState.Create());
+
+  {
+    // Particles
+    INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
+
+    u32 vertexFlags = VF_POS;
+    u32 vertexSize = sizeof(Vector3);
+    INIT(_particleGpuObjects.CreateDynamicVb(1024 * 1024 * 6 * vertexSize, vertexSize));
+
+    u32 ibSize;
+    u32 maxQuads = 1024 * 1024;
+    u32* indices = GenerateQuadIndices(maxQuads, &ibSize);
+    INIT(_particleGpuObjects.CreateIndexBuffer(ibSize, DXGI_FORMAT_R32_UINT, indices));
+
+    INIT(_particleGpuObjects.LoadShadersFromFile("shaders/out/landscape",
+      "VsParticle", nullptr, "PsParticle", vertexFlags));
+
+    INIT(_particleState.Create(nullptr, &blendDescBlendSrcAlpha, &rasterizeDescCullNone));
+  }
 
   MeshLoader loader;
   INIT(loader.Load("gfx/boids.boba"));
@@ -373,7 +380,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-void Vector3ToFloat(float* buf, const V3& v)
+inline void Vector3ToFloat(float* buf, const V3& v)
 {
   buf[0] = v.x;
   buf[1] = v.y;
@@ -469,14 +476,17 @@ void Landscape::FillChunk(const TaskData& data)
   float scaleZ = 256.f / (10 * 1024);
 
   // first compute the noise values
-  float* noise = chunk->noiseValues;
+  V3* noise = chunk->noiseValues;
   for (int i = 0; i <= CHUNK_SIZE; ++i)
   {
     for (int j = 0; j <= CHUNK_SIZE; ++j)
     {
       float xx0 = x + (j + 0) * GRID_SIZE;
       float zz0 = z + (i - 1) * GRID_SIZE;
-      *noise++ = scaleY * Perlin2D::Value(scaleX * xx0, scaleZ * zz0);
+      noise->x = xx0;
+      noise->y = scaleY * Perlin2D::Value(scaleX * xx0, scaleZ * zz0);
+      noise->z = zz0;
+      ++noise;
     }
   }
 
@@ -507,10 +517,10 @@ void Landscape::FillChunk(const TaskData& data)
         v2.x = xx1; v2.z = zz1;
         v3.x = xx1; v3.z = zz0;
 
-        v0.y = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + 0)];
-        v1.y = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + 0)];
-        v2.y = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + incr)];
-        v3.y = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + incr)];
+        v0.y = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + 0)].y;
+        v1.y = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + 0)].y;
+        v2.y = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + incr)].y;
+        v3.y = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + incr)].y;
 
         V3 e1, e2;
         e1 = v2 - v1;
@@ -528,12 +538,6 @@ void Landscape::FillChunk(const TaskData& data)
         CopyPosNormal(dest + 12, v2, n0);
         CopyPosNormal(dest + 18, v3, n1);
         dest += 24;
-
-        //// 3, 1, 2
-        //CopyPosNormal(dest + 0, v3, n1);
-        //CopyPosNormal(dest + 6, v1, n1);
-        //CopyPosNormal(dest + 12, v2, n1);
-        //dest += 18;
       }
     }
   }
@@ -627,36 +631,53 @@ void Landscape::RasterizeLandscape()
   for (const TaskId& taskId : chunkTasks)
     SCHEDULER.Wait(taskId);
 
-  // copy all the chunk data into the vertex buffer
-  float* buf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
-
   // sort the chunks by distance to camera (furthest first)
   Vector3 camPos = _curCamera->_pos;
   sort(chunks.begin(), chunks.end(), [&](const Chunk* a, const Chunk* b) {
     return Vector3::DistanceSquared(camPos, a->center) > Vector3::DistanceSquared(camPos, b->center);
   });
 
-  int triIdx = 0;
+  // copy all the chunk data into the vertex buffer
+  float* landscapeBuf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
+  float* particleBuf = _ctx->MapWriteDiscard<float>(_particleGpuObjects._vb);
+
+  u32 numParticleIndices = 0;
   for (const Chunk* chunk : chunks)
   {
-    memcpy(&buf[triIdx], chunk->upperData, Chunk::UPPER_DATA_SIZE * sizeof(float));
-    triIdx += Chunk::UPPER_DATA_SIZE;
+    memcpy(landscapeBuf, chunk->upperData, Chunk::UPPER_DATA_SIZE * sizeof(float));
+    landscapeBuf += Chunk::UPPER_DATA_SIZE;
+
+    float s = 1;
+    static V3 ofs0(-s, -s, 0);
+    static V3 ofs1(-s, +s, 0);
+    static V3 ofs2(+s, +s, 0);
+    static V3 ofs3(+s, -s, 0);
+    for (int i = 0; i < CHUNK_SIZE; i += 2)
+    {
+      for (int j = 0; j < CHUNK_SIZE; j += 2)
+      {
+        const V3& p = chunk->noiseValues[i*(CHUNK_SIZE+1)+j];
+        Vector3ToFloat(particleBuf + 0, p + ofs0);
+        Vector3ToFloat(particleBuf + 3, p + ofs1);
+        Vector3ToFloat(particleBuf + 6, p + ofs2);
+        Vector3ToFloat(particleBuf + 9, p + ofs3);
+        particleBuf += 12;
+        numParticleIndices += 6;
+      }
+    }
   }
   _numUpperIndices = (u32)chunks.size() * Chunk::UPPER_INDICES;
+  _numParticleIndices = numParticleIndices;
 
   for (const Chunk* chunk : chunks)
   {
-    memcpy(&buf[triIdx], chunk->lowerData, Chunk::LOWER_DATA_SIZE * sizeof(float));
-    triIdx += Chunk::LOWER_DATA_SIZE;
+    memcpy(landscapeBuf, chunk->lowerData, Chunk::LOWER_DATA_SIZE * sizeof(float));
+    landscapeBuf += Chunk::LOWER_DATA_SIZE;
   }
-  _numLowerVerts = (u32)chunks.size() * Chunk::LOWER_INDICES;
+  _numLowerIndices = (u32)chunks.size() * Chunk::LOWER_INDICES;
 
+  _ctx->Unmap(_particleGpuObjects._vb);
   _ctx->Unmap(_landscapeGpuObjects._vb);
-
-
-  ImGui::Begin("chunk");
-  ImGui::LabelText("hits/misses", "%d/%d", chunkHits, chunkMisses);
-  ImGui::End();
 }
 
 //------------------------------------------------------------------------------
@@ -693,13 +714,15 @@ bool Landscape::Render()
     RasterizeLandscape();
 
     _ctx->SetGpuObjects(_landscapeGpuObjects);
-
     _ctx->SetGpuState(_landscapeLowerState);
-    _ctx->DrawIndexed(_numLowerVerts, _numUpperIndices, 0);
-
+    _ctx->DrawIndexed(_numLowerIndices, _numUpperIndices, 0);
     _ctx->SetGpuState(_landscapeState);
     _ctx->DrawIndexed(_numUpperIndices, 0, 0);
 
+    _ctx->SetGpuObjects(_particleGpuObjects);
+    _ctx->SetGpuState(_particleState);
+    _ctx->SetShaderResource(_particleTexture);
+    _ctx->DrawIndexed(_numParticleIndices, 0, 0);
   }
   else
   {

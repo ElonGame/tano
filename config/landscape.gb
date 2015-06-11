@@ -19,4 +19,5 @@
     num_flocks: 1;
     boids_per_flock: 25;
   };
+  particle_texture: 'gfx/particle3.png';
 };

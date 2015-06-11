@@ -45,6 +45,19 @@ struct VsLandscapeOut
   float distance2 : Texture2;
 };
 
+struct VsParticleIn
+{
+  float3 pos : Position;
+  uint vertexId : SV_VertexID;
+};
+
+struct VsParticleOut
+{
+  float4 pos : SV_Position;
+  float2 uv : TexCoord;
+};
+
+
 static float4 BOID_COLOR = float4(0.4, 0.2, 0.2, 1);
 static float3 FOG_COLOR = 0.5 * float3(0.5, 0.6, 0.7);
 static float3 SUN_COLOR = 0.5 * float3(1.5, 0.9, 0.3);
@@ -85,6 +98,35 @@ float4 PsSky(VSQuadOut p) : SV_Target
 
   return float4(FogColor(rayDir), 1);
 }
+
+//------------------------------------------------------
+// particles
+//------------------------------------------------------
+
+// 1--2
+// |  |
+// 0--3
+
+static float2 uvsVtx[4] = {
+  float2(0, 1), float2(0, 0), float2(1, 0), float2(1, 1)
+};
+
+VsParticleOut VsParticle(VsParticleIn v)
+{
+  VsParticleOut res;
+  matrix worldViewProj = mul(world, viewProj);
+  res.pos = mul(float4(v.pos, 1), worldViewProj);
+  res.uv = uvsVtx[v.vertexId % 4];
+  return res;
+}
+
+float4 PsParticle(VsParticleOut p) : SV_Target
+{
+  float2 uv = p.uv.xy;
+  float4 col = Texture0.Sample(PointSampler, uv);
+  return col;
+}
+
 
 //------------------------------------------------------
 // landscape

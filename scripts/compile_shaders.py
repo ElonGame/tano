@@ -21,7 +21,7 @@ vs = {
     'quad' : ['VsMain'],
     'cluster' : ['VsMesh'],
     'blob' : ['VsMesh'],
-    'landscape' : ['VsQuad', 'VsLandscape', 'VsLandscape2', 'VsBoids'],
+    'landscape' : ['VsQuad', 'VsLandscape', 'VsLandscape2', 'VsBoids', 'VsParticle'],
     'lines': ['VsMain']
 }
 
@@ -32,7 +32,7 @@ ps = {
     'imgui' : ['PsMain'],
     'cluster' : ['PsMesh'],
     'blob' : ['PsMesh'],
-    'landscape' : ['PsLandscape', 'PsEdgeDetect', 'PsComposite', 'PsSky', 'PsBoids', 'PsSolidWire'],
+    'landscape' : ['PsLandscape', 'PsEdgeDetect', 'PsComposite', 'PsSky', 'PsBoids', 'PsSolidWire', 'PsParticle'],
     'lines': ['PsMain']
 }
 

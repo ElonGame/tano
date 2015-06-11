@@ -72,6 +72,7 @@ struct landscape_settings
 {
   camera_settings camera;
   boid_settings boids;
+  string particle_texture;
 };
 
 struct blob_settings
