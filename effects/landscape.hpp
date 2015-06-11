@@ -80,6 +80,7 @@ namespace tano
     {
       float x, y;
       Vector3 center;
+      float dist = 0;
       int lastAccessed = 0;
       enum {
         UPPER_INDICES = HALF_CHUNK_SIZE * HALF_CHUNK_SIZE * 2 * 3,

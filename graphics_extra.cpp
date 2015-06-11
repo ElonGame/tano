@@ -12,8 +12,11 @@ namespace tano
   CD3D11_BLEND_DESC blendDescBlendSrcAlpha;
   CD3D11_BLEND_DESC blendDescBlendOneOne;
   CD3D11_BLEND_DESC blendDescPreMultipliedAlpha;
+
   CD3D11_RASTERIZER_DESC rasterizeDescCullNone;
+  
   CD3D11_DEPTH_STENCIL_DESC depthDescDepthDisabled;
+  CD3D11_DEPTH_STENCIL_DESC depthDescDepthWriteDisabled;
 
   //------------------------------------------------------------------------------
   void InitDefaultDescs()
@@ -38,6 +41,9 @@ namespace tano
 
     depthDescDepthDisabled = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
     depthDescDepthDisabled.DepthEnable = FALSE;
+
+    depthDescDepthWriteDisabled = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
+    depthDescDepthWriteDisabled.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
   }
 
   //------------------------------------------------------------------------------

@@ -183,8 +183,10 @@ bool Landscape::Init(const char* configFile)
 
     INIT(_particleGpuObjects.LoadShadersFromFile("shaders/out/landscape",
       "VsParticle", "GsParticle", "PsParticle", vertexFlags));
+    _particleGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
 
-    INIT(_particleState.Create(nullptr, &blendDescBlendOneOne, &rasterizeDescCullNone));
+    INIT(_particleState.Create(
+      &depthDescDepthWriteDisabled, &blendDescBlendOneOne, &rasterizeDescCullNone));
   }
 
   MeshLoader loader;
@@ -516,6 +518,16 @@ void Landscape::FillChunk(const TaskData& data)
         v2.y = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + incr)].y;
         v3.y = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + incr)].y;
 
+        v0 = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + 0)];
+        v1 = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + 0)];
+        v2 = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + incr)];
+        v3 = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + incr)];
+
+        v0.y *= scale;
+        v1.y *= scale;
+        v2.y *= scale;
+        v3.y *= scale;
+
         V3 e1, e2;
         e1 = v2 - v1;
         e2 = v0 - v1;
@@ -590,9 +602,6 @@ void Landscape::RasterizeLandscape()
 
   V3 v0, v1, v2, v3;
   V3 n0, n1;
-  float scaleX = 256.f / (10 * 1024);
-  float scaleY = 30;
-  float scaleZ = 256.f / (10 * 1024);
 
   vector<TaskId> chunkTasks;
   vector<Chunk*> chunks;
@@ -627,13 +636,16 @@ void Landscape::RasterizeLandscape()
 
   // sort the chunks by distance to camera (furthest first)
   Vector3 camPos = _curCamera->_pos;
+  for (Chunk* chunk : chunks)
+    chunk->dist = Vector3::DistanceSquared(camPos, chunk->center);
+
   sort(chunks.begin(), chunks.end(), [&](const Chunk* a, const Chunk* b) {
-    return Vector3::DistanceSquared(camPos, a->center) > Vector3::DistanceSquared(camPos, b->center);
+    return a->dist > b->dist;
   });
 
   // copy all the chunk data into the vertex buffer
   float* landscapeBuf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
-  float* particleBuf = _ctx->MapWriteDiscard<float>(_particleGpuObjects._vb);
+  V3* particleBuf = _ctx->MapWriteDiscard<V3>(_particleGpuObjects._vb);
 
   u32 numParticles = 0;
   for (const Chunk* chunk : chunks)
@@ -645,9 +657,7 @@ void Landscape::RasterizeLandscape()
     {
       for (int j = 0; j < CHUNK_SIZE; j += 2)
       {
-        const V3& p = chunk->noiseValues[i*(CHUNK_SIZE+1)+j];
-        Vector3ToFloat(particleBuf, p);
-        particleBuf += 3;
+        *particleBuf++ = chunk->noiseValues[i*(CHUNK_SIZE+1)+j];
         numParticles++;
       }
     }
@@ -661,6 +671,12 @@ void Landscape::RasterizeLandscape()
     landscapeBuf += Chunk::LOWER_DATA_SIZE;
   }
   _numLowerIndices = (u32)chunks.size() * Chunk::LOWER_INDICES;
+
+  u32 numChunks = (u32)chunks.size();
+  TANO.AddPerfCallback([=]() {
+    ImGui::Text("# particles: %d", numParticles);
+    ImGui::Text("# chunks: %d", numChunks);
+  });
 
   _ctx->Unmap(_particleGpuObjects._vb);
   _ctx->Unmap(_landscapeGpuObjects._vb);

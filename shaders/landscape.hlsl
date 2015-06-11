@@ -153,7 +153,9 @@ float4 PsParticle(VsParticleOut p) : SV_Target
 {
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
-  return col;
+  float f = dot(col.xyz, float3(1.0/3, 1.0/3, 1.0/3));
+
+  return float4(f * float3(1, 1, 0), col.a);
 }
 
 

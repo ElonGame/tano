@@ -185,6 +185,7 @@ bool App::Run()
   while (WM_QUIT != msg.message)
   {
     ARENA.NewFrame();
+    _perfCallbacks.clear();
     if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
     {
       TranslateMessage(&msg);
@@ -219,10 +220,17 @@ bool App::Run()
     avgFrameTime.CopySamples(times, &numSamples);
     if (numSamples > 0)
     {
+      ImGui::Begin("Perf", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
       float minValue, maxValue;
       avgFrameTime.GetMinMax(&minValue, &maxValue);
-      ImGui::LabelText("Min/Max/Avg", "%.3f, %.3f, %.3f", minValue, maxValue, avgFrameTime.GetAverage());
+      ImGui::Text("Min: %.2f Max: %.2f Avg: %.2f",
+        minValue * 1000, maxValue * 1000, avgFrameTime.GetAverage() * 1000);
       ImGui::PlotLines("Frame time", times, (int)numSamples, 0, 0, FLT_MAX, FLT_MAX, ImVec2(200, 50));
+
+      // Invoke any custom perf callbacks
+      for (const fnPerfCallback& cb : _perfCallbacks)
+        cb();
+      ImGui::End();
     }
 
 #if WITH_IMGUI
@@ -448,6 +456,12 @@ void App::UpdateIoState()
   _ioState.controlPressed = (keystate[VK_CONTROL] & 0x80) != 0;
   _ioState.shiftPressed = (keystate[VK_SHIFT] & 0x80) != 0;
   _ioState.altPressed = (keystate[VK_MENU] & 0x80) != 0;
+}
+
+//------------------------------------------------------------------------------
+void App::AddPerfCallback(const fnPerfCallback& cb)
+{
+  _perfCallbacks.push_back(cb);
 }
 
 //------------------------------------------------------------------------------

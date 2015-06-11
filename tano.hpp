@@ -40,6 +40,9 @@ namespace tano
 
     const IoState& GetIoState() const;
 
+    typedef function<void()> fnPerfCallback;
+    void AddPerfCallback(const fnPerfCallback& cb);
+
   private:
     App();
 
@@ -58,6 +61,7 @@ namespace tano
 
     bristol::LogSinkApp _logSinkApp;
     bristol::LogSinkConsole _logSinkConsole;
+    vector<function<void()>> _perfCallbacks;
 
     IoState _ioState;
   };
