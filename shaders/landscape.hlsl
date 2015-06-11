@@ -48,7 +48,6 @@ struct VsLandscapeOut
 struct VsParticleIn
 {
   float3 pos : Position;
-  uint vertexId : SV_VertexID;
 };
 
 struct VsParticleOut
@@ -111,13 +110,43 @@ static float2 uvsVtx[4] = {
   float2(0, 1), float2(0, 0), float2(1, 0), float2(1, 1)
 };
 
-VsParticleOut VsParticle(VsParticleIn v)
+VsParticleIn VsParticle(VsParticleIn v)
 {
-  VsParticleOut res;
-  matrix worldViewProj = mul(world, viewProj);
-  res.pos = mul(float4(v.pos, 1), worldViewProj);
-  res.uv = uvsVtx[v.vertexId % 4];
+  VsParticleIn res;
+  res.pos = v.pos;
   return res;
+}
+
+[maxvertexcount(4)]
+void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
+{
+  static float s = 1;
+  static float3 ofs0 = float3(-s, -s, 0);
+  static float3 ofs1 = float3(-s, +s, 0);
+  static float3 ofs2 = float3(+s, +s, 0);
+  static float3 ofs3 = float3(+s, -s, 0);
+
+  matrix worldViewProj = mul(world, viewProj);
+
+  float3 pos = input[0].pos;
+  VsParticleOut p;
+  p.pos = mul(float4(pos + ofs0, 1), worldViewProj);
+  p.uv = uvsVtx[0];
+  outStream.Append(p);
+
+  p.pos = mul(float4(pos + ofs1, 1), worldViewProj);
+  p.uv = uvsVtx[1];
+  outStream.Append(p);
+
+  p.pos = mul(float4(pos + ofs2, 1), worldViewProj);
+  p.uv = uvsVtx[2];
+  outStream.Append(p);
+
+  p.pos = mul(float4(pos + ofs3, 1), worldViewProj);
+  p.uv = uvsVtx[3];
+  outStream.Append(p);
+
+  outStream.RestartStrip();
 }
 
 float4 PsParticle(VsParticleOut p) : SV_Target
@@ -140,8 +169,6 @@ VsLandscapeOut VsLandscape(VsLandscapeIn v)
   float3 pos = v.pos;
   float3 center = float3(time.y, time.z, time.w);
   float r = length(center - v.pos) / 10;
-//  pos.y += 100 * sin(20 * time.x) / (r*r);
-  // pos.y += pos.y / max(1, r);
 
   res.pos = mul(float4(pos, 1), worldViewProj);
   res.normal = mul(float4(v.normal, 0), world).xyz;
@@ -471,7 +498,6 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float2 xx = -1 + 2 * uv;
 
   float4 backgroundCol = Texture0.Sample(PointSampler, uv);
-  float4 edge = Texture1.Sample(PointSampler, uv);
 
    // gamma correction
   float4 color = pow(backgroundCol, 1.0/2.2);

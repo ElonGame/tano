@@ -151,7 +151,6 @@ namespace tano
     string _configName;
     MeshLoader _meshLoader;
 
-    GpuObjects _edgeGpuObjects;
     GpuObjects _skyGpuObjects;
 
     GpuState _compositeState;
@@ -165,7 +164,7 @@ namespace tano
 
     u32 _numUpperIndices = 0;
     u32 _numLowerIndices = 0;
-    u32 _numParticleIndices = 0;
+    u32 _numParticles = 0;
 
     GpuObjects _boidsMesh;
     bool _renderLandscape = true;

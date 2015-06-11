@@ -164,6 +164,7 @@ namespace tano
   //------------------------------------------------------------------------------
   void InitDefaultDescs();
   extern CD3D11_BLEND_DESC blendDescBlendSrcAlpha;
+  extern CD3D11_BLEND_DESC blendDescBlendOneOne;
   extern CD3D11_BLEND_DESC blendDescPreMultipliedAlpha;
   
   extern CD3D11_RASTERIZER_DESC rasterizeDescCullNone;

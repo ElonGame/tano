@@ -32,7 +32,7 @@ ps = {
     'imgui' : ['PsMain'],
     'cluster' : ['PsMesh'],
     'blob' : ['PsMesh'],
-    'landscape' : ['PsLandscape', 'PsEdgeDetect', 'PsComposite', 'PsSky', 'PsBoids', 'PsSolidWire', 'PsParticle'],
+    'landscape' : ['PsLandscape', 'PsComposite', 'PsSky', 'PsBoids', 'PsSolidWire', 'PsParticle'],
     'lines': ['PsMain']
 }
 
@@ -42,7 +42,7 @@ cs = {
 
 gs = {
     'particle_tunnel' : ['GsLines'],
-    'landscape' : ['GsSolidWire'],
+    'landscape' : ['GsParticle', 'GsSolidWire'],
 }
 
 vs_data = { 'shaders': vs, 'profile': 'vs', 'obj_ext': 'vso', 'asm_ext': 'vsa' }

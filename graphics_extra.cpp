@@ -10,6 +10,7 @@ using namespace bristol;
 namespace tano
 {
   CD3D11_BLEND_DESC blendDescBlendSrcAlpha;
+  CD3D11_BLEND_DESC blendDescBlendOneOne;
   CD3D11_BLEND_DESC blendDescPreMultipliedAlpha;
   CD3D11_RASTERIZER_DESC rasterizeDescCullNone;
   CD3D11_DEPTH_STENCIL_DESC depthDescDepthDisabled;
@@ -26,6 +27,11 @@ namespace tano
     blendDescPreMultipliedAlpha.RenderTarget[0].BlendEnable = TRUE;
     blendDescPreMultipliedAlpha.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
     blendDescPreMultipliedAlpha.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+
+    blendDescBlendOneOne = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+    blendDescBlendOneOne.RenderTarget[0].BlendEnable = TRUE;
+    blendDescBlendOneOne.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+    blendDescBlendOneOne.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
 
     rasterizeDescCullNone = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
     rasterizeDescCullNone.CullMode = D3D11_CULL_NONE;
