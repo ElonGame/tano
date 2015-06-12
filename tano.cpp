@@ -36,6 +36,8 @@ const TCHAR* g_AppWindowTitle = _T("tano - neurotica e.f.s");
 const int ARENA_MEMORY_SIZE = 128 * 1024 * 1024;
 static u8 arenaMemory[ARENA_MEMORY_SIZE];
 
+KeyUpTrigger tano::g_KeyUpTrigger;
+
 #if WITH_REMOTERY
 Remotery* g_rmt;
 #endif
@@ -182,6 +184,7 @@ bool App::Run()
   RollingAverage<float> avgFrameTime(200);
   StopWatch stopWatch;
   u64 numFrames = 0;
+  bool renderImgui = true;
   while (WM_QUIT != msg.message)
   {
     ARENA.NewFrame();
@@ -234,7 +237,10 @@ bool App::Run()
     }
 
 #if WITH_IMGUI
-    ImGui::Render();
+    if (g_KeyUpTrigger.IsTriggered('H'))
+      renderImgui = !renderImgui;
+    if (renderImgui)
+      ImGui::Render();
 #endif
     double frameTime = stopWatch.Stop();
     if (++numFrames > 10)
@@ -273,8 +279,7 @@ const IoState& App::GetIoState() const
 LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 #if WITH_IMGUI
-  if (ImGuiWndProc(hWnd, message, wParam, lParam))
-    return 0;
+  ImGuiWndProc(hWnd, message, wParam, lParam);
 #endif
 
   switch (message)

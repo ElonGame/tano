@@ -186,7 +186,7 @@ bool Landscape::Init(const char* configFile)
     _particleGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
 
     INIT(_particleState.Create(
-      &depthDescDepthDisabled, &blendDescBlendOneOne, &rasterizeDescCullNone));
+      &depthDescDepthWriteDisabled, &blendDescBlendOneOne, &rasterizeDescCullNone));
   }
 
   MeshLoader loader;
@@ -328,10 +328,10 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 
   if (!_flocks.empty())
   {
-    if (ioState.keysPressed['1'])
+    if (g_KeyUpTrigger.IsTriggered('1'))
       _followFlock = (_followFlock + 1) % _flocks.size();
 
-    if (ioState.keysPressed['2'])
+    if (g_KeyUpTrigger.IsTriggered('2'))
       _followFlock = (_followFlock - 1) % _flocks.size();
 
     if (_followFlock != -1 && _followFlock < _flocks.size())
@@ -339,6 +339,15 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
       _followCamera.SetFollowTarget(_flocks[_followFlock]->boids._center);
     }
   }
+
+  if (g_KeyUpTrigger.IsTriggered('7'))
+    _drawFlags ^= 0x1;
+
+  if (g_KeyUpTrigger.IsTriggered('8'))
+    _drawFlags ^= 0x2;
+
+  if (g_KeyUpTrigger.IsTriggered('9'))
+    _drawFlags ^= 0x4;
 
   if (_useFreeFlyCamera || _flocks.empty())
     _curCamera = &_freeflyCamera;
@@ -701,15 +710,27 @@ bool Landscape::Render()
     RasterizeLandscape();
 
     _ctx->SetGpuObjects(_landscapeGpuObjects);
-    _ctx->SetGpuState(_landscapeLowerState);
-    _ctx->DrawIndexed(_numLowerIndices, _numUpperIndices, 0);
-    _ctx->SetGpuState(_landscapeState);
-    _ctx->DrawIndexed(_numUpperIndices, 0, 0);
 
-    _ctx->SetGpuObjects(_particleGpuObjects);
-    _ctx->SetGpuState(_particleState);
-    _ctx->SetShaderResource(_particleTexture);
-    _ctx->Draw(_numParticles, 0);
+    if (_drawFlags & DrawLower)
+    {
+      _ctx->SetGpuState(_landscapeLowerState);
+      _ctx->DrawIndexed(_numLowerIndices, _numUpperIndices, 0);
+    }
+
+    if (_drawFlags & DrawUpper)
+    {
+      _ctx->SetGpuState(_landscapeState);
+      _ctx->DrawIndexed(_numUpperIndices, 0, 0);
+    }
+
+    if (_drawFlags & DrawParticles)
+    {
+      _ctx->SetGpuObjects(_particleGpuObjects);
+      _ctx->SetGpuState(_particleState);
+      _ctx->SetShaderResource(_particleTexture);
+      _ctx->Draw(_numParticles, 0);
+    }
+
   }
   else
   {

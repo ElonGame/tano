@@ -121,6 +121,12 @@ VsParticleIn VsParticle(VsParticleIn v)
 void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
 {
 
+  // This is me..
+  // 1--2
+  // |  |
+  // 0--3
+
+  // Note, DirectX wants its triangle strip like so:
   // 1--2
   // |  |
   // 0--3
@@ -147,12 +153,12 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   p.uv = uvsVtx[1];
   outStream.Append(p);
 
-  p.pos = mul(float4(pos + s * right + s * up, 1), worldViewProj);
-  p.uv = uvsVtx[2];
-  outStream.Append(p);
-
   p.pos = mul(float4(pos + s * right - s * up, 1), worldViewProj);
   p.uv = uvsVtx[3];
+  outStream.Append(p);
+
+  p.pos = mul(float4(pos + s * right + s * up, 1), worldViewProj);
+  p.uv = uvsVtx[2];
   outStream.Append(p);
 
   outStream.RestartStrip();

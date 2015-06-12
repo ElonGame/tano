@@ -3,6 +3,7 @@
 #include "graphics.hpp"
 #include "graphics_context.hpp"
 #include "init_sequence.hpp"
+#include "tano.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -31,6 +32,7 @@ namespace
   GpuState g_gpuState;
   ObjectHandle g_texture;
 }
+
 
 //------------------------------------------------------------------------------
 bool InitDeviceD3D()
@@ -263,6 +265,15 @@ namespace tano
         if (wParam > 0 && wParam < 0x10000)
           io.AddInputCharacter((unsigned short)wParam);
         return true;
+      case WM_KEYDOWN:
+        io.KeysDown[wParam & 0xff] = true;
+        io.KeyCtrl = wParam == VK_CONTROL;
+        io.KeyShift = wParam == VK_SHIFT;
+        return true;
+      case WM_KEYUP:
+        io.KeysDown[wParam & 0xff] = false;
+        g_KeyUpTrigger.SetTrigger(wParam & 0xff);
+        return true;
     }
 
     return false;
@@ -281,12 +292,12 @@ namespace tano
 
     // Setup inputs
     // (we already got mouse position, buttons, wheel from the window message callback)
-    BYTE keystate[256];
-    GetKeyboardState(keystate);
-    for (int i = 0; i < 256; i++)
-      io.KeysDown[i] = (keystate[i] & 0x80) != 0;
-    io.KeyCtrl = (keystate[VK_CONTROL] & 0x80) != 0;
-    io.KeyShift = (keystate[VK_SHIFT] & 0x80) != 0;
+//     BYTE keystate[256];
+//     GetKeyboardState(keystate);
+//     for (int i = 0; i < 256; i++)
+//       io.KeysDown[i] = (keystate[i] & 0x80) != 0;
+//     io.KeyCtrl = (keystate[VK_CONTROL] & 0x80) != 0;
+//     io.KeyShift = (keystate[VK_SHIFT] & 0x80) != 0;
     // io.MousePos : filled by WM_MOUSEMOVE event
     // io.MouseDown : filled by WM_*BUTTON* events
     // io.MouseWheel : filled by WM_MOUSEWHEEL events

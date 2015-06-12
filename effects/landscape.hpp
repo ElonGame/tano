@@ -163,6 +163,13 @@ namespace tano
 
     AnimatedInt _blinkFace;
 
+    enum DrawFlags {
+      DrawUpper = 1,
+      DrawLower = 2,
+      DrawParticles = 4,
+    };
+    u32 _drawFlags = 7;
+
     u32 _numUpperIndices = 0;
     u32 _numLowerIndices = 0;
     u32 _numParticles = 0;

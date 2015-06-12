@@ -26,6 +26,31 @@ namespace tano
     u8 altPressed : 1;
   };
 
+  struct KeyUpTrigger
+  {
+    KeyUpTrigger()
+    {
+      memset(triggers, 0, 512);
+    }
+
+    bool IsTriggered(int key)
+    {
+      bool tmp = triggers[key];
+      triggers[key] = false;
+      return tmp;
+    }
+
+    void SetTrigger(int key)
+    {
+      triggers[key] = true;
+    }
+
+    bool triggers[512];
+  };
+
+  extern KeyUpTrigger g_KeyUpTrigger;
+
+
   class App
   {
   public:
