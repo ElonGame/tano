@@ -186,7 +186,7 @@ bool Landscape::Init(const char* configFile)
     _particleGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
 
     INIT(_particleState.Create(
-      &depthDescDepthWriteDisabled, &blendDescBlendOneOne, &rasterizeDescCullNone));
+      &depthDescDepthDisabled, &blendDescBlendOneOne, &rasterizeDescCullNone));
   }
 
   MeshLoader loader;
@@ -468,7 +468,7 @@ void Landscape::FillChunk(const TaskData& data)
   V3 v0, v1, v2, v3;
   V3 n0, n1;
   float scaleX = 256.f / (10 * 1024);
-  float scaleY = 30;
+  float scaleY = 20;
   float scaleZ = 256.f / (10 * 1024);
 
   // first compute the noise values
@@ -503,25 +503,10 @@ void Landscape::FillChunk(const TaskData& data)
         // |  |
         // 0--3
 
-        float xx0 = x + (j + 0)     * GRID_SIZE;
-        float xx1 = x + (j + incr)  * GRID_SIZE;
-        float zz0 = z + (i - incr)  * GRID_SIZE;
-        float zz1 = z + (i + 0)     * GRID_SIZE;
-
-        v0.x = xx0; v0.z = zz0;
-        v1.x = xx0; v1.z = zz1;
-        v2.x = xx1; v2.z = zz1;
-        v3.x = xx1; v3.z = zz0;
-
-        v0.y = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + 0)].y;
-        v1.y = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + 0)].y;
-        v2.y = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + incr)].y;
-        v3.y = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + incr)].y;
-
-        v0 = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + 0)];
-        v1 = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + 0)];
-        v2 = scale * chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + incr)];
-        v3 = scale * chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + incr)];
+        v0 = chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + 0)];
+        v1 = chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + 0)];
+        v2 = chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + incr)];
+        v3 = chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + incr)];
 
         v0.y *= scale;
         v1.y *= scale;

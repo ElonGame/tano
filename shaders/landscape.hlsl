@@ -120,6 +120,11 @@ VsParticleIn VsParticle(VsParticleIn v)
 [maxvertexcount(4)]
 void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
 {
+
+  // 1--2
+  // |  |
+  // 0--3
+
   static float s = 1;
   static float3 ofs0 = float3(-s, -s, 0);
   static float3 ofs1 = float3(-s, +s, 0);
@@ -129,20 +134,24 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   matrix worldViewProj = mul(world, viewProj);
 
   float3 pos = input[0].pos;
+  float3 dir = normalize(cameraPos - pos);
+  float3 right = cross(dir, float3(0,1,0));
+  float3 up = cross(right, dir);
+
   VsParticleOut p;
-  p.pos = mul(float4(pos + ofs0, 1), worldViewProj);
+  p.pos = mul(float4(pos - s * right - s * up, 1), worldViewProj);
   p.uv = uvsVtx[0];
   outStream.Append(p);
 
-  p.pos = mul(float4(pos + ofs1, 1), worldViewProj);
+  p.pos = mul(float4(pos - s * right + s * up, 1), worldViewProj);
   p.uv = uvsVtx[1];
   outStream.Append(p);
 
-  p.pos = mul(float4(pos + ofs2, 1), worldViewProj);
+  p.pos = mul(float4(pos + s * right + s * up, 1), worldViewProj);
   p.uv = uvsVtx[2];
   outStream.Append(p);
 
-  p.pos = mul(float4(pos + ofs3, 1), worldViewProj);
+  p.pos = mul(float4(pos + s * right - s * up, 1), worldViewProj);
   p.uv = uvsVtx[3];
   outStream.Append(p);
 
@@ -185,7 +194,9 @@ VsLandscapeOut VsLandscape(VsLandscapeIn v)
 struct GS_INPUT
 {
     float4 Pos  : POSITION;
-    float4 PosV : TEXCOORD0;
+    float3 normal : Normal;
+    float3 rayDir : Texture0;
+    float distance : TexCoord1;
 };
 
 GS_INPUT VsLandscape2(VsLandscapeIn v)
@@ -194,7 +205,10 @@ GS_INPUT VsLandscape2(VsLandscapeIn v)
   matrix worldViewProj = mul(world, viewProj);
 
   res.Pos = mul(float4(v.pos, 1), worldViewProj);
-  res.PosV = mul(float4(v.pos, 1), world);
+  res.normal = mul(float4(v.normal, 0), world).xyz;
+  float3 dir = v.pos - cameraPos;
+  res.distance = length(dir);
+  res.rayDir = dir * 1/res.distance;
   return res;
 }
 
@@ -217,20 +231,16 @@ float4 PsLandscape(VsLandscapeOut p) : SV_Target
 // Geometry Shader
 //--------------------------------------------------------------------------------------
 
-
-struct PS_INPUT
-{
-    float4 Pos : SV_POSITION;
-    float4 Col : TEXCOORD0;
-};
-
 struct PS_INPUT_WIRE
 {
     float4 Pos : SV_POSITION;
-    float4 Col : TEXCOORD0;
+//    float4 Col : TEXCOORD0;
     noperspective float4 EdgeA: TEXCOORD1;
     noperspective float4 EdgeB: TEXCOORD2;
     uint Case : TEXCOORD3;
+    float3 normal : NORMAL;
+    float3 rayDir : TEXCOORD4;
+    float distance : TEXCOORD5;
 };
 
 
@@ -251,24 +261,6 @@ float2 projToWindow(in float4 pos)
                     dim.y*0.5*(1-(pos.y/pos.w)) + dim.w );
 }
 
-// Compute the triangle face normal from 3 points
-float3 faceNormal(in float3 posA, in float3 posB, in float3 posC)
-{
-    return normalize( cross(normalize(posB - posA), normalize(posC - posA)) );
-}
-
-// Compute the final color of a face depending on its facing of the light
-float4 shadeFace(in float4 verA, in float4 verB, in float4 verC)
-{
-    // Compute the triangle face normal in view frame
-    float3 normal = faceNormal(verA.xyz, verB.xyz, verC.xyz);
-    
-    // Then the color of the face.
-    float shade = 0.5*abs( dot( normal, LightVector.xyz) );
-    
-    return float4(FillColor.xyz*shade, 1);
-}
-
 [maxvertexcount(3)]
 void GsSolidWire( triangle GS_INPUT input[3],
                          inout TriangleStream<PS_INPUT_WIRE> outStream )
@@ -280,9 +272,6 @@ void GsSolidWire( triangle GS_INPUT input[3],
 
     // If case is all vertices behind viewpoint (case = 7) then cull.
     if (output.Case == 7) return;
-
-    // Shade and colour face just for the "all in one" technique.
-    output.Col = shadeFace(input[0].PosV, input[1].PosV, input[2].PosV);
 
    // Transform position to window space
     float2 points[3];
@@ -338,6 +327,9 @@ void GsSolidWire( triangle GS_INPUT input[3],
         output.EdgeB[0] = edgeOffsets[0];
         output.EdgeB[1] = edgeOffsets[1] + edgeSigns[1] * cosAngles[1]*lengths[0];
         output.EdgeB[2] = edgeOffsets[2] + edgeSigns[2] * lengths[2];
+        output.normal = input[0].normal;
+        output.rayDir = input[0].rayDir;
+        output.distance = input[0].distance;
         outStream.Append( output );
 
         output.Pos = ( input[1].Pos );
@@ -347,6 +339,9 @@ void GsSolidWire( triangle GS_INPUT input[3],
         output.EdgeB[0] = edgeOffsets[0] + edgeSigns[0] * lengths[0];
         output.EdgeB[1] = edgeOffsets[1];
         output.EdgeB[2] = edgeOffsets[2] + edgeSigns[2] * cosAngles[2]*lengths[1];
+        output.normal = input[1].normal;
+        output.rayDir = input[1].rayDir;
+        output.distance = input[1].distance;
         outStream.Append( output );
 
         output.Pos = ( input[2].Pos );
@@ -356,6 +351,9 @@ void GsSolidWire( triangle GS_INPUT input[3],
         output.EdgeB[0] = edgeOffsets[0] + edgeSigns[0] * cosAngles[0]*lengths[2];
         output.EdgeB[1] = edgeOffsets[1] + edgeSigns[1] * lengths[1];
         output.EdgeB[2] = edgeOffsets[2];
+        output.normal = input[2].normal;
+        output.rayDir = input[2].rayDir;
+        output.distance = input[2].distance;
         outStream.Append( output );
 
         outStream.RestartStrip();
@@ -372,12 +370,21 @@ void GsSolidWire( triangle GS_INPUT input[3],
     
     // Generate vertices
         output.Pos =( input[0].Pos );
+        output.normal = input[0].normal;
+        output.rayDir = input[0].rayDir;
+        output.distance = input[0].distance;
         outStream.Append( output );
      
         output.Pos = ( input[1].Pos );
+        output.normal = input[1].normal;
+        output.rayDir = input[1].rayDir;
+        output.distance = input[1].distance;
         outStream.Append( output );
 
         output.Pos = ( input[2].Pos );
+        output.normal = input[2].normal;
+        output.rayDir = input[2].rayDir;
+        output.distance = input[2].distance;
         outStream.Append( output );
 
         outStream.RestartStrip();
@@ -414,8 +421,8 @@ float evalMinDistanceToEdges(in PS_INPUT_WIRE input)
         if (input.Case == 1 || input.Case == 2 || input.Case == 4)
         {
             float AFcosA0 = dot(AF, normalize(input.EdgeB.xy - input.EdgeA.xy));
-      dist = min( dist, abs(sqAF - AFcosA0*AFcosA0) );
-      }
+            dist = min( dist, abs(sqAF - AFcosA0*AFcosA0) );
+        }
 
         dist = sqrt(dist);
     }
@@ -428,9 +435,6 @@ float4 PsSolidWire( PS_INPUT_WIRE input) : SV_Target
     // Compute the shortest distance between the fragment and the edges.
     float dist = evalMinDistanceToEdges(input);
 
-    // Cull fragments too far from the edge.
-//    if (dist > 0.5*LineWidth+1) discard;
-
     // Map the computed distance to the [0,2] range on the border of the line.
     dist = clamp((dist - (0.5*LineWidth - 1)), 0, 2);
 
@@ -438,11 +442,18 @@ float4 PsSolidWire( PS_INPUT_WIRE input) : SV_Target
     dist *= dist;
     float alpha = exp2(-2*dist);
 
-    // Standard wire color
-    float4 color = WireColor;
-    return float4(lerp(input.Col, WireColor, alpha).xyz, 0.9);
-    //color.a *= alpha;
-    return color;
+
+    float3 amb = float3(0.05, 0.05, 0.05);
+    float dff = saturate(dot(-SUN_DIR, input.normal));
+    float3 col = amb + dff * float3(0.1, 0.1, 0.25);
+
+    col = lerp(col, WireColor.rgb, alpha);
+
+    float b = 0.001;
+    float fogAmount = max(0, 1 - exp(-(input.distance - 500) * b));
+
+    float3 fogColor = FogColor(input.rayDir);
+    return float4(lerp(col, fogColor, fogAmount), 0.9);
 }
 
 
