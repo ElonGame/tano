@@ -13,17 +13,13 @@ namespace tano
 
     bool Init();
 
-    // Render shader to a temp render target with the given format
-    ObjectHandle Execute(
-      const vector<ObjectHandle>& input, 
-      DXGI_FORMAT outputFormat, 
-      const GpuObjects& gpuObjects,
-      const Color* clearColor = nullptr);
+    // TODO: Render shader to a temp render target with the given format
 
     // Render shader to the given output
     void Execute(
       const vector<ObjectHandle>& input,
       ObjectHandle output,
+      ObjectHandle depthStencil,
       ObjectHandle shader,
       bool releaseOutput = true,
       const Color* clearColor = nullptr);

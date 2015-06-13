@@ -12,8 +12,12 @@ namespace tano
 
     void SetSwapChain(ObjectHandle h, const Color& clearColor);
     void SetSwapChain(ObjectHandle h, const float* clearColor);
-    void SetRenderTarget(ObjectHandle render_target, const Color* clearTarget);
-    void SetRenderTargets(ObjectHandle* render_targets, const Color** clearTarget, int num_render_targets);
+    void SetRenderTarget(ObjectHandle renderTarget, ObjectHandle depthStencil, const Color* clearTarget);
+    void SetRenderTargets(
+        ObjectHandle* renderTargets,
+        ObjectHandle depthStencil,
+        const Color** clearTarget,
+        int numRenderTargets);
     void GenerateMips(ObjectHandle h);
 
     void SetVertexBuffer(ID3D11Buffer *buf, uint32_t stride);

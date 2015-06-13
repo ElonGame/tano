@@ -32,19 +32,10 @@ bool PostProcess::Init()
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle PostProcess::Execute(
-    const vector<ObjectHandle>& input,
-    DXGI_FORMAT outputFormat,
-    const GpuObjects& gpuObjects,
-    const Color* clearColor)
-{
-  return ObjectHandle();
-}
-
-//------------------------------------------------------------------------------
 void PostProcess::Execute(
     const vector<ObjectHandle>& input,
     ObjectHandle output,
+    ObjectHandle depthStencil,
     ObjectHandle shader,
     bool releaseOutput,
     const Color* clearColor)
@@ -56,7 +47,7 @@ void PostProcess::Execute(
   _ctx->SetGpuObjects(_gpuObjects);
 
   if (output.IsValid())
-    _ctx->SetRenderTarget(output, clearColor);
+    _ctx->SetRenderTarget(output, depthStencil, clearColor);
 
   _ctx->SetShaderResources(input, ShaderType::PixelShader);
 

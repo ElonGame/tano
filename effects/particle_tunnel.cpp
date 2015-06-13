@@ -574,7 +574,7 @@ bool ParticleTunnel::Render()
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
   // Render the background
-  _ctx->SetRenderTarget(rt._handle, &black);
+  _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), &black);
   _ctx->SetGpuObjects(_backgroundGpuObjects);
   _ctx->SetGpuState(_backgroundState);
   _ctx->Draw(3, 0);
@@ -595,7 +595,7 @@ bool ParticleTunnel::Render()
 
   // lines
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  _ctx->SetRenderTarget(rtLines._handle, &black);
+  _ctx->SetRenderTarget(rtLines._rtHandle, GRAPHICS.GetDepthStencil(), &black);
   if (_curParticles)
   {
     _ctx->SetGpuObjects(_linesGpuObjects);
@@ -607,7 +607,7 @@ bool ParticleTunnel::Render()
   _ctx->UnsetRenderTargets(0, 1);
 
   ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav);
-  ApplyBlur(rtLines._handle, rtBlur._handle);
+  ApplyBlur(rtLines._rtHandle, rtBlur._rtHandle);
 
   // compose final image on default swap chain
 
@@ -615,10 +615,11 @@ bool ParticleTunnel::Render()
 
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
   postProcess->Execute(
-    { rt._handle, rtLines._handle, rtBlur._handle }, 
+    { rt._rtHandle, rtLines._rtHandle, rtBlur._rtHandle }, 
     GRAPHICS.GetBackBuffer(), 
-    _compositeGpuObjects._ps
-    , false);
+    GRAPHICS.GetDepthStencil(),
+    _compositeGpuObjects._ps,
+    false);
 
   return true;
 }
@@ -645,9 +646,9 @@ void ParticleTunnel::ApplyBlur(ObjectHandle inputBuffer, ObjectHandle outputBuff
   ObjectHandle srcDst[] =
   {
     // horiz
-    inputBuffer, scratch0._handle, scratch0._handle, scratch1._handle, scratch1._handle, scratch0._handle,
+    inputBuffer, scratch0._rtHandle, scratch0._rtHandle, scratch1._rtHandle, scratch1._rtHandle, scratch0._rtHandle,
     // vert
-    scratch1._handle, scratch0._handle, scratch0._handle, scratch1._handle, scratch1._handle, scratch0._handle,
+    scratch1._rtHandle, scratch0._rtHandle, scratch0._rtHandle, scratch1._rtHandle, scratch1._rtHandle, scratch0._rtHandle,
   };
 
   // horizontal blur (ends up in scratch0)
@@ -664,8 +665,8 @@ void ParticleTunnel::ApplyBlur(ObjectHandle inputBuffer, ObjectHandle outputBuff
   }
 
   // copy/transpose from scratch0 -> scratch1
-  _ctx->SetShaderResources({ scratch0._handle }, ShaderType::ComputeShader);
-  _ctx->SetUnorderedAccessView(scratch1._handle, &black);
+  _ctx->SetShaderResources({ scratch0._rtHandle }, ShaderType::ComputeShader);
+  _ctx->SetUnorderedAccessView(scratch1._rtHandle, &black);
 
   _ctx->SetComputeShader(_csCopyTranspose);
   _ctx->Dispatch(h/32+1, 1, 1);
@@ -692,7 +693,7 @@ void ParticleTunnel::ApplyBlur(ObjectHandle inputBuffer, ObjectHandle outputBuff
   }
 
   // copy/transpose from scratch0 -> blur1
-  _ctx->SetShaderResources({ scratch0._handle }, ShaderType::ComputeShader);
+  _ctx->SetShaderResources({ scratch0._rtHandle }, ShaderType::ComputeShader);
   _ctx->SetUnorderedAccessView(outputBuffer, &black);
 
   _ctx->SetComputeShader(_csCopyTranspose);

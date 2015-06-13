@@ -24,14 +24,18 @@ void GraphicsContext::GenerateMips(ObjectHandle h)
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetRenderTarget(ObjectHandle renderTarget, const Color* clearColor)
+void GraphicsContext::SetRenderTarget(
+    ObjectHandle renderTarget, 
+    ObjectHandle depthStencil,
+    const Color* clearColor)
 {
   RenderTargetResource* rt = GRAPHICS._renderTargets.Get(renderTarget);
   D3D11_TEXTURE2D_DESC textureDesc = rt->texture.desc;
-  ID3D11DepthStencilView* dsv = rt->dsv.resource;
+  DepthStencilResource* ds = GRAPHICS._depthStencils.Get(depthStencil);
+  ID3D11DepthStencilView* dsv = ds ? ds->view.resource : nullptr;
   if (clearColor)
   {
-    _ctx->ClearRenderTargetView(rt->rtv.resource, &clearColor->x);
+    _ctx->ClearRenderTargetView(rt->view.resource, &clearColor->x);
     if (dsv)
     {
       _ctx->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
@@ -39,12 +43,13 @@ void GraphicsContext::SetRenderTarget(ObjectHandle renderTarget, const Color* cl
   }
   CD3D11_VIEWPORT viewport(0.0f, 0.0f, (float)textureDesc.Width, (float)textureDesc.Height);
   _ctx->RSSetViewports(1, &viewport);
-  _ctx->OMSetRenderTargets(1, &rt->rtv.resource.p, dsv);
+  _ctx->OMSetRenderTargets(1, &rt->view.resource.p, dsv);
 }
 
 //------------------------------------------------------------------------------
 void GraphicsContext::SetRenderTargets(
     ObjectHandle* renderTargets,
+    ObjectHandle depthStencil,
     const Color** clearTargets,
     int numRenderTargets)
 {
@@ -52,8 +57,9 @@ void GraphicsContext::SetRenderTargets(
     return;
 
   ID3D11RenderTargetView *rts[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-  ID3D11DepthStencilView *dsv = nullptr;
   D3D11_TEXTURE2D_DESC texture_desc;
+  DepthStencilResource* ds = GRAPHICS._depthStencils.Get(depthStencil);
+  ID3D11DepthStencilView* dsv = ds ? ds->view.resource : nullptr;
 
   // Collect the valid render targets, set the first available depth buffer
   // and clear targets if specified
@@ -63,18 +69,14 @@ void GraphicsContext::SetRenderTargets(
     assert(h.IsValid());
     RenderTargetResource* rt = GRAPHICS._renderTargets.Get(h);
     texture_desc = rt->texture.desc;
-    if (!dsv && rt->dsv.resource)
-    {
-      dsv = rt->dsv.resource;
-    }
-    rts[i] = rt->rtv.resource;
+    rts[i] = rt->view.resource;
     // clear render target (and depth stenci)
     if (clearTargets && clearTargets[i])
     {
       _ctx->ClearRenderTargetView(rts[i], &clearTargets[i]->x);
-      if (rt->dsv.resource)
+      if (dsv)
       {
-        _ctx->ClearDepthStencilView(rt->dsv.resource, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0 );
+        _ctx->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0 );
       }
     }
   }
@@ -92,14 +94,15 @@ void GraphicsContext::SetSwapChain(ObjectHandle h, const Color& clearColor)
 //------------------------------------------------------------------------------
 void GraphicsContext::SetSwapChain(ObjectHandle h, const float* clearColor)
 {
-  auto swapChain  = GRAPHICS._swapChains.Get(h);
-  auto rt         = GRAPHICS._renderTargets.Get(swapChain->_renderTarget);
-  _ctx->OMSetRenderTargets(1, &rt->rtv.resource.p, rt->dsv.resource);
+  SwapChain* swapChain = GRAPHICS._swapChains.Get(h);
+  RenderTargetResource* rt = GRAPHICS._renderTargets.Get(swapChain->_renderTarget);
+  DepthStencilResource* ds = GRAPHICS._depthStencils.Get(swapChain->_depthStencil);
+  _ctx->OMSetRenderTargets(1, &rt->view.resource.p, ds->view.resource);
 
   if (clearColor)
   {
-    _ctx->ClearRenderTargetView(rt->rtv.resource, clearColor);
-    _ctx->ClearDepthStencilView(rt->dsv.resource, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0 );
+    _ctx->ClearRenderTargetView(rt->view.resource, clearColor);
+    _ctx->ClearDepthStencilView(ds->view.resource, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0 );
   }
   _ctx->RSSetViewports(1, &swapChain->_viewport);
 }
@@ -394,7 +397,7 @@ void GraphicsContext::SetUnorderedAccessView(ObjectHandle h, Color* clearColor)
 
     if (clearColor)
     {
-      _ctx->ClearRenderTargetView(res->rtv.resource, &clearColor->x);
+      _ctx->ClearRenderTargetView(res->view.resource, &clearColor->x);
     }
   }
   else
@@ -410,7 +413,7 @@ void GraphicsContext::SetUnorderedAccessView(ObjectHandle h, Color* clearColor)
 //------------------------------------------------------------------------------
 void GraphicsContext::SetSamplerState(ObjectHandle h, ShaderType shaderType, u32 slot)
 {
-  ID3D11SamplerState* samplerState = GRAPHICS._sampler_states.Get(h);
+  ID3D11SamplerState* samplerState = GRAPHICS._samplerStates.Get(h);
 
   if (shaderType == ShaderType::VertexShader)
     _ctx->VSSetSamplers(slot, 1, &samplerState);
@@ -431,7 +434,7 @@ void GraphicsContext::SetSamplers(
 {
   vector<ID3D11SamplerState*> samplers;
   for (u32 i = 0; i < numSamplers; ++i)
-    samplers.push_back(GRAPHICS._sampler_states.Get(h[i]));
+    samplers.push_back(GRAPHICS._samplerStates.Get(h[i]));
 
   if (shaderType == ShaderType::VertexShader)
     _ctx->VSSetSamplers(slot, numSamplers, samplers.data());

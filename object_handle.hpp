@@ -17,6 +17,7 @@ namespace tano
       kTexture,
       kResource,
       kRenderTarget,
+      kDepthStencil,
       kShader,
       kInputLayout,
       kBlendState,

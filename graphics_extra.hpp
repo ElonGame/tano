@@ -68,7 +68,8 @@ namespace tano
   template<class Resource, class Desc>
   struct ResourceAndDesc
   {
-    void release() {
+    void Release()
+    {
       resource.Release();
     }
     CComPtr<Resource> resource;
@@ -76,28 +77,42 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
+  struct DepthStencilResource
+  {
+    DepthStencilResource()
+    {
+      Reset();
+    }
+
+    void Reset()
+    {
+      texture.Release();
+      view.Release();
+    }
+
+    ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
+    ResourceAndDesc<ID3D11DepthStencilView, D3D11_DEPTH_STENCIL_VIEW_DESC> view;
+  };
+
+  //------------------------------------------------------------------------------
   struct RenderTargetResource
   {
     RenderTargetResource()
     {
-      reset();
+      Reset();
     }
 
-    void reset()
+    void Reset()
     {
-      texture.release();
-      depth_stencil.release();
-      rtv.release();
-      dsv.release();
-      srv.release();
-      uav.release();
+      texture.Release();
+      view.Release();
+      srv.Release();
+      uav.Release();
     }
 
     bool inUse = true;
     ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
-    ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> depth_stencil;
-    ResourceAndDesc<ID3D11RenderTargetView, D3D11_RENDER_TARGET_VIEW_DESC> rtv;
-    ResourceAndDesc<ID3D11DepthStencilView, D3D11_DEPTH_STENCIL_VIEW_DESC> dsv;
+    ResourceAndDesc<ID3D11RenderTargetView, D3D11_RENDER_TARGET_VIEW_DESC> view;
     ResourceAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> srv;
     ResourceAndDesc<ID3D11UnorderedAccessView, D3D11_UNORDERED_ACCESS_VIEW_DESC> uav;
   };
@@ -106,8 +121,8 @@ namespace tano
   struct TextureResource
   {
     void reset() {
-      texture.release();
-      view.release();
+      texture.Release();
+      view.Release();
     }
     ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
     ResourceAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> view;
@@ -118,7 +133,7 @@ namespace tano
   {
     void reset() {
       resource.Release();
-      view.release();
+      view.Release();
     }
     CComPtr<ID3D11Resource> resource;
     ResourceAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> view;
@@ -144,6 +159,7 @@ namespace tano
     CComPtr<IDXGISwapChain> _swapChain;
     DXGI_SWAP_CHAIN_DESC _desc;
     ObjectHandle _renderTarget;
+    ObjectHandle _depthStencil;
     CD3D11_VIEWPORT _viewport;
     u32 _width, _height;
   };
@@ -156,7 +172,8 @@ namespace tano
     ~ScopedRenderTarget();
     void Attach(GraphicsContext* ctx, const Color* clearColor = nullptr);
 
-    ObjectHandle _handle;
+    ObjectHandle _rtHandle;
+    ObjectHandle _dsHandle;
     GraphicsContext* _ctx = nullptr;
   };
 

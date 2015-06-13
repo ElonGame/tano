@@ -25,6 +25,8 @@ namespace tano
 
 #define BEGIN_INIT_SEQUENCE() InitSequence::Enter();
 #define INIT(x) if (!(x)) { InitSequence::AddFailure(__FILE__, __LINE__, #x, false); }
+#define INIT_HR(x) if (FAILED(x)) { InitSequence::AddFailure(__FILE__, __LINE__, #x, false); }
+#define INIT_HR_FATAL(x) if (FAILED(x)) { InitSequence::AddFailure(__FILE__, __LINE__, #x, true); return InitSequence::Exit(); }
 #define INJECT_ERROR(str) { InitSequence::AddFailure(__FILE__, __LINE__, str, false); }
 #define INJECT_ERROR_FATAL(str) { InitSequence::AddFailure(__FILE__, __LINE__, str, true); }
 #define INIT_RESOURCE(h, x) { h = (x); if (!(h).IsValid()) { InitSequence::AddFailure(__FILE__, __LINE__, #x, false); } }

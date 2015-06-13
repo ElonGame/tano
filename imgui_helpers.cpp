@@ -113,7 +113,7 @@ bool InitDeviceD3D()
 // - in your Render function, try translating your projection matrix by (0.5f,0.5f) or (0.375f,0.375f)
 static void ImImpl_RenderDrawLists(ImDrawList** const cmd_lists, int cmd_lists_count)
 {
-  g_ctx->SetRenderTarget(GRAPHICS.GetBackBuffer(), nullptr);
+  g_ctx->SetRenderTarget(GRAPHICS.GetBackBuffer(), GRAPHICS.GetDepthStencil(), nullptr);
 
   size_t total_vtx_count = 0;
   for (int n = 0; n < cmd_lists_count; n++)

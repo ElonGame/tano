@@ -37,10 +37,11 @@ Graphics::Graphics()
   , _blendStates(ReleaseObj<ID3D11BlendState *>)
   , _depthStencilStates(ReleaseObj<ID3D11DepthStencilState *>)
   , _rasterizerStates(ReleaseObj<ID3D11RasterizerState *>)
-  , _sampler_states(ReleaseObj<ID3D11SamplerState *>)
+  , _samplerStates(ReleaseObj<ID3D11SamplerState *>)
   , _shaderResourceViews(ReleaseObj<ID3D11ShaderResourceView *>)
   , _textures(DeleteObj<TextureResource *>)
   , _renderTargets(DeleteObj<RenderTargetResource *>)
+  , _depthStencils(DeleteObj<DepthStencilResource *>)
   , _resources(DeleteObj<SimpleResource *>)
   , _structuredBuffers(DeleteObj<StructuredBuffer *>)
   , _swapChains(DeleteObj<SwapChain*>)
@@ -266,7 +267,7 @@ bool Graphics::GetTextureSize(ObjectHandle h, u32* x, u32* y)
   }
   else if (type == ObjectHandle::kRenderTarget)
   {
-    const D3D11_RENDER_TARGET_VIEW_DESC& rtDesc = _renderTargets.Get(h)->rtv.desc;
+    const D3D11_RENDER_TARGET_VIEW_DESC& rtDesc = _renderTargets.Get(h)->view.desc;
     const D3D11_TEXTURE2D_DESC& desc = _renderTargets.Get(h)->texture.desc;
     u32 mipLevel = rtDesc.Texture2D.MipSlice;
     *x = max(desc.Width / (1 << mipLevel), 1u);
@@ -288,11 +289,13 @@ bool Graphics::GetTextureSize(ObjectHandle h, u32* x, u32* y)
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::GetTempRenderTarget(
+void Graphics::GetTempRenderTarget(
   int width,
   int height,
   DXGI_FORMAT format,
-  const BufferFlags& bufferFlags)
+  const BufferFlags& bufferFlags,
+  ObjectHandle* rtHandle,
+  ObjectHandle* dsHandle)
 {
   // look for a free render target with the wanted properties
   UINT flags = bufferFlags.IsSet(BufferFlag::CreateMipMaps) ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
@@ -300,14 +303,10 @@ ObjectHandle Graphics::GetTempRenderTarget(
 
   auto rtComp = [=](const RenderTargetResource* res)
   {
-    auto &desc = res->texture.desc;
-    return 
-      !res->inUse
-      && desc.Width == width
-      && desc.Height == height
-      && desc.Format == format
-      && desc.MiscFlags == flags
-      && requiresDepthBuffer == (res->depth_stencil.resource.p != nullptr);
+    const D3D11_TEXTURE2D_DESC& desc = res->texture.desc;
+    return !res->inUse && desc.Width == width && desc.Height == height && desc.Format == format && desc.MiscFlags == flags;
+    // TODO: handle depth/stencil
+//      && requiresDepthBuffer == (res->depthStencil.resource.p != nullptr);
   };
 
   int idx = _renderTargets.Find(rtComp);
@@ -315,11 +314,13 @@ ObjectHandle Graphics::GetTempRenderTarget(
   {
     RenderTargetResource* rt = _renderTargets.Get(idx);
     rt->inUse = true;
-    return MakeObjectHandle(ObjectHandle::kRenderTarget, idx);
+    *rtHandle = MakeObjectHandle(ObjectHandle::kRenderTarget, idx);
   }
-
-  // nothing suitable found, so we create a render target
-  return CreateRenderTarget(width, height, format, bufferFlags);
+  else
+  {
+    // nothing suitable found, so we create a render target
+    CreateRenderTarget(width, height, format, bufferFlags, nullptr, rtHandle, dsHandle);
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -380,23 +381,34 @@ ObjectHandle Graphics::CreateStructuredBuffer(
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateRenderTarget(
+bool Graphics::CreateRenderTarget(
     int width,
     int height,
     DXGI_FORMAT format,
     const BufferFlags& bufferFlags,
-    const string& name)
+    const char* name,
+    ObjectHandle* rtHandle,
+    ObjectHandle* dsHandle)
 {
   ObjectHandle goh;
-  unique_ptr<RenderTargetResource> data(new RenderTargetResource);
-  if (CreateRenderTarget(width, height, format, bufferFlags, data.get()))
+
+  RenderTargetResource* rt = new RenderTargetResource();
+  DepthStencilResource* ds = bufferFlags.IsSet(BufferFlag::CreateDepthBuffer) ? new DepthStencilResource : nullptr;
+  if (CreateRenderTarget(width, height, format, bufferFlags, rt, ds))
   {
-    int idx = name.empty()
-      ? _renderTargets.Insert(data.release())
-      : _renderTargets.Insert(name, data.release());
-    return MakeObjectHandle(ObjectHandle::kRenderTarget, idx);
+    int rtIdx = name ? _renderTargets.Insert(name, rt) : _renderTargets.Insert(rt);
+    *rtHandle = MakeObjectHandle(ObjectHandle::kRenderTarget, rtIdx);
+    if (ds)
+    {
+      int dsIdx = _depthStencils.Insert(ds);
+      *dsHandle = MakeObjectHandle(ObjectHandle::kDepthStencil, dsIdx);
+    }
+    return true;
   }
-  return emptyHandle;
+
+  delete rt;
+  delete ds;
+  return false;
 }
 
 //------------------------------------------------------------------------------
@@ -405,10 +417,11 @@ bool Graphics::CreateRenderTarget(
     int height,
     DXGI_FORMAT format,
     const BufferFlags& bufferFlags,
-    RenderTargetResource *out)
+    RenderTargetResource* rt,
+    DepthStencilResource* ds)
 {
-  out->reset();
-  out->inUse = true;
+  rt->Reset();
+  rt->inUse = true;
 
   // create the render target
   int mip_levels = bufferFlags.IsSet(BufferFlag::CreateMipMaps) ? 0 : 1;
@@ -416,41 +429,41 @@ bool Graphics::CreateRenderTarget(
     | (bufferFlags.IsSet(BufferFlag::CreateSrv) ? D3D11_BIND_SHADER_RESOURCE : 0)
     | (bufferFlags.IsSet(BufferFlag::CreateUav) ? D3D11_BIND_UNORDERED_ACCESS : 0);
 
-  out->texture.desc = CD3D11_TEXTURE2D_DESC(format, width, height, 1, mip_levels, flags);
-  out->texture.desc.MiscFlags = bufferFlags.IsSet(BufferFlag::CreateMipMaps) ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
-  if (FAILED(_device->CreateTexture2D(&out->texture.desc, NULL, &out->texture.resource.p)))
+  rt->texture.desc = CD3D11_TEXTURE2D_DESC(format, width, height, 1, mip_levels, flags);
+  rt->texture.desc.MiscFlags = bufferFlags.IsSet(BufferFlag::CreateMipMaps) ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
+  if (FAILED(_device->CreateTexture2D(&rt->texture.desc, NULL, &rt->texture.resource.p)))
     return false;
 
   // create the render target view
-  out->rtv.desc = CD3D11_RENDER_TARGET_VIEW_DESC(D3D11_RTV_DIMENSION_TEXTURE2D, out->texture.desc.Format);
-  if (FAILED(_device->CreateRenderTargetView(out->texture.resource, &out->rtv.desc, &out->rtv.resource.p)))
+  rt->view.desc = CD3D11_RENDER_TARGET_VIEW_DESC(D3D11_RTV_DIMENSION_TEXTURE2D, rt->texture.desc.Format);
+  if (FAILED(_device->CreateRenderTargetView(rt->texture.resource, &rt->view.desc, &rt->view.resource.p)))
     return false;
 
   if (bufferFlags.IsSet(BufferFlag::CreateDepthBuffer))
   {
     // create the depth stencil texture
-    out->depth_stencil.desc = CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_D24_UNORM_S8_UINT, width, height, 1, 1, D3D11_BIND_DEPTH_STENCIL);
-    if (FAILED(_device->CreateTexture2D(&out->depth_stencil.desc, NULL, &out->depth_stencil.resource.p)))
+    ds->texture.desc = CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_D24_UNORM_S8_UINT, width, height, 1, 1, D3D11_BIND_DEPTH_STENCIL);
+    if (FAILED(_device->CreateTexture2D(&ds->texture.desc, NULL, &ds->texture.resource.p)))
       return false;
 
     // create depth stencil view
-    out->dsv.desc = CD3D11_DEPTH_STENCIL_VIEW_DESC(D3D11_DSV_DIMENSION_TEXTURE2D, DXGI_FORMAT_D24_UNORM_S8_UINT);
-    if (FAILED(_device->CreateDepthStencilView(out->depth_stencil.resource, &out->dsv.desc, &out->dsv.resource.p)))
+    ds->view.desc = CD3D11_DEPTH_STENCIL_VIEW_DESC(D3D11_DSV_DIMENSION_TEXTURE2D, DXGI_FORMAT_D24_UNORM_S8_UINT);
+    if (FAILED(_device->CreateDepthStencilView(ds->texture.resource, &ds->view.desc, &ds->view.resource.p)))
       return false;
   }
 
   if (bufferFlags.IsSet(BufferFlag::CreateSrv))
   {
     // create the shader resource view
-    out->srv.desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, out->texture.desc.Format);
-    if (FAILED(_device->CreateShaderResourceView(out->texture.resource, &out->srv.desc, &out->srv.resource.p)))
+    rt->srv.desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, rt->texture.desc.Format);
+    if (FAILED(_device->CreateShaderResourceView(rt->texture.resource, &rt->srv.desc, &rt->srv.resource.p)))
       return false;
   }
 
   if (bufferFlags.IsSet(BufferFlag::CreateUav))
   {
-    out->uav.desc = CD3D11_UNORDERED_ACCESS_VIEW_DESC(D3D11_UAV_DIMENSION_TEXTURE2D, format, 0, 0, width*height);
-    if (FAILED(_device->CreateUnorderedAccessView(out->texture.resource, &out->uav.desc, &out->uav.resource)))
+    rt->uav.desc = CD3D11_UNORDERED_ACCESS_VIEW_DESC(D3D11_UAV_DIMENSION_TEXTURE2D, format, 0, 0, width*height);
+    if (FAILED(_device->CreateUnorderedAccessView(rt->texture.resource, &rt->uav.desc, &rt->uav.resource)))
       return false;
   }
 
@@ -823,9 +836,7 @@ ObjectHandle Graphics::CreateSamplerState(
   if (SUCCEEDED(_device->CreateSamplerState(&desc, &ss)))
   {
     return MakeObjectHandle(ObjectHandle::kSamplerState,
-      name 
-        ? _sampler_states.Insert(name, ss)
-        : _sampler_states.Insert(ss));
+      name ? _samplerStates.Insert(name, ss) : _samplerStates.Insert(ss));
   }
   return emptyHandle;
 }
@@ -925,7 +936,7 @@ ObjectHandle Graphics::FindResource(const string& name)
 //------------------------------------------------------------------------------
 ObjectHandle Graphics::FindSampler(const string &name)
 {
-  return MakeObjectHandle(ObjectHandle::kSamplerState, _sampler_states.IndexFromKey(name));
+  return MakeObjectHandle(ObjectHandle::kSamplerState, _samplerStates.IndexFromKey(name));
 }
 
 //------------------------------------------------------------------------------
@@ -1002,6 +1013,12 @@ void Graphics::GetBackBufferSize(int* width, int* height)
 ObjectHandle Graphics::GetBackBuffer()
 {
   return _defaultSwapChain->_renderTarget;
+}
+
+//------------------------------------------------------------------------------
+ObjectHandle Graphics::GetDepthStencil()
+{
+  return _defaultSwapChain->_depthStencil;
 }
 
 //------------------------------------------------------------------------------

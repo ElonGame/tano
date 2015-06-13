@@ -688,7 +688,7 @@ bool Landscape::Render()
   _cbPerFrame.world = Matrix::Identity();
 
   u32 dimX, dimY;
-  GRAPHICS.GetTextureSize(rt._handle, &dimX, &dimY);
+  GRAPHICS.GetTextureSize(rt._rtHandle, &dimX, &dimY);
   _cbPerFrame.dim.x = (float)dimX;
   _cbPerFrame.dim.y = (float)dimY;
   _cbPerFrame.dim.z = 0;
@@ -698,12 +698,12 @@ bool Landscape::Render()
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
   // Render the sky
-  _ctx->SetRenderTarget(rt._handle, &black);
+  _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), &black);
   _ctx->SetGpuObjects(_skyGpuObjects);
   _ctx->Draw(3, 0);
 
   // Render the landscape
-  _ctx->SetRenderTarget(rt._handle, nullptr);
+  _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), nullptr);
 
   if (_renderLandscape)
   {
@@ -774,7 +774,12 @@ bool Landscape::Render()
     }
   }
 
-  postProcess->Execute({ rt._handle }, GRAPHICS.GetBackBuffer(), _compositeGpuObjects._ps, false);
+  postProcess->Execute(
+    { rt._rtHandle },
+    GRAPHICS.GetBackBuffer(),
+    GRAPHICS.GetDepthStencil(),
+    _compositeGpuObjects._ps,
+    false);
 
   return true;
 }

@@ -2,6 +2,7 @@
 #include "graphics.hpp"
 #include "graphics_context.hpp"
 #include "arena_allocator.hpp"
+#include "init_sequence.hpp"
 #include "_win32/resource.h"
 
 using namespace tano;
@@ -356,16 +357,17 @@ namespace tano
 //------------------------------------------------------------------------------
 bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
 {
+  BEGIN_INIT_SEQUENCE();
+
   _width = width;
   _height = height;
 
-  Graphics& g = GRAPHICS;
-
   // Reset the buffers if the swap chain is already registered
-  RenderTargetResource* rt;
-  if (g._renderTargets.Get(_name, &rt))
+  RenderTargetResource* rt = GRAPHICS._renderTargets.Get(_name);
+  if (rt)
   {
-    rt->reset();
+    // TODO: I very much doubt that this actually still works..
+    rt->Reset();
     _swapChain->ResizeBuffers(0, width, height, format, 0);
   }
   else
@@ -373,8 +375,7 @@ bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
     rt = new RenderTargetResource();
   }
 
-  if (FAILED(_swapChain->GetBuffer(0, IID_PPV_ARGS(&rt->texture.resource))))
-    return false;
+  INIT_HR_FATAL(_swapChain->GetBuffer(0, IID_PPV_ARGS(&rt->texture.resource)));
 
   rt->texture.resource->GetDesc(&rt->texture.desc);
 
@@ -383,32 +384,33 @@ bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
   ZeroMemory(&rtViewDesc, sizeof(rtViewDesc));
   rtViewDesc.Format = rt->texture.desc.Format;
   rtViewDesc.ViewDimension = rt->texture.desc.SampleDesc.Count == 1 ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DMS;
-  if (FAILED(g._device->CreateRenderTargetView(rt->texture.resource, &rtViewDesc, &rt->rtv.resource)))
-    return false;
+  INIT_HR_FATAL(GRAPHICS._device->CreateRenderTargetView(rt->texture.resource, &rtViewDesc, &rt->view.resource));
 
-  rt->rtv.resource->GetDesc(&rt->rtv.desc);
+  rt->view.resource->GetDesc(&rt->view.desc);
+
+  DepthStencilResource* depthStencil = new DepthStencilResource();
 
   CD3D11_TEXTURE2D_DESC depthStencilDesc(
     DXGI_FORMAT_D24_UNORM_S8_UINT, width, height, 1, 1,
     D3D11_BIND_DEPTH_STENCIL, D3D11_USAGE_DEFAULT, 0, _desc.SampleDesc.Count);
 
   // Create depth stencil buffer and view
-  if (FAILED(g._device->CreateTexture2D(&depthStencilDesc, NULL, &rt->depth_stencil.resource)))
-    return false;
+  INIT_HR_FATAL(GRAPHICS._device->CreateTexture2D(&depthStencilDesc, NULL, &depthStencil->texture.resource));
+  depthStencil->texture.resource->GetDesc(&depthStencil->texture.desc);
 
-  rt->depth_stencil.resource->GetDesc(&rt->depth_stencil.desc);
+  INIT_HR_FATAL(GRAPHICS._device->CreateDepthStencilView(depthStencil->texture.resource, NULL, &depthStencil->view.resource));
+  depthStencil->view.resource->GetDesc(&depthStencil->view.desc);
 
-  if (FAILED(g._device->CreateDepthStencilView(rt->depth_stencil.resource, NULL, &rt->dsv.resource)))
-    return false;
+  // register the render-target and depth-stencil
+  u32 rtIdx = GRAPHICS._renderTargets.Insert(_name, rt);
+  _renderTarget = ObjectHandle(ObjectHandle::kRenderTarget, rtIdx);
 
-  rt->dsv.resource->GetDesc(&rt->dsv.desc);
-
-  // Register the buffer with GRAPHICS
-  u32 idx = g._renderTargets.Insert(_name, rt);
-  _renderTarget = ObjectHandle(ObjectHandle::kRenderTarget, idx);
+  u32 dsIdx = GRAPHICS._depthStencils.Insert(depthStencil);
+  _depthStencil = ObjectHandle(ObjectHandle::kDepthStencil, rtIdx);
 
   _viewport = CD3D11_VIEWPORT(0.0f, 0.0f, (float)width, (float)height);
-  return true;
+
+  END_INIT_SEQUENCE();
 }
 
 //------------------------------------------------------------------------------
@@ -419,8 +421,8 @@ void SwapChain::Present()
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags)
-  : _handle(GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags))
 {
+  GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags, &_rtHandle, &_dsHandle);
 }
 
 //------------------------------------------------------------------------------
@@ -428,15 +430,15 @@ ScopedRenderTarget::ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bu
 {
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
-  _handle = GRAPHICS.GetTempRenderTarget(w, h, format, bufferFlags);
+  GRAPHICS.GetTempRenderTarget(w, h, format, bufferFlags, &_rtHandle, &_dsHandle);
 }
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::~ScopedRenderTarget()
 {
-  if (_handle.IsValid())
+  if (_rtHandle.IsValid())
   {
-    GRAPHICS.ReleaseTempRenderTarget(_handle);
+    GRAPHICS.ReleaseTempRenderTarget(_rtHandle);
     if (_ctx)
       _ctx->UnsetRenderTargets(0, 1);
   }
@@ -446,5 +448,5 @@ ScopedRenderTarget::~ScopedRenderTarget()
 void ScopedRenderTarget::Attach(GraphicsContext* ctx, const Color* clearColor)
 {
   _ctx = ctx;
-  _ctx->SetRenderTarget(_handle, clearColor);
+  _ctx->SetRenderTarget(_rtHandle, _dsHandle, clearColor);
 }

@@ -70,10 +70,11 @@ namespace tano
     D3D_FEATURE_LEVEL FeatureLevel() const { return _featureLevel; }
 
     bool GetTextureSize(ObjectHandle h, u32* x, u32* y);
-    ObjectHandle GetTempRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags);
+    void GetTempRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags, ObjectHandle* rtHandle, ObjectHandle* dsHandle);
     void ReleaseTempRenderTarget(ObjectHandle h);
 
-    ObjectHandle CreateRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags, const string& name = "");
+    bool CreateRenderTarget(
+      int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags, const char* name, ObjectHandle* rtHandle, ObjectHandle* dsHandle);
 
     ObjectHandle CreateStructuredBuffer(int elemSize, int numElems, bool createSrv);
     ObjectHandle CreateTexture(const D3D11_TEXTURE2D_DESC &desc, const char *name);
@@ -116,6 +117,7 @@ namespace tano
     
     void GetBackBufferSize(int* width, int* height);
     ObjectHandle GetBackBuffer();
+    ObjectHandle GetDepthStencil();
     ObjectHandle DefaultSwapChain();
 
     bool LoadShadersFromFile(
@@ -152,7 +154,8 @@ namespace tano
         int height,
         DXGI_FORMAT format,
         const BufferFlags& bufferFlags,
-        RenderTargetResource *out);
+        RenderTargetResource* rt,
+        DepthStencilResource* ds);
     bool CreateTexture(const D3D11_TEXTURE2D_DESC &desc, TextureResource *out);
 
     ID3D11ShaderResourceView* GetShaderResourceView(ObjectHandle h);
@@ -185,10 +188,11 @@ namespace tano
     IdBuffer<ID3D11BlendState*, IdCount> _blendStates;
     IdBuffer<ID3D11DepthStencilState*, IdCount> _depthStencilStates;
     IdBuffer<ID3D11RasterizerState*, IdCount> _rasterizerStates;
-    IdBuffer<ID3D11SamplerState*, IdCount> _sampler_states;
+    IdBuffer<ID3D11SamplerState*, IdCount> _samplerStates;
 
     IdBuffer<TextureResource*, IdCount> _textures;
     IdBuffer<RenderTargetResource*, IdCount> _renderTargets;
+    IdBuffer<DepthStencilResource*, IdCount> _depthStencils;
     IdBuffer<SimpleResource*, IdCount> _resources;
     IdBuffer<ID3D11ShaderResourceView*, IdCount> _shaderResourceViews;
     IdBuffer<StructuredBuffer*, IdCount> _structuredBuffers;

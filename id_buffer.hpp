@@ -43,6 +43,9 @@ namespace tano
     //------------------------------------------------------------------------------
     T Get(ObjectHandle h)
     {
+      if (!h.IsValid())
+        return T();
+
       return _elems[h.id()];
     }
 
@@ -59,16 +62,14 @@ namespace tano
     }
 
     //------------------------------------------------------------------------------
-    bool Get(const string& name, T* out)
+    T Get(const string& name)
     {
       auto it = _nameToIdx.find(name);
       if (it != _nameToIdx.end())
       {
-        *out = _elems[it->second];
-        return true;
+        return _elems[it->second];
       }
-      *out = T();
-      return false;
+      return nullptr;
     }
 
     //------------------------------------------------------------------------------
