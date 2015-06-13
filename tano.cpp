@@ -63,7 +63,6 @@ static bool GlobalClose()
 
 //------------------------------------------------------------------------------
 App::App()
-  : _hinstance(NULL)
 {
   memset(&_ioState, 0, sizeof(_ioState));
   bristol::SetLogCallback([](const char* file, int line, const char* desc) {
@@ -110,14 +109,12 @@ App& App::Instance()
 //------------------------------------------------------------------------------
 bool App::Init(HINSTANCE hinstance)
 {
-  _hinstance = hinstance;
-
   BEGIN_INIT_SEQUENCE();
 
 #if WITH_UNPACKED_RESOUCES
   INIT_FATAL(FindAppRoot("app.gb"));
 #else
-  INIT(FindAppRoot("resources.dat"));
+  INIT_FATAL(FindAppRoot("resources.dat"));
 #endif
 
   if (_appRoot.empty())
@@ -135,8 +132,7 @@ bool App::Init(HINSTANCE hinstance)
 
   INIT_FATAL(Scheduler::Create());
 
-  INIT_FATAL(Graphics::Create(_hinstance));
-  InitDefaultDescs();
+  INIT_FATAL(Graphics::Create(hinstance));
   INIT_FATAL(DebugApi::Create(GRAPHICS.GetGraphicsContext()));
 
   INIT_FATAL(ArenaAllocator::Create(arenaMemory, arenaMemory + ARENA_MEMORY_SIZE));

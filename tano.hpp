@@ -79,7 +79,6 @@ namespace tano
     static LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
     static App* _instance;
-    HINSTANCE _hinstance;
 
     string _appRoot;
     AppSettings _settings;

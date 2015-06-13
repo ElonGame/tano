@@ -57,7 +57,9 @@ Graphics::~Graphics()
 //------------------------------------------------------------------------------
 bool Graphics::Create(HINSTANCE hInstance)
 {
-  assert(!_instance);
+  if (_instance)
+    return true;
+
   _instance = new Graphics();
 
 #if WITH_DXGI_DEBUG
@@ -76,8 +78,6 @@ bool Graphics::Create(HINSTANCE hInstance)
 //------------------------------------------------------------------------------
 bool Graphics::Init(HINSTANCE hInstance)
 {
-  _hInstance = hInstance;
-
   BEGIN_INIT_SEQUENCE();
   INIT(InitConfigDialog(hInstance));
   INIT(CreateDevice());
@@ -85,10 +85,7 @@ bool Graphics::Init(HINSTANCE hInstance)
   _postProcess = new PostProcess(_graphicsContext);
   INIT(_postProcess->Init());
 
-  // Create a dummy texture
-  DWORD black = 0;
-  INIT_RESOURCE(_dummyTexture, CreateTexture(1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, &black, 1, 1, 1, "dummy_texture"));
-  _immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+  InitDefaultDescs();
 
   END_INIT_SEQUENCE();
 }
@@ -305,7 +302,7 @@ ObjectHandle Graphics::GetTempRenderTarget(
   {
     auto &desc = res->texture.desc;
     return 
-      !res->in_use
+      !res->inUse
       && desc.Width == width
       && desc.Height == height
       && desc.Format == format
@@ -317,7 +314,7 @@ ObjectHandle Graphics::GetTempRenderTarget(
   if (idx != _renderTargets.INVALID_INDEX)
   {
     RenderTargetResource* rt = _renderTargets.Get(idx);
-    rt->in_use = true;
+    rt->inUse = true;
     return MakeObjectHandle(ObjectHandle::kRenderTarget, idx);
   }
 
@@ -329,8 +326,8 @@ ObjectHandle Graphics::GetTempRenderTarget(
 void Graphics::ReleaseTempRenderTarget(ObjectHandle h)
 {
   RenderTargetResource* rt = _renderTargets.Get(h);
-  assert(rt->in_use);
-  rt->in_use = false;
+  assert(rt->inUse);
+  rt->inUse = false;
 }
 
 //------------------------------------------------------------------------------
@@ -411,7 +408,7 @@ bool Graphics::CreateRenderTarget(
     RenderTargetResource *out)
 {
   out->reset();
-  out->in_use = true;
+  out->inUse = true;
 
   // create the render target
   int mip_levels = bufferFlags.IsSet(BufferFlag::CreateMipMaps) ? 0 : 1;
@@ -863,10 +860,10 @@ ObjectHandle Graphics::CreateSwapChain(
 #endif
 
   // Create/resize the window
-  _hwnd = CreateWindow(name, g_AppWindowTitle, windowStyle,
+  HWND hwnd = CreateWindow(name, g_AppWindowTitle, windowStyle,
     CW_USEDEFAULT, CW_USEDEFAULT, width, height, NULL, NULL, instance, NULL);
 
-  SetClientSize(_hwnd, width, height);
+  SetClientSize(hwnd, width, height);
 
   // if doing borderless, center the window as well
 #if BORDERLESS_WINDOW
@@ -876,10 +873,10 @@ ObjectHandle Graphics::CreateSwapChain(
 
   int centerX = (desktopWidth - width) / 2;
   int centerY = (dekstopHeight - height) / 2;
-  SetWindowPos(_hwnd, NULL, centerX, centerY, - 1, -1, SWP_NOZORDER | SWP_NOSIZE);
+  SetWindowPos(hwnd, NULL, centerX, centerY, - 1, -1, SWP_NOZORDER | SWP_NOSIZE);
 #endif
 
-  ShowWindow(_hwnd, SW_SHOW);
+  ShowWindow(hwnd, SW_SHOW);
 
   // Create the swap chain
   DXGI_SWAP_CHAIN_DESC swapChainDesc;
@@ -891,7 +888,7 @@ ObjectHandle Graphics::CreateSwapChain(
   swapChainDesc.BufferDesc.Format      = format;
   swapChainDesc.BufferDesc.RefreshRate = SelectedDisplayMode().RefreshRate;
   swapChainDesc.BufferUsage            = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-  swapChainDesc.OutputWindow           = _hwnd;
+  swapChainDesc.OutputWindow           = hwnd;
   swapChainDesc.SampleDesc.Count       = _curSetup.multisampleCount;
   swapChainDesc.SampleDesc.Quality     = 0;
   swapChainDesc.Windowed               = _curSetup.windowed;
@@ -900,7 +897,7 @@ ObjectHandle Graphics::CreateSwapChain(
     return emptyHandle;
 
   SwapChain* swapChain = new SwapChain(name);
-  swapChain->_hwnd = _hwnd;
+  swapChain->_hwnd = hwnd;
   swapChain->_desc = swapChainDesc;
   swapChain->_swapChain = sc;
   if (!swapChain->CreateBackBuffers(width, height, format))
@@ -910,11 +907,8 @@ ObjectHandle Graphics::CreateSwapChain(
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::FindResource(const string &name)
+ObjectHandle Graphics::FindResource(const string& name)
 {
-  if (name.empty())
-    return _dummyTexture;
-
   // check textures, then resources, then render targets
   int idx = _textures.IndexFromKey(name);
   if (idx != _textures.INVALID_INDEX)
@@ -988,7 +982,7 @@ void Graphics::CreateDefaultSwapChain(
     HINSTANCE instance)
 {
   _defaultSwapChainHandle = CreateSwapChain("default", width, height, format, wndProc, instance);
-  _defaultSwapChain       = _swapChains.Get(_defaultSwapChainHandle);
+  _defaultSwapChain = _swapChains.Get(_defaultSwapChainHandle);
 }
 
 //------------------------------------------------------------------------------

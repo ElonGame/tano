@@ -31,8 +31,6 @@ namespace tano
     static bool Destroy();
     static Graphics& Instance();
 
-    HWND GetHwnd() const { return _hwnd; }
-
     ObjectHandle LoadTexture(
         const char* filename,
         const char* friendlyName = nullptr,
@@ -203,7 +201,6 @@ namespace tano
     D3D_FEATURE_LEVEL _featureLevel;
 
     ObjectHandle _defaultRenderTarget;
-    ObjectHandle _dummyTexture;
 
     bool _vsync = true;
     int _totalBytesAllocated = 0;
@@ -211,8 +208,6 @@ namespace tano
     ObjectHandle _defaultSwapChainHandle;
     SwapChain* _defaultSwapChain = nullptr;
 
-    HWND _hwnd;
-    HINSTANCE _hInstance;
     bool _displayAllModes = false;
   };
 

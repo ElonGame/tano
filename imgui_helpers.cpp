@@ -312,12 +312,8 @@ namespace tano
     g_ctx = GRAPHICS.GetGraphicsContext();
     InitDeviceD3D();
 
-    HWND hwnd = GRAPHICS.GetHwnd();
-
-    RECT rect;
-    GetClientRect(hwnd, &rect);
-    int display_w = (int)(rect.right - rect.left);
-    int display_h = (int)(rect.bottom - rect.top);
+    int display_w, display_h;
+    GRAPHICS.GetBackBufferSize(&display_w, &display_h);
 
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize = ImVec2((float)display_w, (float)display_h);    // Display size, in pixels. For clamping windows positions.

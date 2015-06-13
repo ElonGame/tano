@@ -78,11 +78,13 @@ namespace tano
   //------------------------------------------------------------------------------
   struct RenderTargetResource
   {
-    RenderTargetResource() : in_use(true) {
+    RenderTargetResource()
+    {
       reset();
     }
 
-    void reset() {
+    void reset()
+    {
       texture.release();
       depth_stencil.release();
       rtv.release();
@@ -91,7 +93,7 @@ namespace tano
       uav.release();
     }
 
-    bool in_use;
+    bool inUse = true;
     ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
     ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> depth_stencil;
     ResourceAndDesc<ID3D11RenderTargetView, D3D11_RENDER_TARGET_VIEW_DESC> rtv;
