@@ -683,9 +683,10 @@ bool Landscape::Render()
   static Color black(0, 0, 0, 0);
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
 
-  ScopedRenderTarget rt(
+  ScopedRenderTargetFull rt(
     DXGI_FORMAT_R16G16B16A16_FLOAT,
-    BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateDepthBuffer);
+    BufferFlags(BufferFlag::CreateSrv),
+    BufferFlags(BufferFlag::CreateSrv));
 
   _cbPerFrame.world = Matrix::Identity();
 
@@ -696,6 +697,7 @@ bool Landscape::Render()
 
   // Render the sky
   _ctx->SetRenderTarget(rt._rtHandle, rt._dsHandle, &black);
+
   _ctx->SetGpuObjects(_skyGpuObjects);
   _ctx->Draw(3, 0);
 
@@ -724,7 +726,6 @@ bool Landscape::Render()
       _ctx->SetShaderResource(_particleTexture);
       _ctx->Draw(_numParticles, 0);
     }
-
   }
   else
   {

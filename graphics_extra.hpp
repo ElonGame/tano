@@ -25,9 +25,8 @@ namespace tano
     enum Enum
     {
       CreateMipMaps        = 1 << 0,
-      CreateDepthBuffer    = 1 << 1,
-      CreateSrv            = 1 << 2,
-      CreateUav            = 1 << 3,
+      CreateSrv            = 1 << 1,
+      CreateUav            = 1 << 2,
     };
 
     struct Bits
@@ -69,9 +68,11 @@ namespace tano
   {
     void Release()
     {
-      ptr.Release();
+      if (ptr)
+        ptr->Release();
     }
-    CComPtr<Resource> ptr;
+
+    Resource* ptr = nullptr;
     Desc desc;
   };
 
@@ -87,10 +88,12 @@ namespace tano
     {
       texture.Release();
       view.Release();
+      srv.Release();
     }
 
     PointerAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
     PointerAndDesc<ID3D11DepthStencilView, D3D11_DEPTH_STENCIL_VIEW_DESC> view;
+    PointerAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> srv;
   };
 
   //------------------------------------------------------------------------------
@@ -109,7 +112,6 @@ namespace tano
       uav.Release();
     }
 
-    bool inUse = true;
     PointerAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
     PointerAndDesc<ID3D11RenderTargetView, D3D11_RENDER_TARGET_VIEW_DESC> view;
     PointerAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> srv;
@@ -133,10 +135,11 @@ namespace tano
   {
     void Reset()
     {
-      resource.Release();
+      if (resource)
+        resource->Release();
       view.Release();
     }
-    CComPtr<ID3D11Resource> resource;
+    ID3D11Resource* resource = 0;
     PointerAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> view;
   };
 
@@ -168,15 +171,20 @@ namespace tano
   //------------------------------------------------------------------------------
   struct ScopedRenderTarget
   {
-    ScopedRenderTarget(
-        int width,
-        int height,
-        DXGI_FORMAT format,
-        const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
-    ScopedRenderTarget(
-        DXGI_FORMAT format,
-        const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
+    ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
+    ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ~ScopedRenderTarget();
+
+    int _width, _height;
+    DXGI_FORMAT _format;
+    ObjectHandle _rtHandle;
+  };
+
+  //------------------------------------------------------------------------------
+  struct ScopedRenderTargetFull
+  {
+    ScopedRenderTargetFull(DXGI_FORMAT format, BufferFlags rtFlags, BufferFlags dsFlags);
+    ~ScopedRenderTargetFull();
 
     int _width, _height;
     DXGI_FORMAT _format;

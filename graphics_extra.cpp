@@ -365,16 +365,15 @@ bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
   RenderTargetResource* rt = new RenderTargetResource();
 
   INIT_HR_FATAL(_swapChain->GetBuffer(0, IID_PPV_ARGS(&rt->texture.ptr)));
-
   rt->texture.ptr->GetDesc(&rt->texture.desc);
 
   // Create render target view
   D3D11_RENDER_TARGET_VIEW_DESC rtViewDesc;
   ZeroMemory(&rtViewDesc, sizeof(rtViewDesc));
   rtViewDesc.Format = rt->texture.desc.Format;
-  rtViewDesc.ViewDimension = rt->texture.desc.SampleDesc.Count == 1 ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DMS;
+  rtViewDesc.ViewDimension = 
+    rt->texture.desc.SampleDesc.Count == 1 ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DMS;
   INIT_HR_FATAL(GRAPHICS._device->CreateRenderTargetView(rt->texture.ptr, &rtViewDesc, &rt->view.ptr));
-
   rt->view.ptr->GetDesc(&rt->view.desc);
 
   DepthStencilResource* depthStencil = new DepthStencilResource();
@@ -413,8 +412,8 @@ ScopedRenderTarget::ScopedRenderTarget(int width, int height, DXGI_FORMAT format
   : _width(width)
   , _height(height)
   , _format(format)
+  , _rtHandle(GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags))
 {
-  GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags, &_rtHandle, &_dsHandle);
 }
 
 //------------------------------------------------------------------------------
@@ -422,14 +421,27 @@ ScopedRenderTarget::ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bu
   : _format(format)
 {
   GRAPHICS.GetBackBufferSize(&_width, &_height);
-  GRAPHICS.GetTempRenderTarget(_width, _height, format, bufferFlags, &_rtHandle, &_dsHandle);
+  _rtHandle = GRAPHICS.GetTempRenderTarget(_width, _height, format, bufferFlags);
 }
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::~ScopedRenderTarget()
 {
-  if (_rtHandle.IsValid())
-  {
-    GRAPHICS.ReleaseTempRenderTarget(_rtHandle);
-  }
+  GRAPHICS.ReleaseTempRenderTarget(_rtHandle);
+}
+
+//------------------------------------------------------------------------------
+ScopedRenderTargetFull::ScopedRenderTargetFull(DXGI_FORMAT format, BufferFlags rtFlags, BufferFlags dsFlags)
+  : _format(format)
+{
+  GRAPHICS.GetBackBufferSize(&_width, &_height);
+  _rtHandle = GRAPHICS.GetTempRenderTarget(_width, _height, format, rtFlags);
+  _dsHandle = GRAPHICS.GetTempDepthStencil(_width, _height, dsFlags);
+}
+
+//------------------------------------------------------------------------------
+ScopedRenderTargetFull::~ScopedRenderTargetFull()
+{
+  GRAPHICS.ReleaseTempRenderTarget(_rtHandle);
+  GRAPHICS.ReleaseTempDepthStencil(_dsHandle);
 }

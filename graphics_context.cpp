@@ -98,7 +98,7 @@ void GraphicsContext::SetSwapChain(ObjectHandle h, const float* clearColor)
   SwapChain* swapChain = GRAPHICS._swapChains.Get(h);
   RenderTargetResource* rt = GRAPHICS._renderTargets.Get(swapChain->_renderTarget);
   DepthStencilResource* ds = GRAPHICS._depthStencils.Get(swapChain->_depthStencil);
-  _ctx->OMSetRenderTargets(1, &rt->view.ptr.p, ds->view.ptr);
+  _ctx->OMSetRenderTargets(1, &rt->view.ptr, ds->view.ptr);
 
   if (clearColor)
   {

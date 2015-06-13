@@ -176,7 +176,7 @@ namespace tano
 
     GpuObjects _boidsMesh;
     bool _renderLandscape = true;
-    bool _renderBoids = true;
+    bool _renderBoids = false;
     bool _useFreeFlyCamera = true;
 
     BehaviorSeek* _behaviorSeek = nullptr;

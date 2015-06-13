@@ -138,6 +138,9 @@ void DebugApi::EndFrame()
 
   for (const LineChunk& chunk : _lineChunks)
   {
+    if (!chunk.numVertices)
+      continue;
+
     _cbPerFrame.world = chunk.mtxWorld.Transpose();
     _cbPerFrame.viewProj = chunk.mtxViewProj.Transpose();
     _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);

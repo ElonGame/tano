@@ -26,6 +26,13 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
+  template<typename T>
+  struct NoOpMixin
+  {
+    void destroy(T) {}
+  };
+
+  //------------------------------------------------------------------------------
   template <typename T, int Capacity, template<typename> class DestroyMixin>
   class AppendBuffer : DestroyMixin<T>
   {
@@ -34,7 +41,7 @@ namespace tano
     //------------------------------------------------------------------------------
     ~AppendBuffer()
     {
-      for (int i = 0; i < _used; ++i)
+      for (int i = 0; i < _size; ++i)
       {
         destroy(_elems[i]);
       }
@@ -58,31 +65,58 @@ namespace tano
     //------------------------------------------------------------------------------
     u32 Append(T res)
     {
-      assert(_used < Capacity);
-      _elems[_used] = res;
-      return _used++;
-    }
-
-    //------------------------------------------------------------------------------
-    T Find(const function<bool (const T&)>& fn, int* idx)
-    {
-      for (int i = 0; i < _used; ++i)
-      {
-        if (fn(_elems[i]))
-        {
-          if (idx)
-            *idx = i;
-          return _elems[i];
-        }
-      }
-
-      return T();
+      assert(_size < Capacity);
+      _elems[_size] = res;
+      return _size++;
     }
 
   private:
 
     //------------------------------------------------------------------------------
-    int _used = 0;
+    int _size = 0;
+    T _elems[Capacity];
+  };
+
+  //------------------------------------------------------------------------------
+  template <typename T, int Capacity>
+  class SimpleAppendBuffer
+  {
+  public:
+    int Size() const
+    { 
+      return _size;
+    }
+
+    void Append(const T& t)
+    { 
+      assert(_size < Capacity);
+      _elems[_size++] = t; 
+    }
+
+    const T& operator[](int idx) const
+    {
+      assert(idx < _size);
+      return _elems[idx];
+    }
+
+    T& operator[](int idx)
+    {
+      assert(idx < _size);
+      return _elems[idx];
+    }
+
+    T* begin()
+    {
+      return &_elems[0];
+    }
+
+    T* end()
+    {
+      return &_elems[_size];
+    }
+
+  private:
+    int _size = 0;
     T _elems[Capacity];
   };
 }

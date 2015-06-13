@@ -25,33 +25,16 @@ namespace tano
     friend INT_PTR CALLBACK dialogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
   public:
 
-    Graphics();
-
     static bool Create(HINSTANCE hInstance);
     static bool Destroy();
     static Graphics& Instance();
 
-    ObjectHandle LoadTexture(
-        const char* filename,
-        bool srgb = false,
-        D3DX11_IMAGE_INFO* info = nullptr);
+    ObjectHandle LoadTexture(const char* filename, bool srgb = false, D3DX11_IMAGE_INFO* info = nullptr);
+    ObjectHandle LoadTextureFromMemory(const void* buf, u32 len, bool srgb = false, D3DX11_IMAGE_INFO* info = nullptr);
 
-    ObjectHandle LoadTextureFromMemory(
-        const void* buf,
-        u32 len,
-        bool srgb = false,
-        D3DX11_IMAGE_INFO* info = nullptr);
+    ObjectHandle CreateInputLayout(const vector<D3D11_INPUT_ELEMENT_DESC> &desc, const vector<char> &shaderBytecode);
 
-    ObjectHandle CreateInputLayout(
-        const vector<D3D11_INPUT_ELEMENT_DESC> &desc,
-        const vector<char> &shaderBytecode);
-
-    ObjectHandle CreateBuffer(
-        D3D11_BIND_FLAG bind,
-        int size,
-        bool dynamic,
-        const void* buf = nullptr,
-        int userData = 0);
+    ObjectHandle CreateBuffer(D3D11_BIND_FLAG bind, int size, bool dynamic, const void* buf = nullptr, int userData = 0);
 
     ObjectHandle CreateVertexShader(const vector<char> &shaderBytecode);
     ObjectHandle CreatePixelShader(const vector<char> &shaderBytecode);
@@ -63,16 +46,18 @@ namespace tano
     ObjectHandle CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC &desc);
     ObjectHandle CreateSamplerState(const D3D11_SAMPLER_DESC &desc);
     ObjectHandle CreateSwapChain(const TCHAR* name, u32 width, u32 height, DXGI_FORMAT format, WNDPROC wndProc, HINSTANCE instance);
-    ObjectHandle RenderTargetForSwapChain(ObjectHandle h);
 
     D3D_FEATURE_LEVEL FeatureLevel() const { return _featureLevel; }
 
     bool GetTextureSize(ObjectHandle h, u32* x, u32* y);
-    void GetTempRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags, ObjectHandle* rtHandle, ObjectHandle* dsHandle);
-    void ReleaseTempRenderTarget(ObjectHandle h);
 
-    bool CreateRenderTarget(
-      int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags, ObjectHandle* rtHandle, ObjectHandle* dsHandle);
+    ObjectHandle GetTempRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags);
+    ObjectHandle GetTempDepthStencil(int width, int height, const BufferFlags& bufferFlags);
+    void ReleaseTempRenderTarget(ObjectHandle h);
+    void ReleaseTempDepthStencil(ObjectHandle h);
+
+    ObjectHandle CreateRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags);
+    ObjectHandle CreateDepthStencil(int width, int height, const BufferFlags& bufferFlags);
 
     ObjectHandle CreateStructuredBuffer(int elemSize, int numElems, bool createSrv);
     ObjectHandle CreateTexture(const D3D11_TEXTURE2D_DESC &desc);
@@ -81,7 +66,6 @@ namespace tano
     bool ReadTexture(const char *filename, D3DX11_IMAGE_INFO *info, u32 *pitch, vector<u8> *bits);
 
     // Create a texture, and fill it with data
-    bool CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int data_width, int data_height, int data_pitch, TextureResource *out);
     ObjectHandle CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int data_width, int data_height, int data_pitch);
     ObjectHandle CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int pitch);
 
@@ -92,8 +76,6 @@ namespace tano
 
     bool GetVSync() const { return _vsync; }
     void SetVSync(bool value) { _vsync = value; }
-
-    void GetRenderTargetTextureDesc(ObjectHandle handle, D3D11_TEXTURE2D_DESC* desc);
 
     const Setup& CurSetup() const { return _curSetup; }
     void SetDisplayAllModes(bool value) { _displayAllModes = value; }
@@ -141,14 +123,11 @@ namespace tano
 
     bool CreateBufferInner(D3D11_BIND_FLAG bind, int size, bool dynamic, const void* data, ID3D11Buffer** buffer);
 
-    bool CreateRenderTarget(
-        int width,
-        int height,
-        DXGI_FORMAT format,
-        const BufferFlags& bufferFlags,
-        RenderTargetResource* rt,
-        DepthStencilResource* ds);
-    bool CreateTexture(const D3D11_TEXTURE2D_DESC &desc, TextureResource *out);
+    RenderTargetResource* CreateRenderTargetPtr(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags);
+    DepthStencilResource* CreateDepthStencilPtr(int width, int height, const BufferFlags& bufferFlags);
+
+    TextureResource* CreateTexturePtr(const D3D11_TEXTURE2D_DESC &desc);
+    TextureResource* CreateTexturePtr(int width, int height, DXGI_FORMAT fmt, void *data, int data_width, int data_height, int data_pitch);
 
     ID3D11ShaderResourceView* GetShaderResourceView(ObjectHandle h);
 
@@ -204,6 +183,24 @@ namespace tano
     SwapChain* _defaultSwapChain = nullptr;
 
     bool _displayAllModes = false;
+
+    struct TempRenderTarget
+    {
+      D3D11_TEXTURE2D_DESC desc;
+      BufferFlags flags;
+      u32 idx;
+      bool inUse;
+    };
+
+    struct TempDepthStencil
+    {
+      BufferFlags flags;
+      u32 idx;
+      bool inUse;
+    };
+
+    SimpleAppendBuffer<TempRenderTarget, 64> _tempRenderTargets;
+    SimpleAppendBuffer<TempDepthStencil, 64> _tempDepthStencils;
   };
 
 #define GRAPHICS Graphics::Instance()
