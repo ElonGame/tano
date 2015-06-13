@@ -40,13 +40,11 @@ namespace tano
 
     ObjectHandle LoadTexture(
         const char* filename,
-        const char* friendlyName = nullptr,
         bool srgb = false,
         D3DX11_IMAGE_INFO* info = nullptr);
     ObjectHandle LoadTextureFromMemory(
         const char* buf,
         u32 len,
-        const char* friendlyName,
         bool srgb,
         D3DX11_IMAGE_INFO* info);
 

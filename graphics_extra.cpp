@@ -362,18 +362,7 @@ bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
   _width = width;
   _height = height;
 
-  // Reset the buffers if the swap chain is already registered
-  RenderTargetResource* rt = GRAPHICS._renderTargets.Get(_name);
-  if (rt)
-  {
-    // TODO: I very much doubt that this actually still works..
-    rt->Reset();
-    _swapChain->ResizeBuffers(0, width, height, format, 0);
-  }
-  else
-  {
-    rt = new RenderTargetResource();
-  }
+  RenderTargetResource* rt = new RenderTargetResource();
 
   INIT_HR_FATAL(_swapChain->GetBuffer(0, IID_PPV_ARGS(&rt->texture.ptr)));
 
@@ -402,10 +391,10 @@ bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
   depthStencil->view.ptr->GetDesc(&depthStencil->view.desc);
 
   // register the render-target and depth-stencil
-  u32 rtIdx = GRAPHICS._renderTargets.Insert(_name, rt);
+  u32 rtIdx = GRAPHICS._renderTargets.Append(rt);
   _renderTarget = ObjectHandle(ObjectHandle::kRenderTarget, rtIdx);
 
-  u32 dsIdx = GRAPHICS._depthStencils.Insert(depthStencil);
+  u32 dsIdx = GRAPHICS._depthStencils.Append(depthStencil);
   _depthStencil = ObjectHandle(ObjectHandle::kDepthStencil, rtIdx);
 
   _viewport = CD3D11_VIEWPORT(0.0f, 0.0f, (float)width, (float)height);

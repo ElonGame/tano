@@ -380,7 +380,7 @@
     <ClInclude Include="..\gpu_objects.hpp" />
     <ClInclude Include="..\graphics.hpp" />
     <ClInclude Include="..\graphics_extra.hpp" />
-    <ClInclude Include="..\id_buffer.hpp" />
+    <ClInclude Include="..\append_buffer.hpp" />
     <ClInclude Include="..\imgui\imconfig.h" />
     <ClInclude Include="..\imgui\imgui.h" />
     <ClInclude Include="..\imgui\stb_rect_pack.h" />

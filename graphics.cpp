@@ -159,20 +159,20 @@ ObjectHandle Graphics::CreateBuffer(
   {
     if (bind == D3D11_BIND_INDEX_BUFFER)
     {
-      const int idx = _indexBuffers.Insert(buffer);
+      const int idx = _indexBuffers.Append(buffer);
       assert(userData == DXGI_FORMAT_R16_UINT || userData == DXGI_FORMAT_R32_UINT);
       return MakeObjectHandle(ObjectHandle::kIndexBuffer, idx, userData);
     } 
     else if (bind == D3D11_BIND_VERTEX_BUFFER)
     {
-      const int idx = _vertexBuffers.Insert(buffer);
+      const int idx = _vertexBuffers.Append(buffer);
       // userdata is vertex size
       assert(userData > 0);
       return MakeObjectHandle(ObjectHandle::kVertexBuffer, idx, userData);
     } 
     else if (bind == D3D11_BIND_CONSTANT_BUFFER)
     {
-      const int idx = _constantBuffers.Insert(buffer);
+      const int idx = _constantBuffers.Append(buffer);
       return MakeObjectHandle(ObjectHandle::kConstantBuffer, idx, size);
     }
     else
@@ -309,17 +309,16 @@ void Graphics::GetTempRenderTarget(
 //      && requiresDepthBuffer == (res->depthStencil.resource.p != nullptr);
   };
 
-  int idx = _renderTargets.Find(rtComp);
-  if (idx != _renderTargets.INVALID_INDEX)
+  int idx;
+  if (RenderTargetResource* rt = _renderTargets.Find(rtComp, &idx))
   {
-    RenderTargetResource* rt = _renderTargets.Get(idx);
     rt->inUse = true;
     *rtHandle = MakeObjectHandle(ObjectHandle::kRenderTarget, idx);
   }
   else
   {
     // nothing suitable found, so we create a render target
-    CreateRenderTarget(width, height, format, bufferFlags, nullptr, rtHandle, dsHandle);
+    CreateRenderTarget(width, height, format, bufferFlags, rtHandle, dsHandle);
   }
 }
 
@@ -350,7 +349,7 @@ ObjectHandle Graphics::CreateStructuredBuffer(
   if (FAILED(_device->CreateBuffer(&sbDesc, NULL, &sb->buffer.ptr)))
     return emptyHandle;
 
-  auto buf = sb->buffer.ptr.p;
+  ID3D11Buffer* buf = sb->buffer.ptr.p;
 
   // create the UAV for the structured buffer
   D3D11_UNORDERED_ACCESS_VIEW_DESC sbUAVDesc;
@@ -377,7 +376,7 @@ ObjectHandle Graphics::CreateStructuredBuffer(
   }
 
   return MakeObjectHandle(
-      ObjectHandle::kStructuredBuffer, _structuredBuffers.Insert(sb.release()));
+      ObjectHandle::kStructuredBuffer, _structuredBuffers.Append(sb.release()));
 }
 
 //------------------------------------------------------------------------------
@@ -386,7 +385,6 @@ bool Graphics::CreateRenderTarget(
     int height,
     DXGI_FORMAT format,
     const BufferFlags& bufferFlags,
-    const char* name,
     ObjectHandle* rtHandle,
     ObjectHandle* dsHandle)
 {
@@ -396,11 +394,11 @@ bool Graphics::CreateRenderTarget(
   DepthStencilResource* ds = bufferFlags.IsSet(BufferFlag::CreateDepthBuffer) ? new DepthStencilResource : nullptr;
   if (CreateRenderTarget(width, height, format, bufferFlags, rt, ds))
   {
-    int rtIdx = name ? _renderTargets.Insert(name, rt) : _renderTargets.Insert(rt);
+    int rtIdx = _renderTargets.Append(rt);
     *rtHandle = MakeObjectHandle(ObjectHandle::kRenderTarget, rtIdx);
     if (ds)
     {
-      int dsIdx = _depthStencils.Insert(ds);
+      int dsIdx = _depthStencils.Append(ds);
       *dsHandle = MakeObjectHandle(ObjectHandle::kDepthStencil, dsIdx);
     }
     return true;
@@ -512,15 +510,14 @@ bool Graphics::ReadTexture(
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::GetTexture(const char *filename)
-{
-  return MakeObjectHandle(ObjectHandle::kResource, _resources.IndexFromKey(filename));
-}
+//ObjectHandle Graphics::GetTexture(const char *filename)
+//{
+//  return MakeObjectHandle(ObjectHandle::kResource, _resources.IndexFromKey(filename));
+//}
 
 //------------------------------------------------------------------------------
 ObjectHandle Graphics::LoadTexture(
     const char* filename,
-    const char* friendlyName,
     bool srgb,
     D3DX11_IMAGE_INFO *info)
 {
@@ -544,14 +541,13 @@ ObjectHandle Graphics::LoadTexture(
     return emptyHandle;
 
   return MakeObjectHandle(ObjectHandle::kResource, 
-    _resources.Insert(friendlyName ? friendlyName : filename, data.release()));
+    _resources.Append(data.release()));
 }
 
 //------------------------------------------------------------------------------
 ObjectHandle Graphics::LoadTextureFromMemory(
     const void *buf,
     u32 len,
-    const char *friendlyName,
     bool srgb,
     D3DX11_IMAGE_INFO *info)
 {
@@ -570,24 +566,17 @@ ObjectHandle Graphics::LoadTextureFromMemory(
   if (FAILED(_device->CreateShaderResourceView(data->resource, &desc, &data->view.ptr)))
     return emptyHandle;
 
-  return MakeObjectHandle(
-      ObjectHandle::kResource, _resources.Insert(friendlyName, data.release()));
+  return MakeObjectHandle(ObjectHandle::kResource, _resources.Append(data.release()));
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::InsertTexture(
-    TextureResource *data,
-    const char* friendlyName)
+ObjectHandle Graphics::InsertTexture(TextureResource *data)
 {
-  return friendlyName 
-    ? MakeObjectHandle(ObjectHandle::kTexture, _textures.Insert(friendlyName, data))
-    : MakeObjectHandle(ObjectHandle::kTexture, _textures.Insert(data));
+  return MakeObjectHandle(ObjectHandle::kTexture, _textures.Append(data));
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateTexture(
-    const D3D11_TEXTURE2D_DESC &desc,
-    const char *name)
+ObjectHandle Graphics::CreateTexture(const D3D11_TEXTURE2D_DESC &desc)
 {
   TextureResource *data = new TextureResource;
   if (!CreateTexture(desc, data))
@@ -595,7 +584,7 @@ ObjectHandle Graphics::CreateTexture(
     delete exch_null(data);
     return emptyHandle;
   }
-  return InsertTexture(data, name);
+  return InsertTexture(data);
 }
 
 //------------------------------------------------------------------------------
@@ -642,8 +631,7 @@ ObjectHandle Graphics::CreateTexture(
     void *data_bits,
     int data_width,
     int data_height,
-    int data_pitch,
-    const char *friendlyName)
+    int data_pitch)
 {
   TextureResource *data = new TextureResource();
   if (!CreateTexture(width, height, fmt, data_bits, data_width, data_height, data_pitch, data))
@@ -651,7 +639,7 @@ ObjectHandle Graphics::CreateTexture(
     delete exch_null(data);
     return emptyHandle;
   }
-  return InsertTexture(data, friendlyName);
+  return InsertTexture(data);
 }
 
 //------------------------------------------------------------------------------
@@ -689,16 +677,16 @@ bool Graphics::CreateTexture(
 //------------------------------------------------------------------------------
 ObjectHandle Graphics::CreateInputLayout(
     const vector<D3D11_INPUT_ELEMENT_DESC> &desc,
-    const vector<char> &shader_bytecode)
+    const vector<char> &shaderBytecode)
 {
   ID3D11InputLayout* layout = nullptr;
-  if (FAILED(_device->CreateInputLayout(&desc[0], (u32)desc.size(), &shader_bytecode[0], shader_bytecode.size(), &layout)))
+  if (FAILED(_device->CreateInputLayout(&desc[0], (u32)desc.size(), &shaderBytecode[0], shaderBytecode.size(), &layout)))
   {
     LOG_WARN("Error creating input layout");
     return emptyHandle;
   }
 
-  return ObjectHandle(ObjectHandle::kInputLayout, _inputLayouts.Insert(layout));
+  return ObjectHandle(ObjectHandle::kInputLayout, _inputLayouts.Append(layout));
 }
 
 //------------------------------------------------------------------------------
@@ -706,21 +694,20 @@ template<typename T, class Cont>
 ObjectHandle AddShader(
     Cont &cont,
     T *shader,
-    const string &id,
     ObjectHandle::Type type)
 {
-  return Graphics::MakeObjectHandle(type, cont.Insert(id, shader));
+  return Graphics::MakeObjectHandle(type, cont.Append(shader));
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::ReserveObjectHandle(const string& id, ObjectHandle::Type type)
+ObjectHandle Graphics::ReserveObjectHandle(ObjectHandle::Type type)
 {
   switch (type)
   {
-    case ObjectHandle::kVertexShader: return AddShader<ID3D11VertexShader>(_vertexShaders, nullptr, id, type);
-    case ObjectHandle::kGeometryShader: return AddShader<ID3D11GeometryShader>(_geometryShaders, nullptr, id, type);
-    case ObjectHandle::kPixelShader: return AddShader<ID3D11PixelShader>(_pixelShaders, nullptr, id, type);
-    case ObjectHandle::kComputeShader: return AddShader<ID3D11ComputeShader>(_computeShaders, nullptr, id, type);
+    case ObjectHandle::kVertexShader: return AddShader<ID3D11VertexShader>(_vertexShaders, nullptr, type);
+    case ObjectHandle::kGeometryShader: return AddShader<ID3D11GeometryShader>(_geometryShaders, nullptr, type);
+    case ObjectHandle::kPixelShader: return AddShader<ID3D11PixelShader>(_pixelShaders, nullptr, type);
+    case ObjectHandle::kComputeShader: return AddShader<ID3D11ComputeShader>(_computeShaders, nullptr, type);
     default: assert("Unsupported object type");
   }
 
@@ -728,115 +715,89 @@ ObjectHandle Graphics::ReserveObjectHandle(const string& id, ObjectHandle::Type 
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateVertexShader(
-    const vector<char> &shader_bytecode,
-    const string &id)
+ObjectHandle Graphics::CreateVertexShader(const vector<char> &shaderBytecode)
 {
   ID3D11VertexShader *vs = nullptr;
-  if (SUCCEEDED(_device->CreateVertexShader(&shader_bytecode[0], shader_bytecode.size(), NULL, &vs)))
+  if (SUCCEEDED(_device->CreateVertexShader(&shaderBytecode[0], shaderBytecode.size(), NULL, &vs)))
   {
-    return AddShader(_vertexShaders, vs, id, ObjectHandle::kVertexShader);
+    return AddShader(_vertexShaders, vs, ObjectHandle::kVertexShader);
   }
   return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreatePixelShader(
-    const vector<char> &shader_bytecode,
-    const string &id)
+ObjectHandle Graphics::CreatePixelShader(const vector<char> &shaderBytecode)
 {
   ID3D11PixelShader *ps = nullptr;
-  if (SUCCEEDED(_device->CreatePixelShader(&shader_bytecode[0], shader_bytecode.size(), NULL, &ps)))
+  if (SUCCEEDED(_device->CreatePixelShader(&shaderBytecode[0], shaderBytecode.size(), NULL, &ps)))
   {
-    return AddShader(_pixelShaders, ps, id, ObjectHandle::kPixelShader);
+    return AddShader(_pixelShaders, ps, ObjectHandle::kPixelShader);
   }
   return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateComputeShader(
-    const vector<char> &shader_bytecode,
-    const string &id)
+ObjectHandle Graphics::CreateComputeShader(const vector<char> &shaderBytecode)
 {
   ID3D11ComputeShader *cs = nullptr;
-  if (SUCCEEDED(_device->CreateComputeShader(&shader_bytecode[0], shader_bytecode.size(), NULL, &cs)))
+  if (SUCCEEDED(_device->CreateComputeShader(&shaderBytecode[0], shaderBytecode.size(), NULL, &cs)))
   {
-    return AddShader(_computeShaders, cs, id, ObjectHandle::kComputeShader);
+    return AddShader(_computeShaders, cs, ObjectHandle::kComputeShader);
   }
   return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateGeometryShader(
-    const vector<char> &shader_bytecode,
-    const string &id)
+ObjectHandle Graphics::CreateGeometryShader(const vector<char> &shaderBytecode)
 {
   ID3D11GeometryShader *cs = nullptr;
-  if (SUCCEEDED(_device->CreateGeometryShader(&shader_bytecode[0], shader_bytecode.size(), NULL, &cs)))
+  if (SUCCEEDED(_device->CreateGeometryShader(&shaderBytecode[0], shaderBytecode.size(), NULL, &cs)))
   {
-    return AddShader(_geometryShaders, cs, id, ObjectHandle::kGeometryShader);
+    return AddShader(_geometryShaders, cs, ObjectHandle::kGeometryShader);
   }
   return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateRasterizerState(
-    const D3D11_RASTERIZER_DESC &desc,
-    const char *name)
+ObjectHandle Graphics::CreateRasterizerState(const D3D11_RASTERIZER_DESC &desc)
 {
   ID3D11RasterizerState *rs;
   if (SUCCEEDED(_device->CreateRasterizerState(&desc, &rs)))
   {
-    return MakeObjectHandle(ObjectHandle::kRasterizerState,
-        name 
-          ? _rasterizerStates.Insert(name, rs)
-          : _rasterizerStates.Insert(rs));
+    return MakeObjectHandle(ObjectHandle::kRasterizerState, _rasterizerStates.Append(rs));
   }
   return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateBlendState(
-    const D3D11_BLEND_DESC &desc,
-    const char *name)
+ObjectHandle Graphics::CreateBlendState(const D3D11_BLEND_DESC &desc)
 {
   ID3D11BlendState *bs;
   if (SUCCEEDED(_device->CreateBlendState(&desc, &bs)))
   {
-    return MakeObjectHandle(ObjectHandle::kBlendState,
-        name 
-          ? _blendStates.Insert(name, bs)
-          : _blendStates.Insert(bs));
+    return MakeObjectHandle(ObjectHandle::kBlendState, _blendStates.Append(bs));
   }
   return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateDepthStencilState(
-    const D3D11_DEPTH_STENCIL_DESC &desc,
-    const char *name)
+ObjectHandle Graphics::CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC &desc)
 {
   ID3D11DepthStencilState *dss;
   if (SUCCEEDED(_device->CreateDepthStencilState(&desc, &dss)))
   {
-    return MakeObjectHandle(ObjectHandle::kDepthStencilState,
-        name 
-          ? _depthStencilStates.Insert(name, dss)
-          : _depthStencilStates.Insert(dss));
+    return MakeObjectHandle(ObjectHandle::kDepthStencilState, _depthStencilStates.Append(dss));
   }
   return emptyHandle;
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateSamplerState(
-    const D3D11_SAMPLER_DESC &desc,
-    const char *name)
+ObjectHandle Graphics::CreateSamplerState(const D3D11_SAMPLER_DESC &desc)
 {
   ID3D11SamplerState *ss;
   if (SUCCEEDED(_device->CreateSamplerState(&desc, &ss)))
   {
-    return MakeObjectHandle(ObjectHandle::kSamplerState,
-      name ? _samplerStates.Insert(name, ss) : _samplerStates.Insert(ss));
+    return MakeObjectHandle(ObjectHandle::kSamplerState, _samplerStates.Append(ss));
   }
   return emptyHandle;
 }
@@ -914,47 +875,7 @@ ObjectHandle Graphics::CreateSwapChain(
   if (!swapChain->CreateBackBuffers(width, height, format))
     return emptyHandle;
 
-  return ObjectHandle(ObjectHandle::kSwapChain, _swapChains.Insert(swapChain));
-}
-
-//------------------------------------------------------------------------------
-ObjectHandle Graphics::FindResource(const string& name)
-{
-  // check textures, then resources, then render targets
-  int idx = _textures.IndexFromKey(name);
-  if (idx != _textures.INVALID_INDEX)
-    return ObjectHandle(ObjectHandle::kTexture, idx);
-
-  idx = _resources.IndexFromKey(name);
-  if (idx != _resources.INVALID_INDEX)
-    return ObjectHandle(ObjectHandle::kResource, idx);
-
-  idx = _renderTargets.IndexFromKey(name);
-  return MakeObjectHandle(ObjectHandle::kRenderTarget, idx);
-}
-
-//------------------------------------------------------------------------------
-ObjectHandle Graphics::FindSampler(const string &name)
-{
-  return MakeObjectHandle(ObjectHandle::kSamplerState, _samplerStates.IndexFromKey(name));
-}
-
-//------------------------------------------------------------------------------
-ObjectHandle Graphics::FindBlendState(const string &name)
-{
-  return MakeObjectHandle(ObjectHandle::kBlendState, _blendStates.IndexFromKey(name));
-}
-
-//------------------------------------------------------------------------------
-ObjectHandle Graphics::FindRasterizerState(const string &name)
-{
-  return MakeObjectHandle(ObjectHandle::kRasterizerState, _rasterizerStates.IndexFromKey(name));
-}
-
-//------------------------------------------------------------------------------
-ObjectHandle Graphics::FindDepthStencilState(const string &name)
-{
-  return MakeObjectHandle(ObjectHandle::kDepthStencilState, _depthStencilStates.IndexFromKey(name));
+  return ObjectHandle(ObjectHandle::kSwapChain, _swapChains.Append(swapChain));
 }
 
 //------------------------------------------------------------------------------
@@ -1068,7 +989,7 @@ bool Graphics::LoadComputeShadersFromFile(
       return false;
     }
 
-    *shader = GRAPHICS.CreateComputeShader(buf, entry);
+    *shader = GRAPHICS.CreateComputeShader(buf);
     if (!shader->IsValid())
     {
       LOG_WARN("Unable to create shader" << LogKeyValue("filename", filename));
@@ -1113,7 +1034,7 @@ bool Graphics::LoadShadersFromFile(
   AddFileWatchResult res;
   if (vs)
   {
-    ObjectHandle vsHandle = ReserveObjectHandle(vsId, ObjectHandle::kVertexShader);
+    ObjectHandle vsHandle = ReserveObjectHandle(ObjectHandle::kVertexShader);
     *vs = vsHandle;
 
     vector<D3D11_INPUT_ELEMENT_DESC> localElementDesc;
@@ -1150,7 +1071,7 @@ bool Graphics::LoadShadersFromFile(
 
   if (gs)
   {
-    ObjectHandle gsHandle = ReserveObjectHandle(gsId, ObjectHandle::kGeometryShader);
+    ObjectHandle gsHandle = ReserveObjectHandle(ObjectHandle::kGeometryShader);
     *gs = gsHandle;
 
     res = RESOURCE_MANAGER.AddFileWatch((filenameBase + gsSuffix).c_str(), nullptr, true, [=](const string& filename, void* token)
@@ -1172,7 +1093,7 @@ bool Graphics::LoadShadersFromFile(
 
   if (ps)
   {
-    ObjectHandle psHandle = ReserveObjectHandle(psId, ObjectHandle::kPixelShader);
+    ObjectHandle psHandle = ReserveObjectHandle(ObjectHandle::kPixelShader);
     *ps = psHandle;
 
     res = RESOURCE_MANAGER.AddFileWatch((filenameBase + psSuffix).c_str(), nullptr, true, [=](const string& filename, void* token)

@@ -7,7 +7,7 @@
 
 #pragma once
 #include "object_handle.hpp"
-#include "id_buffer.hpp"
+#include "append_buffer.hpp"
 #include "graphics_extra.hpp"
 
 namespace tano
@@ -33,20 +33,18 @@ namespace tano
 
     ObjectHandle LoadTexture(
         const char* filename,
-        const char* friendlyName = nullptr,
         bool srgb = false,
         D3DX11_IMAGE_INFO* info = nullptr);
 
     ObjectHandle LoadTextureFromMemory(
         const void* buf,
         u32 len,
-        const char* friendlyName = nullptr,
         bool srgb = false,
         D3DX11_IMAGE_INFO* info = nullptr);
 
     ObjectHandle CreateInputLayout(
         const vector<D3D11_INPUT_ELEMENT_DESC> &desc,
-        const vector<char> &shader_bytecode);
+        const vector<char> &shaderBytecode);
 
     ObjectHandle CreateBuffer(
         D3D11_BIND_FLAG bind,
@@ -55,15 +53,15 @@ namespace tano
         const void* buf = nullptr,
         int userData = 0);
 
-    ObjectHandle CreateVertexShader(const vector<char> &shader_bytecode, const string& id);
-    ObjectHandle CreatePixelShader(const vector<char> &shader_bytecode, const string& id);
-    ObjectHandle CreateComputeShader(const vector<char> &shader_bytecode, const string &id);
-    ObjectHandle CreateGeometryShader(const vector<char> &shader_bytecode, const string &id);
+    ObjectHandle CreateVertexShader(const vector<char> &shaderBytecode);
+    ObjectHandle CreatePixelShader(const vector<char> &shaderBytecode);
+    ObjectHandle CreateComputeShader(const vector<char> &shaderBytecode);
+    ObjectHandle CreateGeometryShader(const vector<char> &shaderBytecode);
 
-    ObjectHandle CreateRasterizerState(const D3D11_RASTERIZER_DESC &desc, const char *name = nullptr);
-    ObjectHandle CreateBlendState(const D3D11_BLEND_DESC &desc, const char *name = nullptr);
-    ObjectHandle CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC &desc, const char *name = nullptr);
-    ObjectHandle CreateSamplerState(const D3D11_SAMPLER_DESC &desc, const char *name = nullptr);
+    ObjectHandle CreateRasterizerState(const D3D11_RASTERIZER_DESC &desc);
+    ObjectHandle CreateBlendState(const D3D11_BLEND_DESC &desc);
+    ObjectHandle CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC &desc);
+    ObjectHandle CreateSamplerState(const D3D11_SAMPLER_DESC &desc);
     ObjectHandle CreateSwapChain(const TCHAR* name, u32 width, u32 height, DXGI_FORMAT format, WNDPROC wndProc, HINSTANCE instance);
     ObjectHandle RenderTargetForSwapChain(ObjectHandle h);
 
@@ -74,26 +72,20 @@ namespace tano
     void ReleaseTempRenderTarget(ObjectHandle h);
 
     bool CreateRenderTarget(
-      int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags, const char* name, ObjectHandle* rtHandle, ObjectHandle* dsHandle);
+      int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags, ObjectHandle* rtHandle, ObjectHandle* dsHandle);
 
     ObjectHandle CreateStructuredBuffer(int elemSize, int numElems, bool createSrv);
-    ObjectHandle CreateTexture(const D3D11_TEXTURE2D_DESC &desc, const char *name);
+    ObjectHandle CreateTexture(const D3D11_TEXTURE2D_DESC &desc);
     ObjectHandle GetTexture(const char *filename);
 
     bool ReadTexture(const char *filename, D3DX11_IMAGE_INFO *info, u32 *pitch, vector<u8> *bits);
 
     // Create a texture, and fill it with data
     bool CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int data_width, int data_height, int data_pitch, TextureResource *out);
-    ObjectHandle CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int data_width, int data_height, int data_pitch, const char *friendlyName);
+    ObjectHandle CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int data_width, int data_height, int data_pitch);
     ObjectHandle CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int pitch);
 
     SwapChain* GetSwapChain(ObjectHandle h);
-
-    ObjectHandle FindResource(const string &name);
-    ObjectHandle FindSampler(const string &name);
-    ObjectHandle FindBlendState(const string &name);
-    ObjectHandle FindRasterizerState(const string &name);
-    ObjectHandle FindDepthStencilState(const string &name);
 
     GraphicsContext *GetGraphicsContext();
     PostProcess* GetPostProcess();
@@ -141,7 +133,7 @@ namespace tano
   private:
     ~Graphics();
 
-    ObjectHandle ReserveObjectHandle(const string& id, ObjectHandle::Type type);
+    ObjectHandle ReserveObjectHandle(ObjectHandle::Type type);
 
     bool CreateDevice();
 
@@ -160,8 +152,7 @@ namespace tano
 
     ID3D11ShaderResourceView* GetShaderResourceView(ObjectHandle h);
 
-    // given texture data and a name, insert it into the GOH chain
-    ObjectHandle InsertTexture(TextureResource* data, const char* friendlyName = nullptr);
+    ObjectHandle InsertTexture(TextureResource* data);
 
     Setup _curSetup;
 
@@ -176,27 +167,27 @@ namespace tano
 
     // resources
     enum { IdCount = 1 << ObjectHandle::cIdBits };
-    IdBuffer<ID3D11VertexShader*, IdCount> _vertexShaders;
-    IdBuffer<ID3D11PixelShader*, IdCount> _pixelShaders;
-    IdBuffer<ID3D11ComputeShader*, IdCount> _computeShaders;
-    IdBuffer<ID3D11GeometryShader*, IdCount> _geometryShaders;
-    IdBuffer<ID3D11InputLayout*, IdCount> _inputLayouts;
-    IdBuffer<ID3D11Buffer*, IdCount> _vertexBuffers;
-    IdBuffer<ID3D11Buffer*, IdCount> _indexBuffers;
-    IdBuffer<ID3D11Buffer*, IdCount> _constantBuffers;
+    AppendBuffer<ID3D11VertexShader*, IdCount> _vertexShaders;
+    AppendBuffer<ID3D11PixelShader*, IdCount> _pixelShaders;
+    AppendBuffer<ID3D11ComputeShader*, IdCount> _computeShaders;
+    AppendBuffer<ID3D11GeometryShader*, IdCount> _geometryShaders;
+    AppendBuffer<ID3D11InputLayout*, IdCount> _inputLayouts;
+    AppendBuffer<ID3D11Buffer*, IdCount> _vertexBuffers;
+    AppendBuffer<ID3D11Buffer*, IdCount> _indexBuffers;
+    AppendBuffer<ID3D11Buffer*, IdCount> _constantBuffers;
 
-    IdBuffer<ID3D11BlendState*, IdCount> _blendStates;
-    IdBuffer<ID3D11DepthStencilState*, IdCount> _depthStencilStates;
-    IdBuffer<ID3D11RasterizerState*, IdCount> _rasterizerStates;
-    IdBuffer<ID3D11SamplerState*, IdCount> _samplerStates;
+    AppendBuffer<ID3D11BlendState*, IdCount> _blendStates;
+    AppendBuffer<ID3D11DepthStencilState*, IdCount> _depthStencilStates;
+    AppendBuffer<ID3D11RasterizerState*, IdCount> _rasterizerStates;
+    AppendBuffer<ID3D11SamplerState*, IdCount> _samplerStates;
 
-    IdBuffer<TextureResource*, IdCount> _textures;
-    IdBuffer<RenderTargetResource*, IdCount> _renderTargets;
-    IdBuffer<DepthStencilResource*, IdCount> _depthStencils;
-    IdBuffer<SimpleResource*, IdCount> _resources;
-    IdBuffer<ID3D11ShaderResourceView*, IdCount> _shaderResourceViews;
-    IdBuffer<StructuredBuffer*, IdCount> _structuredBuffers;
-    IdBuffer<SwapChain*, 16> _swapChains;
+    AppendBuffer<TextureResource*, IdCount> _textures;
+    AppendBuffer<RenderTargetResource*, IdCount> _renderTargets;
+    AppendBuffer<DepthStencilResource*, IdCount> _depthStencils;
+    AppendBuffer<SimpleResource*, IdCount> _resources;
+    AppendBuffer<ID3D11ShaderResourceView*, IdCount> _shaderResourceViews;
+    AppendBuffer<StructuredBuffer*, IdCount> _structuredBuffers;
+    AppendBuffer<SwapChain*, 16> _swapChains;
 
     static Graphics* _instance;
     static IDXGIDebug* _debugInterface;

@@ -242,25 +242,23 @@ void ResourceManager::Tick()
 //------------------------------------------------------------------------------
 ObjectHandle ResourceManager::LoadTexture(
     const char* filename,
-    const char* friendlyName,
     bool srgb,
     D3DX11_IMAGE_INFO* info)
 {
   string fullPath = ResolveFilename(filename, true);
   _readFiles.insert(FileInfo(filename, fullPath));
 
-  return GRAPHICS.LoadTexture(fullPath.c_str(), friendlyName, srgb, info);
+  return GRAPHICS.LoadTexture(fullPath.c_str(), srgb, info);
 }
 
 //------------------------------------------------------------------------------
 ObjectHandle ResourceManager::LoadTextureFromMemory(
     const char* buf,
     u32 len,
-    const char* friendlyName,
     bool srgb,
     D3DX11_IMAGE_INFO* info)
 {
-  return GRAPHICS.LoadTextureFromMemory(buf, len, friendlyName, srgb, info);
+  return GRAPHICS.LoadTextureFromMemory(buf, len, srgb, info);
 }
 
 //------------------------------------------------------------------------------
