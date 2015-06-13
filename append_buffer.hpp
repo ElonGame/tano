@@ -4,25 +4,39 @@
 
 namespace tano
 {
-  template <typename T, int Capacity>
-  class AppendBuffer
+  //------------------------------------------------------------------------------
+  template<typename T>
+  struct DeleteMixin
   {
-    typedef function<void(T)> Deleter;
-
-  public:
-
-    //------------------------------------------------------------------------------
-    AppendBuffer(const Deleter& deleter)
-      : _deleter(deleter)
+    void destroy(T t)
     {
+      delete t;
     }
+  };
+
+  //------------------------------------------------------------------------------
+  template<typename T>
+  struct ReleaseMixin
+  {
+    void destroy(T t)
+    {
+      if (t)
+        t->Release();
+    }
+  };
+
+  //------------------------------------------------------------------------------
+  template <typename T, int Capacity, template<typename> class DestroyMixin>
+  class AppendBuffer : DestroyMixin<T>
+  {
+  public:
 
     //------------------------------------------------------------------------------
     ~AppendBuffer()
     {
       for (int i = 0; i < _used; ++i)
       {
-        _deleter(_elems[i]);
+        destroy(_elems[i]);
       }
     }
 
@@ -68,7 +82,6 @@ namespace tano
   private:
 
     //------------------------------------------------------------------------------
-    Deleter _deleter;
     int _used = 0;
     T _elems[Capacity];
   };

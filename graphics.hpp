@@ -167,27 +167,27 @@ namespace tano
 
     // resources
     enum { IdCount = 1 << ObjectHandle::cIdBits };
-    AppendBuffer<ID3D11VertexShader*, IdCount> _vertexShaders;
-    AppendBuffer<ID3D11PixelShader*, IdCount> _pixelShaders;
-    AppendBuffer<ID3D11ComputeShader*, IdCount> _computeShaders;
-    AppendBuffer<ID3D11GeometryShader*, IdCount> _geometryShaders;
-    AppendBuffer<ID3D11InputLayout*, IdCount> _inputLayouts;
-    AppendBuffer<ID3D11Buffer*, IdCount> _vertexBuffers;
-    AppendBuffer<ID3D11Buffer*, IdCount> _indexBuffers;
-    AppendBuffer<ID3D11Buffer*, IdCount> _constantBuffers;
+    AppendBuffer<ID3D11VertexShader*, IdCount, ReleaseMixin> _vertexShaders;
+    AppendBuffer<ID3D11PixelShader*, IdCount, ReleaseMixin> _pixelShaders;
+    AppendBuffer<ID3D11ComputeShader*, IdCount, ReleaseMixin> _computeShaders;
+    AppendBuffer<ID3D11GeometryShader*, IdCount, ReleaseMixin> _geometryShaders;
+    AppendBuffer<ID3D11InputLayout*, IdCount, ReleaseMixin> _inputLayouts;
+    AppendBuffer<ID3D11Buffer*, IdCount, ReleaseMixin> _vertexBuffers;
+    AppendBuffer<ID3D11Buffer*, IdCount, ReleaseMixin> _indexBuffers;
+    AppendBuffer<ID3D11Buffer*, IdCount, ReleaseMixin> _constantBuffers;
 
-    AppendBuffer<ID3D11BlendState*, IdCount> _blendStates;
-    AppendBuffer<ID3D11DepthStencilState*, IdCount> _depthStencilStates;
-    AppendBuffer<ID3D11RasterizerState*, IdCount> _rasterizerStates;
-    AppendBuffer<ID3D11SamplerState*, IdCount> _samplerStates;
+    AppendBuffer<ID3D11BlendState*, IdCount, ReleaseMixin> _blendStates;
+    AppendBuffer<ID3D11DepthStencilState*, IdCount, ReleaseMixin> _depthStencilStates;
+    AppendBuffer<ID3D11RasterizerState*, IdCount, ReleaseMixin> _rasterizerStates;
+    AppendBuffer<ID3D11SamplerState*, IdCount, ReleaseMixin> _samplerStates;
+    AppendBuffer<ID3D11ShaderResourceView*, IdCount, ReleaseMixin> _shaderResourceViews;
 
-    AppendBuffer<TextureResource*, IdCount> _textures;
-    AppendBuffer<RenderTargetResource*, IdCount> _renderTargets;
-    AppendBuffer<DepthStencilResource*, IdCount> _depthStencils;
-    AppendBuffer<SimpleResource*, IdCount> _resources;
-    AppendBuffer<ID3D11ShaderResourceView*, IdCount> _shaderResourceViews;
-    AppendBuffer<StructuredBuffer*, IdCount> _structuredBuffers;
-    AppendBuffer<SwapChain*, 16> _swapChains;
+    AppendBuffer<TextureResource*, IdCount, DeleteMixin> _textures;
+    AppendBuffer<RenderTargetResource*, IdCount, DeleteMixin> _renderTargets;
+    AppendBuffer<DepthStencilResource*, IdCount, DeleteMixin> _depthStencils;
+    AppendBuffer<SimpleResource*, IdCount, DeleteMixin> _resources;
+    AppendBuffer<StructuredBuffer*, IdCount, DeleteMixin> _structuredBuffers;
+    AppendBuffer<SwapChain*, 16, DeleteMixin> _swapChains;
 
     static Graphics* _instance;
     static IDXGIDebug* _debugInterface;

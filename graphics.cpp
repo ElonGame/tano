@@ -26,25 +26,6 @@ Graphics& Graphics::Instance()
 
 //------------------------------------------------------------------------------
 Graphics::Graphics()
-  : _vertexShaders(ReleaseObj<ID3D11VertexShader *>)
-  , _pixelShaders(ReleaseObj<ID3D11PixelShader *>)
-  , _computeShaders(ReleaseObj<ID3D11ComputeShader *>)
-  , _geometryShaders(ReleaseObj<ID3D11GeometryShader *>)
-  , _vertexBuffers(ReleaseObj<ID3D11Buffer *>)
-  , _indexBuffers(ReleaseObj<ID3D11Buffer *>)
-  , _constantBuffers(ReleaseObj<ID3D11Buffer *>)
-  , _inputLayouts(ReleaseObj<ID3D11InputLayout *>)
-  , _blendStates(ReleaseObj<ID3D11BlendState *>)
-  , _depthStencilStates(ReleaseObj<ID3D11DepthStencilState *>)
-  , _rasterizerStates(ReleaseObj<ID3D11RasterizerState *>)
-  , _samplerStates(ReleaseObj<ID3D11SamplerState *>)
-  , _shaderResourceViews(ReleaseObj<ID3D11ShaderResourceView *>)
-  , _textures(DeleteObj<TextureResource *>)
-  , _renderTargets(DeleteObj<RenderTargetResource *>)
-  , _depthStencils(DeleteObj<DepthStencilResource *>)
-  , _resources(DeleteObj<SimpleResource *>)
-  , _structuredBuffers(DeleteObj<StructuredBuffer *>)
-  , _swapChains(DeleteObj<SwapChain*>)
 {
 }
 
