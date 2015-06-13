@@ -52,27 +52,26 @@ namespace tano
   //------------------------------------------------------------------------------
   struct Setup
   {
-    Setup() : selectedAdapter(-1), SelectedDisplayMode(-1), multisampleCount(-1), selectedAspectRatio(-1), windowed(false) {}
-
     CComPtr<IDXGIFactory> dxgi_factory;
     vector<VideoAdapter> videoAdapters;
-    int selectedAdapter;
-    int SelectedDisplayMode;
-    int selectedAspectRatio;
-    int multisampleCount;
-    bool windowed;
-    int width, height;
+    int selectedAdapter = -1;
+    int SelectedDisplayMode = -1;
+    int selectedAspectRatio = -1;
+    int multisampleCount = -1;
+    int width = -1;
+    int height = -1;
+    bool windowed = false;
   };
 
   //------------------------------------------------------------------------------
   template<class Resource, class Desc>
-  struct ResourceAndDesc
+  struct PointerAndDesc
   {
     void Release()
     {
-      resource.Release();
+      ptr.Release();
     }
-    CComPtr<Resource> resource;
+    CComPtr<Resource> ptr;
     Desc desc;
   };
 
@@ -90,8 +89,8 @@ namespace tano
       view.Release();
     }
 
-    ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
-    ResourceAndDesc<ID3D11DepthStencilView, D3D11_DEPTH_STENCIL_VIEW_DESC> view;
+    PointerAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
+    PointerAndDesc<ID3D11DepthStencilView, D3D11_DEPTH_STENCIL_VIEW_DESC> view;
   };
 
   //------------------------------------------------------------------------------
@@ -111,40 +110,42 @@ namespace tano
     }
 
     bool inUse = true;
-    ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
-    ResourceAndDesc<ID3D11RenderTargetView, D3D11_RENDER_TARGET_VIEW_DESC> view;
-    ResourceAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> srv;
-    ResourceAndDesc<ID3D11UnorderedAccessView, D3D11_UNORDERED_ACCESS_VIEW_DESC> uav;
+    PointerAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
+    PointerAndDesc<ID3D11RenderTargetView, D3D11_RENDER_TARGET_VIEW_DESC> view;
+    PointerAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> srv;
+    PointerAndDesc<ID3D11UnorderedAccessView, D3D11_UNORDERED_ACCESS_VIEW_DESC> uav;
   };
 
   //------------------------------------------------------------------------------
   struct TextureResource
   {
-    void reset() {
+    void Reset()
+    {
       texture.Release();
       view.Release();
     }
-    ResourceAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
-    ResourceAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> view;
+    PointerAndDesc<ID3D11Texture2D, D3D11_TEXTURE2D_DESC> texture;
+    PointerAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> view;
   };
 
   //------------------------------------------------------------------------------
   struct SimpleResource
   {
-    void reset() {
+    void Reset()
+    {
       resource.Release();
       view.Release();
     }
     CComPtr<ID3D11Resource> resource;
-    ResourceAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> view;
+    PointerAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> view;
   };
 
   //------------------------------------------------------------------------------
   struct StructuredBuffer
   {
-    ResourceAndDesc<ID3D11Buffer, D3D11_BUFFER_DESC> buffer;
-    ResourceAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> srv;
-    ResourceAndDesc<ID3D11UnorderedAccessView, D3D11_UNORDERED_ACCESS_VIEW_DESC> uav;
+    PointerAndDesc<ID3D11Buffer, D3D11_BUFFER_DESC> buffer;
+    PointerAndDesc<ID3D11ShaderResourceView, D3D11_SHADER_RESOURCE_VIEW_DESC> srv;
+    PointerAndDesc<ID3D11UnorderedAccessView, D3D11_UNORDERED_ACCESS_VIEW_DESC> uav;
   };
 
   //------------------------------------------------------------------------------
@@ -167,14 +168,20 @@ namespace tano
   //------------------------------------------------------------------------------
   struct ScopedRenderTarget
   {
-    ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
-    ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
+    ScopedRenderTarget(
+        int width,
+        int height,
+        DXGI_FORMAT format,
+        const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
+    ScopedRenderTarget(
+        DXGI_FORMAT format,
+        const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ~ScopedRenderTarget();
-    void Attach(GraphicsContext* ctx, const Color* clearColor = nullptr);
 
+    int _width, _height;
+    DXGI_FORMAT _format;
     ObjectHandle _rtHandle;
     ObjectHandle _dsHandle;
-    GraphicsContext* _ctx = nullptr;
   };
 
   //------------------------------------------------------------------------------

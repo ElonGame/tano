@@ -224,19 +224,19 @@ ID3D11ShaderResourceView* Graphics::GetShaderResourceView(ObjectHandle h)
 
   if (type == ObjectHandle::kTexture)
   {
-    return _textures.Get(h)->view.resource;
+    return _textures.Get(h)->view.ptr;
   }
   else if (type == ObjectHandle::kResource)
   {
-    return _resources.Get(h)->view.resource;
+    return _resources.Get(h)->view.ptr;
   }
   else if (type == ObjectHandle::kRenderTarget)
   {
-    return _renderTargets.Get(h)->srv.resource;
+    return _renderTargets.Get(h)->srv.ptr;
   }
   else if (type == ObjectHandle::kStructuredBuffer)
   {
-    return _structuredBuffers.Get(h)->srv.resource;
+    return _structuredBuffers.Get(h)->srv.ptr;
   }
   return nullptr;
 }
@@ -258,7 +258,7 @@ bool Graphics::GetTextureSize(ObjectHandle h, u32* x, u32* y)
 
     CComPtr<ID3D11Texture2D> texture;
     D3D11_TEXTURE2D_DESC desc;
-    texture.Attach((ID3D11Texture2D*)_resources.Get(h)->view.resource.p);
+    texture.Attach((ID3D11Texture2D*)_resources.Get(h)->view.ptr.p);
     texture->GetDesc(&desc);
 
     *x = max(desc.Width / (1 << mipLevel), 1u);
@@ -347,10 +347,10 @@ ObjectHandle Graphics::CreateStructuredBuffer(
   sbDesc.StructureByteStride  = elemSize;
   sbDesc.ByteWidth            = elemSize * numElems;
   sbDesc.Usage                = D3D11_USAGE_DEFAULT;
-  if (FAILED(_device->CreateBuffer(&sbDesc, NULL, &sb->buffer.resource)))
+  if (FAILED(_device->CreateBuffer(&sbDesc, NULL, &sb->buffer.ptr)))
     return emptyHandle;
 
-  auto buf = sb->buffer.resource.p;
+  auto buf = sb->buffer.ptr.p;
 
   // create the UAV for the structured buffer
   D3D11_UNORDERED_ACCESS_VIEW_DESC sbUAVDesc;
@@ -359,7 +359,7 @@ ObjectHandle Graphics::CreateStructuredBuffer(
   sbUAVDesc.Buffer.NumElements        = numElems;
   sbUAVDesc.Format                    = DXGI_FORMAT_UNKNOWN;
   sbUAVDesc.ViewDimension             = D3D11_UAV_DIMENSION_BUFFER;
-  if (FAILED(_device->CreateUnorderedAccessView(buf, &sbUAVDesc, &sb->uav.resource)))
+  if (FAILED(_device->CreateUnorderedAccessView(buf, &sbUAVDesc, &sb->uav.ptr)))
     return emptyHandle;
 
   if (createSrv)
@@ -372,7 +372,7 @@ ObjectHandle Graphics::CreateStructuredBuffer(
     sbSRVDesc.Buffer.NumElements            = numElems;
     sbSRVDesc.Format                        = DXGI_FORMAT_UNKNOWN;
     sbSRVDesc.ViewDimension                 = D3D11_SRV_DIMENSION_BUFFER;
-    if (FAILED(_device->CreateShaderResourceView(buf, &sbSRVDesc, &sb->srv.resource)))
+    if (FAILED(_device->CreateShaderResourceView(buf, &sbSRVDesc, &sb->srv.ptr)))
       return emptyHandle;
   }
 
@@ -431,24 +431,24 @@ bool Graphics::CreateRenderTarget(
 
   rt->texture.desc = CD3D11_TEXTURE2D_DESC(format, width, height, 1, mip_levels, flags);
   rt->texture.desc.MiscFlags = bufferFlags.IsSet(BufferFlag::CreateMipMaps) ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
-  if (FAILED(_device->CreateTexture2D(&rt->texture.desc, NULL, &rt->texture.resource.p)))
+  if (FAILED(_device->CreateTexture2D(&rt->texture.desc, NULL, &rt->texture.ptr.p)))
     return false;
 
   // create the render target view
   rt->view.desc = CD3D11_RENDER_TARGET_VIEW_DESC(D3D11_RTV_DIMENSION_TEXTURE2D, rt->texture.desc.Format);
-  if (FAILED(_device->CreateRenderTargetView(rt->texture.resource, &rt->view.desc, &rt->view.resource.p)))
+  if (FAILED(_device->CreateRenderTargetView(rt->texture.ptr, &rt->view.desc, &rt->view.ptr.p)))
     return false;
 
   if (bufferFlags.IsSet(BufferFlag::CreateDepthBuffer))
   {
     // create the depth stencil texture
     ds->texture.desc = CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_D24_UNORM_S8_UINT, width, height, 1, 1, D3D11_BIND_DEPTH_STENCIL);
-    if (FAILED(_device->CreateTexture2D(&ds->texture.desc, NULL, &ds->texture.resource.p)))
+    if (FAILED(_device->CreateTexture2D(&ds->texture.desc, NULL, &ds->texture.ptr.p)))
       return false;
 
     // create depth stencil view
     ds->view.desc = CD3D11_DEPTH_STENCIL_VIEW_DESC(D3D11_DSV_DIMENSION_TEXTURE2D, DXGI_FORMAT_D24_UNORM_S8_UINT);
-    if (FAILED(_device->CreateDepthStencilView(ds->texture.resource, &ds->view.desc, &ds->view.resource.p)))
+    if (FAILED(_device->CreateDepthStencilView(ds->texture.ptr, &ds->view.desc, &ds->view.ptr.p)))
       return false;
   }
 
@@ -456,14 +456,14 @@ bool Graphics::CreateRenderTarget(
   {
     // create the shader resource view
     rt->srv.desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, rt->texture.desc.Format);
-    if (FAILED(_device->CreateShaderResourceView(rt->texture.resource, &rt->srv.desc, &rt->srv.resource.p)))
+    if (FAILED(_device->CreateShaderResourceView(rt->texture.ptr, &rt->srv.desc, &rt->srv.ptr.p)))
       return false;
   }
 
   if (bufferFlags.IsSet(BufferFlag::CreateUav))
   {
     rt->uav.desc = CD3D11_UNORDERED_ACCESS_VIEW_DESC(D3D11_UAV_DIMENSION_TEXTURE2D, format, 0, 0, width*height);
-    if (FAILED(_device->CreateUnorderedAccessView(rt->texture.resource, &rt->uav.desc, &rt->uav.resource)))
+    if (FAILED(_device->CreateUnorderedAccessView(rt->texture.ptr, &rt->uav.desc, &rt->uav.ptr)))
       return false;
   }
 
@@ -540,7 +540,7 @@ ObjectHandle Graphics::LoadTexture(
   // check if this is a cube map
   auto dim = imageInfo.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE ? D3D11_SRV_DIMENSION_TEXTURECUBE : D3D11_SRV_DIMENSION_TEXTURE2D;
   auto desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(dim, fmt);
-  if (FAILED(_device->CreateShaderResourceView(data->resource, &desc, &data->view.resource)))
+  if (FAILED(_device->CreateShaderResourceView(data->resource, &desc, &data->view.ptr)))
     return emptyHandle;
 
   return MakeObjectHandle(ObjectHandle::kResource, 
@@ -567,7 +567,7 @@ ObjectHandle Graphics::LoadTextureFromMemory(
 
   // TODO: allow for srgb loading
   auto desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, DXGI_FORMAT_R8G8B8A8_UNORM);
-  if (FAILED(_device->CreateShaderResourceView(data->resource, &desc, &data->view.resource)))
+  if (FAILED(_device->CreateShaderResourceView(data->resource, &desc, &data->view.ptr)))
     return emptyHandle;
 
   return MakeObjectHandle(
@@ -603,18 +603,18 @@ bool Graphics::CreateTexture(
     const D3D11_TEXTURE2D_DESC &desc,
     TextureResource *out)
 {
-  out->reset();
+  out->Reset();
 
   // create the texture
   out->texture.desc = desc;
-  if (FAILED(_device->CreateTexture2D(&out->texture.desc, NULL, &out->texture.resource.p)))
+  if (FAILED(_device->CreateTexture2D(&out->texture.desc, NULL, &out->texture.ptr.p)))
     return false;
 
   // create the shader resource view if the texture has a shader resource bind flag
   if (desc.BindFlags & D3D11_BIND_SHADER_RESOURCE)
   {
     out->view.desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, out->texture.desc.Format);
-    if (FAILED(_device->CreateShaderResourceView(out->texture.resource, &out->view.desc, &out->view.resource.p)))
+    if (FAILED(_device->CreateShaderResourceView(out->texture.ptr, &out->view.desc, &out->view.ptr.p)))
       return false;
   }
 
@@ -669,7 +669,7 @@ bool Graphics::CreateTexture(
     return false;
 
   D3D11_MAPPED_SUBRESOURCE resource;
-  if (FAILED(_immediateContext->Map(out->texture.resource, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource)))
+  if (FAILED(_immediateContext->Map(out->texture.ptr, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource)))
     return false;
 
   uint8_t *src = (uint8_t *)data;
@@ -682,7 +682,7 @@ bool Graphics::CreateTexture(
     src += data_pitch;
     dst += resource.RowPitch;
   }
-  _immediateContext->Unmap(out->texture.resource, 0);
+  _immediateContext->Unmap(out->texture.ptr, 0);
   return true;
 }
 

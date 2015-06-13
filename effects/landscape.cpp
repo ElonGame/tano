@@ -683,27 +683,21 @@ bool Landscape::Render()
   static Color black(0, 0, 0, 0);
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
 
-  ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateDepthBuffer);
+  ScopedRenderTarget rt(
+    DXGI_FORMAT_R16G16B16A16_FLOAT,
+    BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateDepthBuffer);
 
   _cbPerFrame.world = Matrix::Identity();
 
-  u32 dimX, dimY;
-  GRAPHICS.GetTextureSize(rt._rtHandle, &dimX, &dimY);
-  _cbPerFrame.dim.x = (float)dimX;
-  _cbPerFrame.dim.y = (float)dimY;
-  _cbPerFrame.dim.z = 0;
-  _cbPerFrame.dim.w = 0;
+  _cbPerFrame.dim = Vector4((float)rt._width, (float)rt._height, 0, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
   // Render the sky
-  _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), &black);
+  _ctx->SetRenderTarget(rt._rtHandle, rt._dsHandle, &black);
   _ctx->SetGpuObjects(_skyGpuObjects);
   _ctx->Draw(3, 0);
-
-  // Render the landscape
-  _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), nullptr);
 
   if (_renderLandscape)
   {

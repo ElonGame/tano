@@ -375,18 +375,18 @@ bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
     rt = new RenderTargetResource();
   }
 
-  INIT_HR_FATAL(_swapChain->GetBuffer(0, IID_PPV_ARGS(&rt->texture.resource)));
+  INIT_HR_FATAL(_swapChain->GetBuffer(0, IID_PPV_ARGS(&rt->texture.ptr)));
 
-  rt->texture.resource->GetDesc(&rt->texture.desc);
+  rt->texture.ptr->GetDesc(&rt->texture.desc);
 
   // Create render target view
   D3D11_RENDER_TARGET_VIEW_DESC rtViewDesc;
   ZeroMemory(&rtViewDesc, sizeof(rtViewDesc));
   rtViewDesc.Format = rt->texture.desc.Format;
   rtViewDesc.ViewDimension = rt->texture.desc.SampleDesc.Count == 1 ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DMS;
-  INIT_HR_FATAL(GRAPHICS._device->CreateRenderTargetView(rt->texture.resource, &rtViewDesc, &rt->view.resource));
+  INIT_HR_FATAL(GRAPHICS._device->CreateRenderTargetView(rt->texture.ptr, &rtViewDesc, &rt->view.ptr));
 
-  rt->view.resource->GetDesc(&rt->view.desc);
+  rt->view.ptr->GetDesc(&rt->view.desc);
 
   DepthStencilResource* depthStencil = new DepthStencilResource();
 
@@ -395,11 +395,11 @@ bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
     D3D11_BIND_DEPTH_STENCIL, D3D11_USAGE_DEFAULT, 0, _desc.SampleDesc.Count);
 
   // Create depth stencil buffer and view
-  INIT_HR_FATAL(GRAPHICS._device->CreateTexture2D(&depthStencilDesc, NULL, &depthStencil->texture.resource));
-  depthStencil->texture.resource->GetDesc(&depthStencil->texture.desc);
+  INIT_HR_FATAL(GRAPHICS._device->CreateTexture2D(&depthStencilDesc, NULL, &depthStencil->texture.ptr));
+  depthStencil->texture.ptr->GetDesc(&depthStencil->texture.desc);
 
-  INIT_HR_FATAL(GRAPHICS._device->CreateDepthStencilView(depthStencil->texture.resource, NULL, &depthStencil->view.resource));
-  depthStencil->view.resource->GetDesc(&depthStencil->view.desc);
+  INIT_HR_FATAL(GRAPHICS._device->CreateDepthStencilView(depthStencil->texture.ptr, NULL, &depthStencil->view.ptr));
+  depthStencil->view.ptr->GetDesc(&depthStencil->view.desc);
 
   // register the render-target and depth-stencil
   u32 rtIdx = GRAPHICS._renderTargets.Insert(_name, rt);
@@ -421,16 +421,19 @@ void SwapChain::Present()
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags)
+  : _width(width)
+  , _height(height)
+  , _format(format)
 {
   GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags, &_rtHandle, &_dsHandle);
 }
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags)
+  : _format(format)
 {
-  int w, h;
-  GRAPHICS.GetBackBufferSize(&w, &h);
-  GRAPHICS.GetTempRenderTarget(w, h, format, bufferFlags, &_rtHandle, &_dsHandle);
+  GRAPHICS.GetBackBufferSize(&_width, &_height);
+  GRAPHICS.GetTempRenderTarget(_width, _height, format, bufferFlags, &_rtHandle, &_dsHandle);
 }
 
 //------------------------------------------------------------------------------
@@ -439,14 +442,5 @@ ScopedRenderTarget::~ScopedRenderTarget()
   if (_rtHandle.IsValid())
   {
     GRAPHICS.ReleaseTempRenderTarget(_rtHandle);
-    if (_ctx)
-      _ctx->UnsetRenderTargets(0, 1);
   }
-}
-
-//------------------------------------------------------------------------------
-void ScopedRenderTarget::Attach(GraphicsContext* ctx, const Color* clearColor)
-{
-  _ctx = ctx;
-  _ctx->SetRenderTarget(_rtHandle, _dsHandle, clearColor);
 }

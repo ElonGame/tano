@@ -19,7 +19,7 @@ GraphicsContext::GraphicsContext(ID3D11DeviceContext* ctx)
 //------------------------------------------------------------------------------
 void GraphicsContext::GenerateMips(ObjectHandle h)
 {
-  auto r = GRAPHICS._renderTargets.Get(h)->srv.resource;
+  auto r = GRAPHICS._renderTargets.Get(h)->srv.ptr;
   _ctx->GenerateMips(r);
 }
 
@@ -30,12 +30,13 @@ void GraphicsContext::SetRenderTarget(
     const Color* clearColor)
 {
   RenderTargetResource* rt = GRAPHICS._renderTargets.Get(renderTarget);
+  ID3D11RenderTargetView* rtv = rt->view.ptr;
   D3D11_TEXTURE2D_DESC textureDesc = rt->texture.desc;
   DepthStencilResource* ds = GRAPHICS._depthStencils.Get(depthStencil);
-  ID3D11DepthStencilView* dsv = ds ? ds->view.resource : nullptr;
+  ID3D11DepthStencilView* dsv = ds ? ds->view.ptr : nullptr;
   if (clearColor)
   {
-    _ctx->ClearRenderTargetView(rt->view.resource, &clearColor->x);
+    _ctx->ClearRenderTargetView(rtv, &clearColor->x);
     if (dsv)
     {
       _ctx->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
@@ -43,7 +44,7 @@ void GraphicsContext::SetRenderTarget(
   }
   CD3D11_VIEWPORT viewport(0.0f, 0.0f, (float)textureDesc.Width, (float)textureDesc.Height);
   _ctx->RSSetViewports(1, &viewport);
-  _ctx->OMSetRenderTargets(1, &rt->view.resource.p, dsv);
+  _ctx->OMSetRenderTargets(1, &rtv, dsv);
 }
 
 //------------------------------------------------------------------------------
@@ -59,7 +60,7 @@ void GraphicsContext::SetRenderTargets(
   ID3D11RenderTargetView *rts[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
   D3D11_TEXTURE2D_DESC texture_desc;
   DepthStencilResource* ds = GRAPHICS._depthStencils.Get(depthStencil);
-  ID3D11DepthStencilView* dsv = ds ? ds->view.resource : nullptr;
+  ID3D11DepthStencilView* dsv = ds ? ds->view.ptr : nullptr;
 
   // Collect the valid render targets, set the first available depth buffer
   // and clear targets if specified
@@ -69,7 +70,7 @@ void GraphicsContext::SetRenderTargets(
     assert(h.IsValid());
     RenderTargetResource* rt = GRAPHICS._renderTargets.Get(h);
     texture_desc = rt->texture.desc;
-    rts[i] = rt->view.resource;
+    rts[i] = rt->view.ptr;
     // clear render target (and depth stenci)
     if (clearTargets && clearTargets[i])
     {
@@ -97,12 +98,12 @@ void GraphicsContext::SetSwapChain(ObjectHandle h, const float* clearColor)
   SwapChain* swapChain = GRAPHICS._swapChains.Get(h);
   RenderTargetResource* rt = GRAPHICS._renderTargets.Get(swapChain->_renderTarget);
   DepthStencilResource* ds = GRAPHICS._depthStencils.Get(swapChain->_depthStencil);
-  _ctx->OMSetRenderTargets(1, &rt->view.resource.p, ds->view.resource);
+  _ctx->OMSetRenderTargets(1, &rt->view.ptr.p, ds->view.ptr);
 
   if (clearColor)
   {
-    _ctx->ClearRenderTargetView(rt->view.resource, clearColor);
-    _ctx->ClearDepthStencilView(ds->view.resource, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0 );
+    _ctx->ClearRenderTargetView(rt->view.ptr, clearColor);
+    _ctx->ClearDepthStencilView(ds->view.ptr, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0 );
   }
   _ctx->RSSetViewports(1, &swapChain->_viewport);
 }
@@ -239,7 +240,7 @@ bool GraphicsContext::Map(
   switch (h.type())
   {
   case ObjectHandle::kTexture:
-    return SUCCEEDED(_ctx->Map(GRAPHICS._textures.Get(h)->texture.resource, sub, type, flags, res));
+    return SUCCEEDED(_ctx->Map(GRAPHICS._textures.Get(h)->texture.ptr, sub, type, flags, res));
 
   case ObjectHandle::kVertexBuffer:
     return SUCCEEDED(_ctx->Map(GRAPHICS._vertexBuffers.Get(h), sub, type, flags, res));
@@ -259,7 +260,7 @@ void GraphicsContext::Unmap(ObjectHandle h, UINT sub)
   switch (h.type())
   {
   case ObjectHandle::kTexture:
-    _ctx->Unmap(GRAPHICS._textures.Get(h)->texture.resource, sub);
+    _ctx->Unmap(GRAPHICS._textures.Get(h)->texture.ptr, sub);
     break;
 
   case ObjectHandle::kVertexBuffer:
@@ -388,16 +389,16 @@ void GraphicsContext::SetUnorderedAccessView(ObjectHandle h, Color* clearColor)
   if (type == ObjectHandle::kStructuredBuffer)
   {
     StructuredBuffer* buf = GRAPHICS._structuredBuffers.Get(h);
-    view = buf->uav.resource;
+    view = buf->uav.ptr;
   }
   else if (type == ObjectHandle::kRenderTarget)
   {
     RenderTargetResource* res = GRAPHICS._renderTargets.Get(h);
-    view = res->uav.resource;
+    view = res->uav.ptr;
 
     if (clearColor)
     {
-      _ctx->ClearRenderTargetView(res->view.resource, &clearColor->x);
+      _ctx->ClearRenderTargetView(res->view.ptr, &clearColor->x);
     }
   }
   else
