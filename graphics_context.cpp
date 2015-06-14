@@ -25,6 +25,26 @@ void GraphicsContext::GenerateMips(ObjectHandle h)
 
 //------------------------------------------------------------------------------
 void GraphicsContext::SetRenderTarget(
+  ObjectHandle renderTarget,
+  const Color* clearColor)
+{
+  RenderTargetResource* rt = GRAPHICS._renderTargets.Get(renderTarget);
+  ID3D11RenderTargetView* rtv = rt->view.ptr;
+  D3D11_TEXTURE2D_DESC textureDesc = rt->texture.desc;
+  DepthStencilResource* ds = GRAPHICS._depthStencils.Get(GRAPHICS.GetDepthStencil());
+  ID3D11DepthStencilView* dsv = ds ? ds->view.ptr : nullptr;
+
+  if (clearColor)
+  {
+    _ctx->ClearRenderTargetView(rtv, &clearColor->x);
+  }
+  CD3D11_VIEWPORT viewport(0.0f, 0.0f, (float)textureDesc.Width, (float)textureDesc.Height);
+  _ctx->RSSetViewports(1, &viewport);
+  _ctx->OMSetRenderTargets(1, &rtv, dsv);
+}
+
+//------------------------------------------------------------------------------
+void GraphicsContext::SetRenderTarget(
     ObjectHandle renderTarget, 
     ObjectHandle depthStencil,
     const Color* clearColor)

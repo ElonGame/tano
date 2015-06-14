@@ -140,6 +140,8 @@ namespace tano
       Vector3 cameraLookAt;
       float pad2;
       Vector3 cameraUp;
+      float pad3;
+      Vector4 nearFar;
     };
 
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;

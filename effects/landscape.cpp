@@ -381,6 +381,10 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   _cbPerFrame.cameraLookAt = _curCamera->_target;
   _cbPerFrame.cameraUp = _curCamera->_up;
 
+  float n = _curCamera->_nearPlane;
+  float f = _curCamera->_farPlane;
+  _cbPerFrame.nearFar = Vector4(n, f, f*n, f-n);
+
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
 }
 
@@ -723,7 +727,11 @@ bool Landscape::Render()
     {
       _ctx->SetGpuObjects(_particleGpuObjects);
       _ctx->SetGpuState(_particleState);
-      _ctx->SetShaderResource(_particleTexture);
+
+      // Unsert the DSV, as we want to use it as a texture resource
+      _ctx->SetRenderTarget(rt._rtHandle, ObjectHandle(), nullptr);
+      _ctx->SetShaderResources({_particleTexture, rt._dsHandle}, ShaderType::PixelShader);
+
       _ctx->Draw(_numParticles, 0);
     }
   }

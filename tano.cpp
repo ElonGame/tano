@@ -180,7 +180,7 @@ bool App::Run()
   RollingAverage<float> avgFrameTime(200);
   StopWatch stopWatch;
   u64 numFrames = 0;
-  bool renderImgui = true;
+  bool renderImgui = false;
   while (WM_QUIT != msg.message)
   {
     ARENA.NewFrame();

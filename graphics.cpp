@@ -198,23 +198,27 @@ ID3D11ShaderResourceView* Graphics::GetShaderResourceView(ObjectHandle h)
 {
   ObjectHandle::Type type = h.type();
 
-  if (type == ObjectHandle::kTexture)
+  switch (type)
   {
-    return _textures.Get(h)->view.ptr;
+    case ObjectHandle::kTexture:
+      return _textures.Get(h)->view.ptr;
+
+    case ObjectHandle::kResource:
+      return _resources.Get(h)->view.ptr;
+
+    case ObjectHandle::kRenderTarget:
+      return _renderTargets.Get(h)->srv.ptr;
+
+    case ObjectHandle::kStructuredBuffer:
+      return _structuredBuffers.Get(h)->srv.ptr;
+
+    case ObjectHandle::kDepthStencil:
+      return _depthStencils.Get(h)->srv.ptr;
+
+    default:
+      LOG_WARN("Trying to set a non supported resource view type!");
+      return nullptr;
   }
-  else if (type == ObjectHandle::kResource)
-  {
-    return _resources.Get(h)->view.ptr;
-  }
-  else if (type == ObjectHandle::kRenderTarget)
-  {
-    return _renderTargets.Get(h)->srv.ptr;
-  }
-  else if (type == ObjectHandle::kStructuredBuffer)
-  {
-    return _structuredBuffers.Get(h)->srv.ptr;
-  }
-  return nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -268,7 +272,6 @@ bool Graphics::GetTextureSize(ObjectHandle h, u32* x, u32* y)
 ObjectHandle Graphics::GetTempRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& flags)
 {
   // Look for a temp render target with the required format etc
-  int rtIdx = -1;
   for (TempRenderTarget& t : _tempRenderTargets)
   {
     const D3D11_TEXTURE2D_DESC& d = t.desc;
@@ -276,18 +279,14 @@ ObjectHandle Graphics::GetTempRenderTarget(int width, int height, DXGI_FORMAT fo
     {
       // Found a free render target!
       t.inUse = true;
-      rtIdx = t.idx;
-      break;
+      return MakeObjectHandle(ObjectHandle::kRenderTarget, t.idx);
     }
   }
 
-  if (rtIdx == -1)
-  {
-    // Render target not found, so create a new one
-    RenderTargetResource* rt = CreateRenderTargetPtr(width, height, format, flags);
-    rtIdx = _renderTargets.Append(rt);
-    _tempRenderTargets.Append({ rt->texture.desc, flags, rtIdx, true });
-  }
+  // Render target not found, so create a new one
+  RenderTargetResource* rt = CreateRenderTargetPtr(width, height, format, flags);
+  int rtIdx = _renderTargets.Append(rt);
+  _tempRenderTargets.Append({ rt->texture.desc, flags, rtIdx, true });
 
   return MakeObjectHandle(ObjectHandle::kRenderTarget, rtIdx);
 }
@@ -295,24 +294,19 @@ ObjectHandle Graphics::GetTempRenderTarget(int width, int height, DXGI_FORMAT fo
 //------------------------------------------------------------------------------
 ObjectHandle Graphics::GetTempDepthStencil(int width, int height, const BufferFlags& flags)
 {
-  int dsIdx = -1;
   for (TempDepthStencil& t : _tempDepthStencils)
   {
-    if (!t.inUse)
+    if (!t.inUse && t.flags == flags)
     {
       t.inUse = true;
-      dsIdx = t.idx;
-      break;
+      return MakeObjectHandle(ObjectHandle::kDepthStencil, t.idx);
     }
   }
 
-  if (dsIdx == -1)
-  {
-    // Render target not found, so create a new one
-    DepthStencilResource* ds = CreateDepthStencilPtr(width, height, flags);
-    dsIdx = _depthStencils.Append(ds);
-    _tempDepthStencils.Append({ flags, dsIdx, true });
-  }
+  // Render target not found, so create a new one
+  DepthStencilResource* ds = CreateDepthStencilPtr(width, height, flags);
+  int dsIdx = _depthStencils.Append(ds);
+  _tempDepthStencils.Append({ flags, dsIdx, true });
 
   return MakeObjectHandle(ObjectHandle::kDepthStencil, dsIdx);
 }
@@ -413,23 +407,34 @@ ObjectHandle Graphics::CreateDepthStencil(int width, int height, const BufferFla
 }
 
 //------------------------------------------------------------------------------
+ObjectHandle Graphics::CreateRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& flags)
+{
+  if (RenderTargetResource* rt = CreateRenderTargetPtr(width, height, format, flags))
+  {
+    int idx = _renderTargets.Append(rt);
+    return MakeObjectHandle(ObjectHandle::kRenderTarget, idx);
+  }
+  return emptyHandle;
+}
+
+//------------------------------------------------------------------------------
 RenderTargetResource* Graphics::CreateRenderTargetPtr(
     int width,
     int height,
     DXGI_FORMAT format,
-    const BufferFlags& bufferFlags)
+    const BufferFlags& flags)
 {
   RenderTargetResource* rt = new RenderTargetResource();
   ScopeGuard s([=]() { delete rt; });
 
   // create the render target
-  int mip_levels = bufferFlags.IsSet(BufferFlag::CreateMipMaps) ? 0 : 1;
-  u32 flags = D3D11_BIND_RENDER_TARGET 
-    | (bufferFlags.IsSet(BufferFlag::CreateSrv) ? D3D11_BIND_SHADER_RESOURCE : 0)
-    | (bufferFlags.IsSet(BufferFlag::CreateUav) ? D3D11_BIND_UNORDERED_ACCESS : 0);
+  int mip_levels = flags.IsSet(BufferFlag::CreateMipMaps) ? 0 : 1;
+  u32 bindFlags = D3D11_BIND_RENDER_TARGET 
+    | (flags.IsSet(BufferFlag::CreateSrv) ? D3D11_BIND_SHADER_RESOURCE : 0)
+    | (flags.IsSet(BufferFlag::CreateUav) ? D3D11_BIND_UNORDERED_ACCESS : 0);
 
-  rt->texture.desc = CD3D11_TEXTURE2D_DESC(format, width, height, 1, mip_levels, flags);
-  rt->texture.desc.MiscFlags = bufferFlags.IsSet(BufferFlag::CreateMipMaps) ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
+  rt->texture.desc = CD3D11_TEXTURE2D_DESC(format, width, height, 1, mip_levels, bindFlags);
+  rt->texture.desc.MiscFlags = flags.IsSet(BufferFlag::CreateMipMaps) ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
   if (FAILED(_device->CreateTexture2D(&rt->texture.desc, NULL, &rt->texture.ptr)))
     return nullptr;
 
@@ -438,7 +443,7 @@ RenderTargetResource* Graphics::CreateRenderTargetPtr(
   if (FAILED(_device->CreateRenderTargetView(rt->texture.ptr, &rt->view.desc, &rt->view.ptr)))
     return nullptr;
 
-  if (bufferFlags.IsSet(BufferFlag::CreateSrv))
+  if (flags.IsSet(BufferFlag::CreateSrv))
   {
     // create the shader resource view
     rt->srv.desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, rt->texture.desc.Format);
@@ -446,7 +451,7 @@ RenderTargetResource* Graphics::CreateRenderTargetPtr(
       return nullptr;
   }
 
-  if (bufferFlags.IsSet(BufferFlag::CreateUav))
+  if (flags.IsSet(BufferFlag::CreateUav))
   {
     rt->uav.desc = CD3D11_UNORDERED_ACCESS_VIEW_DESC(D3D11_UAV_DIMENSION_TEXTURE2D, format, 0, 0, width*height);
     if (FAILED(_device->CreateUnorderedAccessView(rt->texture.ptr, &rt->uav.desc, &rt->uav.ptr)))
@@ -461,32 +466,43 @@ RenderTargetResource* Graphics::CreateRenderTargetPtr(
 DepthStencilResource* Graphics::CreateDepthStencilPtr(
     int width,
     int height,
-    const BufferFlags& bufferFlags)
+    const BufferFlags& flags)
 {
   DepthStencilResource* ds = new DepthStencilResource();
   ScopeGuard s([=]() { delete ds; });
+
+  bool srv = flags.IsSet(BufferFlag::CreateSrv);
 
   // create the depth stencil texture
   CD3D11_TEXTURE2D_DESC depthStencilDesc(
     DXGI_FORMAT_D24_UNORM_S8_UINT, width, height, 1, 1,
     D3D11_BIND_DEPTH_STENCIL, D3D11_USAGE_DEFAULT, 0);
 
+  if (srv)
+  {
+    // SRVs require special formats for depth/stencil
+    depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+    depthStencilDesc.BindFlags |= (flags.IsSet(BufferFlag::CreateSrv) ? D3D11_BIND_SHADER_RESOURCE : 0);
+  }
+
+  // UAV for depth buffer not supported
+  assert(!flags.IsSet(BufferFlag::CreateUav));
+
   if (FAILED(_device->CreateTexture2D(&depthStencilDesc, NULL, &ds->texture.ptr)))
     return nullptr;
   ds->texture.ptr->GetDesc(&ds->texture.desc);
 
   // create depth stencil view
-  if (FAILED(_device->CreateDepthStencilView(ds->texture.ptr, NULL, &ds->view.ptr)))
+  CD3D11_DEPTH_STENCIL_VIEW_DESC viewDesc(D3D11_DSV_DIMENSION_TEXTURE2D, DXGI_FORMAT_D24_UNORM_S8_UINT);
+  if (FAILED(_device->CreateDepthStencilView(ds->texture.ptr, &viewDesc, &ds->view.ptr)))
     return nullptr;
   ds->view.ptr->GetDesc(&ds->view.desc);
 
-  if (bufferFlags.IsSet(BufferFlag::CreateSrv))
+  if (flags.IsSet(BufferFlag::CreateSrv))
   {
-    // create the shader resource view
-    // todo: hmm
-    //ds->srv.desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, ds->texture.desc.Format);
-    //if (FAILED(_device->CreateShaderResourceView(ds->texture.ptr, &ds->srv.desc, &ds->srv.ptr)))
-    //  return false;
+    ds->srv.desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
+    if (FAILED(_device->CreateShaderResourceView(ds->texture.ptr, &ds->srv.desc, &ds->srv.ptr)))
+      return false;
   }
 
   s.Commit();
@@ -651,7 +667,8 @@ TextureResource* Graphics::CreateTexturePtr(
     int data_height,
     int data_pitch)
 {
-  TextureResource* t = CreateTexturePtr(CD3D11_TEXTURE2D_DESC(fmt, width, height, 1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE));
+  TextureResource* t = CreateTexturePtr(CD3D11_TEXTURE2D_DESC(
+    fmt, width, height, 1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE));
   if (!t)
     return nullptr;
 

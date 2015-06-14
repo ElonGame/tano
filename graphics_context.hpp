@@ -12,6 +12,7 @@ namespace tano
 
     void SetSwapChain(ObjectHandle h, const Color& clearColor);
     void SetSwapChain(ObjectHandle h, const float* clearColor);
+    void SetRenderTarget(ObjectHandle renderTarget, const Color* clearTarget);
     void SetRenderTarget(ObjectHandle renderTarget, ObjectHandle depthStencil, const Color* clearTarget);
     void SetRenderTargets(
         ObjectHandle* renderTargets,

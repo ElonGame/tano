@@ -5,6 +5,11 @@ Texture2D Texture1 : register(t1);
 Texture2D Texture2 : register(t2);
 sampler PointSampler : register(s0);
 
+#define FAR_CLIP nearFar.y
+#define NEAR_CLIP nearFar.x
+#define ZFARMULTZNEAR nearFar.z
+#define ZFARMINUSZNEAR nearFar.w
+
 cbuffer PerFrame : register(b0)
 {
   matrix world;
@@ -16,6 +21,7 @@ cbuffer PerFrame : register(b0)
   float3 cameraPos;
   float3 cameraLookAt;
   float3 cameraUp;
+  float4 nearFar : NEAR_FAR;
 };
 
 struct VsBoidsIn
@@ -53,7 +59,9 @@ struct VsParticleIn
 struct VsParticleOut
 {
   float4 pos : SV_Position;
-  float2 uv : TexCoord;
+  float2 uv : TexCoord0;
+  float z : TexCoord1;
+  float alpha : TexCoord2;
 };
 
 
@@ -131,7 +139,7 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   // |  |
   // 0--3
 
-  static float s = 1;
+  static float s = 0.75;
   static float3 ofs0 = float3(-s, -s, 0);
   static float3 ofs1 = float3(-s, +s, 0);
   static float3 ofs2 = float3(+s, +s, 0);
@@ -145,32 +153,62 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   float3 up = cross(right, dir);
 
   VsParticleOut p;
-  p.pos = mul(float4(pos - s * right - s * up, 1), worldViewProj);
+  p.alpha = 1;
+  float3 p0 = float3(pos - s * right - s * up);
+  float3 p1 = float3(pos - s * right + s * up);
+  float3 p2 = float3(pos + s * right - s * up);
+  float3 p3 = float3(pos + s * right + s * up);
+  p.pos = mul(float4(p0, 1), worldViewProj);
   p.uv = uvsVtx[0];
+  p.z = p.pos.z;
   outStream.Append(p);
 
-  p.pos = mul(float4(pos - s * right + s * up, 1), worldViewProj);
+  p.pos = mul(float4(p1, 1), worldViewProj);
   p.uv = uvsVtx[1];
+  p.z = p.pos.z;
   outStream.Append(p);
 
-  p.pos = mul(float4(pos + s * right - s * up, 1), worldViewProj);
+  p.pos = mul(float4(p2, 1), worldViewProj);
   p.uv = uvsVtx[3];
+  p.z = p.pos.z;
   outStream.Append(p);
 
-  p.pos = mul(float4(pos + s * right + s * up, 1), worldViewProj);
+  p.pos = mul(float4(p3, 1), worldViewProj);
   p.uv = uvsVtx[2];
+  p.z = p.pos.z;
   outStream.Append(p);
-
-  outStream.RestartStrip();
 }
+
+float Contrast(float Input, float ContrastPower)
+{
+   //piecewise contrast function
+   bool IsAboveHalf = Input > 0.5 ;
+   float ToRaise = saturate(2*(IsAboveHalf ? 1-Input : Input));
+   float Output = 0.5*pow(ToRaise, ContrastPower); 
+   Output = IsAboveHalf ? 1-Output : Output;
+   return Output;
+}
+
+static float SoftParticleContrast = 2.0;
+static float SoftParticleScale = 0.5;
+static float intensity = 2.0;
+static float zEpsilon = 0.0;
 
 float4 PsParticle(VsParticleOut p) : SV_Target
 {
+  // Texture0 = particle texture
+  // Texture1 = zbuffer
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
-  float f = dot(col.xyz, float3(1.0/3, 1.0/3, 1.0/3));
+  float zBuf = Texture1.Load(int3(p.pos.x, p.pos.y, 0)).r;
+  float z = ZFARMULTZNEAR / ( FAR_CLIP - zBuf * ZFARMINUSZNEAR);
+  float zdiff = (z - p.z);
+  float c = Contrast(zdiff * SoftParticleScale, SoftParticleContrast);
+  if( c * zdiff <= zEpsilon )
+      discard;
 
-  return float4(f * float3(1, 1, 0), col.a);
+  //float f = dot(col.xyz, float3(1.0/3, 1.0/3, 1.0/3));
+  return float4(c * col.xyz, col.a);
 }
 
 
@@ -519,7 +557,7 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 backgroundCol = Texture0.Sample(PointSampler, uv);
 
    // gamma correction
-  float4 color = pow(backgroundCol, 1.0/2.2);
+  float4 color = pow(abs(backgroundCol), 1.0/2.2);
 
   float r = 0.7 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
   return r * color;

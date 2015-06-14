@@ -32,7 +32,6 @@ namespace tano
     struct Bits
     {
       u32 mipMaps : 1;
-      u32 depthBuffer : 1;
       u32 srv : 1;
       u32 uav : 1;
     };
