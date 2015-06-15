@@ -1,6 +1,7 @@
 #include "gpu_objects.hpp"
 #include "graphics.hpp"
 #include "graphics_context.hpp"
+#include "init_sequence.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -131,4 +132,127 @@ bool GpuState::Create(
   return
     _depthStencilState.IsValid() && _blendState.IsValid() && _rasterizerState.IsValid() &&
     _samplers[0].IsValid() && _samplers[1].IsValid() && _samplers[2].IsValid() && _samplers[3].IsValid();
+}
+
+//------------------------------------------------------------------------------
+bool GpuBundle::Create(const BundleOptions& options)
+{
+  const BundleOptions::OptionFlags& flags = options.flags;
+  BEGIN_INIT_SEQUENCE();
+  INIT_FATAL(state.Create(
+    flags.IsSet(BundleOptions::OptionFlag::DepthStencilDesc) ? &options.depthStencilDesc : nullptr,
+    flags.IsSet(BundleOptions::OptionFlag::BlendDesc) ? &options.blendDesc : nullptr,
+    flags.IsSet(BundleOptions::OptionFlag::RasterizerDesc) ? &options.rasterizerDesc : nullptr));
+
+  if (options.shaderFile)
+  {
+    // Because the input elements are modified, we need to save a local copy
+    vector<D3D11_INPUT_ELEMENT_DESC> inputElements(options.inputElements);
+    INIT(objects.LoadShadersFromFile(
+      options.shaderFile,
+      options.vsEntry,
+      options.gsEntry,
+      options.psEntry,
+      options.vertexFlags,
+      inputElements.empty() ? nullptr : &inputElements));
+  }
+
+  if (flags.IsSet(BundleOptions::OptionFlag::DynamicVb))
+  {
+    INIT(objects.CreateDynamicVb(options.vbNumElems * options.vbElemSize, options.vbElemSize));
+  }
+
+  END_INIT_SEQUENCE();
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::DepthStencilDesc(const D3D11_DEPTH_STENCIL_DESC& desc)
+{
+  depthStencilDesc = desc;
+  flags.Set(BundleOptions::OptionFlag::DepthStencilDesc);
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::BlendDesc(const D3D11_BLEND_DESC& desc)
+{
+  blendDesc = desc;
+  flags.Set(BundleOptions::OptionFlag::BlendDesc);
+  return *this;
+
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::RasterizerDesc(const D3D11_RASTERIZER_DESC& desc)
+{
+  rasterizerDesc = desc;
+  flags.Set(BundleOptions::OptionFlag::RasterizerDesc);
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::ShaderFile(const char* filename)
+{
+  shaderFile = filename;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::VsEntry(const char* entrypoint)
+{
+  vsEntry = entrypoint;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::PsEntry(const char* entrypoint)
+{
+  psEntry = entrypoint;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::GsEntry(const char* entrypoint)
+{
+  gsEntry = entrypoint;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::CsEntry(const char* entrypoint)
+{
+  csEntry = entrypoint;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::VertexFlags(u32 flags)
+{
+  vertexFlags = flags;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::InputElements(const vector<D3D11_INPUT_ELEMENT_DESC>& elems)
+{
+  inputElements = elems;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::DynamicVb(int numElements, int elementSize)
+{
+  flags.Set(BundleOptions::OptionFlag::DynamicVb);
+  vbNumElems = numElements;
+  vbElemSize = elementSize;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::DynamicIb(int numElements, int elementSize)
+{
+  flags.Set(BundleOptions::OptionFlag::DynamicIb);
+  ibNumElems = numElements;
+  ibElemSize = elementSize;
+  return *this;
 }

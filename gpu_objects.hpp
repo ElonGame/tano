@@ -88,4 +88,74 @@ namespace tano
 
     ObjectHandle _samplers[4];
   };
+
+  //------------------------------------------------------------------------------
+  // Bundles Gpu state & objects in a cute little package :)
+  struct BundleOptions;
+  struct GpuBundle
+  {
+    bool Create(const BundleOptions& options);
+    GpuState state;
+    GpuObjects objects;
+  };
+
+  struct BundleOptions
+  {
+    struct OptionFlag {
+      enum Enum {
+        DepthStencilDesc  = 1 << 0,
+        BlendDesc         = 1 << 1,
+        RasterizerDesc    = 1 << 2,
+        DynamicVb         = 1 << 3,
+        DynamicIb         = 1 << 3,
+      };
+
+      struct Bits {
+        u32 depthStencilDesc : 1;
+        u32 blendDesc : 1;
+        u32 rasterizerDesc : 1;
+        u32 dynamicVb : 1;
+        u32 dynamicIb : 1;
+      };
+    };
+
+    typedef Flags<OptionFlag> OptionFlags;
+
+    BundleOptions& DepthStencilDesc(const D3D11_DEPTH_STENCIL_DESC& desc);
+    BundleOptions& BlendDesc(const D3D11_BLEND_DESC& desc);
+    BundleOptions& RasterizerDesc(const D3D11_RASTERIZER_DESC& desc);
+
+    BundleOptions& ShaderFile(const char* filename);
+    BundleOptions& VsEntry(const char* entrypoint);
+    BundleOptions& GsEntry(const char* entrypoint);
+    BundleOptions& PsEntry(const char* entrypoint);
+    BundleOptions& CsEntry(const char* entrypoint);
+
+    BundleOptions& VertexFlags(u32 flags);
+    BundleOptions& InputElements(const vector<D3D11_INPUT_ELEMENT_DESC>& elems);
+
+    BundleOptions& DynamicVb(int numElements, int elementSize);
+    BundleOptions& DynamicIb(int numElements, int elementSize);
+
+    D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
+    D3D11_BLEND_DESC blendDesc;
+    D3D11_RASTERIZER_DESC rasterizerDesc;
+
+    const char* shaderFile = nullptr;
+    const char* vsEntry = nullptr;
+    const char* gsEntry = nullptr;
+    const char* psEntry = nullptr;
+    const char* csEntry = nullptr;
+
+    u32 vertexFlags = 0;
+    vector<D3D11_INPUT_ELEMENT_DESC> inputElements;
+
+    int vbNumElems = 0;
+    int vbElemSize = 0;
+
+    int ibNumElems = 0;
+    int ibElemSize = 0;
+
+    OptionFlags flags;
+  };
 }

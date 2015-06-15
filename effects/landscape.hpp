@@ -159,15 +159,13 @@ namespace tano
 
     GpuObjects _skyGpuObjects;
 
-    GpuState _luminanceState;
-    GpuObjects _luminanceGpuObjects;
-
-    GpuState _compositeState;
-    GpuObjects _compositeGpuObjects;
+    GpuBundle _luminance;
+    GpuBundle _composite;
 
     ObjectHandle _particleTexture;
-    GpuState _particleState;
-    GpuObjects _particleGpuObjects;
+    GpuBundle _particle;
+    //GpuState _particleState;
+    //GpuObjects _particleGpuObjects;
 
     GpuState _copyState;
     GpuObjects _copyGpuObjects;

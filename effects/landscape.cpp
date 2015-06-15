@@ -170,32 +170,40 @@ bool Landscape::Init(const char* configFile)
 
   INIT(_skyGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsSky"));
 
-  {
-    // Composite
-    INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsComposite"));
-    INIT(_compositeState.Create());
-  }
+  INIT(_composite.Create(BundleOptions()
+    .ShaderFile("shaders/out/landscape")
+    .VsEntry("VsQuad")
+    .PsEntry("PsComposite")));
 
-  {
-    // Luminance
-    INIT(_luminanceGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsHighPassFilter"));
-    INIT(_luminanceState.Create());
-  }
+  INIT(_luminance.Create(BundleOptions()
+    .ShaderFile("shaders/out/landscape")
+    .VsEntry("VsQuad")
+    .PsEntry("PsHighPassFilter")));
 
   {
     // Particles
     INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
 
-    u32 vertexFlags = VF_POS;
     u32 vertexSize = sizeof(Vector3);
-    INIT(_particleGpuObjects.CreateDynamicVb(1024 * 1024 * 6 * vertexSize, vertexSize));
+    u32 vertexFlags = VF_POS;
+    INIT(_particle.Create(BundleOptions()
+      .DynamicVb(1024 * 1024 * 6, vertexSize)
+      .ShaderFile("shaders/out/landscape")
+      .VsEntry("VsParticle")
+      .GsEntry("GsParticle")
+      .PsEntry("PsParticle")
+      .VertexFlags(vertexFlags)
+      .DepthStencilDesc(depthDescDepthWriteDisabled)
+      .BlendDesc(blendDescBlendOneOne)
+      .RasterizerDesc(rasterizeDescCullNone)));
+    //INIT(_particleGpuObjects.CreateDynamicVb(1024 * 1024 * 6 * vertexSize, vertexSize));
 
-    INIT(_particleGpuObjects.LoadShadersFromFile("shaders/out/landscape",
-      "VsParticle", "GsParticle", "PsParticle", vertexFlags));
-    _particleGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
+    //INIT(_particleGpuObjects.LoadShadersFromFile("shaders/out/landscape",
+    //  "VsParticle", "GsParticle", "PsParticle", vertexFlags));
+    //_particleGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
 
-    INIT(_particleState.Create(
-      &depthDescDepthWriteDisabled, &blendDescBlendOneOne, &rasterizeDescCullNone));
+    //INIT(_particleState.Create(
+    //  &depthDescDepthWriteDisabled, &blendDescBlendOneOne, &rasterizeDescCullNone));
   }
 
   INIT(_blur.Init(_ctx, 10));
@@ -658,7 +666,7 @@ void Landscape::RasterizeLandscape()
 
   // copy all the chunk data into the vertex buffer
   float* landscapeBuf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
-  V3* particleBuf = _ctx->MapWriteDiscard<V3>(_particleGpuObjects._vb);
+  V3* particleBuf = _ctx->MapWriteDiscard<V3>(_particle.objects._vb);
 
   static int chunkNum = -1;
 #if 0
@@ -714,7 +722,7 @@ void Landscape::RasterizeLandscape()
     ImGui::Text("# chunks: %d", numChunks);
   });
 
-  _ctx->Unmap(_particleGpuObjects._vb);
+  _ctx->Unmap(_particle.objects._vb);
   _ctx->Unmap(_landscapeGpuObjects._vb);
 }
 
@@ -807,8 +815,8 @@ bool Landscape::Render()
 
     if (_drawFlags & DrawParticles)
     {
-      _ctx->SetGpuObjects(_particleGpuObjects);
-      _ctx->SetGpuState(_particleState);
+      _ctx->SetGpuObjects(_particle.objects);
+      _ctx->SetGpuState(_particle.state);
 
       // Unsert the DSV, as we want to use it as a texture resource
       _ctx->SetRenderTarget(rt._rtHandle, ObjectHandle(), nullptr);
@@ -839,7 +847,7 @@ bool Landscape::Render()
     { rt._rtHandle },
     rtHighPass._rtHandle,
     GRAPHICS.GetDepthStencil(),
-    _luminanceGpuObjects._ps,
+    _luminance.objects._ps,
     true);
 
   _blur.Apply(rtHighPass._rtHandle, rtBlurred._rtHandle);
@@ -848,7 +856,7 @@ bool Landscape::Render()
     { rt._rtHandle, rtBlurred._rtHandle },
     GRAPHICS.GetBackBuffer(),
     GRAPHICS.GetDepthStencil(),
-    _compositeGpuObjects._ps,
+    _composite.objects._ps,
     false);
 
   return true;
