@@ -162,7 +162,7 @@ bool Landscape::Init(const char* configFile)
     INIT(_landscapeGpuObjects.CreateIndexBuffer(ibSize, DXGI_FORMAT_R32_UINT, indices));
 
     INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape",
-      "VsLandscape2", "GsSolidWire", "PsSolidWire", vertexFlags));
+      "VsLandscape", "GsLandscape", "PsLandscape", vertexFlags));
 
     INIT(_landscapeState.Create(nullptr, &blendDescBlendSrcAlpha, &rasterizeDescCullNone));
     INIT(_landscapeLowerState.Create());
@@ -719,16 +719,57 @@ void Landscape::RasterizeLandscape()
 }
 
 //------------------------------------------------------------------------------
+void Landscape::RenderBoids()
+{
+  _ctx->SetGpuObjects(_boidsMesh);
+
+  Matrix view = _curCamera->_view;
+  Matrix proj = _curCamera->_proj;
+  Matrix viewProj = view * proj;
+
+  for (const Flock* flock : _flocks)
+  {
+    DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
+    DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1, 1, 1));
+
+    for (const DynParticles::Body& b : flock->boids)
+    {
+      Matrix mtxRot = Matrix::Identity();
+      Vector3 velN = b.vel;
+      velN.Normalize();
+      Vector3 dir = b.vel.LengthSquared() ? velN : Vector3(0, 0, 1);
+      Vector3 up(0, 1, 0);
+      Vector3 right = Cross(up, dir);
+      up = Cross(dir, right);
+      mtxRot.Backward(dir);
+      mtxRot.Up(up);
+      mtxRot.Right(right);
+      mtxRot.Translation(b.pos);
+      _cbPerFrame.world = mtxRot.Transpose();
+      _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+      _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
+
+      DEBUG_API.AddDebugLine(b.pos, b.pos + b.vel, Color(1, 0, 0));
+      DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * up, Color(0, 1, 0));
+      DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * right, Color(0, 0, 1));
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
 bool Landscape::Render()
 {
   rmt_ScopedCPUSample(Landscape_Render);
-  static Color black(0, 0, 0, 0);
+  static Color clearColor(0, 0, 0, 0);
+  static const Color* clearColors[] = { &clearColor, &clearColor};
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
 
   ScopedRenderTargetFull rt(
     DXGI_FORMAT_R16G16B16A16_FLOAT,
     BufferFlags(BufferFlag::CreateSrv),
     BufferFlags(BufferFlag::CreateSrv));
+
+  ScopedRenderTarget rt2(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
   _cbPerFrame.world = Matrix::Identity();
 
@@ -737,8 +778,11 @@ bool Landscape::Render()
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
+  // We're using 2 render targets here. One for color, and one for depth/bloom
+
   // Render the sky
-  _ctx->SetRenderTarget(rt._rtHandle, rt._dsHandle, &black);
+  ObjectHandle renderTargets[] = {rt._rtHandle, rt2._rtHandle};
+  _ctx->SetRenderTargets(renderTargets, 2, rt._dsHandle, &clearColors[0]);
 
   _ctx->SetGpuObjects(_skyGpuObjects);
   _ctx->Draw(3, 0);
@@ -780,39 +824,7 @@ bool Landscape::Render()
 
   if (_renderBoids)
   {
-    _ctx->SetGpuObjects(_boidsMesh);
-
-    Matrix view = _curCamera->_view;
-    Matrix proj = _curCamera->_proj;
-    Matrix viewProj = view * proj;
-
-    for (const Flock* flock : _flocks)
-    {
-      DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
-      DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1, 1, 1));
-
-      for (const DynParticles::Body& b : flock->boids)
-      {
-        Matrix mtxRot = Matrix::Identity();
-        Vector3 velN = b.vel;
-        velN.Normalize();
-        Vector3 dir = b.vel.LengthSquared() ? velN : Vector3(0, 0, 1);
-        Vector3 up(0, 1, 0);
-        Vector3 right = Cross(up, dir);
-        up = Cross(dir, right);
-        mtxRot.Backward(dir);
-        mtxRot.Up(up);
-        mtxRot.Right(right);
-        mtxRot.Translation(b.pos);
-        _cbPerFrame.world = mtxRot.Transpose();
-        _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
-        _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
-
-        DEBUG_API.AddDebugLine(b.pos, b.pos + b.vel, Color(1, 0, 0));
-        DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * up, Color(0, 1, 0));
-        DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * right, Color(0, 0, 1));
-      }
-    }
+    RenderBoids();
   }
 
   ScopedRenderTarget rtHighPass(

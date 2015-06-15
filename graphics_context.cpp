@@ -70,26 +70,21 @@ void GraphicsContext::SetRenderTarget(
 //------------------------------------------------------------------------------
 void GraphicsContext::SetRenderTargets(
     ObjectHandle* renderTargets,
+    int numRenderTargets,
     ObjectHandle depthStencil,
-    const Color** clearTargets,
-    int numRenderTargets)
+    const Color** clearTargets)
 {
-  if (!numRenderTargets)
-    return;
-
   ID3D11RenderTargetView *rts[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-  D3D11_TEXTURE2D_DESC texture_desc;
+  D3D11_TEXTURE2D_DESC textureDesc;
   DepthStencilResource* ds = GRAPHICS._depthStencils.Get(depthStencil);
   ID3D11DepthStencilView* dsv = ds ? ds->view.ptr : nullptr;
 
-  // Collect the valid render targets, set the first available depth buffer
-  // and clear targets if specified
   for (int i = 0; i < numRenderTargets; ++i)
   {
     ObjectHandle h = renderTargets[i];
     assert(h.IsValid());
     RenderTargetResource* rt = GRAPHICS._renderTargets.Get(h);
-    texture_desc = rt->texture.desc;
+    textureDesc = rt->texture.desc;
     rts[i] = rt->view.ptr;
     // clear render target (and depth stenci)
     if (clearTargets && clearTargets[i])
@@ -101,7 +96,7 @@ void GraphicsContext::SetRenderTargets(
       }
     }
   }
-  CD3D11_VIEWPORT viewport(0.0f, 0.0f, (float)texture_desc.Width, (float)texture_desc.Height);
+  CD3D11_VIEWPORT viewport(0.0f, 0.0f, (float)textureDesc.Width, (float)textureDesc.Height);
   _ctx->RSSetViewports(1, &viewport);
   _ctx->OMSetRenderTargets(numRenderTargets, rts, dsv);
 }

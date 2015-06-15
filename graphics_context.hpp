@@ -15,10 +15,10 @@ namespace tano
     void SetRenderTarget(ObjectHandle renderTarget, const Color* clearTarget);
     void SetRenderTarget(ObjectHandle renderTarget, ObjectHandle depthStencil, const Color* clearTarget);
     void SetRenderTargets(
-        ObjectHandle* renderTargets,
-        ObjectHandle depthStencil,
-        const Color** clearTarget,
-        int numRenderTargets);
+      ObjectHandle* renderTargets,
+      int numRenderTargets,
+      ObjectHandle depthStencil,
+      const Color** clearTarget);
     void GenerateMips(ObjectHandle h);
 
     void SetVertexBuffer(ID3D11Buffer *buf, uint32_t stride);

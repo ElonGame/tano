@@ -1,3 +1,19 @@
+Texture2D Texture0 : register(t0);
+Texture2D Texture1 : register(t1);
+Texture2D Texture2 : register(t2);
+
+// Samplers if using the GpuObjects samplers
+sampler PointSampler : register(s0);
+sampler LinearSampler : register(s1);
+sampler LinearWrap : register(s2);
+sampler LinearBorder : register(s3);
+
+//------------------------------------------------------
+float Luminance(float3 col)
+{
+	return 0.2126 * col.x + 0.7152 * col.y + 0.0722 * col.b;
+}
+
 //------------------------------------------------------
 struct VSQuadOut
 {
@@ -19,9 +35,8 @@ VSQuadOut VsQuad(uint vertexID : SV_VertexID)
     return result;
 }
 
-
 //------------------------------------------------------
-float Luminance(float3 col)
+float4 PsCopy(VSQuadOut p) : SV_Target
 {
-	return 0.2126 * col.x + 0.7152 * col.y + 0.0722 * col.b;
+	return Texture0.Sample(PointSampler, p.uv);
 }

@@ -35,5 +35,14 @@
     force: false;
   },
 
+  {
+    name: 'raymarcher';
+    factory: 'raymarcher';
+    start_time: 1300000;
+    end_time: 1300000;
+    settings: 'config/raymarcher.gb';
+    force: false;
+  },
+
   ];
 }

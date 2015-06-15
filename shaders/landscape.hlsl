@@ -1,10 +1,5 @@
 #include "common.hlsl"
 
-Texture2D Texture0 : register(t0);
-Texture2D Texture1 : register(t1);
-Texture2D Texture2 : register(t2);
-sampler PointSampler : register(s0);
-
 cbuffer PerFrame : register(b0)
 {
   matrix world;
@@ -19,44 +14,10 @@ cbuffer PerFrame : register(b0)
   float4 nearFar : NEAR_FAR;
 };
 
-struct VsBoidsIn
+struct PsColBrightnessOut
 {
-  float3 pos : Position;
-  float3 normal : Normal;
-};
-
-struct VsBoidsOut
-{
-  float4 pos : SV_Position;
-  float3 normal : Normal;
-};
-
-struct VsLandscapeIn
-{
-  float3 pos : Position;
-  float3 normal : Normal;
-};
-
-struct VsLandscapeOut
-{
-  float4 pos : SV_Position;
-  float3 normal : Normal;
-  float3 rayDir : Texture0;
-  float distance : TexCoord1;
-  float distance2 : Texture2;
-};
-
-struct VsParticleIn
-{
-  float3 pos : Position;
-};
-
-struct VsParticleOut
-{
-  float4 pos : SV_Position;
-  float2 uv : TexCoord0;
-  float z : TexCoord1;
-  float alpha : TexCoord2;
+  float4 col : SV_Target0;
+  float4 brightness : SV_Target1;
 };
 
 
@@ -77,7 +38,7 @@ float3 FogColor(float3 rayDir)
   return fogColor;
 }
 
-float4 PsSky(VSQuadOut p) : SV_Target
+PsColBrightnessOut PsSky(VSQuadOut p)
 {
   float2 uv = p.uv.xy;
   float2 r = -1 + 2 * uv;
@@ -98,19 +59,36 @@ float4 PsSky(VSQuadOut p) : SV_Target
   rayDir.y /= aspectRatio;
   rayDir = normalize(rayDir);
 
-  return float4(FogColor(rayDir), 1);
+  PsColBrightnessOut res;
+  float3 tmp = FogColor(rayDir);
+  res.col = float4(tmp, 1);
+  res.brightness.x = Luminance(tmp);
+  return res;
 }
 
 //------------------------------------------------------
 // particles
 //------------------------------------------------------
 
+struct VsParticleIn
+{
+  float3 pos : Position;
+};
+
+struct VsParticleOut
+{
+  float4 pos : SV_Position;
+  float2 uv : TexCoord0;
+  float z : TexCoord1;
+  float alpha : TexCoord2;
+};
+
 // 1--2
 // |  |
 // 0--3
 
 static float2 uvsVtx[4] = {
-  float2(0, 1), float2(0, 0), float2(1, 0), float2(1, 1)
+  float2(0, 1), float2(0, 0), float2(1, 1), float2(1, 0)
 };
 
 VsParticleIn VsParticle(VsParticleIn v)
@@ -123,16 +101,11 @@ VsParticleIn VsParticle(VsParticleIn v)
 [maxvertexcount(4)]
 void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
 {
-
-  // This is me..
-  // 1--2
+  // Note, the DirectX strip order differs from my usual order. It might be
+  // a good idea to change my stuff..
+  // 1--3
   // |  |
-  // 0--3
-
-  // Note, DirectX wants its triangle strip like so:
-  // 1--2
-  // |  |
-  // 0--3
+  // 0--2
 
   static float s = 0.75;
   static float3 ofs0 = float3(-s, -s, 0);
@@ -164,12 +137,12 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   outStream.Append(p);
 
   p.pos = mul(float4(p2, 1), worldViewProj);
-  p.uv = uvsVtx[3];
+  p.uv = uvsVtx[2];
   p.z = p.pos.z;
   outStream.Append(p);
 
   p.pos = mul(float4(p3, 1), worldViewProj);
-  p.uv = uvsVtx[2];
+  p.uv = uvsVtx[3];
   p.z = p.pos.z;
   outStream.Append(p);
 }
@@ -202,79 +175,27 @@ float4 PsParticle(VsParticleOut p) : SV_Target
   return intensity * c * col;
 }
 
-
 //------------------------------------------------------
 // landscape
 //------------------------------------------------------
 
-VsLandscapeOut VsLandscape(VsLandscapeIn v)
+struct VsLandscapeIn
 {
-  VsLandscapeOut res;
-  matrix worldViewProj = mul(world, viewProj);
+  float3 pos : Position;
+  float3 normal : Normal;
+};
 
-  float3 pos = v.pos;
-  float3 center = float3(time.y, time.z, time.w);
-  float r = length(center - v.pos) / 10;
-
-  res.pos = mul(float4(pos, 1), worldViewProj);
-  res.normal = mul(float4(v.normal, 0), world).xyz;
-
-  float3 dir = pos - cameraPos;
-  res.distance = length(dir);
-  res.rayDir = dir * 1/res.distance;
-  res.distance2 = r;
-  return res;
-}
-
-struct GS_INPUT
+struct VsLandscapeOut
 {
-    float4 Pos  : POSITION;
+    float4 pos  : SV_Position;
     float3 normal : Normal;
     float3 rayDir : Texture0;
     float distance : TexCoord1;
 };
 
-GS_INPUT VsLandscape2(VsLandscapeIn v)
-{
-  GS_INPUT res;
-  matrix worldViewProj = mul(world, viewProj);
-
-  // This is the biggest cheese, but if I don't do it, everything goes to hell..
-  float3 pos = v.pos;
-  if (pos.z == cameraPos.z)
-    pos.z += 0.01;
-
-  res.Pos = mul(float4(pos, 1), worldViewProj);
-  res.normal = mul(float4(v.normal, 0), world).xyz;
-  float3 dir = pos - cameraPos;
-  res.distance = length(dir);
-  res.rayDir = dir * 1/res.distance;
-  return res;
-}
-
-float4 PsLandscape(VsLandscapeOut p) : SV_Target
-{
-  float3 amb = float3(0.05, 0.05, 0.05);
-  float dff = saturate(dot(-SUN_DIR, p.normal));
-//  float3 col = amb + dff * float3(0.1, 0.1, 0.25);
-  float3 col = amb + dff * (1-saturate(p.distance2 / 10)) * float3(0.1, 0.1, 0.25);
-
-  float b = 0.001;
-  float fogAmount = max(0, 1 - exp(-(p.distance - 500) * b));
-
-  float3 fogColor = FogColor(p.rayDir);
-
-  return float4(lerp(col, fogColor, fogAmount), 1);
-}
-
-//--------------------------------------------------------------------------------------
-// Geometry Shader
-//--------------------------------------------------------------------------------------
-
-struct PS_INPUT_WIRE
+struct PsLandscapeIn
 {
     float4 Pos : SV_POSITION;
-//    float4 Col : TEXCOORD0;
     noperspective float4 EdgeA: TEXCOORD1;
     noperspective float4 EdgeB: TEXCOORD2;
     uint Case : TEXCOORD3;
@@ -283,6 +204,23 @@ struct PS_INPUT_WIRE
     float distance : TEXCOORD5;
 };
 
+VsLandscapeOut VsLandscape(VsLandscapeIn v)
+{
+  VsLandscapeOut res;
+  matrix worldViewProj = mul(world, viewProj);
+
+  // This is the biggest cheese, but if I don't do it, everything goes to hell..
+  float3 pos = v.pos;
+  if (pos.z == cameraPos.z)
+    pos.z += 0.01;
+
+  res.pos = mul(float4(pos, 1), worldViewProj);
+  res.normal = mul(float4(v.normal, 0), world).xyz;
+  float3 dir = pos - cameraPos;
+  res.distance = length(dir);
+  res.rayDir = dir * 1/res.distance;
+  return res;
+}
 
 static float4 LightVector = float4( 0, 0, 1, 0);
 static float4 FillColor = float4(0.1, 0.2, 0.4, 1);
@@ -297,12 +235,12 @@ float2 projToWindow(in float4 pos)
 
 
 [maxvertexcount(3)]
-void GsSolidWire(triangle GS_INPUT input[3], inout TriangleStream<PS_INPUT_WIRE> outStream)
+void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandscapeIn> outStream)
 {
-    PS_INPUT_WIRE output;
+    PsLandscapeIn output;
 
     // Compute the case from the positions of point in space.
-    output.Case = (input[0].Pos.z <= 0)*4 + (input[1].Pos.z <= 0)*2 + (input[2].Pos.z <= 0);
+    output.Case = (input[0].pos.z <= 0)*4 + (input[1].pos.z <= 0)*2 + (input[2].pos.z <= 0);
 
     // If case is all vertices behind viewpoint (case = 7) then cull.
     if (output.Case == 7)
@@ -310,9 +248,9 @@ void GsSolidWire(triangle GS_INPUT input[3], inout TriangleStream<PS_INPUT_WIRE>
 
    // Transform position to window space
     float2 points[3];
-    points[0] = projToWindow(input[0].Pos);
-    points[1] = projToWindow(input[1].Pos);
-    points[2] = projToWindow(input[2].Pos);
+    points[0] = projToWindow(input[0].pos);
+    points[1] = projToWindow(input[1].pos);
+    points[2] = projToWindow(input[2].pos);
 
     // If Case is 0, all projected points are defined, do the
     // general case computation
@@ -344,7 +282,7 @@ void GsSolidWire(triangle GS_INPUT input[3], inout TriangleStream<PS_INPUT_WIRE>
         // To compute the height for each vertex, use ex:
         // sin(P2) = h1/e2 => h1 = e2 * sin(P2)
         // and: sin(theta) = sqrt(1 - cos^2(theta))
-        output.Pos =( input[0].Pos );
+        output.Pos =( input[0].pos );
         output.EdgeA[0] = 0;
         output.EdgeA[1] = lengths[2]*sqrt(1 - cosAngles[2]*cosAngles[2]);
         output.EdgeA[2] = 0;
@@ -353,7 +291,7 @@ void GsSolidWire(triangle GS_INPUT input[3], inout TriangleStream<PS_INPUT_WIRE>
         output.distance = input[0].distance;
         outStream.Append( output );
 
-        output.Pos = ( input[1].Pos );
+        output.Pos = ( input[1].pos );
         output.EdgeA[0] = 0;
         output.EdgeA[1] = 0;
         output.EdgeA[2]= lengths[0]*sqrt(1 - cosAngles[0]*cosAngles[0]);
@@ -362,7 +300,7 @@ void GsSolidWire(triangle GS_INPUT input[3], inout TriangleStream<PS_INPUT_WIRE>
         output.distance = input[1].distance;
         outStream.Append( output );
 
-        output.Pos = ( input[2].Pos );
+        output.Pos = ( input[2].pos );
         output.EdgeA.x = lengths[1]*sqrt(1 - cosAngles[1]*cosAngles[1]);
         output.EdgeA[1] = 0;
         output.EdgeA[2] = 0;
@@ -391,19 +329,19 @@ void GsSolidWire(triangle GS_INPUT input[3], inout TriangleStream<PS_INPUT_WIRE>
         output.EdgeB.zw = normalize( output.EdgeB.xy - points[ infoBd[output.Case] ] );
     
         // Generate vertices
-        output.Pos =( input[0].Pos );
+        output.Pos =( input[0].pos );
         output.normal = input[0].normal;
         output.rayDir = input[0].rayDir;
         output.distance = input[0].distance;
         outStream.Append( output );
      
-        output.Pos = ( input[1].Pos );
+        output.Pos = ( input[1].pos );
         output.normal = input[1].normal;
         output.rayDir = input[1].rayDir;
         output.distance = input[1].distance;
         outStream.Append( output );
 
-        output.Pos = ( input[2].Pos );
+        output.Pos = ( input[2].pos );
         output.normal = input[2].normal;
         output.rayDir = input[2].rayDir;
         output.distance = input[2].distance;
@@ -413,7 +351,7 @@ void GsSolidWire(triangle GS_INPUT input[3], inout TriangleStream<PS_INPUT_WIRE>
     }
 }
 
-float evalMinDistanceToEdges(in PS_INPUT_WIRE input)
+float MainDistanceToEdge(in PsLandscapeIn input)
 {
     float dist;
 
@@ -462,10 +400,10 @@ static float4 ColorCases[] = {
     { 0, 0, 1, 1 }
 }; 
 
-float4 PsSolidWire( PS_INPUT_WIRE input) : SV_Target
+float4 PsLandscape(PsLandscapeIn input) : SV_Target
 {
     // Compute the shortest distance between the fragment and the edges.
-    float dist = evalMinDistanceToEdges(input);
+    float dist = MainDistanceToEdge(input);
     //return ColorCases[input.Case];
 
     // Map the computed distance to the [0,2] range on the border of the line.
@@ -489,37 +427,21 @@ float4 PsSolidWire( PS_INPUT_WIRE input) : SV_Target
     return float4(lerp(col, fogColor, fogAmount), 0.9);
 }
 
-
-//------------------------------------------------------
-// edge detection
-//------------------------------------------------------
-float4 PsEdgeDetect(VSQuadOut input) : SV_Target
-{
-  // Sobel filter
-  float2 ofs = 1 / dim.xy;
-  float3 l00 = Texture0.Sample(PointSampler, input.uv + float2(-ofs.x, -ofs.y)).rgb;
-  float3 l01 = Texture0.Sample(PointSampler, input.uv + float2(     0, -ofs.y)).rgb;
-  float3 l02 = Texture0.Sample(PointSampler, input.uv + float2(+ofs.x, -ofs.y)).rgb;
-
-  float3 l10 = Texture0.Sample(PointSampler, input.uv + float2(-ofs.x, 0)).rgb;
-  float3 l11 = Texture0.Sample(PointSampler, input.uv + float2(     0, 0)).rgb;
-  float3 l12 = Texture0.Sample(PointSampler, input.uv + float2(+ofs.x, 0)).rgb;
-
-  float3 l20 = Texture0.Sample(PointSampler, input.uv + float2(-ofs.x, +ofs.y)).rgb;
-  float3 l21 = Texture0.Sample(PointSampler, input.uv + float2(     0, +ofs.y)).rgb;
-  float3 l22 = Texture0.Sample(PointSampler, input.uv + float2(+ofs.x, +ofs.y)).rgb;
-  
-  float3 gx = +1 * l00 -1 * l02 +2 * l10 -2 * l12 +1 * l20 -1 * l22;
-  float3 gy = +1 * l00 +2 * l01 +1 * l02 -1 * l20 -2 * l21 -1 * l22;
-  
-  float3 e = sqrt(gx*gx+gy*gy);
-  float t = max(e.x, e.y);
-  return t > 0.2 ? 1 : 0;
-}
-
 //------------------------------------------------------
 // boids
 //------------------------------------------------------
+struct VsBoidsIn
+{
+  float3 pos : Position;
+  float3 normal : Normal;
+};
+
+struct VsBoidsOut
+{
+  float4 pos : SV_Position;
+  float3 normal : Normal;
+};
+
 VsBoidsOut VsBoids(VsBoidsIn input)
 {
   VsBoidsOut output;
@@ -536,12 +458,14 @@ float4 PsBoids(VsBoidsOut p) : SV_Target
 }
 
 //------------------------------------------------------
-// high filter
+// high pass filter
 //------------------------------------------------------
 float4 PsHighPassFilter(VSQuadOut p) : SV_Target
 {
+  // Texture0 = color
+  // Texture1 = brightness
   float4 col = Texture0.Sample(PointSampler, p.uv);
-  //return col;
+  float4 brightness = Texture1.Sample(PointSampler, p.uv);
   return Luminance(col.xyz) > 0.4 ? pow(col, 0.5) : 0;
 }
 

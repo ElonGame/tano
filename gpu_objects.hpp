@@ -80,10 +80,10 @@ namespace tano
 
     enum Samplers
     {
+      Point,
       Linear,
       LinearWrap,
       LinearBorder,
-      Point,
     };
 
     ObjectHandle _samplers[4];

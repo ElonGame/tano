@@ -71,6 +71,7 @@ namespace tano
 
     void InitBoids();
     void UpdateBoids(const UpdateState& state);
+    void RenderBoids();
 
     struct Boid;
     Vector3 LandscapeFollow(const Boid& boid);
@@ -167,6 +168,9 @@ namespace tano
     ObjectHandle _particleTexture;
     GpuState _particleState;
     GpuObjects _particleGpuObjects;
+
+    GpuState _copyState;
+    GpuObjects _copyGpuObjects;
 
     AnimatedInt _blinkFace;
 
