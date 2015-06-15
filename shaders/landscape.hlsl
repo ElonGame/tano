@@ -5,11 +5,6 @@ Texture2D Texture1 : register(t1);
 Texture2D Texture2 : register(t2);
 sampler PointSampler : register(s0);
 
-#define FAR_CLIP nearFar.y
-#define NEAR_CLIP nearFar.x
-#define ZFARMULTZNEAR nearFar.z
-#define ZFARMINUSZNEAR nearFar.w
-
 cbuffer PerFrame : register(b0)
 {
   matrix world;
@@ -68,8 +63,8 @@ struct VsParticleOut
 static float4 BOID_COLOR = float4(0.4, 0.2, 0.2, 1);
 static float3 FOG_COLOR = 0.5 * float3(0.5, 0.6, 0.7);
 static float3 SUN_COLOR = 0.5 * float3(1.5, 0.9, 0.3);
-static float3 SUN_DIR = normalize(float3(-0.5, -0.2, -0.4));
-//static float3 SUN_DIR = normalize(float3(0, -0.2, -1));
+//static float3 SUN_DIR = normalize(float3(-0.5, -0.2, -0.4));
+static float3 SUN_DIR = normalize(float3(0, 0, -1));
 
 //------------------------------------------------------
 // sky
@@ -179,19 +174,8 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   outStream.Append(p);
 }
 
-float Contrast(float Input, float ContrastPower)
-{
-   //piecewise contrast function
-   bool IsAboveHalf = Input > 0.5 ;
-   float ToRaise = saturate(2*(IsAboveHalf ? 1-Input : Input));
-   float Output = 0.5*pow(ToRaise, ContrastPower); 
-   Output = IsAboveHalf ? 1-Output : Output;
-   return Output;
-}
-
 static float SoftParticleContrast = 2.0;
-static float SoftParticleScale = 0.5;
-static float intensity = 2.0;
+static float intensity = 1.0;
 static float zEpsilon = 0.0;
 
 float4 PsParticle(VsParticleOut p) : SV_Target
@@ -200,15 +184,22 @@ float4 PsParticle(VsParticleOut p) : SV_Target
   // Texture1 = zbuffer
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
+  col.g *= 0.6;
+  col.b *= 0.1;
   float zBuf = Texture1.Load(int3(p.pos.x, p.pos.y, 0)).r;
-  float z = ZFARMULTZNEAR / ( FAR_CLIP - zBuf * ZFARMINUSZNEAR);
+
+  // 
+  // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))
+  float farClip = nearFar.y;
+  float f_mul_n = nearFar.z;
+  float f_sub_n = nearFar.w;
+  float z = f_mul_n / ( farClip - zBuf * f_sub_n);
   float zdiff = (z - p.z);
-  float c = Contrast(zdiff * SoftParticleScale, SoftParticleContrast);
+  float c = smoothstep(0, 1, zdiff / SoftParticleContrast);
   if( c * zdiff <= zEpsilon )
       discard;
 
-  //float f = dot(col.xyz, float3(1.0/3, 1.0/3, 1.0/3));
-  return float4(c * col.xyz, col.a);
+  return intensity * c * col;
 }
 
 
@@ -248,9 +239,14 @@ GS_INPUT VsLandscape2(VsLandscapeIn v)
   GS_INPUT res;
   matrix worldViewProj = mul(world, viewProj);
 
-  res.Pos = mul(float4(v.pos, 1), worldViewProj);
+  // This is the biggest cheese, but if I don't do it, everything goes to hell..
+  float3 pos = v.pos;
+  if (pos.z == cameraPos.z)
+    pos.z += 0.01;
+
+  res.Pos = mul(float4(pos, 1), worldViewProj);
   res.normal = mul(float4(v.normal, 0), world).xyz;
-  float3 dir = v.pos - cameraPos;
+  float3 dir = pos - cameraPos;
   res.distance = length(dir);
   res.rayDir = dir * 1/res.distance;
   return res;
@@ -291,13 +287,7 @@ struct PS_INPUT_WIRE
 static float4 LightVector = float4( 0, 0, 1, 0);
 static float4 FillColor = float4(0.1, 0.2, 0.4, 1);
 static float4 WireColor = float4(1, 1, 1, 1);
-static float LineWidth = 1.5;
-
-static uint infoA[]     = { 0, 0, 0, 0, 1, 1, 2 };
-static uint infoB[]     = { 1, 1, 2, 0, 2, 1, 2 };
-static uint infoAd[]    = { 2, 2, 1, 1, 0, 0, 0 };
-static uint infoBd[]    = { 2, 2, 1, 2, 0, 2, 1 }; 
-static uint infoEdge0[] = { 0, 2, 0, 0, 0, 0, 2 }; 
+static float LineWidth = 2.5;
 
 float2 projToWindow(in float4 pos)
 {
@@ -305,17 +295,18 @@ float2 projToWindow(in float4 pos)
                     dim.y*0.5*(1-(pos.y/pos.w)) + dim.w );
 }
 
+
 [maxvertexcount(3)]
-void GsSolidWire( triangle GS_INPUT input[3],
-                         inout TriangleStream<PS_INPUT_WIRE> outStream )
+void GsSolidWire(triangle GS_INPUT input[3], inout TriangleStream<PS_INPUT_WIRE> outStream)
 {
     PS_INPUT_WIRE output;
 
     // Compute the case from the positions of point in space.
-    output.Case = (input[0].Pos.z < 0)*4 + (input[1].Pos.z < 0)*2 + (input[2].Pos.z < 0); 
+    output.Case = (input[0].Pos.z <= 0)*4 + (input[1].Pos.z <= 0)*2 + (input[2].Pos.z <= 0);
 
     // If case is all vertices behind viewpoint (case = 7) then cull.
-    if (output.Case == 7) return;
+    if (output.Case == 7)
+      return;
 
    // Transform position to window space
     float2 points[3];
@@ -342,35 +333,21 @@ void GsSolidWire( triangle GS_INPUT input[3],
         lengths[1] = length(edges[1]);
         lengths[2] = length(edges[2]);
 
-        // Compute the cos angle of each vertices
+        // For each vertex, compute the angle between the two edges
+        // a.b = |a||b|cos(theta)
+        // Note, the edges are directed, which is why one edge is negated
         float cosAngles[3];
         cosAngles[0] = dot( -edges[2], edges[0]) / ( lengths[2] * lengths[0] );
         cosAngles[1] = dot( -edges[0], edges[1]) / ( lengths[0] * lengths[1] );
         cosAngles[2] = dot( -edges[1], edges[2]) / ( lengths[1] * lengths[2] );
 
-        // The height for each vertices of the triangle
-        float heights[3];
-        heights[1] = lengths[0]*sqrt(1 - cosAngles[0]*cosAngles[0]);
-        heights[2] = lengths[1]*sqrt(1 - cosAngles[1]*cosAngles[1]);
-        heights[0] = lengths[2]*sqrt(1 - cosAngles[2]*cosAngles[2]);
-
-        float edgeSigns[3];
-        edgeSigns[0] = (edges[0].x > 0 ? 1 : -1);
-        edgeSigns[1] = (edges[1].x > 0 ? 1 : -1);
-        edgeSigns[2] = (edges[2].x > 0 ? 1 : -1);
-
-        float edgeOffsets[3];
-        edgeOffsets[0] = lengths[0]*(0.5 - 0.5*edgeSigns[0]);
-        edgeOffsets[1] = lengths[1]*(0.5 - 0.5*edgeSigns[1]);
-        edgeOffsets[2] = lengths[2]*(0.5 - 0.5*edgeSigns[2]);
-
+        // To compute the height for each vertex, use ex:
+        // sin(P2) = h1/e2 => h1 = e2 * sin(P2)
+        // and: sin(theta) = sqrt(1 - cos^2(theta))
         output.Pos =( input[0].Pos );
         output.EdgeA[0] = 0;
-        output.EdgeA[1] = heights[0];
+        output.EdgeA[1] = lengths[2]*sqrt(1 - cosAngles[2]*cosAngles[2]);
         output.EdgeA[2] = 0;
-        output.EdgeB[0] = edgeOffsets[0];
-        output.EdgeB[1] = edgeOffsets[1] + edgeSigns[1] * cosAngles[1]*lengths[0];
-        output.EdgeB[2] = edgeOffsets[2] + edgeSigns[2] * lengths[2];
         output.normal = input[0].normal;
         output.rayDir = input[0].rayDir;
         output.distance = input[0].distance;
@@ -379,22 +356,16 @@ void GsSolidWire( triangle GS_INPUT input[3],
         output.Pos = ( input[1].Pos );
         output.EdgeA[0] = 0;
         output.EdgeA[1] = 0;
-        output.EdgeA[2] = heights[1];
-        output.EdgeB[0] = edgeOffsets[0] + edgeSigns[0] * lengths[0];
-        output.EdgeB[1] = edgeOffsets[1];
-        output.EdgeB[2] = edgeOffsets[2] + edgeSigns[2] * cosAngles[2]*lengths[1];
+        output.EdgeA[2]= lengths[0]*sqrt(1 - cosAngles[0]*cosAngles[0]);
         output.normal = input[1].normal;
         output.rayDir = input[1].rayDir;
         output.distance = input[1].distance;
         outStream.Append( output );
 
         output.Pos = ( input[2].Pos );
-        output.EdgeA[0] = heights[2];
+        output.EdgeA.x = lengths[1]*sqrt(1 - cosAngles[1]*cosAngles[1]);
         output.EdgeA[1] = 0;
         output.EdgeA[2] = 0;
-        output.EdgeB[0] = edgeOffsets[0] + edgeSigns[0] * cosAngles[0]*lengths[2];
-        output.EdgeB[1] = edgeOffsets[1] + edgeSigns[1] * lengths[1];
-        output.EdgeB[2] = edgeOffsets[2];
         output.normal = input[2].normal;
         output.rayDir = input[2].rayDir;
         output.distance = input[2].distance;
@@ -405,14 +376,21 @@ void GsSolidWire( triangle GS_INPUT input[3],
     // Else need some tricky computations
     else
     {
-        // Then compute and pass the edge definitions from the case
+        //                   0  1  2  3  4  5  6
+        uint infoA[]     = { 0, 0, 0, 0, 1, 1, 2 };
+        uint infoB[]     = { 1, 1, 2, 0, 2, 1, 2 };
+        uint infoAd[]    = { 2, 2, 1, 1, 0, 0, 0 };
+        uint infoBd[]    = { 2, 2, 1, 2, 0, 2, 1 }; 
+
+        // Get the visible vertices
         output.EdgeA.xy = points[ infoA[output.Case] ];
         output.EdgeB.xy = points[ infoB[output.Case] ];
 
+        // Compute edges to non-visible vertices
         output.EdgeA.zw = normalize( output.EdgeA.xy - points[ infoAd[output.Case] ] ); 
         output.EdgeB.zw = normalize( output.EdgeB.xy - points[ infoBd[output.Case] ] );
     
-    // Generate vertices
+        // Generate vertices
         output.Pos =( input[0].Pos );
         output.normal = input[0].normal;
         output.rayDir = input[0].rayDir;
@@ -474,10 +452,21 @@ float evalMinDistanceToEdges(in PS_INPUT_WIRE input)
     return dist;
 }
 
+static float4 ColorCases[] = {
+    { 1, 1, 1, 1 }, 
+    { 1, 1, 0, 1 },
+    { 1, 0, 1, 1 },
+    { 1, 0, 0, 1 },
+    { 0, 1, 1, 1 },
+    { 0, 1, 0, 1 },
+    { 0, 0, 1, 1 }
+}; 
+
 float4 PsSolidWire( PS_INPUT_WIRE input) : SV_Target
 {
     // Compute the shortest distance between the fragment and the edges.
     float dist = evalMinDistanceToEdges(input);
+    //return ColorCases[input.Case];
 
     // Map the computed distance to the [0,2] range on the border of the line.
     dist = clamp((dist - (0.5*LineWidth - 1)), 0, 2);
@@ -493,10 +482,10 @@ float4 PsSolidWire( PS_INPUT_WIRE input) : SV_Target
 
     col = lerp(col, WireColor.rgb, alpha);
 
-    float b = 0.001;
-    float fogAmount = max(0, 1 - exp(-(input.distance - 500) * b));
-
+    float b = 0.002;
+    float fogAmount = max(0, 1 - exp(-(input.distance) * b));
     float3 fogColor = FogColor(input.rayDir);
+
     return float4(lerp(col, fogColor, fogAmount), 0.9);
 }
 
@@ -547,17 +536,32 @@ float4 PsBoids(VsBoidsOut p) : SV_Target
 }
 
 //------------------------------------------------------
+// high filter
+//------------------------------------------------------
+float4 PsHighPassFilter(VSQuadOut p) : SV_Target
+{
+  float4 col = Texture0.Sample(PointSampler, p.uv);
+  //return col;
+  return Luminance(col.xyz) > 0.4 ? pow(col, 0.5) : 0;
+}
+
+//------------------------------------------------------
 // composite
 //------------------------------------------------------
 float4 PsComposite(VSQuadOut p) : SV_Target
 {
+  // Texture0 : color
+  // Texture1 : bloom
   float2 uv = p.uv.xy;
   float2 xx = -1 + 2 * uv;
 
   float4 backgroundCol = Texture0.Sample(PointSampler, uv);
+  float4 bloom = Texture1.Sample(PointSampler, uv);
+
+  float4 color = backgroundCol + bloom;
 
    // gamma correction
-  float4 color = pow(abs(backgroundCol), 1.0/2.2);
+  color = pow(abs(color), 1.0/2.2);
 
   float r = 0.7 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
   return r * color;

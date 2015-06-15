@@ -211,6 +211,9 @@
     <ClCompile Include="..\stop_watch.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\blur_post_process.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -430,6 +433,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\append_buffer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\blur_post_process.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

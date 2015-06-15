@@ -8,6 +8,7 @@
 #include "../camera.hpp"
 #include "../dyn_particles.hpp"
 #include "../tano_math.hpp"
+#include "../blur_post_process.hpp"
 
 namespace tano
 {
@@ -145,6 +146,7 @@ namespace tano
     };
 
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
+    BlurPostProcess _blur;
 
     GpuState _landscapeState;
     GpuState _landscapeLowerState;
@@ -155,6 +157,9 @@ namespace tano
     MeshLoader _meshLoader;
 
     GpuObjects _skyGpuObjects;
+
+    GpuState _luminanceState;
+    GpuObjects _luminanceGpuObjects;
 
     GpuState _compositeState;
     GpuObjects _compositeGpuObjects;

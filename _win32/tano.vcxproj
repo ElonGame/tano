@@ -96,6 +96,7 @@
   <ItemGroup>
     <ClCompile Include="..\animation_helpers.cpp" />
     <ClCompile Include="..\arena_allocator.cpp" />
+    <ClCompile Include="..\blur_post_process.cpp" />
     <ClCompile Include="..\camera.cpp" />
     <ClCompile Include="..\circular_buffer.cpp" />
     <ClCompile Include="..\debug_api.cpp" />
@@ -342,6 +343,7 @@
     <ClInclude Include="..\animation_helpers.hpp" />
     <ClInclude Include="..\arena_allocator.hpp" />
     <ClInclude Include="..\bass\bass.h" />
+    <ClInclude Include="..\blur_post_process.hpp" />
     <ClInclude Include="..\bristol\rolling_average.hpp" />
     <ClInclude Include="..\camera.hpp" />
     <ClInclude Include="..\circular_buffer.hpp" />

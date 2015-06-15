@@ -32,7 +32,7 @@ ps = {
     'imgui' : ['PsMain'],
     'cluster' : ['PsMesh'],
     'blob' : ['PsMesh'],
-    'landscape' : ['PsLandscape', 'PsComposite', 'PsSky', 'PsBoids', 'PsSolidWire', 'PsParticle'],
+    'landscape' : ['PsLandscape', 'PsComposite', 'PsSky', 'PsBoids', 'PsSolidWire', 'PsParticle', 'PsHighPassFilter'],
     'lines': ['PsMain']
 }
 

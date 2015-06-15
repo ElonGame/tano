@@ -5,6 +5,7 @@
 #include "../generated/demo.types.hpp"
 #include "../text_writer.hpp"
 #include "../animation_helpers.hpp"
+#include "../blur_post_process.hpp"
 
 #define WITH_TEXT 0
 
@@ -34,7 +35,6 @@ namespace tano
 #endif
 
     void UpdateCameraMatrix();
-    void ApplyBlur(ObjectHandle inputBuffer, ObjectHandle outputBuffer);
 
     // SOA style
     struct Particles
@@ -131,15 +131,7 @@ namespace tano
 
     ParticleTunnelSettings _settings;
 
-    struct CBufferBlur
-    {
-      Vector2 inputSize;
-      float radius = 10;
-    };
-    ConstantBuffer<CBufferBlur> _cbBlur;
-    ObjectHandle _csBlurX;
-    ObjectHandle _csBlurTranspose;
-    ObjectHandle _csCopyTranspose;
+    BlurPostProcess _blur;
 
     TextWriter _textWriter;
     vector<Vector3> _neuroticaTris;

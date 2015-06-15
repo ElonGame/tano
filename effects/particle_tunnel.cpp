@@ -322,12 +322,7 @@ bool ParticleTunnel::Init(const char* configFile)
   _linesGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 
   // blur setup
-  INIT(GRAPHICS.LoadComputeShadersFromFile("shaders/out/blur", &_csBlurTranspose, "BlurTranspose"));
-  INIT(GRAPHICS.LoadComputeShadersFromFile("shaders/out/blur", &_csCopyTranspose, "CopyTranspose"));
-  INIT(GRAPHICS.LoadComputeShadersFromFile("shaders/out/blur", &_csBlurX, "BoxBlurX"));
-
-  INIT(_cbBlur.Create());
-  _cbBlur.radius = _settings.blur_radius;
+  INIT(_blur.Init(_ctx, _settings.blur_radius));
 
   // Generic setup
   INIT(_cbPerFrame.Create());
@@ -606,8 +601,8 @@ bool ParticleTunnel::Render()
   }
   _ctx->UnsetRenderTargets(0, 1);
 
-  ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav);
-  ApplyBlur(rtLines._rtHandle, rtBlur._rtHandle);
+  ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
+  _blur.Apply(rtLines._rtHandle, rtBlur._rtHandle);
 
   // compose final image on default swap chain
 
@@ -625,85 +620,6 @@ bool ParticleTunnel::Render()
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::ApplyBlur(ObjectHandle inputBuffer, ObjectHandle outputBuffer)
-{
-  static Color black(0, 0, 0, 0);
-
-  int w, h;
-  GRAPHICS.GetBackBufferSize(&w, &h);
-  int s = max(w, h);
-
-  BufferFlags f = BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav;
-  ScopedRenderTarget scratch0(s, s, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
-  ScopedRenderTarget scratch1(s, s, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
-
-  // set constant buffers
-  _cbBlur.inputSize.x = (float)w;
-  _cbBlur.inputSize.y = (float)h;
-  _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
-
-  // set constant buffers
-  ObjectHandle srcDst[] =
-  {
-    // horiz
-    inputBuffer, scratch0._rtHandle, scratch0._rtHandle, scratch1._rtHandle, scratch1._rtHandle, scratch0._rtHandle,
-    // vert
-    scratch1._rtHandle, scratch0._rtHandle, scratch0._rtHandle, scratch1._rtHandle, scratch1._rtHandle, scratch0._rtHandle,
-  };
-
-  // horizontal blur (ends up in scratch0)
-  for (int i = 0; i < 3; ++i)
-  {
-    _ctx->SetShaderResources({ srcDst[i*2+0] }, ShaderType::ComputeShader);
-    _ctx->SetUnorderedAccessView(srcDst[i*2+1], &black);
-
-    _ctx->SetComputeShader(_csBlurX);
-    _ctx->Dispatch(h/32+1, 1, 1);
-
-    _ctx->UnsetUnorderedAccessViews(0, 1);
-    _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
-  }
-
-  // copy/transpose from scratch0 -> scratch1
-  _ctx->SetShaderResources({ scratch0._rtHandle }, ShaderType::ComputeShader);
-  _ctx->SetUnorderedAccessView(scratch1._rtHandle, &black);
-
-  _ctx->SetComputeShader(_csCopyTranspose);
-  _ctx->Dispatch(h/32+1, 1, 1);
-
-  _ctx->UnsetUnorderedAccessViews(0, 1);
-  _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
-
-  // "vertical" blur, ends up in scratch 0
-
-  _cbBlur.inputSize.x = (float)h;
-  _cbBlur.inputSize.y = (float)w;
-  _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
-
-  for (int i = 0; i < 3; ++i)
-  {
-    _ctx->SetShaderResources({ srcDst[6+i*2+0] }, ShaderType::ComputeShader);
-    _ctx->SetUnorderedAccessView(srcDst[6+i*2+1], &black);
-
-    _ctx->SetComputeShader(_csBlurX);
-    _ctx->Dispatch(w/32+1, 1, 1);
-
-    _ctx->UnsetUnorderedAccessViews(0, 1);
-    _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
-  }
-
-  // copy/transpose from scratch0 -> blur1
-  _ctx->SetShaderResources({ scratch0._rtHandle }, ShaderType::ComputeShader);
-  _ctx->SetUnorderedAccessView(outputBuffer, &black);
-
-  _ctx->SetComputeShader(_csCopyTranspose);
-  _ctx->Dispatch(w/32+1, 1, 1);
-
-  _ctx->UnsetUnorderedAccessViews(0, 1);
-  _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
-}
-
-//------------------------------------------------------------------------------
 #if WITH_IMGUI
 void ParticleTunnel::RenderParameterSet()
 {
@@ -716,7 +632,7 @@ void ParticleTunnel::RenderParameterSet()
     ImGui::Separator();
     ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
 
-    ImGui::SliderFloat("blur", &_cbBlur.radius, 1, 100);
+    ImGui::SliderFloat("blur", &_blur._cbBlur.radius, 1, 100);
 
     if (ImGui::Checkbox("wireframe", &wireframe))
     {

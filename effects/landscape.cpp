@@ -170,8 +170,17 @@ bool Landscape::Init(const char* configFile)
 
   INIT(_skyGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsSky"));
 
-  INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsComposite"));
-  INIT(_compositeState.Create());
+  {
+    // Composite
+    INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsComposite"));
+    INIT(_compositeState.Create());
+  }
+
+  {
+    // Luminance
+    INIT(_luminanceGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsHighPassFilter"));
+    INIT(_luminanceState.Create());
+  }
 
   {
     // Particles
@@ -188,6 +197,8 @@ bool Landscape::Init(const char* configFile)
     INIT(_particleState.Create(
       &depthDescDepthWriteDisabled, &blendDescBlendOneOne, &rasterizeDescCullNone));
   }
+
+  INIT(_blur.Init(_ctx, 10));
 
   MeshLoader loader;
   INIT(loader.Load("gfx/boids.boba"));
@@ -381,6 +392,10 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   _cbPerFrame.cameraLookAt = _curCamera->_target;
   _cbPerFrame.cameraUp = _curCamera->_up;
 
+  // The depth value written to the z-buffer is after the w-divide,
+  // but the z-value we compare against is still in proj-space, so
+  // we'll need to do the backward transform:
+  // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))
   float n = _curCamera->_nearPlane;
   float f = _curCamera->_farPlane;
   _cbPerFrame.nearFar = Vector4(n, f, f*n, f-n);
@@ -645,9 +660,30 @@ void Landscape::RasterizeLandscape()
   float* landscapeBuf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
   V3* particleBuf = _ctx->MapWriteDiscard<V3>(_particleGpuObjects._vb);
 
+  static int chunkNum = -1;
+#if 0
+  if (g_KeyUpTrigger.IsTriggered('4'))
+  {
+    if (chunkNum > -1)
+      --chunkNum;
+  }
+
+  if (g_KeyUpTrigger.IsTriggered('5'))
+    ++chunkNum;
+#endif
+
   u32 numParticles = 0;
+  int idx = 0;
   for (const Chunk* chunk : chunks)
   {
+    if (chunkNum != -1)
+    {
+      idx++;
+      if (idx != chunkNum)
+        continue;
+    }
+    idx++;
+
     memcpy(landscapeBuf, chunk->upperData, Chunk::UPPER_DATA_SIZE * sizeof(float));
     landscapeBuf += Chunk::UPPER_DATA_SIZE;
 
@@ -660,7 +696,10 @@ void Landscape::RasterizeLandscape()
       }
     }
   }
-  _numUpperIndices = (u32)chunks.size() * Chunk::UPPER_INDICES;
+
+  u32 numChunks = chunkNum == -1 ? (u32)chunks.size() : 1;
+
+  _numUpperIndices = numChunks * Chunk::UPPER_INDICES;
   _numParticles = numParticles;
 
   for (const Chunk* chunk : chunks)
@@ -668,9 +707,8 @@ void Landscape::RasterizeLandscape()
     memcpy(landscapeBuf, chunk->lowerData, Chunk::LOWER_DATA_SIZE * sizeof(float));
     landscapeBuf += Chunk::LOWER_DATA_SIZE;
   }
-  _numLowerIndices = (u32)chunks.size() * Chunk::LOWER_INDICES;
+  _numLowerIndices = numChunks * Chunk::LOWER_INDICES;
 
-  u32 numChunks = (u32)chunks.size();
   TANO.AddPerfCallback([=]() {
     ImGui::Text("# particles: %d", numParticles);
     ImGui::Text("# chunks: %d", numChunks);
@@ -777,8 +815,25 @@ bool Landscape::Render()
     }
   }
 
+  ScopedRenderTarget rtHighPass(
+    DXGI_FORMAT_R16G16B16A16_FLOAT,
+    BufferFlags(BufferFlag::CreateSrv));
+
+  ScopedRenderTarget rtBlurred(
+    DXGI_FORMAT_R16G16B16A16_FLOAT,
+    BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
+
   postProcess->Execute(
     { rt._rtHandle },
+    rtHighPass._rtHandle,
+    GRAPHICS.GetDepthStencil(),
+    _luminanceGpuObjects._ps,
+    true);
+
+  _blur.Apply(rtHighPass._rtHandle, rtBlurred._rtHandle);
+
+  postProcess->Execute(
+    { rt._rtHandle, rtBlurred._rtHandle },
     GRAPHICS.GetBackBuffer(),
     GRAPHICS.GetDepthStencil(),
     _compositeGpuObjects._ps,
@@ -858,7 +913,7 @@ void Landscape::SaveParameterSet()
 //------------------------------------------------------------------------------
 void Landscape::Reset()
 {
-  _freeflyCamera._pos = Vector3(0.f, 10.f, 0.f);
+  _freeflyCamera._pos = Vector3(0.f, 10.f, 30.f);
   _freeflyCamera._pitch = 0.f;
   _freeflyCamera._yaw = 0.f;
   _freeflyCamera._roll = 0.f;

@@ -18,3 +18,10 @@ VSQuadOut VsQuad(uint vertexID : SV_VertexID)
     result.pos = float4(result.uv * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), 0.0f, 1.0f);
     return result;
 }
+
+
+//------------------------------------------------------
+float Luminance(float3 col)
+{
+	return 0.2126 * col.x + 0.7152 * col.y + 0.0722 * col.b;
+}
