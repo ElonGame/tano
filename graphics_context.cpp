@@ -490,6 +490,13 @@ void GraphicsContext::SetConstantBuffer(
 }
 
 //------------------------------------------------------------------------------
+void GraphicsContext::SetBundleWithSamplers(const GpuBundle& bundle, ShaderType shaderType)
+{
+  SetGpuStateAndSamplers(bundle.state, shaderType);
+  SetGpuObjects(bundle.objects);
+}
+
+//------------------------------------------------------------------------------
 void GraphicsContext::SetBundle(const GpuBundle& bundle)
 {
   SetGpuState(bundle.state);
@@ -523,6 +530,13 @@ void GraphicsContext::SetGpuState(const GpuState& state)
 void GraphicsContext::SetGpuStateSamplers(const GpuState& state, ShaderType shaderType)
 {
   SetSamplers(state._samplers, 0, 4, shaderType);
+}
+
+//------------------------------------------------------------------------------
+void GraphicsContext::SetGpuStateAndSamplers(const GpuState& state, ShaderType shaderType)
+{
+  SetGpuState(state);
+  SetGpuStateSamplers(state, shaderType);
 }
 
 //------------------------------------------------------------------------------

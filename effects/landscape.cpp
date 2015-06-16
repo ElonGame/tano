@@ -813,13 +813,13 @@ bool Landscape::Render()
 
     if (_drawFlags & DrawParticles)
     {
-      _ctx->SetBundle(_particleBundle);
+      _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
 
       // Unsert the DSV, as we want to use it as a texture resource
       _ctx->SetRenderTargets(renderTargets, 2, ObjectHandle(), nullptr);
       _ctx->SetShaderResources({_particleTexture, rt._dsHandle}, ShaderType::PixelShader);
-
       _ctx->Draw(_numParticles, 0);
+      _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
     }
   }
   else
@@ -831,6 +831,8 @@ bool Landscape::Render()
   {
     RenderBoids();
   }
+
+  _ctx->UnsetRenderTargets(0, 2);
 
   ScopedRenderTarget rtBlurred(DXGI_FORMAT_R16G16B16A16_FLOAT,
     BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
@@ -844,9 +846,10 @@ bool Landscape::Render()
   if (showBlurred)
   {
     postProcess->Execute(
-    { rt2._rtHandle },
+    { rtBlurred._rtHandle },
     GRAPHICS.GetBackBuffer(),
-    GRAPHICS.GetDepthStencil(),
+    ObjectHandle(),
+    //GRAPHICS.GetDepthStencil(),
     _copyBundle.objects._ps,
     false);
   }

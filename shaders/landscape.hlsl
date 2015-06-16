@@ -62,7 +62,7 @@ PsColBrightnessOut PsSky(VSQuadOut p)
   PsColBrightnessOut res;
   float3 tmp = FogColor(rayDir);
   res.col = float4(tmp, 1);
-  res.brightness.xyz = pow(Luminance(tmp), 5) * tmp;
+  res.brightness.xyz = pow(Luminance(tmp), 0.99) * tmp;
   //res.brightness.yzw = 0;
   return res;
 }

@@ -47,9 +47,11 @@ namespace tano
 
     void SetConstantBuffer(ObjectHandle h, const void* buf, size_t len, ShaderType shaderType, u32 slot);
     void SetBundle(const GpuBundle& bundle);
+    void SetBundleWithSamplers(const GpuBundle& bundle, ShaderType shaderType);
     void SetGpuObjects(const GpuObjects& obj);
     void SetGpuState(const GpuState& state);
     void SetGpuStateSamplers(const GpuState& state, ShaderType shaderType);
+    void SetGpuStateAndSamplers(const GpuState& state, ShaderType shaderType);
     void SetViewports(u32 numViewports, const D3D11_VIEWPORT& viewport);
     void SetScissorRect(u32 numRects, const D3D11_RECT* rects);
 
