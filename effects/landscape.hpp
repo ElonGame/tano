@@ -149,9 +149,10 @@ namespace tano
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
     BlurPostProcess _blur;
 
+    GpuBundle _landscapeBundle;
     GpuState _landscapeState;
-    GpuState _landscapeLowerState;
     GpuObjects _landscapeGpuObjects;
+    GpuState _landscapeLowerState;
 
     LandscapeSettings _settings;
     string _configName;

@@ -432,7 +432,8 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn input)
     PsColBrightnessOut res;
     col = lerp(col, fogColor, fogAmount);
     res.col = float4(col, 0.9);
-    res.brightness = Luminance(col);
+    float lum = Luminance(col);
+    res.brightness = smoothstep(0.7, 1, lum);
     return res;
 }
 

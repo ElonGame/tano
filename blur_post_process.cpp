@@ -30,7 +30,7 @@ void BlurPostProcess::Apply(ObjectHandle inputBuffer, ObjectHandle outputBuffer)
   GRAPHICS.GetBackBufferSize(&w, &h);
   int s = max(w, h);
 
-  BufferFlags f = BufferFlags(BufferFlag::CreateSrv) | BufferFlag::CreateUav;
+  BufferFlags f = BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav);
   ScopedRenderTarget scratch0(s, s, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
   ScopedRenderTarget scratch1(s, s, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
 

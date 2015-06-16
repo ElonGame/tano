@@ -189,24 +189,20 @@ bool Landscape::Init(const char* configFile)
     .VsEntry("VsQuad")
     .PsEntry("PsHighPassFilter")));
 
-  {
-    // Particles
-    INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
+  // Particles
+  INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
 
-    u32 vertexSize = sizeof(Vector3);
-    u32 vertexFlags = VF_POS;
-    INIT(_particleBundle.Create(BundleOptions()
-      .DynamicVb(1024 * 1024 * 6, vertexSize)
-      .ShaderFile("shaders/out/landscape")
-      .VsEntry("VsParticle")
-      .GsEntry("GsParticle")
-      .PsEntry("PsParticle")
-      .VertexFlags(vertexFlags)
-      .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
-      .DepthStencilDesc(depthDescDepthWriteDisabled)
-      .BlendDesc(blendDescBlendOneOne)
-      .RasterizerDesc(rasterizeDescCullNone)));
-  }
+  INIT(_particleBundle.Create(BundleOptions()
+    .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
+    .ShaderFile("shaders/out/landscape")
+    .VsEntry("VsParticle")
+    .GsEntry("GsParticle")
+    .PsEntry("PsParticle")
+    .VertexFlags(VF_POS)
+    .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
+    .DepthStencilDesc(depthDescDepthWriteDisabled)
+    .BlendDesc(blendDescBlendOneOne)
+    .RasterizerDesc(rasterizeDescCullNone)));
 
   INIT(_blur.Init(_ctx, 10));
 
@@ -836,29 +832,34 @@ bool Landscape::Render()
     RenderBoids();
   }
 
-  //ScopedRenderTarget rtHighPass(
-  //  DXGI_FORMAT_R16G16B16A16_FLOAT,
-  //  BufferFlags(BufferFlag::CreateSrv));
-
-  ScopedRenderTarget rtBlurred(
-    DXGI_FORMAT_R16G16B16A16_FLOAT,
+  ScopedRenderTarget rtBlurred(DXGI_FORMAT_R16G16B16A16_FLOAT,
     BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
-
-  //postProcess->Execute(
-  //  { rt._rtHandle },
-  //  rtHighPass._rtHandle,
-  //  GRAPHICS.GetDepthStencil(),
-  //  _luminanceBundle.objects._ps,
-  //  true);
 
   _blur.Apply(rt2._rtHandle, rtBlurred._rtHandle);
 
-  postProcess->Execute(
-  { rt._rtHandle, rtBlurred._rtHandle },
-  GRAPHICS.GetBackBuffer(),
-  GRAPHICS.GetDepthStencil(),
-  _compositeBundle.objects._ps,
-  false);
+  static bool showBlurred = false;
+  if (g_KeyUpTrigger.IsTriggered('B'))
+    showBlurred = !showBlurred;
+
+  if (showBlurred)
+  {
+    postProcess->Execute(
+    { rt2._rtHandle },
+    GRAPHICS.GetBackBuffer(),
+    GRAPHICS.GetDepthStencil(),
+    _copyBundle.objects._ps,
+    false);
+  }
+  else
+  {
+    postProcess->Execute(
+    { rt._rtHandle, rtBlurred._rtHandle },
+    GRAPHICS.GetBackBuffer(),
+    GRAPHICS.GetDepthStencil(),
+    _compositeBundle.objects._ps,
+    false);
+  }
+
 
   return true;
 }
