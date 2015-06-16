@@ -168,14 +168,23 @@ bool Landscape::Init(const char* configFile)
     INIT(_landscapeLowerState.Create());
   }
 
-  INIT(_skyGpuObjects.LoadShadersFromFile("shaders/out/landscape", "VsQuad", nullptr, "PsSky"));
+  INIT(_skyBundle.Create(BundleOptions()
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .ShaderFile("shaders/out/landscape")
+    .VsEntry("VsQuad")
+    .PsEntry("PsSky")));
 
-  INIT(_composite.Create(BundleOptions()
+  INIT(_copyBundle.Create(BundleOptions()
+    .ShaderFile("shaders/out/landscape")
+    .VsEntry("VsQuad")
+    .PsEntry("PsCopy")));
+
+  INIT(_compositeBundle.Create(BundleOptions()
     .ShaderFile("shaders/out/landscape")
     .VsEntry("VsQuad")
     .PsEntry("PsComposite")));
 
-  INIT(_luminance.Create(BundleOptions()
+  INIT(_luminanceBundle.Create(BundleOptions()
     .ShaderFile("shaders/out/landscape")
     .VsEntry("VsQuad")
     .PsEntry("PsHighPassFilter")));
@@ -186,24 +195,17 @@ bool Landscape::Init(const char* configFile)
 
     u32 vertexSize = sizeof(Vector3);
     u32 vertexFlags = VF_POS;
-    INIT(_particle.Create(BundleOptions()
+    INIT(_particleBundle.Create(BundleOptions()
       .DynamicVb(1024 * 1024 * 6, vertexSize)
       .ShaderFile("shaders/out/landscape")
       .VsEntry("VsParticle")
       .GsEntry("GsParticle")
       .PsEntry("PsParticle")
       .VertexFlags(vertexFlags)
+      .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
       .DepthStencilDesc(depthDescDepthWriteDisabled)
       .BlendDesc(blendDescBlendOneOne)
       .RasterizerDesc(rasterizeDescCullNone)));
-    //INIT(_particleGpuObjects.CreateDynamicVb(1024 * 1024 * 6 * vertexSize, vertexSize));
-
-    //INIT(_particleGpuObjects.LoadShadersFromFile("shaders/out/landscape",
-    //  "VsParticle", "GsParticle", "PsParticle", vertexFlags));
-    //_particleGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
-
-    //INIT(_particleState.Create(
-    //  &depthDescDepthWriteDisabled, &blendDescBlendOneOne, &rasterizeDescCullNone));
   }
 
   INIT(_blur.Init(_ctx, 10));
@@ -666,7 +668,7 @@ void Landscape::RasterizeLandscape()
 
   // copy all the chunk data into the vertex buffer
   float* landscapeBuf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
-  V3* particleBuf = _ctx->MapWriteDiscard<V3>(_particle.objects._vb);
+  V3* particleBuf = _ctx->MapWriteDiscard<V3>(_particleBundle.objects._vb);
 
   static int chunkNum = -1;
 #if 0
@@ -722,7 +724,7 @@ void Landscape::RasterizeLandscape()
     ImGui::Text("# chunks: %d", numChunks);
   });
 
-  _ctx->Unmap(_particle.objects._vb);
+  _ctx->Unmap(_particleBundle.objects._vb);
   _ctx->Unmap(_landscapeGpuObjects._vb);
 }
 
@@ -792,7 +794,7 @@ bool Landscape::Render()
   ObjectHandle renderTargets[] = {rt._rtHandle, rt2._rtHandle};
   _ctx->SetRenderTargets(renderTargets, 2, rt._dsHandle, &clearColors[0]);
 
-  _ctx->SetGpuObjects(_skyGpuObjects);
+  _ctx->SetBundle(_skyBundle);
   _ctx->Draw(3, 0);
 
   if (_renderLandscape)
@@ -815,11 +817,10 @@ bool Landscape::Render()
 
     if (_drawFlags & DrawParticles)
     {
-      _ctx->SetGpuObjects(_particle.objects);
-      _ctx->SetGpuState(_particle.state);
+      _ctx->SetBundle(_particleBundle);
 
       // Unsert the DSV, as we want to use it as a texture resource
-      _ctx->SetRenderTarget(rt._rtHandle, ObjectHandle(), nullptr);
+      _ctx->SetRenderTargets(renderTargets, 2, ObjectHandle(), nullptr);
       _ctx->SetShaderResources({_particleTexture, rt._dsHandle}, ShaderType::PixelShader);
 
       _ctx->Draw(_numParticles, 0);
@@ -835,29 +836,29 @@ bool Landscape::Render()
     RenderBoids();
   }
 
-  ScopedRenderTarget rtHighPass(
-    DXGI_FORMAT_R16G16B16A16_FLOAT,
-    BufferFlags(BufferFlag::CreateSrv));
+  //ScopedRenderTarget rtHighPass(
+  //  DXGI_FORMAT_R16G16B16A16_FLOAT,
+  //  BufferFlags(BufferFlag::CreateSrv));
 
   ScopedRenderTarget rtBlurred(
     DXGI_FORMAT_R16G16B16A16_FLOAT,
     BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
 
-  postProcess->Execute(
-    { rt._rtHandle },
-    rtHighPass._rtHandle,
-    GRAPHICS.GetDepthStencil(),
-    _luminance.objects._ps,
-    true);
+  //postProcess->Execute(
+  //  { rt._rtHandle },
+  //  rtHighPass._rtHandle,
+  //  GRAPHICS.GetDepthStencil(),
+  //  _luminanceBundle.objects._ps,
+  //  true);
 
-  _blur.Apply(rtHighPass._rtHandle, rtBlurred._rtHandle);
+  _blur.Apply(rt2._rtHandle, rtBlurred._rtHandle);
 
   postProcess->Execute(
-    { rt._rtHandle, rtBlurred._rtHandle },
-    GRAPHICS.GetBackBuffer(),
-    GRAPHICS.GetDepthStencil(),
-    _composite.objects._ps,
-    false);
+  { rt._rtHandle, rtBlurred._rtHandle },
+  GRAPHICS.GetBackBuffer(),
+  GRAPHICS.GetDepthStencil(),
+  _compositeBundle.objects._ps,
+  false);
 
   return true;
 }

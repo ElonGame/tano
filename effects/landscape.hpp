@@ -157,18 +157,13 @@ namespace tano
     string _configName;
     MeshLoader _meshLoader;
 
-    GpuObjects _skyGpuObjects;
-
-    GpuBundle _luminance;
-    GpuBundle _composite;
+    GpuBundle _skyBundle;
+    GpuBundle _luminanceBundle;
+    GpuBundle _compositeBundle;
 
     ObjectHandle _particleTexture;
-    GpuBundle _particle;
-    //GpuState _particleState;
-    //GpuObjects _particleGpuObjects;
-
-    GpuState _copyState;
-    GpuObjects _copyGpuObjects;
+    GpuBundle _particleBundle;
+    GpuBundle _copyBundle;
 
     AnimatedInt _blinkFace;
 

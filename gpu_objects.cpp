@@ -155,13 +155,14 @@ bool GpuBundle::Create(const BundleOptions& options)
       options.psEntry,
       options.vertexFlags,
       inputElements.empty() ? nullptr : &inputElements));
+
+    objects._topology = options.topology;
   }
 
   if (flags.IsSet(BundleOptions::OptionFlag::DynamicVb))
   {
-    INIT(objects.CreateDynamicVb(options.vbNumElems * options.vbElemSize, options.vbElemSize));
+    INIT_FATAL(objects.CreateDynamicVb(options.vbNumElems * options.vbElemSize, options.vbElemSize));
   }
-
   END_INIT_SEQUENCE();
 }
 
@@ -229,6 +230,13 @@ BundleOptions& BundleOptions::CsEntry(const char* entrypoint)
 BundleOptions& BundleOptions::VertexFlags(u32 flags)
 {
   vertexFlags = flags;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::Topology(D3D11_PRIMITIVE_TOPOLOGY topologyIn)
+{
+  topology = topologyIn;
   return *this;
 }
 

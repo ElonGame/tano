@@ -62,7 +62,8 @@ PsColBrightnessOut PsSky(VSQuadOut p)
   PsColBrightnessOut res;
   float3 tmp = FogColor(rayDir);
   res.col = float4(tmp, 1);
-  res.brightness.x = Luminance(tmp);
+  res.brightness.xyz = pow(Luminance(tmp), 5) * tmp;
+  //res.brightness.yzw = 0;
   return res;
 }
 
@@ -151,7 +152,7 @@ static float SoftParticleContrast = 2.0;
 static float intensity = 1.0;
 static float zEpsilon = 0.0;
 
-float4 PsParticle(VsParticleOut p) : SV_Target
+PsColBrightnessOut PsParticle(VsParticleOut p)
 {
   // Texture0 = particle texture
   // Texture1 = zbuffer
@@ -172,7 +173,10 @@ float4 PsParticle(VsParticleOut p) : SV_Target
   if( c * zdiff <= zEpsilon )
       discard;
 
-  return intensity * c * col;
+  PsColBrightnessOut res;
+  res.col = intensity * c * col;
+  res.brightness = intensity * c * col;
+  return res;
 }
 
 //------------------------------------------------------
@@ -400,7 +404,8 @@ static float4 ColorCases[] = {
     { 0, 0, 1, 1 }
 }; 
 
-float4 PsLandscape(PsLandscapeIn input) : SV_Target
+
+PsColBrightnessOut PsLandscape(PsLandscapeIn input)
 {
     // Compute the shortest distance between the fragment and the edges.
     float dist = MainDistanceToEdge(input);
@@ -424,7 +429,11 @@ float4 PsLandscape(PsLandscapeIn input) : SV_Target
     float fogAmount = max(0, 1 - exp(-(input.distance) * b));
     float3 fogColor = FogColor(input.rayDir);
 
-    return float4(lerp(col, fogColor, fogAmount), 0.9);
+    PsColBrightnessOut res;
+    col = lerp(col, fogColor, fogAmount);
+    res.col = float4(col, 0.9);
+    res.brightness = Luminance(col);
+    return res;
 }
 
 //------------------------------------------------------

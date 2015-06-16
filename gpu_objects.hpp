@@ -44,10 +44,10 @@ namespace tano
     ObjectHandle _vb;
     ObjectHandle _ib;
 
-    u32 _vbSize;
-    u32 _ibSize;
-    u32 _vbElemSize;
-    DXGI_FORMAT _ibFormat;
+    u32 _vbSize = 0;
+    u32 _ibSize = 0;
+    u32 _vbElemSize = 0;
+    DXGI_FORMAT _ibFormat = DXGI_FORMAT_UNKNOWN;
     u32 _numVerts = 0;
     u32 _numIndices = 0;
   };
@@ -107,7 +107,7 @@ namespace tano
         BlendDesc         = 1 << 1,
         RasterizerDesc    = 1 << 2,
         DynamicVb         = 1 << 3,
-        DynamicIb         = 1 << 3,
+        DynamicIb         = 1 << 4,
       };
 
       struct Bits {
@@ -133,6 +133,7 @@ namespace tano
 
     BundleOptions& VertexFlags(u32 flags);
     BundleOptions& InputElements(const vector<D3D11_INPUT_ELEMENT_DESC>& elems);
+    BundleOptions& Topology(D3D11_PRIMITIVE_TOPOLOGY topology);
 
     BundleOptions& DynamicVb(int numElements, int elementSize);
     BundleOptions& DynamicIb(int numElements, int elementSize);
@@ -149,6 +150,8 @@ namespace tano
 
     u32 vertexFlags = 0;
     vector<D3D11_INPUT_ELEMENT_DESC> inputElements;
+
+    D3D11_PRIMITIVE_TOPOLOGY topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
     int vbNumElems = 0;
     int vbElemSize = 0;

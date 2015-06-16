@@ -79,6 +79,11 @@ void GraphicsContext::SetRenderTargets(
   DepthStencilResource* ds = GRAPHICS._depthStencils.Get(depthStencil);
   ID3D11DepthStencilView* dsv = ds ? ds->view.ptr : nullptr;
 
+  if (clearTargets && dsv)
+  {
+    _ctx->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+  }
+
   for (int i = 0; i < numRenderTargets; ++i)
   {
     ObjectHandle h = renderTargets[i];
@@ -90,10 +95,6 @@ void GraphicsContext::SetRenderTargets(
     if (clearTargets && clearTargets[i])
     {
       _ctx->ClearRenderTargetView(rts[i], &clearTargets[i]->x);
-      if (dsv)
-      {
-        _ctx->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0 );
-      }
     }
   }
   CD3D11_VIEWPORT viewport(0.0f, 0.0f, (float)textureDesc.Width, (float)textureDesc.Height);
@@ -486,6 +487,13 @@ void GraphicsContext::SetConstantBuffer(
     _ctx->CSSetConstantBuffers(slot, 1, &buffer);
   else if (shaderType == ShaderType::GeometryShader)
     _ctx->GSSetConstantBuffers(slot, 1, &buffer);
+}
+
+//------------------------------------------------------------------------------
+void GraphicsContext::SetBundle(const GpuBundle& bundle)
+{
+  SetGpuState(bundle.state);
+  SetGpuObjects(bundle.objects);
 }
 
 //------------------------------------------------------------------------------
