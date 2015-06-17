@@ -17,14 +17,15 @@ cbuffer PerFrame : register(b0)
 struct PsColBrightnessOut
 {
   float4 col : SV_Target0;
-  float4 brightness : SV_Target1;
+  // rgb = bloom
+  // a = depth
+  float4 extra : SV_Target1;
 };
 
 
 static float4 BOID_COLOR = float4(0.4, 0.2, 0.2, 1);
 static float3 FOG_COLOR = 0.5 * float3(0.5, 0.6, 0.7);
 static float3 SUN_COLOR = 0.5 * float3(1.5, 0.9, 0.3);
-//static float3 SUN_DIR = normalize(float3(-0.5, -0.2, -0.4));
 static float3 SUN_DIR = normalize(float3(0, 0, -1));
 
 //------------------------------------------------------
@@ -62,8 +63,8 @@ PsColBrightnessOut PsSky(VSQuadOut p)
   PsColBrightnessOut res;
   float3 tmp = FogColor(rayDir);
   res.col = float4(tmp, 1);
-  res.brightness.xyz = pow(Luminance(tmp), 0.99) * tmp;
-  //res.brightness.yzw = 0;
+  res.extra.rgb = pow(max(0, Luminance(tmp)), 0.99);
+  res.extra.a = p.pos.z;
   return res;
 }
 
@@ -175,7 +176,8 @@ PsColBrightnessOut PsParticle(VsParticleOut p)
 
   PsColBrightnessOut res;
   res.col = intensity * c * col;
-  res.brightness = intensity * c * col;
+  res.extra.rgb = intensity * c * col.rgb;
+  res.extra.a = p.z;
   return res;
 }
 
@@ -199,7 +201,7 @@ struct VsLandscapeOut
 
 struct PsLandscapeIn
 {
-    float4 Pos : SV_POSITION;
+    float4 pos : SV_POSITION;
     noperspective float4 EdgeA: TEXCOORD1;
     noperspective float4 EdgeB: TEXCOORD2;
     uint Case : TEXCOORD3;
@@ -286,7 +288,7 @@ void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandsc
         // To compute the height for each vertex, use ex:
         // sin(P2) = h1/e2 => h1 = e2 * sin(P2)
         // and: sin(theta) = sqrt(1 - cos^2(theta))
-        output.Pos =( input[0].pos );
+        output.pos =( input[0].pos );
         output.EdgeA[0] = 0;
         output.EdgeA[1] = lengths[2]*sqrt(1 - cosAngles[2]*cosAngles[2]);
         output.EdgeA[2] = 0;
@@ -295,7 +297,7 @@ void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandsc
         output.distance = input[0].distance;
         outStream.Append( output );
 
-        output.Pos = ( input[1].pos );
+        output.pos = ( input[1].pos );
         output.EdgeA[0] = 0;
         output.EdgeA[1] = 0;
         output.EdgeA[2]= lengths[0]*sqrt(1 - cosAngles[0]*cosAngles[0]);
@@ -304,7 +306,7 @@ void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandsc
         output.distance = input[1].distance;
         outStream.Append( output );
 
-        output.Pos = ( input[2].pos );
+        output.pos = ( input[2].pos );
         output.EdgeA.x = lengths[1]*sqrt(1 - cosAngles[1]*cosAngles[1]);
         output.EdgeA[1] = 0;
         output.EdgeA[2] = 0;
@@ -333,19 +335,19 @@ void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandsc
         output.EdgeB.zw = normalize( output.EdgeB.xy - points[ infoBd[output.Case] ] );
     
         // Generate vertices
-        output.Pos =( input[0].pos );
+        output.pos =( input[0].pos );
         output.normal = input[0].normal;
         output.rayDir = input[0].rayDir;
         output.distance = input[0].distance;
         outStream.Append( output );
      
-        output.Pos = ( input[1].pos );
+        output.pos = ( input[1].pos );
         output.normal = input[1].normal;
         output.rayDir = input[1].rayDir;
         output.distance = input[1].distance;
         outStream.Append( output );
 
-        output.Pos = ( input[2].pos );
+        output.pos = ( input[2].pos );
         output.normal = input[2].normal;
         output.rayDir = input[2].rayDir;
         output.distance = input[2].distance;
@@ -371,12 +373,12 @@ float MainDistanceToEdge(in PsLandscapeIn input)
     {
         // Compute and compare the sqDist, do one sqrt in the end.
           
-        float2 AF = input.Pos.xy - input.EdgeA.xy;
+        float2 AF = input.pos.xy - input.EdgeA.xy;
         float sqAF = dot(AF,AF);
         float AFcosA = dot(AF, input.EdgeA.zw);
         dist = abs(sqAF - AFcosA*AFcosA);
 
-        float2 BF = input.Pos.xy - input.EdgeB.xy;
+        float2 BF = input.pos.xy - input.EdgeB.xy;
         float sqBF = dot(BF,BF);
         float BFcosB = dot(BF, input.EdgeB.zw);
         dist = min( dist, abs(sqBF - BFcosB*BFcosB) );
@@ -405,11 +407,11 @@ static float4 ColorCases[] = {
 }; 
 
 
-PsColBrightnessOut PsLandscape(PsLandscapeIn input)
+PsColBrightnessOut PsLandscape(PsLandscapeIn p)
 {
     // Compute the shortest distance between the fragment and the edges.
-    float dist = MainDistanceToEdge(input);
-    //return ColorCases[input.Case];
+    float dist = MainDistanceToEdge(p);
+    //return ColorCases[p.Case];
 
     // Map the computed distance to the [0,2] range on the border of the line.
     dist = clamp((dist - (0.5*LineWidth - 1)), 0, 2);
@@ -420,20 +422,21 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn input)
 
 
     float3 amb = float3(0.05, 0.05, 0.05);
-    float dff = saturate(dot(-SUN_DIR, input.normal));
+    float dff = saturate(dot(-SUN_DIR, p.normal));
     float3 col = amb + dff * float3(0.1, 0.1, 0.25);
 
     col = lerp(col, WireColor.rgb, alpha);
 
     float b = 0.002;
-    float fogAmount = max(0, 1 - exp(-(input.distance) * b));
-    float3 fogColor = FogColor(input.rayDir);
+    float fogAmount = max(0, 1 - exp(-(p.distance) * b));
+    float3 fogColor = FogColor(p.rayDir);
 
     PsColBrightnessOut res;
     col = lerp(col, fogColor, fogAmount);
     res.col = float4(col, 0.9);
     float lum = Luminance(col);
-    res.brightness = smoothstep(0.7, 1, lum);
+    res.extra.rgb = smoothstep(0.7, 1, lum);
+    res.extra.a = p.pos.z;
     return res;
 }
 
@@ -452,13 +455,13 @@ struct VsBoidsOut
   float3 normal : Normal;
 };
 
-VsBoidsOut VsBoids(VsBoidsIn input)
+VsBoidsOut VsBoids(VsBoidsIn p)
 {
   VsBoidsOut output;
   float4x4 mtxWorldViewProj = mul(world, viewProj);
-  output.pos = mul(float4(input.pos, 1), mtxWorldViewProj);
-  output.normal = mul(float4(input.normal, 0), world).xyz;
-  output.normal = input.normal;
+  output.pos = mul(float4(p.pos, 1), mtxWorldViewProj);
+  output.normal = mul(float4(p.normal, 0), world).xyz;
+  output.normal = p.normal;
   return output;
 }
 
@@ -492,7 +495,7 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 backgroundCol = Texture0.Sample(PointSampler, uv);
   float4 bloom = Texture1.Sample(PointSampler, uv);
 
-  float4 color = backgroundCol + bloom;
+  float4 color = backgroundCol + float4(bloom.rgb, 1);
 
    // gamma correction
   color = pow(abs(color), 1.0/2.2);
