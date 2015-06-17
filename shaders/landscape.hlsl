@@ -35,7 +35,7 @@ static float3 SUN_DIR = normalize(float3(0, 0, -1));
 float3 FogColor(float3 rayDir)
 {
   float sunAmount = max(0, dot(rayDir, -SUN_DIR));
-  float3 fogColor = lerp(FOG_COLOR, SUN_COLOR, pow(sunAmount, 20));
+  float3 fogColor = lerp(FOG_COLOR, SUN_COLOR, pow(sunAmount, 30));
   return fogColor;
 }
 
@@ -63,7 +63,7 @@ PsColBrightnessOut PsSky(VSQuadOut p)
   PsColBrightnessOut res;
   float3 tmp = FogColor(rayDir);
   res.col = float4(tmp, 1);
-  res.extra.rgb = pow(max(0, Luminance(tmp)), 0.99);
+  res.extra.rgb = pow(max(0, Luminance(tmp)), 5);
   res.extra.a = p.pos.z;
   return res;
 }
@@ -163,7 +163,6 @@ PsColBrightnessOut PsParticle(VsParticleOut p)
   col.b *= 0.1;
   float zBuf = Texture1.Load(int3(p.pos.x, p.pos.y, 0)).r;
 
-  // 
   // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))
   float farClip = nearFar.y;
   float f_mul_n = nearFar.z;
@@ -489,6 +488,7 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 {
   // Texture0 : color
   // Texture1 : bloom
+  // Texture2 : zbuffer
   float2 uv = p.uv.xy;
   float2 xx = -1 + 2 * uv;
 
@@ -497,10 +497,18 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 
   float4 color = backgroundCol + float4(bloom.rgb, 1);
 
+  float zBuf = Texture2.Load(int3(p.pos.x, p.pos.y, 0)).r;
+
+  // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))
+  float farClip = nearFar.y;
+  float f_mul_n = nearFar.z;
+  float f_sub_n = nearFar.w;
+  float z = f_mul_n / ( farClip - zBuf * f_sub_n);
+  z /= farClip;
+
    // gamma correction
   color = pow(abs(color), 1.0/2.2);
 
   float r = 0.7 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
   return r * color;
 }
-

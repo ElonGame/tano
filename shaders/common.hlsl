@@ -40,3 +40,12 @@ float4 PsCopy(VSQuadOut p) : SV_Target
 {
 	return Texture0.Sample(PointSampler, p.uv);
 }
+
+//------------------------------------------------------
+float4 PsAdd(VSQuadOut p) : SV_Target
+{
+  float2 uv = p.uv.xy;
+  float4 backgroundCol = Texture0.Sample(PointSampler, uv);
+  float4 bloom = Texture1.Sample(PointSampler, uv);
+  return backgroundCol + float4(bloom.rgb, 1);
+}

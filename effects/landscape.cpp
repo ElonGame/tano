@@ -815,7 +815,7 @@ bool Landscape::Render()
     {
       _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
 
-      // Unsert the DSV, as we want to use it as a texture resource
+      // Unset the DSV, as we want to use it as a texture resource
       _ctx->SetRenderTargets(renderTargets, 2, ObjectHandle(), nullptr);
       _ctx->SetShaderResources({_particleTexture, rt._dsHandle}, ShaderType::PixelShader);
       _ctx->Draw(_numParticles, 0);
@@ -855,8 +855,10 @@ bool Landscape::Render()
   }
   else
   {
+    _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
+
     postProcess->Execute(
-    { rt._rtHandle, rtBlurred._rtHandle },
+    { rt._rtHandle, rtBlurred._rtHandle, rt._dsHandle },
     GRAPHICS.GetBackBuffer(),
     GRAPHICS.GetDepthStencil(),
     _compositeBundle.objects._ps,
