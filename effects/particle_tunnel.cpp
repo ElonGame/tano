@@ -602,7 +602,7 @@ bool ParticleTunnel::Render()
   _ctx->UnsetRenderTargets(0, 1);
 
   ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
-  _blur.Apply(rtLines._rtHandle, rtBlur._rtHandle);
+  _blur.Apply(rtLines._rtHandle, rtBlur._rtHandle, _settings.blur_radius);
 
   // compose final image on default swap chain
 

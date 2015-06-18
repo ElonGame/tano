@@ -22,7 +22,7 @@ bool BlurPostProcess::Init(GraphicsContext* ctx, float blurRadius)
 }
 
 //------------------------------------------------------------------------------
-void BlurPostProcess::Apply(ObjectHandle inputBuffer, ObjectHandle outputBuffer)
+void BlurPostProcess::Apply(ObjectHandle inputBuffer, ObjectHandle outputBuffer, float amount)
 {
   static Color black(0, 0, 0, 0);
 
@@ -37,21 +37,22 @@ void BlurPostProcess::Apply(ObjectHandle inputBuffer, ObjectHandle outputBuffer)
   // set constant buffers
   _cbBlur.inputSize.x = (float)w;
   _cbBlur.inputSize.y = (float)h;
+  _cbBlur.radius = amount;
   _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
 
   // set constant buffers
   ObjectHandle srcDst[] =
   {
     // horiz
-    inputBuffer, scratch0._rtHandle, scratch0._rtHandle, scratch1._rtHandle, scratch1._rtHandle, scratch0._rtHandle,
+    inputBuffer, scratch0, scratch0, scratch1, scratch1, scratch0,
     // vert
-    scratch1._rtHandle, scratch0._rtHandle, scratch0._rtHandle, scratch1._rtHandle, scratch1._rtHandle, scratch0._rtHandle,
+    scratch1, scratch0, scratch0, scratch1, scratch1, scratch0,
   };
 
   // horizontal blur (ends up in scratch0)
   for (int i = 0; i < 3; ++i)
   {
-    _ctx->SetShaderResources({ srcDst[i * 2 + 0] }, ShaderType::ComputeShader);
+    _ctx->SetShaderResource(srcDst[i * 2 + 0], ShaderType::ComputeShader);
     _ctx->SetUnorderedAccessView(srcDst[i * 2 + 1], &black);
 
     _ctx->SetComputeShader(_csBlurX);
@@ -62,8 +63,8 @@ void BlurPostProcess::Apply(ObjectHandle inputBuffer, ObjectHandle outputBuffer)
   }
 
   // copy/transpose from scratch0 -> scratch1
-  _ctx->SetShaderResources({ scratch0._rtHandle }, ShaderType::ComputeShader);
-  _ctx->SetUnorderedAccessView(scratch1._rtHandle, &black);
+  _ctx->SetShaderResources(&scratch0._rtHandle, 1, ShaderType::ComputeShader);
+  _ctx->SetUnorderedAccessView(scratch1, &black);
 
   _ctx->SetComputeShader(_csCopyTranspose);
   _ctx->Dispatch(h / 32 + 1, 1, 1);
@@ -79,7 +80,7 @@ void BlurPostProcess::Apply(ObjectHandle inputBuffer, ObjectHandle outputBuffer)
 
   for (int i = 0; i < 3; ++i)
   {
-    _ctx->SetShaderResources({ srcDst[6 + i * 2 + 0] }, ShaderType::ComputeShader);
+    _ctx->SetShaderResources(&srcDst[6 + i * 2 + 0], 1, ShaderType::ComputeShader);
     _ctx->SetUnorderedAccessView(srcDst[6 + i * 2 + 1], &black);
 
     _ctx->SetComputeShader(_csBlurX);
@@ -90,7 +91,7 @@ void BlurPostProcess::Apply(ObjectHandle inputBuffer, ObjectHandle outputBuffer)
   }
 
   // copy/transpose from scratch0 -> blur1
-  _ctx->SetShaderResources({ scratch0._rtHandle }, ShaderType::ComputeShader);
+  _ctx->SetShaderResources(&scratch0._rtHandle, 1, ShaderType::ComputeShader);
   _ctx->SetUnorderedAccessView(outputBuffer, &black);
 
   _ctx->SetComputeShader(_csCopyTranspose);

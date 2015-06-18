@@ -179,6 +179,11 @@ bool Landscape::Init(const char* configFile)
     .VsEntry("VsQuad")
     .PsEntry("PsCopy")));
 
+  INIT(_addBundle.Create(BundleOptions()
+    .ShaderFile("shaders/out/landscape")
+    .VsEntry("VsQuad")
+    .PsEntry("PsAdd")));
+
   INIT(_compositeBundle.Create(BundleOptions()
     .ShaderFile("shaders/out/landscape")
     .VsEntry("VsQuad")
@@ -770,16 +775,16 @@ bool Landscape::Render()
   static const Color* clearColors[] = { &clearColor, &clearColor};
   PostProcess* postProcess = GRAPHICS.GetPostProcess();
 
-  ScopedRenderTargetFull rt(
+  ScopedRenderTargetFull rtColor(
     DXGI_FORMAT_R16G16B16A16_FLOAT,
     BufferFlags(BufferFlag::CreateSrv),
     BufferFlags(BufferFlag::CreateSrv));
 
-  ScopedRenderTarget rt2(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtBloom(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
   _cbPerFrame.world = Matrix::Identity();
 
-  _cbPerFrame.dim = Vector4((float)rt._width, (float)rt._height, 0, 0);
+  _cbPerFrame.dim = Vector4((float)rtColor._width, (float)rtColor._height, 0, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
@@ -787,8 +792,8 @@ bool Landscape::Render()
   // We're using 2 render targets here. One for color, and one for depth/bloom
 
   // Render the sky
-  ObjectHandle renderTargets[] = {rt._rtHandle, rt2._rtHandle};
-  _ctx->SetRenderTargets(renderTargets, 2, rt._dsHandle, &clearColors[0]);
+  ObjectHandle renderTargets[] = {rtColor._rtHandle, rtBloom._rtHandle};
+  _ctx->SetRenderTargets(renderTargets, 2, rtColor._dsHandle, &clearColors[0]);
 
   _ctx->SetBundle(_skyBundle);
   _ctx->Draw(3, 0);
@@ -817,7 +822,8 @@ bool Landscape::Render()
 
       // Unset the DSV, as we want to use it as a texture resource
       _ctx->SetRenderTargets(renderTargets, 2, ObjectHandle(), nullptr);
-      _ctx->SetShaderResources({_particleTexture, rt._dsHandle}, ShaderType::PixelShader);
+      ObjectHandle srv[] = { _particleTexture, rtColor._dsHandle };
+      _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
       _ctx->Draw(_numParticles, 0);
       _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
     }
@@ -834,10 +840,21 @@ bool Landscape::Render()
 
   _ctx->UnsetRenderTargets(0, 2);
 
-  ScopedRenderTarget rtBlurred(DXGI_FORMAT_R16G16B16A16_FLOAT,
+  ScopedRenderTarget rtBloomBlurred(DXGI_FORMAT_R16G16B16A16_FLOAT,
     BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
 
-  _blur.Apply(rt2._rtHandle, rtBlurred._rtHandle);
+  _blur.Apply(rtBloom, rtBloomBlurred, 10);
+
+  //ScopedRenderTarget rtColorAndBloom(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  //{
+  //  ObjectHandle inputs[] = { rtColor, rtBloomBlurred };
+  //  postProcess->Execute(inputs, 2, rtColorAndBloom, ObjectHandle(), _addBundle.objects._ps);
+  //}
+
+  //ScopedRenderTarget rtColorAndBloomBlurred(DXGI_FORMAT_R16G16B16A16_FLOAT,
+  //  BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
+
+  //_blur.Apply(rtColorAndBloom, rtColorAndBloomBlurred, 10);
 
   static bool showBlurred = false;
   if (g_KeyUpTrigger.IsTriggered('B'))
@@ -846,25 +863,24 @@ bool Landscape::Render()
   if (showBlurred)
   {
     postProcess->Execute(
-    { rtBlurred._rtHandle },
-    GRAPHICS.GetBackBuffer(),
-    ObjectHandle(),
-    //GRAPHICS.GetDepthStencil(),
-    _copyBundle.objects._ps,
-    false);
+      rtBloomBlurred,
+      GRAPHICS.GetBackBuffer(),
+      ObjectHandle(),
+      _copyBundle.objects._ps,
+      false);
   }
   else
   {
-    _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
-
+    //ObjectHandle inputs[] = { rtColorAndBloom, rtColorAndBloomBlurred, rtColor._dsHandle };
+    ObjectHandle inputs[] = { rtColor, rtBloomBlurred };
     postProcess->Execute(
-    { rt._rtHandle, rtBlurred._rtHandle, rt._dsHandle },
-    GRAPHICS.GetBackBuffer(),
-    GRAPHICS.GetDepthStencil(),
-    _compositeBundle.objects._ps,
-    false);
+      inputs,
+      2,
+      GRAPHICS.GetBackBuffer(),
+      GRAPHICS.GetDepthStencil(),
+      _compositeBundle.objects._ps,
+      false);
   }
-
 
   return true;
 }

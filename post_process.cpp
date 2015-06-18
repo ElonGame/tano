@@ -40,16 +40,41 @@ void PostProcess::Execute(
     bool releaseOutput,
     const Color* clearColor)
 {
+  Execute(input.data(), (int)input.size(), output, depthStencil, shader, releaseOutput, clearColor);
+}
+
+//------------------------------------------------------------------------------
+void PostProcess::Execute(
+  ObjectHandle input,
+  ObjectHandle output,
+  ObjectHandle depthStencil,
+  ObjectHandle shader,
+  bool releaseOutput,
+  const Color* clearColor)
+{
+  Execute(&input, 1, output, depthStencil, shader, releaseOutput, clearColor);
+}
+
+//------------------------------------------------------------------------------
+void PostProcess::Execute(
+  const ObjectHandle* inputs,
+  int numInputs,
+  ObjectHandle output,
+  ObjectHandle depthStencil,
+  ObjectHandle shader,
+  bool releaseOutput,
+  const Color* clearColor)
+{
   _ctx->SetLayout(ObjectHandle());
   _ctx->SetGpuState(_gpuState);
   _ctx->SetGpuStateSamplers(_gpuState, ShaderType::PixelShader);
   _ctx->SetGpuStateSamplers(_gpuState, ShaderType::ComputeShader);
   _ctx->SetGpuObjects(_gpuObjects);
 
-  if (output.IsValid())
-    _ctx->SetRenderTarget(output, depthStencil, clearColor);
+  assert(output.IsValid());
+  _ctx->SetRenderTarget(output, depthStencil, clearColor);
 
-  _ctx->SetShaderResources(input, ShaderType::PixelShader);
+  _ctx->SetShaderResources(inputs, numInputs, ShaderType::PixelShader);
 
   u32 outputX, outputY;
   GRAPHICS.GetTextureSize(output, &outputX, &outputY);
@@ -63,5 +88,5 @@ void PostProcess::Execute(
   if (output.IsValid() && releaseOutput)
     _ctx->UnsetRenderTargets(0, 1);
 
-  _ctx->UnsetShaderResources(0, (u32)input.size(), ShaderType::PixelShader);
+  _ctx->UnsetShaderResources(0, numInputs, ShaderType::PixelShader);
 }

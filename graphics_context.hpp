@@ -36,6 +36,7 @@ namespace tano
     void SetBlendState(ObjectHandle bs, const float *blendFactors, UINT sampleMask);
     void SetShaderResource(ObjectHandle h, ShaderType shaderType = ShaderType::PixelShader, int slot = 0);
     void SetShaderResources(const vector<ObjectHandle>& handles, ShaderType shaderType);
+    void SetShaderResources(const ObjectHandle* handles, int numHandles, ShaderType shaderType);
     void SetUnorderedAccessView(ObjectHandle h, Color* clearColor);
     void SetSamplerState(ObjectHandle h, ShaderType shaderType = ShaderType::PixelShader, u32 slot = 0);
     void SetSamplers(const ObjectHandle* h, u32 slot, u32 numSamplers, ShaderType shaderType);

@@ -165,6 +165,7 @@ namespace tano
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
     GpuBundle _copyBundle;
+    GpuBundle _addBundle;
 
     AnimatedInt _blinkFace;
 

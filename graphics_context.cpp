@@ -66,7 +66,6 @@ void GraphicsContext::SetRenderTarget(
   _ctx->RSSetViewports(1, &viewport);
   _ctx->OMSetRenderTargets(1, &rtv, dsv);
 }
-
 //------------------------------------------------------------------------------
 void GraphicsContext::SetRenderTargets(
     ObjectHandle* renderTargets,
@@ -350,26 +349,44 @@ void GraphicsContext::SetShaderResources(
     const vector<ObjectHandle>& handles,
     ShaderType shaderType)
 {
-  assert(handles.size() < 16);
-  ID3D11ShaderResourceView* v[16];
-  ID3D11ShaderResourceView** t = v;
-  for (auto h : handles)
+  SetShaderResources(handles.data(), (int)handles.size(), shaderType);
+}
+
+//------------------------------------------------------------------------------
+void GraphicsContext::SetShaderResources(
+    const ObjectHandle* handles,
+    int numHandles,
+    ShaderType shaderType)
+{
+  assert(numHandles < 16);
+  static ID3D11ShaderResourceView* v[16];
+  for (int i = 0; i < numHandles; ++i)
   {
-    *t++ = GRAPHICS.GetShaderResourceView(h);
+    v[i] = GRAPHICS.GetShaderResourceView(handles[i]);
+    if (!v[i])
+    {
+      LOG_ERROR("Unable to get shader resource view");
+      return;
+    }
   }
 
-  u32 count = (u32)handles.size();
-  if (shaderType == ShaderType::VertexShader)
-    _ctx->VSSetShaderResources(0, count, v);
-  else if (shaderType == ShaderType::PixelShader)
-    _ctx->PSSetShaderResources(0, count, v);
-  else if (shaderType == ShaderType::ComputeShader)
-    _ctx->CSSetShaderResources(0, count, v);
-  else if (shaderType == ShaderType::GeometryShader)
-    _ctx->GSSetShaderResources(0, count, v);
-  else
+  switch (shaderType)
+  {
+  case ShaderType::VertexShader:
+    _ctx->VSSetShaderResources(0, numHandles, v);
+    break;
+  case ShaderType::PixelShader:
+    _ctx->PSSetShaderResources(0, numHandles, v);
+    break;
+  case ShaderType::ComputeShader:
+    _ctx->CSSetShaderResources(0, numHandles, v);
+    break;
+  case ShaderType::GeometryShader:
+    _ctx->GSSetShaderResources(0, numHandles, v);
+    break;
+  default:
     assert(false);
-
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -383,17 +400,23 @@ void GraphicsContext::SetShaderResource(ObjectHandle h, ShaderType shaderType, i
     return;
   }
 
-  if (shaderType == ShaderType::VertexShader)
+  switch (shaderType)
+  {
+  case ShaderType::VertexShader:
     _ctx->VSSetShaderResources(slot, 1, &view);
-  else if (shaderType == ShaderType::PixelShader)
+    break;
+  case ShaderType::PixelShader:
     _ctx->PSSetShaderResources(slot, 1, &view);
-  else if (shaderType == ShaderType::ComputeShader)
+    break;
+  case ShaderType::ComputeShader:
     _ctx->CSSetShaderResources(slot, 1, &view);
-  else if (shaderType == ShaderType::GeometryShader)
+    break;
+  case ShaderType::GeometryShader:
     _ctx->GSSetShaderResources(slot, 1, &view);
-  else
+    break;
+  default:
     assert(false);
-    //LOG_ERROR_LN("Implement me!");
+  }
 }
 
 //------------------------------------------------------------------------------

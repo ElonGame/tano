@@ -174,6 +174,8 @@ namespace tano
     ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ~ScopedRenderTarget();
 
+    operator ObjectHandle() { return _rtHandle; }
+
     int _width, _height;
     DXGI_FORMAT _format;
     ObjectHandle _rtHandle;
@@ -184,6 +186,8 @@ namespace tano
   {
     ScopedRenderTargetFull(DXGI_FORMAT format, BufferFlags rtFlags, BufferFlags dsFlags);
     ~ScopedRenderTargetFull();
+
+    operator ObjectHandle() { return _rtHandle; }
 
     int _width, _height;
     DXGI_FORMAT _format;

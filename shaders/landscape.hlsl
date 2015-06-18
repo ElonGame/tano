@@ -481,22 +481,28 @@ float4 PsHighPassFilter(VSQuadOut p) : SV_Target
   return Luminance(col.xyz) > 0.4 ? pow(col, 0.5) : 0;
 }
 
+float4 ToneMap(float4 col)
+{
+  float lum = Luminance(col.rgb);
+  float MAX_WHITE = 5;
+  float s = 0.5;
+  return col * lum / ((1-s) * MAX_WHITE + s * lum);
+}
+
 //------------------------------------------------------
 // composite
 //------------------------------------------------------
 float4 PsComposite(VSQuadOut p) : SV_Target
 {
-  // Texture0 : color
-  // Texture1 : bloom
+  // Texture0 : color + bloom
+  // Texture1 : color + bloom blurred
   // Texture2 : zbuffer
   float2 uv = p.uv.xy;
   float2 xx = -1 + 2 * uv;
 
-  float4 backgroundCol = Texture0.Sample(PointSampler, uv);
-  float4 bloom = Texture1.Sample(PointSampler, uv);
-
-  float4 color = backgroundCol + float4(bloom.rgb, 1);
-
+  float4 col = Texture0.Sample(PointSampler, uv) + Texture1.Sample(PointSampler, uv);
+  /*
+  float4 dof = Texture1.Sample(PointSampler, uv);
   float zBuf = Texture2.Load(int3(p.pos.x, p.pos.y, 0)).r;
 
   // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))
@@ -504,11 +510,24 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float f_mul_n = nearFar.z;
   float f_sub_n = nearFar.w;
   float z = f_mul_n / ( farClip - zBuf * f_sub_n);
-  z /= farClip;
+//  z /= farClip;
 
+  float nearStart = 0;
+  float nearEnd = 200;
+  float farStart = 1000;
+  float farEnd = 2000;
+  float t = min(smoothstep(nearStart, nearEnd, z), 1 - smoothstep(farStart, farEnd, z));
+
+  //col = lerp(col, dof, t);
+//  return t;
+//  return z;
+*/
+
+  col = ToneMap(col);
+  
    // gamma correction
-  color = pow(abs(color), 1.0/2.2);
+  col = pow(abs(col), 1.0/2.2);
 
   float r = 0.7 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
-  return r * color;
+  return r * col;
 }

@@ -24,6 +24,23 @@ namespace tano
       bool releaseOutput = true,
       const Color* clearColor = nullptr);
 
+    void Execute(
+      ObjectHandle input,
+      ObjectHandle output,
+      ObjectHandle depthStencil,
+      ObjectHandle shader,
+      bool releaseOutput = true,
+      const Color* clearColor = nullptr);
+
+    void Execute(
+      const ObjectHandle* inputs,
+      int numInputs, 
+      ObjectHandle output,
+      ObjectHandle depthStencil,
+      ObjectHandle shader,
+      bool releaseOutput = true,
+      const Color* clearColor = nullptr);
+
   private:
     GraphicsContext* _ctx;
 

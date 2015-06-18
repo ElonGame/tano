@@ -5,7 +5,7 @@ namespace tano
   struct BlurPostProcess
   {
     bool Init(GraphicsContext* ctx, float blurRadius);
-    void Apply(ObjectHandle inputBuffer, ObjectHandle outputBuffer);
+    void Apply(ObjectHandle inputBuffer, ObjectHandle outputBuffer, float amount);
 
     struct CBufferBlur
     {
