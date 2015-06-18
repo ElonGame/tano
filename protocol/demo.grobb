@@ -17,6 +17,12 @@ struct effect_settings
   bool force = false;
 };
 
+struct tonemap_settings
+{
+  float shoulder = 0.5;
+  float max_white = 5.0;
+};
+
 struct particle_tunnel_settings
 {
   string texture;
@@ -73,6 +79,7 @@ struct landscape_settings
   camera_settings camera;
   boid_settings boids;
   string particle_texture;
+  tonemap_settings tonemap;
 };
 
 struct blob_settings

@@ -144,6 +144,7 @@ namespace tano
       Vector3 cameraUp;
       float pad3;
       Vector4 nearFar;
+      Vector4 toneMappingParams = Vector4(0.5f, 2.f, 0, 0);
     };
 
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;

@@ -782,6 +782,8 @@ bool Landscape::Render()
 
   ScopedRenderTarget rtBloom(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
+  _cbPerFrame.toneMappingParams = Vector4(_settings.tonemap.shoulder, _settings.tonemap.max_white, 0, 0);
+
   _cbPerFrame.world = Matrix::Identity();
 
   _cbPerFrame.dim = Vector4((float)rtColor._width, (float)rtColor._height, 0, 0);
@@ -901,6 +903,10 @@ void Landscape::RenderParameterSet()
       f->boids.UpdateWeight(k, w);
     }
   };
+
+  ImGui::SliderFloat("Shoulder", &_settings.tonemap.shoulder, 0, 1);
+  ImGui::SliderFloat("Max White", &_settings.tonemap.max_white, 0.5f, 10);
+  ImGui::Separator();
 
   ImGui::Checkbox("Render landscape", &_renderLandscape);
   ImGui::Checkbox("Render boids", &_renderBoids);
