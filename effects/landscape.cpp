@@ -842,10 +842,20 @@ bool Landscape::Render()
 
   _ctx->UnsetRenderTargets(0, 2);
 
-  ScopedRenderTarget rtBloomBlurred(DXGI_FORMAT_R16G16B16A16_FLOAT,
+  ScopedRenderTarget rtBloomDownsampled(
+    rtColor._width / 2,
+    rtColor._height / 2, 
+    DXGI_FORMAT_R16G16B16A16_FLOAT);
+
+  postProcess->Execute(rtBloom, rtBloomDownsampled, ObjectHandle(), _copyBundle.objects._ps, true);
+
+  ScopedRenderTarget rtBloomBlurred(
+    rtColor._width / 2,
+    rtColor._height / 2,
+    DXGI_FORMAT_R16G16B16A16_FLOAT,
     BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
 
-  _blur.Apply(rtBloom, rtBloomBlurred, 10);
+  _blur.Apply(rtBloomDownsampled, rtBloomBlurred, 10);
 
   //ScopedRenderTarget rtColorAndBloom(DXGI_FORMAT_R16G16B16A16_FLOAT);
   //{

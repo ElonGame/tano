@@ -11,9 +11,9 @@ bool BlurPostProcess::Init(GraphicsContext* ctx, float blurRadius)
 
   BEGIN_INIT_SEQUENCE();
   // blur setup
-  INIT(GRAPHICS.LoadComputeShadersFromFile("shaders/out/blur", &_csBlurTranspose, "BlurTranspose"));
-  INIT(GRAPHICS.LoadComputeShadersFromFile("shaders/out/blur", &_csCopyTranspose, "CopyTranspose"));
-  INIT(GRAPHICS.LoadComputeShadersFromFile("shaders/out/blur", &_csBlurX, "BoxBlurX"));
+  INIT_RESOURCE(_csBlurTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BlurTranspose"));
+  INIT_RESOURCE(_csCopyTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "CopyTranspose"));
+  INIT_RESOURCE(_csBlurX, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BoxBlurX"));
 
   INIT(_cbBlur.Create());
   _cbBlur.radius = blurRadius;

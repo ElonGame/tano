@@ -26,6 +26,10 @@ namespace tano
     bool CreateVertexBuffer(u32 vbSize, u32 vbElemSize, const  void* vbData);
     bool CreateIndexBuffer(u32 ibSize, DXGI_FORMAT ibFormat, const  void* ibData);
 
+    bool LoadVertexShader(const char* filename, const char* entryPoint, u32 flags = 0, vector<D3D11_INPUT_ELEMENT_DESC>* elements = nullptr);
+    bool LoadPixelShader(const char* filename, const char* entryPoint);
+    bool LoadGeometryShader(const char* filename, const char* entryPoint);
+
     bool LoadShadersFromFile(
       const char* filename,
       const char* vsEntry,
@@ -108,6 +112,7 @@ namespace tano
         RasterizerDesc    = 1 << 2,
         DynamicVb         = 1 << 3,
         DynamicIb         = 1 << 4,
+        SingleShaderFile  = 1 << 5,
       };
 
       struct Bits {
@@ -116,20 +121,25 @@ namespace tano
         u32 rasterizerDesc : 1;
         u32 dynamicVb : 1;
         u32 dynamicIb : 1;
+        u32 singleShaderFile : 1;
       };
     };
 
     typedef Flags<OptionFlag> OptionFlags;
 
-    BundleOptions& DepthStencilDesc(const D3D11_DEPTH_STENCIL_DESC& desc);
-    BundleOptions& BlendDesc(const D3D11_BLEND_DESC& desc);
-    BundleOptions& RasterizerDesc(const D3D11_RASTERIZER_DESC& desc);
+    BundleOptions& DepthStencilDesc(const CD3D11_DEPTH_STENCIL_DESC& desc);
+    BundleOptions& BlendDesc(const CD3D11_BLEND_DESC& desc);
+    BundleOptions& RasterizerDesc(const CD3D11_RASTERIZER_DESC& desc);
 
     BundleOptions& ShaderFile(const char* filename);
     BundleOptions& VsEntry(const char* entrypoint);
+    BundleOptions& VsEntry(const char* filename, const char* entrypoint);
     BundleOptions& GsEntry(const char* entrypoint);
+    BundleOptions& GsEntry(const char* filename, const char* entrypoint);
     BundleOptions& PsEntry(const char* entrypoint);
+    BundleOptions& PsEntry(const char* filename, const char* entrypoint);
     BundleOptions& CsEntry(const char* entrypoint);
+    BundleOptions& CsEntry(const char* filename, const char* entrypoint);
 
     BundleOptions& VertexFlags(u32 flags);
     BundleOptions& InputElements(const vector<D3D11_INPUT_ELEMENT_DESC>& elems);
@@ -138,11 +148,20 @@ namespace tano
     BundleOptions& DynamicVb(int numElements, int elementSize);
     BundleOptions& DynamicIb(int numElements, int elementSize);
 
-    D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
-    D3D11_BLEND_DESC blendDesc;
-    D3D11_RASTERIZER_DESC rasterizerDesc;
+    const char* GetVsShaderFile() const;
+    const char* GetPsShaderFile() const;
+    const char* GetGsShaderFile() const;
+    const char* GetCsShaderFile() const;
+
+    CD3D11_DEPTH_STENCIL_DESC depthStencilDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
+    CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+    CD3D11_RASTERIZER_DESC rasterizerDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
 
     const char* shaderFile = nullptr;
+    const char* vsShaderFile = nullptr;
+    const char* gsShaderFile = nullptr;
+    const char* psShaderFile = nullptr;
+    const char* csShaderFile = nullptr;
     const char* vsEntry = nullptr;
     const char* gsEntry = nullptr;
     const char* psEntry = nullptr;

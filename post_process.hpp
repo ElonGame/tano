@@ -41,6 +41,8 @@ namespace tano
       bool releaseOutput = true,
       const Color* clearColor = nullptr);
 
+    void ScaleBias(ObjectHandle input, ObjectHandle output, float scale, float bias);
+
   private:
     GraphicsContext* _ctx;
 
@@ -51,7 +53,13 @@ namespace tano
     };
     ConstantBuffer<CBufferPerFrame> _cb;
 
-    GpuState _gpuState;
-    GpuObjects _gpuObjects;
+    struct CBufferScaleBias
+    {
+      Vector4 scaleBias;
+    };
+    ConstantBuffer<CBufferScaleBias> _cbScaleBias;
+
+    GpuBundle _defaultBundle;
+    GpuBundle _scaleBiasBundle;
   };
 }

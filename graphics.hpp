@@ -105,10 +105,14 @@ namespace tano
         const char* gsEntry = "GsMain",
         const char* psEntry = "PsMain");
 
-    bool LoadComputeShadersFromFile(
-        const string& filenameBase,
-        ObjectHandle* shader,
-        const char* entry = "CsMain");
+    ObjectHandle LoadVertexShaderFromFile(
+      const string& filenameBase,
+      const char* entry,
+      ObjectHandle* inputLayout = nullptr,
+      vector<D3D11_INPUT_ELEMENT_DESC>* elements = nullptr);
+    ObjectHandle LoadPixelShaderFromFile(const string& filenameBase, const char* entry);
+    ObjectHandle LoadComputeShaderFromFile(const string& filenameBase, const char* entry);
+    ObjectHandle LoadGeometryShaderFromFile(const string& filenameBase, const char* entry);
 
     static ObjectHandle MakeObjectHandle(ObjectHandle::Type type, int idx, int data = 0);
 

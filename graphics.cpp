@@ -58,11 +58,11 @@ bool Graphics::Init(HINSTANCE hInstance)
   BEGIN_INIT_SEQUENCE();
   INIT(InitConfigDialog(hInstance));
   INIT(CreateDevice());
+  InitDefaultDescs();
 
   _postProcess = new PostProcess(_graphicsContext);
   INIT(_postProcess->Init());
 
-  InitDefaultDescs();
 
   END_INIT_SEQUENCE();
 }
@@ -966,41 +966,127 @@ ObjectHandle Graphics::DefaultSwapChain()
 }
 
 //------------------------------------------------------------------------------
-bool Graphics::LoadComputeShadersFromFile(
-    const string& filenameBase,
-    ObjectHandle* shader,
-    const char* entry)
+ObjectHandle Graphics::LoadVertexShaderFromFile(
+  const string& filenameBase,
+  const char* entry,
+  ObjectHandle* inputLayout,
+  vector<D3D11_INPUT_ELEMENT_DESC>* elements)
 {
+  ObjectHandle handle = ReserveObjectHandle(ObjectHandle::kVertexShader);
+
 #if WITH_DEBUG_SHADERS
-  string suffix = ToString("_%sD.cso", entry);
+  string filename = filenameBase + ToString("_%sD.vso", entry);
 #else
-  string suffix = ToString("_%s.cso", entry);
+  string filename = filenameBase + ToString("_%s.vso", entry);
 #endif
 
-  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch((filenameBase + suffix).c_str(), nullptr, true, 
-  [=](const string& filename, void* token)
+  vector<D3D11_INPUT_ELEMENT_DESC> localElementDesc;
+  if (elements)
+    localElementDesc = *elements;
+
+  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename, void*)
   {
+    BEGIN_INIT_SEQUENCE();
     vector<char> buf;
-    if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
+    ID3D11VertexShader* shader = nullptr;
+
+    INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
+    INIT_HR_FATAL(_device->CreateVertexShader(buf.data(), buf.size(), NULL, &shader));
+    _vertexShaders.Update(handle, shader);
+
+    if (inputLayout)
     {
-      LOG_WARN("Unable to load shader" << LogKeyValue("filename", filename));
-      return false;
+      INIT_RESOURCE(*inputLayout, GRAPHICS.CreateInputLayout(localElementDesc, buf));
     }
 
-    *shader = GRAPHICS.CreateComputeShader(buf);
-    if (!shader->IsValid())
-    {
-      LOG_WARN("Unable to create shader" << LogKeyValue("filename", filename));
-      return false;
-    }
-
-    return true;
+    END_INIT_SEQUENCE();
   });
 
-  if (!res.initialResult)
-    return false;
+  return res.initialResult ? handle : ObjectHandle();
+}
 
-  return true;
+//------------------------------------------------------------------------------
+ObjectHandle Graphics::LoadPixelShaderFromFile(const string& filenameBase, const char* entry)
+{
+  ObjectHandle handle = ReserveObjectHandle(ObjectHandle::kPixelShader);
+
+#if WITH_DEBUG_SHADERS
+  string filename = filenameBase + ToString("_%sD.pso", entry);
+#else
+  string filename = filenameBase + ToString("_%s.pso", entry);
+#endif
+
+  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename, true, [=](const string& filename, void*)
+  {
+    BEGIN_INIT_SEQUENCE();
+
+    vector<char> buf;
+    ID3D11PixelShader* shader = nullptr;
+
+    INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
+    INIT_HR_FATAL(_device->CreatePixelShader(buf.data(), buf.size(), NULL, &shader));
+    _pixelShaders.Update(handle, shader);
+
+    END_INIT_SEQUENCE();
+  });
+
+  return res.initialResult ? handle : ObjectHandle();
+}
+
+//------------------------------------------------------------------------------
+ObjectHandle Graphics::LoadGeometryShaderFromFile(const string& filenameBase, const char* entry)
+{
+  ObjectHandle handle = ReserveObjectHandle(ObjectHandle::kGeometryShader);
+
+#if WITH_DEBUG_SHADERS
+  string filename = filenameBase + ToString("_%sD.gso", entry);
+#else
+  string filename = filenameBase + ToString("_%s.gso", entry);
+#endif
+
+  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename, void*)
+  {
+    BEGIN_INIT_SEQUENCE();
+
+    vector<char> buf;
+    ID3D11GeometryShader* shader = nullptr;
+
+    INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
+    INIT_HR_FATAL(_device->CreateGeometryShader(buf.data(), buf.size(), NULL, &shader));
+    _geometryShaders.Update(handle, shader);
+
+    END_INIT_SEQUENCE();
+  });
+
+  return res.initialResult ? handle : ObjectHandle();
+}
+
+//------------------------------------------------------------------------------
+ObjectHandle Graphics::LoadComputeShaderFromFile(const string& filenameBase, const char* entry)
+{
+  ObjectHandle handle = ReserveObjectHandle(ObjectHandle::kComputeShader);
+
+#if WITH_DEBUG_SHADERS
+  string filename = filenameBase + ToString("_%sD.cso", entry);
+#else
+  string filename = filenameBase + ToString("_%s.cso", entry);
+#endif
+
+  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename, void*)
+  {
+    BEGIN_INIT_SEQUENCE();
+
+    vector<char> buf;
+    ID3D11ComputeShader* shader = nullptr;
+
+    INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
+    INIT_HR_FATAL(_device->CreateComputeShader(buf.data(), buf.size(), NULL, &shader));
+    _computeShaders.Update(handle, shader);
+
+    END_INIT_SEQUENCE();
+  });
+
+  return res.initialResult ? handle : ObjectHandle();
 }
 
 //------------------------------------------------------------------------------
@@ -1015,6 +1101,17 @@ bool Graphics::LoadShadersFromFile(
     const char* gsEntry,
     const char* psEntry)
 {
+  if (vs)
+    *vs = LoadVertexShaderFromFile(filenameBase, vsEntry, inputLayout, elements);
+
+  if (gs)
+    *gs = LoadGeometryShaderFromFile(filenameBase, gsEntry);
+
+  if (ps)
+    *ps = LoadPixelShaderFromFile(filenameBase, psEntry);
+
+  return (!vs || vs->IsValid()) && (!ps || ps->IsValid()) && (!gs || gs->IsValid());
+#if 0
 #if WITH_DEBUG_SHADERS
   string vsSuffix = vs ? ToString("_%sD.vso", vsEntry) : string();
   string gsSuffix = gs ? ToString("_%sD.gso", gsEntry) : string();
@@ -1114,4 +1211,5 @@ bool Graphics::LoadShadersFromFile(
   }
 
   return res.initialResult;
+#endif
 }

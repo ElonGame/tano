@@ -236,7 +236,7 @@ bool ParticleTunnel::Init(const char* configFile)
   BEGIN_INIT_SEQUENCE();
 
   _configName = configFile;
-  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(configFile, nullptr, true, [this](const string& filename, void*)
+  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(configFile, true, [this](const string& filename, void*)
   {
     vector<char> buf;
     if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))

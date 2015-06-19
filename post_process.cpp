@@ -16,17 +16,20 @@ bool PostProcess::Init()
   BEGIN_INIT_SEQUENCE();
 
   INIT(_cb.Create());
+  INIT(_cbScaleBias.Create());
 
-  CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
-  dsDesc.DepthEnable = FALSE;
-  dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-  dsDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+  INIT(_defaultBundle.Create(BundleOptions()
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .RasterizerDesc(rasterizeDescCullNone)
+    .ShaderFile("shaders/out/quad")
+    .VsEntry("VsMain")));
 
-  CD3D11_RASTERIZER_DESC rsDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
-  rsDesc.CullMode = D3D11_CULL_NONE;
-
-  INIT(_gpuState.Create(&dsDesc, nullptr, &rsDesc));
-  INIT(_gpuObjects.LoadShadersFromFile("shaders/out/quad", "VsMain", nullptr, nullptr));
+  INIT(_defaultBundle.Create(BundleOptions()
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .RasterizerDesc(rasterizeDescCullNone)
+    .ShaderFile("shaders/out/common")
+    .VsEntry("VsQuad")
+    .PsEntry("PsScaleBias")));
 
   END_INIT_SEQUENCE();
 }
@@ -66,16 +69,17 @@ void PostProcess::Execute(
   const Color* clearColor)
 {
   _ctx->SetLayout(ObjectHandle());
-  _ctx->SetGpuState(_gpuState);
-  _ctx->SetGpuStateSamplers(_gpuState, ShaderType::PixelShader);
-  _ctx->SetGpuStateSamplers(_gpuState, ShaderType::ComputeShader);
-  _ctx->SetGpuObjects(_gpuObjects);
+  _ctx->SetGpuState(_defaultBundle.state);
+  _ctx->SetGpuStateSamplers(_defaultBundle.state, ShaderType::PixelShader);
+  _ctx->SetGpuStateSamplers(_defaultBundle.state, ShaderType::ComputeShader);
+  _ctx->SetGpuObjects(_defaultBundle.objects);
 
   assert(output.IsValid());
   _ctx->SetRenderTarget(output, depthStencil, clearColor);
 
   _ctx->SetShaderResources(inputs, numInputs, ShaderType::PixelShader);
 
+  // TODO: This should really be moved in an input parameter
   u32 outputX, outputY;
   GRAPHICS.GetTextureSize(output, &outputX, &outputY);
 
@@ -85,8 +89,33 @@ void PostProcess::Execute(
   _ctx->SetPixelShader(shader);
   _ctx->Draw(6, 0);
 
-  if (output.IsValid() && releaseOutput)
+  if (releaseOutput)
     _ctx->UnsetRenderTargets(0, 1);
 
   _ctx->UnsetShaderResources(0, numInputs, ShaderType::PixelShader);
+}
+
+//------------------------------------------------------------------------------
+void PostProcess::ScaleBias(ObjectHandle input, ObjectHandle output, float scale, float bias)
+{
+  _ctx->SetLayout(ObjectHandle());
+  _ctx->SetBundleWithSamplers(_scaleBiasBundle, ShaderType::PixelShader);
+
+  assert(output.IsValid());
+  _ctx->SetRenderTarget(output, ObjectHandle(), nullptr);
+
+  _ctx->SetShaderResource(input, ShaderType::PixelShader);
+  _ctx->SetConstantBuffer(_cbScaleBias, ShaderType::PixelShader, 1);
+
+  // TODO: This should really be moved in an input parameter
+  u32 outputX, outputY;
+  GRAPHICS.GetTextureSize(output, &outputX, &outputY);
+
+  CD3D11_VIEWPORT viewport = CD3D11_VIEWPORT(0.f, 0.f, (float)outputX, (float)outputY);
+  _ctx->SetViewports(1, viewport);
+
+  _ctx->Draw(6, 0);
+
+  _ctx->UnsetRenderTargets(0, 1);
+  _ctx->UnsetShaderResources(0, 1, ShaderType::PixelShader);
 }

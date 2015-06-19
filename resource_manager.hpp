@@ -52,7 +52,6 @@ namespace tano
 
     AddFileWatchResult AddFileWatch(
         const string& filename, 
-        void* token,
         bool initial_callback,
         const cbFileChanged& cb);
 

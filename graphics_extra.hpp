@@ -11,12 +11,12 @@ namespace tano
   bool InitConfigDialog(HINSTANCE hInstance);
 
   //------------------------------------------------------------------------------
-  enum class ShaderType
+  enum ShaderType
   {
-    VertexShader,
-    PixelShader,
-    GeometryShader,
-    ComputeShader,
+    VertexShader      = 1 << 0,
+    PixelShader       = 1 << 1,
+    GeometryShader    = 1 << 2,
+    ComputeShader     = 1 << 3,
   };
 
   //------------------------------------------------------------------------------
