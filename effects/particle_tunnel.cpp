@@ -246,13 +246,14 @@ bool ParticleTunnel::Init(const char* configFile)
   });
 
   // Background state setup
-  INIT(_backgroundGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsQuad", nullptr, "PsBackground"));
+  INIT(_backgroundGpuObjects.LoadVertexShader("shaders/out/particle_tunnel", "VsQuad"));
+  INIT(_backgroundGpuObjects.LoadPixelShader("shaders/out/particle_tunnel", "PsBackground"));
   INIT(_backgroundState.Create());
 
   // Particle state setup
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
-  INIT(_particleGpuObjects.LoadShadersFromFile(
-    "shaders/out/particle_tunnel", "VsParticle", nullptr, "PsParticle", VertexFlags::VF_POS | VertexFlags::VF_TEX3_0));
+  INIT(_particleGpuObjects.LoadVertexShader("shaders/out/particle_tunnel", "VsParticle", VertexFlags::VF_POS | VertexFlags::VF_TEX3_0));
+  INIT(_particleGpuObjects.LoadPixelShader("shaders/out/particle_tunnel", "PsParticle"));
   INIT(_particleGpuObjects.CreateDynamicVb(sizeof(PosTex3) * 6 * _settings.num_particles, sizeof(PosTex3)));
 
   INIT(_particleState.Create(&depthDescDepthDisabled, &blendDescPreMultipliedAlpha, &rasterizeDescCullNone));
@@ -260,7 +261,8 @@ bool ParticleTunnel::Init(const char* configFile)
   _particles.Create(_settings.num_particles);
 
   // Composite state setup
-  INIT(_compositeGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsQuad", nullptr, "PsComposite"));
+  INIT(_compositeGpuObjects.LoadVertexShader("shaders/out/particle_tunnel", "VsQuad"));
+  INIT(_compositeGpuObjects.LoadPixelShader("shaders/out/particle_tunnel", "PsComposite"));
   INIT(_compositeState.Create());
 
   // Text setup
@@ -318,7 +320,9 @@ bool ParticleTunnel::Init(const char* configFile)
   }
   INIT_RESOURCE(_lineTexture, RESOURCE_MANAGER.LoadTexture("gfx/line.png"));
   INIT(_linesGpuObjects.CreateDynamicVb((u32)_neuroticaTris.size() * sizeof(Vector3) * 3 * 2, sizeof(Vector3)));
-  INIT(_linesGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsLines", "GsLines", "PsLines", VertexFlags::VF_POS));
+  INIT(_linesGpuObjects.LoadVertexShader("shaders/out/particle_tunnel", "VsLines", VertexFlags::VF_POS));
+  INIT(_linesGpuObjects.LoadGeometryShader("shaders/out/particle_tunnel", "GsLines"));
+  INIT(_linesGpuObjects.LoadPixelShader("shaders/out/particle_tunnel", "PsLines"));
   _linesGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 
   // blur setup

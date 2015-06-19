@@ -94,17 +94,6 @@ namespace tano
     ObjectHandle GetDepthStencil();
     ObjectHandle DefaultSwapChain();
 
-    bool LoadShadersFromFile(
-        const string& filenameBase,
-        ObjectHandle* vs,
-        ObjectHandle* gs,
-        ObjectHandle* ps,
-        ObjectHandle* inputLayout,
-        vector<D3D11_INPUT_ELEMENT_DESC>* elements,
-        const char* vsEntry = "VsMain",
-        const char* gsEntry = "GsMain",
-        const char* psEntry = "PsMain");
-
     ObjectHandle LoadVertexShaderFromFile(
       const string& filenameBase,
       const char* entry,

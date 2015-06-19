@@ -55,7 +55,8 @@ bool Cluster::Init(const char* configFile)
   INIT(_meshLoader.Load("meshes/blob1.boba"));
   u32 vertexFlags;
   INIT(CreateBuffersFromMeshFaceted(_meshLoader, "Cube", &vertexFlags, &_clusterGpuObjects));
-  INIT(_clusterGpuObjects.LoadShadersFromFile("shaders/out/cluster", "VsMesh", nullptr, "PsMesh", vertexFlags));
+  INIT(_clusterGpuObjects.LoadVertexShader("shaders/out/cluster", "VsMesh", vertexFlags));
+  INIT(_clusterGpuObjects.LoadPixelShader("shaders/out/cluster", "PsMesh"));
   INIT(_clusterState.Create());
 
   int w, h;

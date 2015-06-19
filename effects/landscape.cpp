@@ -161,8 +161,9 @@ bool Landscape::Init(const char* configFile)
     u32* indices = GenerateQuadIndices(maxQuads, &ibSize);
     INIT(_landscapeGpuObjects.CreateIndexBuffer(ibSize, DXGI_FORMAT_R32_UINT, indices));
 
-    INIT(_landscapeGpuObjects.LoadShadersFromFile("shaders/out/landscape",
-      "VsLandscape", "GsLandscape", "PsLandscape", vertexFlags));
+    INIT(_landscapeGpuObjects.LoadVertexShader("shaders/out/landscape", "VsLandscape", vertexFlags));
+    INIT(_landscapeGpuObjects.LoadGeometryShader("shaders/out/landscape", "GsLandscape"));
+    INIT(_landscapeGpuObjects.LoadPixelShader("shaders/out/landscape", "PsLandscape"));
 
     INIT(_landscapeState.Create(nullptr, &blendDescBlendSrcAlpha, &rasterizeDescCullNone));
     INIT(_landscapeLowerState.Create());
@@ -170,39 +171,33 @@ bool Landscape::Init(const char* configFile)
 
   INIT(_skyBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
-    .ShaderFile("shaders/out/landscape")
-    .VsEntry("VsQuad")
-    .PsEntry("PsSky")));
+    .VsEntry("shaders/out/common", "VsQuad")
+    .PsEntry("shaders/out/landscape", "PsSky")));
 
   INIT(_copyBundle.Create(BundleOptions()
-    .ShaderFile("shaders/out/landscape")
-    .VsEntry("VsQuad")
-    .PsEntry("PsCopy")));
+    .VsEntry("shaders/out/common", "VsQuad")
+    .PsEntry("shaders/out/landscape", "PsCopy")));
 
   INIT(_addBundle.Create(BundleOptions()
-    .ShaderFile("shaders/out/landscape")
-    .VsEntry("VsQuad")
-    .PsEntry("PsAdd")));
+    .VsEntry("shaders/out/common", "VsQuad")
+    .PsEntry("shaders/out/landscape", "PsAdd")));
 
   INIT(_compositeBundle.Create(BundleOptions()
-    .ShaderFile("shaders/out/landscape")
-    .VsEntry("VsQuad")
-    .PsEntry("PsComposite")));
+    .VsEntry("shaders/out/common", "VsQuad")
+    .PsEntry("shaders/out/landscape", "PsComposite")));
 
   INIT(_luminanceBundle.Create(BundleOptions()
-    .ShaderFile("shaders/out/landscape")
-    .VsEntry("VsQuad")
-    .PsEntry("PsHighPassFilter")));
+    .VsEntry("shaders/out/common", "VsQuad")
+    .PsEntry("shaders/out/landscape", "PsHighPassFilter")));
 
   // Particles
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
 
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
-    .ShaderFile("shaders/out/landscape")
-    .VsEntry("VsParticle")
-    .GsEntry("GsParticle")
-    .PsEntry("PsParticle")
+    .VsEntry("shaders/out/landscape", "VsParticle")
+    .GsEntry("shaders/out/landscape", "GsParticle")
+    .PsEntry("shaders/out/landscape", "PsParticle")
     .VertexFlags(VF_POS)
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
@@ -215,7 +210,8 @@ bool Landscape::Init(const char* configFile)
   INIT(loader.Load("gfx/boids.boba"));
   u32 boidsVertexFlags = 0;
   INIT(CreateBuffersFromMesh(loader, "Pyramid", &boidsVertexFlags, &_boidsMesh));
-  INIT(_boidsMesh.LoadShadersFromFile("shaders/out/landscape", "VsBoids", nullptr, "PsBoids", boidsVertexFlags));
+  INIT_FATAL(_boidsMesh.LoadVertexShader("shaders/out/landscape", "VsBoids", boidsVertexFlags));
+  INIT_FATAL(_boidsMesh.LoadPixelShader("shaders/out/landscape", "PsBoids"));
 
   Reset();
   //InitBoids();

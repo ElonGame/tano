@@ -76,7 +76,8 @@ namespace tano
         mesh->materialGroups.push_back({ mg->materialId, mg->startIndex, mg->numIndices });
       }
 
-      INIT(mesh->gpuObjects.LoadShadersFromFile("shaders/out/blob", "VsMesh", nullptr, "PsMesh", vertexFormat));
+      INIT(mesh->gpuObjects.LoadVertexShader("shaders/out/blob", "VsMesh", vertexFormat));
+      INIT(mesh->gpuObjects.LoadPixelShader("shaders/out/blob", "PsMesh"));
 
       INIT(mesh->gpuObjects.CreateVertexBuffer(meshBlob->numVerts * vertexSize, vertexSize, buf.data()));
       INIT(mesh->gpuObjects.CreateIndexBuffer(meshBlob->numIndices * sizeof(u32), DXGI_FORMAT_R32_UINT, meshBlob->indices));

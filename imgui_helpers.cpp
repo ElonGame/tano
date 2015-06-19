@@ -98,8 +98,8 @@ bool InitDeviceD3D()
     CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
     CD3D11_INPUT_ELEMENT_DESC("COLOR", DXGI_FORMAT_R8G8B8A8_UNORM),
   };
-  INIT(g_gpuObjects.LoadShadersFromFile("shaders/out/imgui", "VsMain", nullptr, "PsMain", 
-    0, &inputDesc));
+  INIT(g_gpuObjects.LoadVertexShader("shaders/out/imgui", "VsMain", 0, &inputDesc));
+  INIT(g_gpuObjects.LoadPixelShader("shaders/out/imgui", "PsMain"));
 
   // Create the constant buffer
   INIT(g_cb.Create());

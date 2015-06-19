@@ -21,15 +21,13 @@ bool PostProcess::Init()
   INIT(_defaultBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
     .RasterizerDesc(rasterizeDescCullNone)
-    .ShaderFile("shaders/out/quad")
-    .VsEntry("VsMain")));
+    .VsEntry("shaders/out/quad", "VsMain")));
 
   INIT(_defaultBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
     .RasterizerDesc(rasterizeDescCullNone)
-    .ShaderFile("shaders/out/common")
-    .VsEntry("VsQuad")
-    .PsEntry("PsScaleBias")));
+    .VsEntry("shaders/out/common", "VsQuad")
+    .PsEntry("shaders/out/common", "PsScaleBias")));
 
   END_INIT_SEQUENCE();
 }

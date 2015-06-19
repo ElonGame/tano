@@ -63,10 +63,38 @@ bool GpuObjects::CreateIndexBuffer(u32 ibSize, DXGI_FORMAT ibFormat, const  void
 }
 
 //------------------------------------------------------------------------------
-bool GpuObjects::LoadVertexShader(const char* filename, const char* entryPoint, u32 flags, vector<D3D11_INPUT_ELEMENT_DESC>* elements)
+bool GpuObjects::LoadVertexShader(
+  const char* filename,
+  const char* entryPoint,
+  u32 flags,
+  vector<D3D11_INPUT_ELEMENT_DESC>* elements)
 {
   ObjectHandle* layout = (flags || elements) ? &_layout : nullptr;
-  _vs = GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, layout, elements);
+
+  if (flags)
+  {
+    vector<D3D11_INPUT_ELEMENT_DESC> desc;
+    VertexFlagsToLayoutDesc(flags, &desc);
+    _vs = GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, &_layout, &desc);
+  }
+  else if (elements)
+  {
+    // fix up the offsets on the elements
+    u32 ofs = 0;
+    map<string, u32> semanticIndex;
+    for (D3D11_INPUT_ELEMENT_DESC& e : *elements)
+    {
+      e.AlignedByteOffset = ofs;
+      e.SemanticIndex = semanticIndex[e.SemanticName]++;
+      ofs += SizeFromFormat(e.Format);
+    }
+    _vs = GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, &_layout, elements);
+  }
+  else
+  {
+    _vs = GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, nullptr, nullptr);
+  }
+
   return _vs.IsValid();
 }
 
@@ -82,45 +110,6 @@ bool GpuObjects::LoadGeometryShader(const char* filename, const char* entryPoint
 {
   _gs = GRAPHICS.LoadGeometryShaderFromFile(filename, entryPoint);
   return _gs.IsValid();
-}
-
-//------------------------------------------------------------------------------
-bool GpuObjects::LoadShadersFromFile(
-    const char* filename,
-    const char* vsEntry,
-    const char* gsEntry,
-    const char* psEntry,
-    u32 flags,
-    vector<D3D11_INPUT_ELEMENT_DESC>* elements)
-{
-  ObjectHandle* vs = vsEntry ? &_vs : nullptr;
-  ObjectHandle* gs = gsEntry ? &_gs : nullptr;
-  ObjectHandle* ps = psEntry ? &_ps : nullptr;
-  ObjectHandle* layout = (flags || elements) ? &_layout : nullptr;
-
-  if (flags || elements)
-  {
-    if (flags)
-    {
-      vector<D3D11_INPUT_ELEMENT_DESC> desc;
-      VertexFlagsToLayoutDesc(flags, &desc);
-      return GRAPHICS.LoadShadersFromFile(filename, vs, gs, ps, layout, &desc, vsEntry, gsEntry, psEntry);
-    }
-
-    // fix up the offsets on the elements
-    u32 ofs = 0;
-    map<string, u32> semanticIndex;
-    for (D3D11_INPUT_ELEMENT_DESC& e : *elements)
-    {
-      e.AlignedByteOffset = ofs;
-      e.SemanticIndex = semanticIndex[e.SemanticName]++;
-      ofs += SizeFromFormat(e.Format);
-    }
-    return GRAPHICS.LoadShadersFromFile(filename, vs, gs, ps, layout, elements, vsEntry, gsEntry, psEntry);
-  }
-
-
-  return GRAPHICS.LoadShadersFromFile(filename, vs, gs, ps, layout, nullptr, vsEntry, gsEntry, psEntry);
 }
 
 //------------------------------------------------------------------------------
@@ -172,7 +161,7 @@ bool GpuBundle::Create(const BundleOptions& options)
   {
     vector<D3D11_INPUT_ELEMENT_DESC> inputElements(options.inputElements);
     INIT_FATAL(objects.LoadVertexShader(
-      options.GetVsShaderFile(), 
+      options.vsShaderFile,
       options.vsEntry, 
       options.vertexFlags,
       inputElements.empty() ? nullptr : &inputElements));
@@ -180,12 +169,12 @@ bool GpuBundle::Create(const BundleOptions& options)
 
   if (options.psEntry)
   {
-    INIT_FATAL(objects.LoadPixelShader(options.GetPsShaderFile(), options.psEntry));
+    INIT_FATAL(objects.LoadPixelShader(options.psShaderFile, options.psEntry));
   }
 
   if (options.gsEntry)
   {
-    INIT_FATAL(objects.LoadGeometryShader(options.GetGsShaderFile(), options.gsEntry));
+    INIT_FATAL(objects.LoadGeometryShader(options.gsShaderFile, options.gsEntry));
   }
 
   if (flags.IsSet(BundleOptions::OptionFlag::DynamicVb))
@@ -221,33 +210,10 @@ BundleOptions& BundleOptions::RasterizerDesc(const CD3D11_RASTERIZER_DESC& desc)
 }
 
 //------------------------------------------------------------------------------
-BundleOptions& BundleOptions::ShaderFile(const char* filename)
-{
-  shaderFile = filename;
-  return *this;
-}
-
-//------------------------------------------------------------------------------
-BundleOptions& BundleOptions::VsEntry(const char* entrypoint)
-{
-  flags.Set(BundleOptions::OptionFlag::SingleShaderFile);
-  vsEntry = entrypoint;
-  return *this;
-}
-
-//------------------------------------------------------------------------------
 BundleOptions& BundleOptions::VsEntry(const char* filename, const char* entrypoint)
 {
   vsShaderFile = filename;
   vsEntry = entrypoint;
-  return *this;
-}
-
-//------------------------------------------------------------------------------
-BundleOptions& BundleOptions::PsEntry(const char* entrypoint)
-{
-  flags.Set(BundleOptions::OptionFlag::SingleShaderFile);
-  psEntry = entrypoint;
   return *this;
 }
 
@@ -260,26 +226,10 @@ BundleOptions& BundleOptions::PsEntry(const char* filename, const char* entrypoi
 }
 
 //------------------------------------------------------------------------------
-BundleOptions& BundleOptions::GsEntry(const char* entrypoint)
-{
-  flags.Set(BundleOptions::OptionFlag::SingleShaderFile);
-  gsEntry = entrypoint;
-  return *this;
-}
-
-//------------------------------------------------------------------------------
 BundleOptions& BundleOptions::GsEntry(const char* filename, const char* entrypoint)
 {
   gsShaderFile = filename;
   gsEntry = entrypoint;
-  return *this;
-}
-
-//------------------------------------------------------------------------------
-BundleOptions& BundleOptions::CsEntry(const char* entrypoint)
-{
-  flags.Set(BundleOptions::OptionFlag::SingleShaderFile);
-  csEntry = entrypoint;
   return *this;
 }
 
@@ -289,30 +239,6 @@ BundleOptions& BundleOptions::CsEntry(const char* filename, const char* entrypoi
   csShaderFile = filename;
   csEntry = entrypoint;
   return *this;
-}
-
-//------------------------------------------------------------------------------
-const char* BundleOptions::GetVsShaderFile() const
-{
-  return flags.IsSet(OptionFlag::SingleShaderFile) ? shaderFile : vsShaderFile;
-}
-
-//------------------------------------------------------------------------------
-const char* BundleOptions::GetPsShaderFile() const
-{
-  return flags.IsSet(OptionFlag::SingleShaderFile) ? shaderFile : psShaderFile;
-}
-
-//------------------------------------------------------------------------------
-const char* BundleOptions::GetGsShaderFile() const
-{
-  return flags.IsSet(OptionFlag::SingleShaderFile) ? shaderFile : gsShaderFile;
-}
-
-//------------------------------------------------------------------------------
-const char* BundleOptions::GetCsShaderFile() const
-{
-  return flags.IsSet(OptionFlag::SingleShaderFile) ? shaderFile : csShaderFile;
 }
 
 //------------------------------------------------------------------------------

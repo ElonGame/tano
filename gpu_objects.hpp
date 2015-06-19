@@ -30,14 +30,6 @@ namespace tano
     bool LoadPixelShader(const char* filename, const char* entryPoint);
     bool LoadGeometryShader(const char* filename, const char* entryPoint);
 
-    bool LoadShadersFromFile(
-      const char* filename,
-      const char* vsEntry,
-      const char* gsEntry,
-      const char* psEntry,
-      u32 flags = 0,
-      vector<D3D11_INPUT_ELEMENT_DESC>* elements = nullptr);
-
     D3D11_PRIMITIVE_TOPOLOGY _topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
     ObjectHandle _vs;
@@ -112,7 +104,6 @@ namespace tano
         RasterizerDesc    = 1 << 2,
         DynamicVb         = 1 << 3,
         DynamicIb         = 1 << 4,
-        SingleShaderFile  = 1 << 5,
       };
 
       struct Bits {
@@ -121,7 +112,6 @@ namespace tano
         u32 rasterizerDesc : 1;
         u32 dynamicVb : 1;
         u32 dynamicIb : 1;
-        u32 singleShaderFile : 1;
       };
     };
 
@@ -131,14 +121,9 @@ namespace tano
     BundleOptions& BlendDesc(const CD3D11_BLEND_DESC& desc);
     BundleOptions& RasterizerDesc(const CD3D11_RASTERIZER_DESC& desc);
 
-    BundleOptions& ShaderFile(const char* filename);
-    BundleOptions& VsEntry(const char* entrypoint);
     BundleOptions& VsEntry(const char* filename, const char* entrypoint);
-    BundleOptions& GsEntry(const char* entrypoint);
     BundleOptions& GsEntry(const char* filename, const char* entrypoint);
-    BundleOptions& PsEntry(const char* entrypoint);
     BundleOptions& PsEntry(const char* filename, const char* entrypoint);
-    BundleOptions& CsEntry(const char* entrypoint);
     BundleOptions& CsEntry(const char* filename, const char* entrypoint);
 
     BundleOptions& VertexFlags(u32 flags);
@@ -148,16 +133,10 @@ namespace tano
     BundleOptions& DynamicVb(int numElements, int elementSize);
     BundleOptions& DynamicIb(int numElements, int elementSize);
 
-    const char* GetVsShaderFile() const;
-    const char* GetPsShaderFile() const;
-    const char* GetGsShaderFile() const;
-    const char* GetCsShaderFile() const;
-
     CD3D11_DEPTH_STENCIL_DESC depthStencilDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
     CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
     CD3D11_RASTERIZER_DESC rasterizerDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
 
-    const char* shaderFile = nullptr;
     const char* vsShaderFile = nullptr;
     const char* gsShaderFile = nullptr;
     const char* psShaderFile = nullptr;

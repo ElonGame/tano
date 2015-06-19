@@ -75,7 +75,8 @@ bool Blob::Init(const char* configFile)
     CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32B32A32_FLOAT),
   };
 
-  INIT(_lineObjects.LoadShadersFromFile("shaders/out/lines", "VsMain", nullptr, "PsMain", 0, &elementDesc));
+  INIT(_lineObjects.LoadVertexShader("shaders/out/lines", "VsMain", 0, &elementDesc));
+  INIT(_lineObjects.LoadPixelShader("shaders/out/lines", "PsMain"));
 
   // each line is 6 tries, so 18 verts
   vector<int> lineIndices(MAX_LINES * 3 * 6);

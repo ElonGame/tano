@@ -81,7 +81,8 @@ bool Cloth::Init(const char* configFile)
   _cbPerFrame.dim.x = (float)w;
   _cbPerFrame.dim.y = (float)h;
 
-  INIT(_clothGpuObjects.LoadShadersFromFile("shaders/out/basic", "VsPos", nullptr, "PsPos", VF_POS));
+  INIT(_clothGpuObjects.LoadVertexShader("shaders/out/basic", "VsPos", VF_POS));
+  INIT(_clothGpuObjects.LoadPixelShader("shaders/out/basic", "PsPos"));
 
   INIT(InitParticles());
 

@@ -45,7 +45,8 @@ bool DebugApi::Init(GraphicsContext* ctx)
 
   INIT(_cbPerFrame.Create());
 
-  INIT(_gpuObjects.LoadShadersFromFile("shaders/out/basic", "VsPosColor", nullptr, "PsPosColor", VF_POS | VF_COLOR));
+  INIT(_gpuObjects.LoadVertexShader("shaders/out/basic", "VsPosColor", VF_POS | VF_COLOR));
+  INIT(_gpuObjects.LoadPixelShader("shaders/out/basic", "PsPosColor"));
   INIT(_gpuObjects.CreateDynamicVb(MAX_VERTS * sizeof(PosCol), sizeof(PosCol)));
   _gpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 
