@@ -176,11 +176,11 @@ bool Landscape::Init(const char* configFile)
 
   INIT(_copyBundle.Create(BundleOptions()
     .VsEntry("shaders/out/common", "VsQuad")
-    .PsEntry("shaders/out/landscape", "PsCopy")));
+    .PsEntry("shaders/out/common", "PsCopy")));
 
   INIT(_addBundle.Create(BundleOptions()
     .VsEntry("shaders/out/common", "VsQuad")
-    .PsEntry("shaders/out/landscape", "PsAdd")));
+    .PsEntry("shaders/out/common", "PsAdd")));
 
   INIT(_compositeBundle.Create(BundleOptions()
     .VsEntry("shaders/out/common", "VsQuad")

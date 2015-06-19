@@ -10,10 +10,6 @@ cbuffer PerFrame : register(b0)
 };
 
 //------------------------------------------------------
-Texture2D Texture0 : register(t0);
-sampler PointSampler : register(s0);
-
-//------------------------------------------------------
 cbuffer PerFrame : register(b0)
 {
   matrix world;

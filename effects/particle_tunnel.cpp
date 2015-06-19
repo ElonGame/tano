@@ -246,7 +246,7 @@ bool ParticleTunnel::Init(const char* configFile)
   });
 
   // Background state setup
-  INIT(_backgroundGpuObjects.LoadVertexShader("shaders/out/particle_tunnel", "VsQuad"));
+  INIT(_backgroundGpuObjects.LoadVertexShader("shaders/out/common", "VsQuad"));
   INIT(_backgroundGpuObjects.LoadPixelShader("shaders/out/particle_tunnel", "PsBackground"));
   INIT(_backgroundState.Create());
 
@@ -261,7 +261,7 @@ bool ParticleTunnel::Init(const char* configFile)
   _particles.Create(_settings.num_particles);
 
   // Composite state setup
-  INIT(_compositeGpuObjects.LoadVertexShader("shaders/out/particle_tunnel", "VsQuad"));
+  INIT(_compositeGpuObjects.LoadVertexShader("shaders/out/common", "VsQuad"));
   INIT(_compositeGpuObjects.LoadPixelShader("shaders/out/particle_tunnel", "PsComposite"));
   INIT(_compositeState.Create());
 

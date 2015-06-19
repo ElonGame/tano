@@ -1,8 +1,5 @@
 #include "common.hlsl"
 
-Texture2D Texture0 : register(t0);
-sampler Sampler : register(s0);
-
 cbuffer PerFrame : register(b0)
 {
   matrix world;
@@ -107,6 +104,6 @@ float4 PsMain(VsLinesOut input) : SV_Target
 {
   //return 1;
   float2 uv = input.tex.xy / input.tex.w;
-  float4 col = Texture0.Sample(Sampler, uv);
+  float4 col = Texture0.Sample(LinearSampler, uv);
   return col;
 }

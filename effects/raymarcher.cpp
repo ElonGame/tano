@@ -40,7 +40,7 @@ bool RayMarcher::Init(const char* configFile)
 
   INIT(ParseRayMarcherSettings(InputBuffer(buf), &_settings));
 
-  INIT(_raymarcherGpuObjects.LoadVertexShader("shaders/out/raymarcher", "VsQuad"));
+  INIT(_raymarcherGpuObjects.LoadVertexShader("shaders/out/common", "VsQuad"));
   INIT(_raymarcherGpuObjects.LoadPixelShader("shaders/out/raymarcher", "PsRaymarcher"));
   INIT(_raymarcherState.Create());
 

@@ -15,31 +15,31 @@ OUT_DIR = os.path.join(SHADER_DIR, 'out' )
 ## shaders and entry points
 vs = {
     'common' : ['VsQuad'],
-    'particle_tunnel' : ['VsParticle', 'VsQuad', 'VsText', 'VsLines'],
+    'particle_tunnel' : ['VsParticle', 'VsText', 'VsLines'],
     'basic' : ['VsPos', 'VsPosNormal', 'VsPosColor'],
-    'raymarcher' : ['VsQuad'],
+    'raymarcher' : [],
     'imgui' : ['VsMain'],
     'quad' : ['VsMain'],
     'cluster' : ['VsMesh'],
     'blob' : ['VsMesh'],
-    'landscape' : ['VsQuad', 'VsLandscape', 'VsBoids', 'VsParticle'],
+    'landscape' : ['VsLandscape', 'VsBoids', 'VsParticle'],
     'lines': ['VsMain']
 }
 
 ps = {
+    'common': ['PsScaleBias', 'PsCopy', 'PsAdd'],
     'particle_tunnel' : ['PsParticle', 'PsBackground', 'PsText', 'PsComposite', 'PsLines'],
     'basic' : ['PsPos', 'PsPosNormal', 'PsPosColor'],
     'raymarcher' : ['PsRaymarcher'],
     'imgui' : ['PsMain'],
     'cluster' : ['PsMesh'],
     'blob' : ['PsMesh'],
-    'landscape' : ['PsLandscape', 'PsComposite', 'PsSky', 'PsBoids', 'PsParticle', 'PsHighPassFilter', 'PsCopy', 'PsAdd'],
+    'landscape' : ['PsLandscape', 'PsComposite', 'PsSky', 'PsBoids', 'PsParticle', 'PsHighPassFilter'],
     'lines': ['PsMain'],
-    'common': ['PsScaleBias'],
 }
 
 cs = {
-    'blur' : ['CopyTranspose', 'BlurTranspose', 'BoxBlurX', 'BoxBlurY'],
+    'blur' : ['CopyTranspose', 'BlurTranspose', 'BoxBlurX'],
 }
 
 gs = {
