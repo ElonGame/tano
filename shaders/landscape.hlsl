@@ -66,7 +66,7 @@ PsColBrightnessOut PsSky(VSQuadOut p)
   float3 tmp = FogColor(rayDir);
   res.col = float4(tmp, 1);
   res.extra.rgb = pow(max(0, Luminance(tmp)), 5);
-  res.extra.a = p.pos.z;
+  res.extra.a = 3;
   return res;
 }
 
@@ -178,7 +178,7 @@ PsColBrightnessOut PsParticle(VsParticleOut p)
   PsColBrightnessOut res;
   res.col = intensity * c * col;
   res.extra.rgb = intensity * c * col.rgb;
-  res.extra.a = p.z;
+  res.extra.a = Luminance(res.col.rgb);
   return res;
 }
 
@@ -424,7 +424,7 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
 
     float3 amb = float3(0.05, 0.05, 0.05);
     float dff = saturate(dot(-SUN_DIR, p.normal));
-    float3 col = amb + dff * float3(0.1, 0.1, 0.25);
+    float3 col = amb + dff * float3(0.8, 0.1, 0.25);
 
     col = lerp(col, WireColor.rgb, alpha);
 
@@ -435,9 +435,9 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
     PsColBrightnessOut res;
     col = lerp(col, fogColor, fogAmount);
     res.col = float4(col, 0.9);
-    float lum = Luminance(col);
+    float lum = Luminance(col.rgb);
     res.extra.rgb = smoothstep(0.7, 1, lum);
-    res.extra.a = p.pos.z;
+    res.extra.a = 0;
     return res;
 }
 
@@ -469,6 +469,17 @@ VsBoidsOut VsBoids(VsBoidsIn p)
 float4 PsBoids(VsBoidsOut p) : SV_Target
 {
   return BOID_COLOR * max(0,(dot(normalize(p.normal), float3(0,-1,0))));
+}
+
+//------------------------------------------------------
+// lens flare
+//------------------------------------------------------
+float4 PsLensFlare(VSQuadOut p) : SV_Target
+{
+  // texture0 = scale/biased input
+  float2 uv = -p.uv.xy + float2(1,1);
+  float4 col = Texture0.Sample(LinearSampler, uv);
+  return col;
 }
 
 //------------------------------------------------------

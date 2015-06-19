@@ -2,7 +2,7 @@
 #include "graphics_context.hpp"
 #include "resource_manager.hpp"
 #include "init_sequence.hpp"
-#include "post_process.hpp"
+#include "fullscreen_effect.hpp"
 
 extern const TCHAR* g_AppWindowTitle;
 
@@ -60,7 +60,7 @@ bool Graphics::Init(HINSTANCE hInstance)
   INIT(CreateDevice());
   InitDefaultDescs();
 
-  _postProcess = new PostProcess(_graphicsContext);
+  _postProcess = new FullscreenEffect(_graphicsContext);
   INIT(_postProcess->Init());
 
 
@@ -831,6 +831,7 @@ ObjectHandle Graphics::CreateSwapChain(
     WNDPROC wndProc,
     HINSTANCE instance)
 {
+  // TODO: this should probably be moved into the SwapChain class
   // Register the window class
   WNDCLASSEX wcex;
   ZeroMemory(&wcex, sizeof(wcex));
@@ -917,7 +918,7 @@ GraphicsContext* Graphics::GetGraphicsContext()
 }
 
 //------------------------------------------------------------------------------
-PostProcess* Graphics::GetPostProcess()
+FullscreenEffect* Graphics::GetFullscreenEffect()
 {
   return _postProcess;
 }

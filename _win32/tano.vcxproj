@@ -96,7 +96,6 @@
   <ItemGroup>
     <ClCompile Include="..\animation_helpers.cpp" />
     <ClCompile Include="..\arena_allocator.cpp" />
-    <ClCompile Include="..\blur_post_process.cpp" />
     <ClCompile Include="..\camera.cpp" />
     <ClCompile Include="..\circular_buffer.cpp" />
     <ClCompile Include="..\debug_api.cpp" />
@@ -263,7 +262,7 @@
     </ClCompile>
     <ClCompile Include="..\mesh_utils.cpp" />
     <ClCompile Include="..\perlin2d.cpp" />
-    <ClCompile Include="..\post_process.cpp" />
+    <ClCompile Include="..\fullscreen_effect.cpp" />
     <ClCompile Include="..\precompiled.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</PrecompiledHeaderFile>
@@ -343,7 +342,6 @@
     <ClInclude Include="..\animation_helpers.hpp" />
     <ClInclude Include="..\arena_allocator.hpp" />
     <ClInclude Include="..\bass\bass.h" />
-    <ClInclude Include="..\blur_post_process.hpp" />
     <ClInclude Include="..\bristol\rolling_average.hpp" />
     <ClInclude Include="..\camera.hpp" />
     <ClInclude Include="..\circular_buffer.hpp" />
@@ -393,7 +391,7 @@
     <ClInclude Include="..\mesh_utils.hpp" />
     <ClInclude Include="..\object_handle.hpp" />
     <ClInclude Include="..\perlin2d.hpp" />
-    <ClInclude Include="..\post_process.hpp" />
+    <ClInclude Include="..\fullscreen_effect.hpp" />
     <ClInclude Include="..\precompiled.hpp" />
     <ClInclude Include="..\property_manager.hpp" />
     <ClInclude Include="..\Remotery\lib\Remotery.h" />

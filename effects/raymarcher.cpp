@@ -69,10 +69,10 @@ bool RayMarcher::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool RayMarcher::Render()
 {
+  rmt_ScopedCPUSample(RayMarcher_Render);
+
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
-
-  rmt_ScopedCPUSample(RayMarcher_Render);
 
   _ctx->SetGpuObjects(_raymarcherGpuObjects);
   _ctx->SetGpuState(_raymarcherState);

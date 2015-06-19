@@ -13,7 +13,7 @@
 namespace tano
 {
 
-  class PostProcess;
+  class FullscreenEffect;
 
   class Graphics
   {
@@ -72,7 +72,7 @@ namespace tano
     SwapChain* GetSwapChain(ObjectHandle h);
 
     GraphicsContext *GetGraphicsContext();
-    PostProcess* GetPostProcess();
+    FullscreenEffect* GetFullscreenEffect();
 
     bool GetVSync() const { return _vsync; }
     void SetVSync(bool value) { _vsync = value; }
@@ -131,7 +131,7 @@ namespace tano
     CComPtr<ID3D11Device> _device;
     CComPtr<ID3D11DeviceContext> _immediateContext;
     GraphicsContext* _graphicsContext = nullptr;
-    PostProcess* _postProcess = nullptr;
+    FullscreenEffect* _postProcess = nullptr;
 
 #if WITH_DXGI_DEBUG
     CComPtr<ID3D11Debug> _d3dDebug;

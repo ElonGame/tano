@@ -1,10 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -49,6 +45,10 @@
     <Filter Include="src">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="inc">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -151,9 +151,6 @@
     <ClCompile Include="..\effects\raymarcher.cpp">
       <Filter>effects</Filter>
     </ClCompile>
-    <ClCompile Include="..\post_process.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\graphics_context.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -211,40 +208,40 @@
     <ClCompile Include="..\stop_watch.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\blur_post_process.cpp">
+    <ClCompile Include="..\fullscreen_effect.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\tano.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\resource_manager.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\demo_engine.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\effect.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\gpu_objects.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\graphics.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\init_sequence.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\object_handle.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\timer.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Resource Files</Filter>
@@ -289,7 +286,7 @@
       <Filter>effects</Filter>
     </ClInclude>
     <ClInclude Include="..\render_queue.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\imgui\imconfig.h">
       <Filter>imgui</Filter>
@@ -307,13 +304,13 @@
       <Filter>imgui</Filter>
     </ClInclude>
     <ClInclude Include="..\imgui_helpers.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\property_manager.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\graphics_extra.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\bristol\bristol.hpp">
       <Filter>bristol</Filter>
@@ -349,31 +346,28 @@
       <Filter>bristol\dx\directxtk</Filter>
     </ClInclude>
     <ClInclude Include="..\mesh_loader.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\Remotery\lib\Remotery.h">
       <Filter>remotery</Filter>
     </ClInclude>
     <ClInclude Include="..\text_writer.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\effects\raymarcher.hpp">
       <Filter>effects</Filter>
     </ClInclude>
-    <ClInclude Include="..\post_process.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\graphics_context.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\mesh_utils.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\bass\bass.h">
       <Filter>bass</Filter>
     </ClInclude>
     <ClInclude Include="..\animation_helpers.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\lz4\lz4.h">
       <Filter>lz4</Filter>
@@ -382,7 +376,7 @@
       <Filter>stb</Filter>
     </ClInclude>
     <ClInclude Include="..\camera.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\effects\cluster.hpp">
       <Filter>effects</Filter>
@@ -394,49 +388,49 @@
       <Filter>effects</Filter>
     </ClInclude>
     <ClInclude Include="..\scene.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\effects\cloth.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\bristol\rolling_average.hpp">
       <Filter>bristol</Filter>
     </ClInclude>
     <ClInclude Include="..\tano_math.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\debug_api.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\update_state.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\perlin2d.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\dyn_particles.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\scheduler.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\free_list.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\circular_buffer.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\arena_allocator.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\stop_watch.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\append_buffer.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="..\blur_post_process.hpp">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\fullscreen_effect.hpp">
+      <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

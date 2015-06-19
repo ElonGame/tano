@@ -210,7 +210,7 @@ BundleOptions& BundleOptions::RasterizerDesc(const CD3D11_RASTERIZER_DESC& desc)
 }
 
 //------------------------------------------------------------------------------
-BundleOptions& BundleOptions::VsEntry(const char* filename, const char* entrypoint)
+BundleOptions& BundleOptions::VertexShader(const char* filename, const char* entrypoint)
 {
   vsShaderFile = filename;
   vsEntry = entrypoint;
@@ -218,7 +218,7 @@ BundleOptions& BundleOptions::VsEntry(const char* filename, const char* entrypoi
 }
 
 //------------------------------------------------------------------------------
-BundleOptions& BundleOptions::PsEntry(const char* filename, const char* entrypoint)
+BundleOptions& BundleOptions::PixelShader(const char* filename, const char* entrypoint)
 {
   psShaderFile = filename;
   psEntry = entrypoint;
@@ -226,7 +226,7 @@ BundleOptions& BundleOptions::PsEntry(const char* filename, const char* entrypoi
 }
 
 //------------------------------------------------------------------------------
-BundleOptions& BundleOptions::GsEntry(const char* filename, const char* entrypoint)
+BundleOptions& BundleOptions::GeometryShader(const char* filename, const char* entrypoint)
 {
   gsShaderFile = filename;
   gsEntry = entrypoint;
@@ -234,7 +234,7 @@ BundleOptions& BundleOptions::GsEntry(const char* filename, const char* entrypoi
 }
 
 //------------------------------------------------------------------------------
-BundleOptions& BundleOptions::CsEntry(const char* filename, const char* entrypoint)
+BundleOptions& BundleOptions::ComputeShader(const char* filename, const char* entrypoint)
 {
   csShaderFile = filename;
   csEntry = entrypoint;

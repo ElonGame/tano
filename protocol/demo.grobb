@@ -23,6 +23,12 @@ struct tonemap_settings
   float max_white = 5.0;
 };
 
+struct scale_bias
+{
+  float scale = 1;
+  float bias = 0.5;
+};
+
 struct particle_tunnel_settings
 {
   string texture;
@@ -74,12 +80,18 @@ struct boid_settings
   int boids_per_flock = 1;
 };
 
+struct lens_flare_settings
+{
+  scale_bias scale_bias;
+};
+
 struct landscape_settings
 {
   camera_settings camera;
   boid_settings boids;
   string particle_texture;
   tonemap_settings tonemap;
+  lens_flare_settings lens_flare;
 };
 
 struct blob_settings

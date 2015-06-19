@@ -27,14 +27,14 @@ vs = {
 }
 
 ps = {
-    'common': ['PsScaleBias', 'PsCopy', 'PsAdd'],
+    'common': ['PsScaleBias', 'PsCopy', 'PsAdd', 'PsScaleBiasSecondary'],
     'particle_tunnel' : ['PsParticle', 'PsBackground', 'PsText', 'PsComposite', 'PsLines'],
     'basic' : ['PsPos', 'PsPosNormal', 'PsPosColor'],
     'raymarcher' : ['PsRaymarcher'],
     'imgui' : ['PsMain'],
     'cluster' : ['PsMesh'],
     'blob' : ['PsMesh'],
-    'landscape' : ['PsLandscape', 'PsComposite', 'PsSky', 'PsBoids', 'PsParticle', 'PsHighPassFilter'],
+    'landscape' : ['PsLandscape', 'PsComposite', 'PsSky', 'PsBoids', 'PsParticle', 'PsHighPassFilter', 'PsLensFlare'],
     'lines': ['PsMain'],
 }
 

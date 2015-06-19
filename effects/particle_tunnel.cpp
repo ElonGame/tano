@@ -10,7 +10,7 @@
 #include "../generated/input_buffer.hpp"
 #include "../generated/output_buffer.hpp"
 #include "../mesh_loader.hpp"
-#include "../post_process.hpp"
+#include "../fullscreen_effect.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -325,9 +325,6 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(_linesGpuObjects.LoadPixelShader("shaders/out/particle_tunnel", "PsLines"));
   _linesGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 
-  // blur setup
-  INIT(_blur.Init(_ctx, _settings.blur_radius));
-
   // Generic setup
   INIT(_cbPerFrame.Create());
   UpdateCameraMatrix();
@@ -605,14 +602,15 @@ bool ParticleTunnel::Render()
   _ctx->UnsetRenderTargets(0, 1);
 
   ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
-  _blur.Apply(rtLines._rtHandle, rtBlur._rtHandle, _settings.blur_radius);
+
+  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+  fullscreen->Blur(rtLines._rtHandle, rtBlur._rtHandle, _settings.blur_radius);
 
   // compose final image on default swap chain
 
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
-  PostProcess* postProcess = GRAPHICS.GetPostProcess();
-  postProcess->Execute(
+  fullscreen->Execute(
     { rt._rtHandle, rtLines._rtHandle, rtBlur._rtHandle }, 
     GRAPHICS.GetBackBuffer(), 
     GRAPHICS.GetDepthStencil(),
@@ -635,7 +633,7 @@ void ParticleTunnel::RenderParameterSet()
     ImGui::Separator();
     ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
 
-    ImGui::SliderFloat("blur", &_blur._cbBlur.radius, 1, 100);
+    ImGui::SliderFloat("blur", &_settings.blur_radius, 1, 100);
 
     if (ImGui::Checkbox("wireframe", &wireframe))
     {

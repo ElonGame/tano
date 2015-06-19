@@ -9,7 +9,7 @@
 #include "../generated/input_buffer.hpp"
 #include "../generated/output_buffer.hpp"
 #include "../mesh_utils.hpp"
-#include "../post_process.hpp"
+#include "../fullscreen_effect.hpp"
 
 using namespace tano;
 using namespace bristol;

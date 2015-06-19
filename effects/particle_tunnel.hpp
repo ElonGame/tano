@@ -5,7 +5,6 @@
 #include "../generated/demo.types.hpp"
 #include "../text_writer.hpp"
 #include "../animation_helpers.hpp"
-#include "../blur_post_process.hpp"
 
 #define WITH_TEXT 0
 
@@ -130,8 +129,6 @@ namespace tano
     GpuObjects _compositeGpuObjects;
 
     ParticleTunnelSettings _settings;
-
-    BlurPostProcess _blur;
 
     TextWriter _textWriter;
     vector<Vector3> _neuroticaTris;

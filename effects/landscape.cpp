@@ -9,7 +9,7 @@
 #include "../generated/input_buffer.hpp"
 #include "../generated/output_buffer.hpp"
 #include "../mesh_utils.hpp"
-#include "../post_process.hpp"
+#include "../fullscreen_effect.hpp"
 #include "../debug_api.hpp"
 #include "../tano_math.hpp"
 #include "../scheduler.hpp"
@@ -171,40 +171,42 @@ bool Landscape::Init(const char* configFile)
 
   INIT(_skyBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
-    .VsEntry("shaders/out/common", "VsQuad")
-    .PsEntry("shaders/out/landscape", "PsSky")));
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/landscape", "PsSky")));
 
   INIT(_copyBundle.Create(BundleOptions()
-    .VsEntry("shaders/out/common", "VsQuad")
-    .PsEntry("shaders/out/common", "PsCopy")));
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/common", "PsCopy")));
 
   INIT(_addBundle.Create(BundleOptions()
-    .VsEntry("shaders/out/common", "VsQuad")
-    .PsEntry("shaders/out/common", "PsAdd")));
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/common", "PsAdd")));
 
   INIT(_compositeBundle.Create(BundleOptions()
-    .VsEntry("shaders/out/common", "VsQuad")
-    .PsEntry("shaders/out/landscape", "PsComposite")));
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/landscape", "PsComposite")));
 
   INIT(_luminanceBundle.Create(BundleOptions()
-    .VsEntry("shaders/out/common", "VsQuad")
-    .PsEntry("shaders/out/landscape", "PsHighPassFilter")));
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/landscape", "PsHighPassFilter")));
+
+  INIT(_lensFlareBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/landscape", "PsLensFlare")));
 
   // Particles
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
 
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
-    .VsEntry("shaders/out/landscape", "VsParticle")
-    .GsEntry("shaders/out/landscape", "GsParticle")
-    .PsEntry("shaders/out/landscape", "PsParticle")
+    .VertexShader("shaders/out/landscape", "VsParticle")
+    .GeometryShader("shaders/out/landscape", "GsParticle")
+    .PixelShader("shaders/out/landscape", "PsParticle")
     .VertexFlags(VF_POS)
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
     .BlendDesc(blendDescBlendOneOne)
     .RasterizerDesc(rasterizeDescCullNone)));
-
-  INIT(_blur.Init(_ctx, 10));
 
   MeshLoader loader;
   INIT(loader.Load("gfx/boids.boba"));
@@ -623,8 +625,9 @@ void Landscape::RasterizeLandscape()
   V3 v0, v1, v2, v3;
   V3 n0, n1;
 
-  vector<TaskId> chunkTasks;
-  vector<Chunk*> chunks;
+  SimpleAppendBuffer<TaskId, 2048> chunkTasks;
+  SimpleAppendBuffer<Chunk*, 2048> chunks;
+
   for (float z = bottomLeft.z; z <= topLeft.z; z += s)
   {
     for (float x = bottomLeft.x; x <= bottomRight.x; x += s)
@@ -644,10 +647,10 @@ void Landscape::RasterizeLandscape()
         KernelData kd;
         kd.data = data;
         kd.size = sizeof(ChunkKernelData);
-        chunkTasks.push_back(SCHEDULER.AddTask(kd, FillChunk));
+        chunkTasks.Append(SCHEDULER.AddTask(kd, FillChunk));
       }
 
-      chunks.push_back(chunk);
+      chunks.Append(chunk);
     }
   }
 
@@ -704,7 +707,7 @@ void Landscape::RasterizeLandscape()
     }
   }
 
-  u32 numChunks = chunkNum == -1 ? (u32)chunks.size() : 1;
+  u32 numChunks = chunkNum == -1 ? (u32)chunks.Size() : 1;
 
   _numUpperIndices = numChunks * Chunk::UPPER_INDICES;
   _numParticles = numParticles;
@@ -769,7 +772,7 @@ bool Landscape::Render()
   rmt_ScopedCPUSample(Landscape_Render);
   static Color clearColor(0, 0, 0, 0);
   static const Color* clearColors[] = { &clearColor, &clearColor};
-  PostProcess* postProcess = GRAPHICS.GetPostProcess();
+  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
 
   ScopedRenderTargetFull rtColor(
     DXGI_FORMAT_R16G16B16A16_FLOAT,
@@ -786,10 +789,10 @@ bool Landscape::Render()
   u32 flags = ShaderType::VertexShader | ShaderType::GeometryShader | ShaderType::PixelShader;
   _ctx->SetConstantBuffer(_cbPerFrame, flags, 0);
 
-  // We're using 2 render targets here. One for color, and one for depth/bloom
+  // We're using 2 render targets here. One for color, and one for bloom/emissive
 
   // Render the sky
-  ObjectHandle renderTargets[] = {rtColor._rtHandle, rtBloom._rtHandle};
+  ObjectHandle renderTargets[] = {rtColor, rtBloom};
   _ctx->SetRenderTargets(renderTargets, 2, rtColor._dsHandle, &clearColors[0]);
 
   _ctx->SetBundle(_skyBundle);
@@ -842,7 +845,7 @@ bool Landscape::Render()
     rtColor._height / 2, 
     DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-  postProcess->Execute(rtBloom, rtBloomDownsampled, ObjectHandle(), _copyBundle.objects._ps, true);
+  fullscreen->Execute(rtBloom, rtBloomDownsampled, ObjectHandle(), _copyBundle.objects._ps, true);
 
   ScopedRenderTarget rtBloomBlurred(
     rtColor._width / 2,
@@ -850,7 +853,7 @@ bool Landscape::Render()
     DXGI_FORMAT_R16G16B16A16_FLOAT,
     BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
 
-  _blur.Apply(rtBloomDownsampled, rtBloomBlurred, 10);
+  fullscreen->Blur(rtBloomDownsampled, rtBloomBlurred, 10);
 
   //ScopedRenderTarget rtColorAndBloom(DXGI_FORMAT_R16G16B16A16_FLOAT);
   //{
@@ -863,14 +866,40 @@ bool Landscape::Render()
 
   //_blur.Apply(rtColorAndBloom, rtColorAndBloomBlurred, 10);
 
+  ScopedRenderTarget rtScaleBias(
+    rtColor._width / 2,
+    rtColor._height / 2,
+    DXGI_FORMAT_R16G16B16A16_FLOAT,
+    BufferFlags(BufferFlag::CreateSrv));
+
+  fullscreen->ScaleBiasSecondary(
+    rtColor,
+    rtBloom,
+    rtScaleBias, 
+    _settings.lens_flare.scale_bias.scale,
+    _settings.lens_flare.scale_bias.bias);
+
+  ScopedRenderTarget rtLensFlare(
+    rtScaleBias._width,
+    rtScaleBias._height,
+    DXGI_FORMAT_R16G16B16A16_FLOAT,
+    BufferFlags(BufferFlag::CreateSrv));
+
+  fullscreen->Execute(
+    rtScaleBias,
+    rtLensFlare,
+    ObjectHandle(),
+    _lensFlareBundle.objects._ps,
+    false);
+
   static bool showBlurred = false;
   if (g_KeyUpTrigger.IsTriggered('B'))
     showBlurred = !showBlurred;
 
   if (showBlurred)
   {
-    postProcess->Execute(
-      rtBloomBlurred,
+    fullscreen->Execute(
+      rtLensFlare,
       GRAPHICS.GetBackBuffer(),
       ObjectHandle(),
       _copyBundle.objects._ps,
@@ -880,7 +909,7 @@ bool Landscape::Render()
   {
     //ObjectHandle inputs[] = { rtColorAndBloom, rtColorAndBloomBlurred, rtColor._dsHandle };
     ObjectHandle inputs[] = { rtColor, rtBloomBlurred };
-    postProcess->Execute(
+    fullscreen->Execute(
       inputs,
       2,
       GRAPHICS.GetBackBuffer(),
@@ -908,6 +937,10 @@ void Landscape::RenderParameterSet()
       f->boids.UpdateWeight(k, w);
     }
   };
+
+  ImGui::SliderFloat("scale", &_settings.lens_flare.scale_bias.scale, 0, 3);
+  ImGui::SliderFloat("bias", &_settings.lens_flare.scale_bias.bias, 0, 1);
+  ImGui::Separator();
 
   ImGui::SliderFloat("Shoulder", &_settings.tonemap.shoulder, 0, 1);
   ImGui::SliderFloat("Max White", &_settings.tonemap.max_white, 0.5f, 10);

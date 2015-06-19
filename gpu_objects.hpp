@@ -121,10 +121,10 @@ namespace tano
     BundleOptions& BlendDesc(const CD3D11_BLEND_DESC& desc);
     BundleOptions& RasterizerDesc(const CD3D11_RASTERIZER_DESC& desc);
 
-    BundleOptions& VsEntry(const char* filename, const char* entrypoint);
-    BundleOptions& GsEntry(const char* filename, const char* entrypoint);
-    BundleOptions& PsEntry(const char* filename, const char* entrypoint);
-    BundleOptions& CsEntry(const char* filename, const char* entrypoint);
+    BundleOptions& VertexShader(const char* filename, const char* entrypoint);
+    BundleOptions& GeometryShader(const char* filename, const char* entrypoint);
+    BundleOptions& PixelShader(const char* filename, const char* entrypoint);
+    BundleOptions& ComputeShader(const char* filename, const char* entrypoint);
 
     BundleOptions& VertexFlags(u32 flags);
     BundleOptions& InputElements(const vector<D3D11_INPUT_ELEMENT_DESC>& elems);

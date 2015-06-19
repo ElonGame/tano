@@ -6,10 +6,10 @@ namespace tano
 {
   class GraphicsContext;
 
-  class PostProcess
+  class FullscreenEffect
   {
   public:
-    PostProcess(GraphicsContext* ctx);
+    FullscreenEffect(GraphicsContext* ctx);
 
     bool Init();
 
@@ -42,6 +42,8 @@ namespace tano
       const Color* clearColor = nullptr);
 
     void ScaleBias(ObjectHandle input, ObjectHandle output, float scale, float bias);
+    void ScaleBiasSecondary(ObjectHandle input0, ObjectHandle input1, ObjectHandle output, float scale, float bias);
+    void Blur(ObjectHandle inputBuffer, ObjectHandle outputBuffer, float radius);
 
   private:
     GraphicsContext* _ctx;
@@ -55,11 +57,23 @@ namespace tano
 
     struct CBufferScaleBias
     {
-      Vector4 scaleBias;
+      Vector4 scaleBias = Vector4(1.0, 0.5, 0, 0);
     };
     ConstantBuffer<CBufferScaleBias> _cbScaleBias;
 
+    struct CBufferBlur
+    {
+      Vector2 inputSize;
+      float radius = 10;
+    };
+
+    ConstantBuffer<CBufferBlur> _cbBlur;
+    ObjectHandle _csBlurX;
+    ObjectHandle _csBlurTranspose;
+    ObjectHandle _csCopyTranspose;
+
     GpuBundle _defaultBundle;
     GpuBundle _scaleBiasBundle;
+    GpuBundle _scaleBiasSecondaryBundle;
   };
 }
