@@ -783,9 +783,8 @@ bool Landscape::Render()
   _cbPerFrame.world = Matrix::Identity();
 
   _cbPerFrame.dim = Vector4((float)rtColor._width, (float)rtColor._height, 0, 0);
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
+  u32 flags = ShaderType::VertexShader | ShaderType::GeometryShader | ShaderType::PixelShader;
+  _ctx->SetConstantBuffer(_cbPerFrame, flags, 0);
 
   // We're using 2 render targets here. One for color, and one for depth/bloom
 

@@ -41,12 +41,12 @@ namespace tano
     void SetSamplerState(ObjectHandle h, ShaderType shaderType = ShaderType::PixelShader, u32 slot = 0);
     void SetSamplers(const ObjectHandle* h, u32 slot, u32 numSamplers, ShaderType shaderType);
     template <typename T>
-    void SetConstantBuffer(const ConstantBuffer<T>& buffer, ShaderType shaderType, u32 slot)
+    void SetConstantBuffer(const ConstantBuffer<T>& buffer, u32 shaderFlags, u32 slot)
     {
-      return SetConstantBuffer(buffer.handle, &buffer, sizeof(T), shaderType, slot);
+        SetConstantBuffer(buffer.handle, &buffer, sizeof(T), shaderFlags, slot);
     }
 
-    void SetConstantBuffer(ObjectHandle h, const void* buf, size_t len, ShaderType shaderType, u32 slot);
+    void SetConstantBuffer(ObjectHandle h, const void* buf, size_t len, u32 shaderFlags, u32 slot);
     void SetBundle(const GpuBundle& bundle);
     void SetBundleWithSamplers(const GpuBundle& bundle, ShaderType shaderType);
     void SetGpuObjects(const GpuObjects& obj);

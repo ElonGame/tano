@@ -23,7 +23,7 @@ bool PostProcess::Init()
     .RasterizerDesc(rasterizeDescCullNone)
     .VsEntry("shaders/out/quad", "VsMain")));
 
-  INIT(_defaultBundle.Create(BundleOptions()
+  INIT(_scaleBiasBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
     .RasterizerDesc(rasterizeDescCullNone)
     .VsEntry("shaders/out/common", "VsQuad")

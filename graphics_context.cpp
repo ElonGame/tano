@@ -491,7 +491,7 @@ void GraphicsContext::SetConstantBuffer(
     ObjectHandle h,
     const void* buf,
     size_t len,
-    ShaderType shaderType,
+    u32 shaderFlags,
     u32 slot)
 {
   ID3D11Buffer *buffer = GRAPHICS._constantBuffers.Get(h);
@@ -502,13 +502,16 @@ void GraphicsContext::SetConstantBuffer(
     _ctx->Unmap(buffer, 0);
   }
 
-  if (shaderType == ShaderType::VertexShader)
+  if (shaderFlags & ShaderType::VertexShader)
     _ctx->VSSetConstantBuffers(slot, 1, &buffer);
-  else if (shaderType == ShaderType::PixelShader)
+  
+  if (shaderFlags & ShaderType::PixelShader)
     _ctx->PSSetConstantBuffers(slot, 1, &buffer);
-  else if (shaderType == ShaderType::ComputeShader)
+
+  if (shaderFlags & ShaderType::ComputeShader)
     _ctx->CSSetConstantBuffers(slot, 1, &buffer);
-  else if (shaderType == ShaderType::GeometryShader)
+
+  if (shaderFlags & ShaderType::GeometryShader)
     _ctx->GSSetConstantBuffers(slot, 1, &buffer);
 }
 

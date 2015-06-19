@@ -494,12 +494,11 @@ bool Cloth::Render()
   static Color black(.1f, .1f, .1f, 0);
 
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
+
+  u32 flags = ShaderType::VertexShader | ShaderType::PixelShader;
+  _ctx->SetConstantBuffer(_cbPerFrame, flags, 0);
 
   _ctx->SetGpuState(_clothState);
-
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
   _ctx->SetGpuObjects(_clothGpuObjects);
   _ctx->DrawIndexed(_numTris*3, 0, 0);

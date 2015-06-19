@@ -224,15 +224,6 @@ bool Blob::Render()
   for (const scene::Mesh* mesh : _scene.meshes)
   {
     Matrix mtx = mesh->mtxGlobal;
-//     u32 parentId = mesh->parentId;
-//     if (parentId != ~0u)
-//     {
-//       mtx = _scene.baseObjects[parentId]->mtx * mesh->mtx;
-//     }
-//     else
-//     {
-//       mtx = mesh->mtx;
-//     }
       
     _cbPerFrame.world = mtx.Transpose();
     _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);

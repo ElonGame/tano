@@ -568,9 +568,8 @@ bool ParticleTunnel::Render()
 
   ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::GeometryShader, 0);
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
+  u32 flags = ShaderType::VertexShader | ShaderType::GeometryShader | ShaderType::PixelShader;
+  _ctx->SetConstantBuffer(_cbPerFrame, flags, 0);
 
   // Render the background
   _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), &black);
