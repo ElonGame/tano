@@ -145,8 +145,13 @@ namespace tano
       Vector4 nearFar;
       Vector4 toneMappingParams = Vector4(0.5f, 2.f, 0, 0);
     };
-
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
+
+    struct CBufferLensFlare
+    {
+      Vector4 params = Vector4(0.1f, 5, 1.0, 0.1f);
+    };
+    ConstantBuffer<CBufferLensFlare> _cbLensFlare;
 
     GpuBundle _landscapeBundle;
     GpuState _landscapeState;
@@ -164,8 +169,6 @@ namespace tano
 
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
-    GpuBundle _copyBundle;
-    GpuBundle _addBundle;
 
     AnimatedInt _blinkFace;
 

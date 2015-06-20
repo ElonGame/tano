@@ -15,11 +15,18 @@ cbuffer PerFrame : register(b0)
   float4 tonemap; // x = shoulder, y = max_white
 };
 
+cbuffer LensFlare : register(b1)
+{
+  // x = dispersion
+  // y = num_ghosts
+  float4 lensFlareParams;
+};
+
 struct PsColBrightnessOut
 {
   float4 col : SV_Target0;
   // rgb = bloom
-  // a = depth
+  // a = emissive
   float4 extra : SV_Target1;
 };
 
@@ -29,6 +36,7 @@ static float3 FOG_COLOR = 0.5 * float3(0.5, 0.6, 0.7);
 static float3 SUN_COLOR = 0.5 * float3(1.5, 0.9, 0.3);
 static float3 SUN_DIR = normalize(float3(0, 0, -1));
 static float3 SUN_POS = float3(0, 0, 2000);
+static float SUN_POWER = 30;
 
 //------------------------------------------------------
 // sky
@@ -37,7 +45,7 @@ static float3 SUN_POS = float3(0, 0, 2000);
 float3 FogColor(float3 rayDir)
 {
   float sunAmount = max(0, dot(rayDir, -SUN_DIR));
-  float3 fogColor = lerp(FOG_COLOR, SUN_COLOR, pow(sunAmount, 30));
+  float3 fogColor = lerp(FOG_COLOR, SUN_COLOR, pow(sunAmount, SUN_POWER));
   return fogColor;
 }
 
@@ -66,7 +74,8 @@ PsColBrightnessOut PsSky(VSQuadOut p)
   float3 tmp = FogColor(rayDir);
   res.col = float4(tmp, 1);
   res.extra.rgb = pow(max(0, Luminance(tmp)), 5);
-  res.extra.a = 3;
+  float sunAmount = pow(max(0, dot(rayDir, -SUN_DIR)), SUN_POWER);
+  res.extra.a = sunAmount;
   return res;
 }
 
@@ -178,7 +187,7 @@ PsColBrightnessOut PsParticle(VsParticleOut p)
   PsColBrightnessOut res;
   res.col = intensity * c * col;
   res.extra.rgb = intensity * c * col.rgb;
-  res.extra.a = Luminance(res.col.rgb);
+  res.extra.a = 0;
   return res;
 }
 
@@ -471,15 +480,41 @@ float4 PsBoids(VsBoidsOut p) : SV_Target
   return BOID_COLOR * max(0,(dot(normalize(p.normal), float3(0,-1,0))));
 }
 
+static float2 halfVec = float2(0.5, 0.5);
+static float halfVecLength = length(halfVec);
 //------------------------------------------------------
 // lens flare
 //------------------------------------------------------
 float4 PsLensFlare(VSQuadOut p) : SV_Target
 {
   // texture0 = scale/biased input
+
+  // flip texcoords
   float2 uv = -p.uv.xy + float2(1,1);
-  float4 col = Texture0.Sample(LinearSampler, uv);
-  return col;
+
+  // vector towards center of screen
+  float dispersal = lensFlareParams.x;
+  int numGhosts = (int)lensFlareParams.y;
+  float haloWidth = lensFlareParams.z;
+  float strength = lensFlareParams.w;
+  float2 dir = dispersal * (halfVec - uv);
+  float2 haloVec = normalize(dir) * haloWidth;
+  float4 res = 0;
+  for (int i = 0; i < numGhosts; ++i)
+  {
+    float2 ofs = uv + (float)i * dir;
+
+    float haloWeight = length(halfVec - frac(ofs + haloVec)) / halfVecLength;
+    haloWeight = pow(max(0, 1.0 - haloWeight), 5.0);
+    float4 halo = Texture0.Sample(LinearBorder, ofs + haloVec) * haloWeight;
+//    res += halo;
+
+    float weight = length(halfVec - ofs) / length(float2(0.5, 0.5));
+    weight = pow(max(0, 1.0 - weight), 10.0);
+    float4 tmp = Texture0.Sample(LinearBorder, uv + (float)i * dir);
+    res += tmp;
+  }
+  return strength * res;
 }
 
 //------------------------------------------------------
@@ -509,11 +544,14 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 {
   // Texture0 : color + bloom
   // Texture1 : color + bloom blurred
-  // Texture2 : zbuffer
+  // Texture2 : lensflare
   float2 uv = p.uv.xy;
   float2 xx = -1 + 2 * uv;
 
-  float4 col = Texture0.Sample(PointSampler, uv) + Texture1.Sample(PointSampler, uv);
+  float4 col = 
+    Texture0.Sample(PointSampler, uv) + 
+    Texture1.Sample(PointSampler, uv) +
+    Texture2.Sample(LinearSampler, uv);
 /*
   // convert sun to screen space
   float4 sunProjSpace = mul(float4(SUN_POS, 1), viewProj);

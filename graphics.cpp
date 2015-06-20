@@ -949,6 +949,15 @@ void Graphics::GetBackBufferSize(int* width, int* height)
 }
 
 //------------------------------------------------------------------------------
+RenderTargetDesc Graphics::GetBackBufferDesc()
+{
+  return RenderTargetDesc(
+    (int)_defaultSwapChain->_viewport.Width,
+    (int)_defaultSwapChain->_viewport.Height,
+    _defaultSwapChain->_desc.BufferDesc.Format);
+}
+
+//------------------------------------------------------------------------------
 ObjectHandle Graphics::GetBackBuffer()
 {
   return _defaultSwapChain->_renderTarget;

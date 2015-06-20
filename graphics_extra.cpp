@@ -409,19 +409,17 @@ void SwapChain::Present()
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags)
-  : _width(width)
-  , _height(height)
-  , _format(format)
+  : _desc(width, height, format)
   , _rtHandle(GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags))
 {
 }
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags)
-  : _format(format)
 {
-  GRAPHICS.GetBackBufferSize(&_width, &_height);
-  _rtHandle = GRAPHICS.GetTempRenderTarget(_width, _height, format, bufferFlags);
+  _desc.format = format;
+  GRAPHICS.GetBackBufferSize(&_desc.width, &_desc.height);
+  _rtHandle = GRAPHICS.GetTempRenderTarget(_desc.width, _desc.height, _desc.format, bufferFlags);
 }
 
 //------------------------------------------------------------------------------
@@ -430,7 +428,7 @@ ScopedRenderTarget::~ScopedRenderTarget()
   GRAPHICS.ReleaseTempRenderTarget(_rtHandle);
 }
 
-//------------------------------------------------------------------------------
+//----------------------------------------------outputDe--------------------------------
 ScopedRenderTargetFull::ScopedRenderTargetFull(DXGI_FORMAT format, BufferFlags rtFlags, BufferFlags dsFlags)
   : _format(format)
 {

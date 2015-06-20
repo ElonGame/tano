@@ -83,6 +83,10 @@ struct boid_settings
 struct lens_flare_settings
 {
   scale_bias scale_bias;
+  float dispersion = 0.1;
+  int num_ghosts = 5;
+  float halo_width = 0.2;
+  float strength = 0.1;
 };
 
 struct landscape_settings

@@ -174,14 +174,6 @@ bool Landscape::Init(const char* configFile)
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/landscape", "PsSky")));
 
-  INIT(_copyBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/common", "PsCopy")));
-
-  INIT(_addBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/common", "PsAdd")));
-
   INIT(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/landscape", "PsComposite")));
@@ -193,6 +185,8 @@ bool Landscape::Init(const char* configFile)
   INIT(_lensFlareBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/landscape", "PsLensFlare")));
+
+  INIT(_cbLensFlare.Create());
 
   // Particles
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
@@ -845,7 +839,7 @@ bool Landscape::Render()
     rtColor._height / 2, 
     DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-  fullscreen->Execute(rtBloom, rtBloomDownsampled, ObjectHandle(), _copyBundle.objects._ps, true);
+  fullscreen->Copy(rtBloom, rtBloomDownsampled, rtBloomDownsampled._desc, true);
 
   ScopedRenderTarget rtBloomBlurred(
     rtColor._width / 2,
@@ -875,47 +869,54 @@ bool Landscape::Render()
   fullscreen->ScaleBiasSecondary(
     rtColor,
     rtBloom,
-    rtScaleBias, 
+    rtScaleBias,
+    rtScaleBias._desc,
     _settings.lens_flare.scale_bias.scale,
     _settings.lens_flare.scale_bias.bias);
 
   ScopedRenderTarget rtLensFlare(
-    rtScaleBias._width,
-    rtScaleBias._height,
+    rtScaleBias._desc.width,
+    rtScaleBias._desc.height,
     DXGI_FORMAT_R16G16B16A16_FLOAT,
     BufferFlags(BufferFlag::CreateSrv));
 
+  _cbLensFlare.params = Vector4(
+    _settings.lens_flare.dispersion,
+    (float)_settings.lens_flare.num_ghosts,
+    _settings.lens_flare.halo_width,
+    _settings.lens_flare.strength);
+  _ctx->SetConstantBuffer(_cbLensFlare, ShaderType::PixelShader, 1);
   fullscreen->Execute(
     rtScaleBias,
     rtLensFlare,
+    rtLensFlare._desc,
     ObjectHandle(),
     _lensFlareBundle.objects._ps,
     false);
 
-  static bool showBlurred = false;
+  static int showBuffer = 0;
   if (g_KeyUpTrigger.IsTriggered('B'))
-    showBlurred = !showBlurred;
+    showBuffer = (showBuffer + 1) % 3;
 
-  if (showBlurred)
+  if (showBuffer == 0)
   {
-    fullscreen->Execute(
-      rtLensFlare,
-      GRAPHICS.GetBackBuffer(),
-      ObjectHandle(),
-      _copyBundle.objects._ps,
-      false);
-  }
-  else
-  {
-    //ObjectHandle inputs[] = { rtColorAndBloom, rtColorAndBloomBlurred, rtColor._dsHandle };
-    ObjectHandle inputs[] = { rtColor, rtBloomBlurred };
+    ObjectHandle inputs[] = { rtColor, rtBloomBlurred, rtLensFlare };
     fullscreen->Execute(
       inputs,
-      2,
+      3,
       GRAPHICS.GetBackBuffer(),
+      GRAPHICS.GetBackBufferDesc(),
       GRAPHICS.GetDepthStencil(),
       _compositeBundle.objects._ps,
       false);
+  }
+  else if (showBuffer == 1)
+  {
+    fullscreen->Copy(rtScaleBias, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
+  }
+  else
+  {
+    fullscreen->Copy(rtLensFlare, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
   }
 
   return true;
@@ -937,6 +938,11 @@ void Landscape::RenderParameterSet()
       f->boids.UpdateWeight(k, w);
     }
   };
+
+  ImGui::SliderFloat("dispersion", &_settings.lens_flare.dispersion, 0, 2);
+  ImGui::SliderInt("Num ghosts", &_settings.lens_flare.num_ghosts, 1, 10);
+  ImGui::SliderFloat("Halo width", &_settings.lens_flare.halo_width, 0, 3);
+  ImGui::SliderFloat("Strength", &_settings.lens_flare.strength, 0, 1);
 
   ImGui::SliderFloat("scale", &_settings.lens_flare.scale_bias.scale, 0, 3);
   ImGui::SliderFloat("bias", &_settings.lens_flare.scale_bias.bias, 0, 1);

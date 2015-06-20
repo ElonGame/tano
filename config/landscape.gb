@@ -1,9 +1,9 @@
 {
   camera: {
-    yaw: -0.190986;
+    yaw: 0.190986;
     pitch: 0.000000;
     roll: 0.000000;
-    pos: { -203.948685, 24.426834, 1676.756226 };
+    pos: { 0.000000, 10.000000, 30.000000 };
   };
   boids: {
     separation_scale: 25.000000;
@@ -23,5 +23,14 @@
   tonemap: {
     shoulder: 0.843000;
     max_white: 1.268000;
+  };
+  lens_flare: {
+    scale_bias: {
+      scale: 1.000000;
+      bias: 0.500000;
+    };
+    dispersion: 0.354000;
+    num_ghosts: 4;
+    halo_width: 0.561000;
   };
 };

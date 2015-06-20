@@ -36,6 +36,14 @@ bool FullscreenEffect::Init()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/common", "PsScaleBiasSecondary")));
 
+  INIT(_copyBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/common", "PsCopy")));
+
+  INIT(_addBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/common", "PsAdd")));
+
   // blur setup
   INIT_RESOURCE(_csBlurTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BlurTranspose"));
   INIT_RESOURCE(_csCopyTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "CopyTranspose"));
@@ -46,26 +54,15 @@ bool FullscreenEffect::Init()
 
 //------------------------------------------------------------------------------
 void FullscreenEffect::Execute(
-    const vector<ObjectHandle>& input,
-    ObjectHandle output,
-    ObjectHandle depthStencil,
-    ObjectHandle shader,
-    bool releaseOutput,
-    const Color* clearColor)
-{
-  Execute(input.data(), (int)input.size(), output, depthStencil, shader, releaseOutput, clearColor);
-}
-
-//------------------------------------------------------------------------------
-void FullscreenEffect::Execute(
   ObjectHandle input,
   ObjectHandle output,
+  const RenderTargetDesc& outputDesc,
   ObjectHandle depthStencil,
   ObjectHandle shader,
   bool releaseOutput,
   const Color* clearColor)
 {
-  Execute(&input, 1, output, depthStencil, shader, releaseOutput, clearColor);
+  Execute(&input, 1, output, outputDesc, depthStencil, shader, releaseOutput, clearColor);
 }
 
 //------------------------------------------------------------------------------
@@ -73,6 +70,7 @@ void FullscreenEffect::Execute(
   const ObjectHandle* inputs,
   int numInputs,
   ObjectHandle output,
+  const RenderTargetDesc& outputDesc,
   ObjectHandle depthStencil,
   ObjectHandle shader,
   bool releaseOutput,
@@ -90,11 +88,7 @@ void FullscreenEffect::Execute(
 
   _ctx->SetShaderResources(inputs, numInputs, ShaderType::PixelShader);
 
-  // TODO: This should really be moved in an input parameter
-  u32 outputX, outputY;
-  GRAPHICS.GetTextureSize(output, &outputX, &outputY);
-
-  CD3D11_VIEWPORT viewport = CD3D11_VIEWPORT(0.f, 0.f, (float)outputX, (float)outputY);
+  CD3D11_VIEWPORT viewport = CD3D11_VIEWPORT(0.f, 0.f, (float)outputDesc.width, (float)outputDesc.height);
   _ctx->SetViewports(1, viewport);
 
   _ctx->SetPixelShader(shader);
@@ -107,7 +101,28 @@ void FullscreenEffect::Execute(
 }
 
 //------------------------------------------------------------------------------
-void FullscreenEffect::ScaleBias(ObjectHandle input, ObjectHandle output, float scale, float bias)
+void FullscreenEffect::Copy(
+  ObjectHandle inputBuffer,
+  ObjectHandle outputBuffer,
+  const RenderTargetDesc& outputDesc,
+  bool releaseOutput)
+{
+  Execute(inputBuffer, outputBuffer, outputDesc, ObjectHandle(), _copyBundle.objects._ps, releaseOutput);
+}
+
+//------------------------------------------------------------------------------
+inline CD3D11_VIEWPORT ViewportFromDesc(const RenderTargetDesc& desc)
+{
+  return CD3D11_VIEWPORT(0.f, 0.f, (float)desc.width, (float)desc.height);
+}
+
+//------------------------------------------------------------------------------
+void FullscreenEffect::ScaleBias(
+  ObjectHandle input,
+  ObjectHandle output,
+  const RenderTargetDesc& outputDesc,
+  float scale, 
+  float bias)
 {
   assert(output.IsValid());
 
@@ -120,12 +135,7 @@ void FullscreenEffect::ScaleBias(ObjectHandle input, ObjectHandle output, float 
   _cbScaleBias.scaleBias = Vector4(scale, bias, 0, 0);
   _ctx->SetConstantBuffer(_cbScaleBias, ShaderType::PixelShader, 1);
 
-  // TODO: This should really be moved in an input parameter
-  u32 outputX, outputY;
-  GRAPHICS.GetTextureSize(output, &outputX, &outputY);
-
-  CD3D11_VIEWPORT viewport = CD3D11_VIEWPORT(0.f, 0.f, (float)outputX, (float)outputY);
-  _ctx->SetViewports(1, viewport);
+  _ctx->SetViewports(1, ViewportFromDesc(outputDesc));
 
   _ctx->Draw(6, 0);
 
@@ -138,6 +148,7 @@ void FullscreenEffect::ScaleBiasSecondary(
   ObjectHandle input0,
   ObjectHandle input1,
   ObjectHandle output,
+  const RenderTargetDesc& outputDesc,
   float scale,
   float bias)
 {
@@ -153,12 +164,7 @@ void FullscreenEffect::ScaleBiasSecondary(
   _cbScaleBias.scaleBias = Vector4(scale, bias, 0, 0);
   _ctx->SetConstantBuffer(_cbScaleBias, ShaderType::PixelShader, 1);
 
-  // TODO: This should really be moved in an input parameter
-  u32 outputX, outputY;
-  GRAPHICS.GetTextureSize(output, &outputX, &outputY);
-
-  CD3D11_VIEWPORT viewport = CD3D11_VIEWPORT(0.f, 0.f, (float)outputX, (float)outputY);
-  _ctx->SetViewports(1, viewport);
+  _ctx->SetViewports(1, ViewportFromDesc(outputDesc));
 
   _ctx->Draw(6, 0);
 

@@ -610,9 +610,10 @@ bool ParticleTunnel::Render()
 
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
+  ObjectHandle inputs[] = { rt, rtLines, rtBlur };
   fullscreen->Execute(
-    { rt._rtHandle, rtLines._rtHandle, rtBlur._rtHandle }, 
-    GRAPHICS.GetBackBuffer(), 
+    inputs, 3,
+    GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(),
     GRAPHICS.GetDepthStencil(),
     _compositeGpuObjects._ps,
     false);

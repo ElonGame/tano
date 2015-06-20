@@ -168,6 +168,16 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
+  struct RenderTargetDesc
+  {
+    RenderTargetDesc() {}
+    RenderTargetDesc(int width, int height, DXGI_FORMAT format) : width(width), height(height), format(format) {}
+    int width;
+    int height;
+    DXGI_FORMAT format;
+  };
+
+  //------------------------------------------------------------------------------
   struct ScopedRenderTarget
   {
     ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
@@ -176,8 +186,7 @@ namespace tano
 
     operator ObjectHandle() { return _rtHandle; }
 
-    int _width, _height;
-    DXGI_FORMAT _format;
+    RenderTargetDesc _desc;
     ObjectHandle _rtHandle;
   };
 

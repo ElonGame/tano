@@ -13,20 +13,10 @@ namespace tano
 
     bool Init();
 
-    // TODO: Render shader to a temp render target with the given format
-
-    // Render shader to the given output
-    void Execute(
-      const vector<ObjectHandle>& input,
-      ObjectHandle output,
-      ObjectHandle depthStencil,
-      ObjectHandle shader,
-      bool releaseOutput = true,
-      const Color* clearColor = nullptr);
-
     void Execute(
       ObjectHandle input,
       ObjectHandle output,
+      const RenderTargetDesc& outputDesc,
       ObjectHandle depthStencil,
       ObjectHandle shader,
       bool releaseOutput = true,
@@ -36,14 +26,28 @@ namespace tano
       const ObjectHandle* inputs,
       int numInputs, 
       ObjectHandle output,
+      const RenderTargetDesc& outputDesc,
       ObjectHandle depthStencil,
       ObjectHandle shader,
       bool releaseOutput = true,
       const Color* clearColor = nullptr);
 
-    void ScaleBias(ObjectHandle input, ObjectHandle output, float scale, float bias);
-    void ScaleBiasSecondary(ObjectHandle input0, ObjectHandle input1, ObjectHandle output, float scale, float bias);
+    void ScaleBias(
+      ObjectHandle input,
+      ObjectHandle output,
+      const RenderTargetDesc& outputDesc,
+      float scale,
+      float bias);
+    void ScaleBiasSecondary(
+      ObjectHandle input0,
+      ObjectHandle input1, 
+      ObjectHandle output, 
+      const RenderTargetDesc& outputDesc, 
+      float scale, 
+      float bias);
     void Blur(ObjectHandle inputBuffer, ObjectHandle outputBuffer, float radius);
+    void Copy(ObjectHandle inputBuffer, ObjectHandle outputBuffer, const RenderTargetDesc& outputDesc, bool releaseOutput = true);
+    void Add(ObjectHandle input0, ObjectHandle input1, ObjectHandle outputBuffer, float scale0, float scale1);
 
   private:
     GraphicsContext* _ctx;
@@ -71,6 +75,9 @@ namespace tano
     ObjectHandle _csBlurX;
     ObjectHandle _csBlurTranspose;
     ObjectHandle _csCopyTranspose;
+
+    GpuBundle _addBundle;
+    GpuBundle _copyBundle;
 
     GpuBundle _defaultBundle;
     GpuBundle _scaleBiasBundle;

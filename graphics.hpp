@@ -90,6 +90,7 @@ namespace tano
     void Present();
     
     void GetBackBufferSize(int* width, int* height);
+    RenderTargetDesc GetBackBufferDesc();
     ObjectHandle GetBackBuffer();
     ObjectHandle GetDepthStencil();
     ObjectHandle DefaultSwapChain();
