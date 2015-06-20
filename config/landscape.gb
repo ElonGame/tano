@@ -1,9 +1,9 @@
 {
   camera: {
-    yaw: 0.190986;
-    pitch: 0.000000;
+    yaw: 0.318310;
+    pitch: -0.190986;
     roll: 0.000000;
-    pos: { 0.000000, 10.000000, 30.000000 };
+    pos: { 9.761499, 23.520809, 613.276123 };
   };
   boids: {
     separation_scale: 25.000000;
@@ -29,8 +29,9 @@
       scale: 1.000000;
       bias: 0.500000;
     };
-    dispersion: 0.354000;
+    dispersion: 0.313000;
     num_ghosts: 4;
-    halo_width: 0.561000;
+    halo_width: 0.364000;
+    strength: 0.100000;
   };
 };

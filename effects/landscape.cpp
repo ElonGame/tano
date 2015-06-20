@@ -22,13 +22,14 @@ using namespace bristol;
 
 static const Vector3 ZERO3(0,0,0);
 static const float GRID_SIZE = 10;
+static const float NOISE_HEIGHT = 50;
+static const float NOISE_SCALE_X = 0.01;
+static const float NOISE_SCALE_Z = 0.01;
 
 //------------------------------------------------------------------------------
 float NoiseAtPoint(const Vector3& v)
 {
-  static const Vector3 NOISE_SCALE(10.f, 30.f, 10.f);
-  static const Vector3 size(10 * 1024, 10 * 1024, 10 * 1024);
-  return NOISE_SCALE.y * Perlin2D::Value(256 * v.x / size.x, 256 * v.z / size.z);
+  return NOISE_HEIGHT * Perlin2D::Value(NOISE_SCALE_X * v.x, NOISE_SCALE_Z * v.z);
 }
 
 //------------------------------------------------------------------------------
@@ -498,9 +499,6 @@ void Landscape::FillChunk(const TaskData& data)
 
   V3 v0, v1, v2, v3;
   V3 n0, n1;
-  float scaleX = 256.f / (10 * 1024);
-  float scaleY = 20;
-  float scaleZ = 256.f / (10 * 1024);
 
   // first compute the noise values
   V3* noise = chunk->noiseValues;
@@ -511,7 +509,7 @@ void Landscape::FillChunk(const TaskData& data)
       float xx0 = x + (j + 0) * GRID_SIZE;
       float zz0 = z + (i - 1) * GRID_SIZE;
       noise->x = xx0;
-      noise->y = scaleY * Perlin2D::Value(scaleX * xx0, scaleZ * zz0);
+      noise->y = NOISE_HEIGHT * Perlin2D::Value(NOISE_SCALE_X * xx0, NOISE_SCALE_Z * zz0);
       noise->z = zz0;
       ++noise;
     }
@@ -577,7 +575,7 @@ void Landscape::RasterizeLandscape()
 
   float ofs = 2 * _curCamera->_farPlane;
   Vector3 c = _curCamera->_pos;
-  c.y = 30;
+  c.y = NOISE_HEIGHT;
   Vector3 buf0[16] ={
     c + Vector3(-ofs, 0, +ofs),
     c + Vector3(+ofs, 0, +ofs),
