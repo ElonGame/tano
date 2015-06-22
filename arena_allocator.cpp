@@ -32,6 +32,18 @@ ArenaAllocator& ArenaAllocator::Instance()
 }
 
 //------------------------------------------------------------------------------
+ArenaAllocator::ArenaAllocator()
+{
+  InitializeCriticalSection(&_cs);
+}
+
+//------------------------------------------------------------------------------
+ArenaAllocator::~ArenaAllocator()
+{
+  DeleteCriticalSection(&_cs);
+}
+
+//------------------------------------------------------------------------------
 bool ArenaAllocator::Init(void* start, void* end)
 {
   _mem = (u8*)start;
@@ -48,6 +60,8 @@ void ArenaAllocator::NewFrame()
 //------------------------------------------------------------------------------
 void* ArenaAllocator::Alloc(u32 size)
 {
+  ScopedCriticalSection cs(&_cs);
+
   if (size + _idx > _capacity)
     return nullptr;
 

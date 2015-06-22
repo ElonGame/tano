@@ -87,10 +87,20 @@ namespace tano
       return _size;
     }
 
+    bool Empty() const
+    {
+      return _size == 0;
+    }
+
     void Append(const T& t)
     { 
       assert(_size < Capacity);
       _elems[_size++] = t; 
+    }
+
+    void Clear()
+    {
+      _size = 0;
     }
 
     const T& operator[](int idx) const

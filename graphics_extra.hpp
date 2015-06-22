@@ -181,6 +181,7 @@ namespace tano
   struct ScopedRenderTarget
   {
     ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
+    ScopedRenderTarget(const RenderTargetDesc& desc, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ~ScopedRenderTarget();
 
@@ -198,8 +199,8 @@ namespace tano
 
     operator ObjectHandle() { return _rtHandle; }
 
-    int _width, _height;
-    DXGI_FORMAT _format;
+    RenderTargetDesc _desc;
+
     ObjectHandle _rtHandle;
     ObjectHandle _dsHandle;
   };

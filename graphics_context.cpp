@@ -68,7 +68,7 @@ void GraphicsContext::SetRenderTarget(
 }
 //------------------------------------------------------------------------------
 void GraphicsContext::SetRenderTargets(
-    ObjectHandle* renderTargets,
+    const ObjectHandle* renderTargets,
     int numRenderTargets,
     ObjectHandle depthStencil,
     const Color** clearTargets)

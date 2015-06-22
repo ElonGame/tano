@@ -81,7 +81,7 @@ bool GpuObjects::LoadVertexShader(
   {
     // fix up the offsets on the elements
     u32 ofs = 0;
-    map<string, u32> semanticIndex;
+    unordered_map<string, u32> semanticIndex;
     for (D3D11_INPUT_ELEMENT_DESC& e : *elements)
     {
       e.AlignedByteOffset = ofs;

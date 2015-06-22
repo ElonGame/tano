@@ -1,5 +1,7 @@
 #pragma once
 
+#define WITH_INVALID_CHECK 0
+
 namespace tano
 {
   struct V2
@@ -56,11 +58,19 @@ namespace tano
   struct V3
   {
     V3() {}
-    V3(float x, float y, float z) : x(x), y(y), z(z) {}
-    explicit V3(const Vector3& v) : x(v.x), y(v.y), z(v.z) {}
+    V3(float x, float y, float z) : x(x), y(y), z(z) { IsNan(); }
+    explicit V3(const Vector3& v) : x(v.x), y(v.y), z(v.z) { IsNan(); }
 
     V3& operator+=(const V3& v) { x += v.x; y += v.y; z += v.z; return *this; }
     V3& operator-=(const V3& v) { x -= v.x; y -= v.y; z -= v.z; return *this; }
+    V3& operator/=(float s) { x /= s; y /= s; z /= s; return *this; }
+
+#if WITH_INVALID_CHECK 
+    void IsNan() { assert(!isnan(x)); assert(!isnan(y)); assert(!isnan(z)); }
+#else
+    void IsNan() {}
+#endif
+
     float x, y, z;
   };
 
@@ -69,6 +79,7 @@ namespace tano
   float LengthSquared(const V3& a);
   V3 Normalize(const V3& v);
   V3 operator*(float s, const V3& v);
+  V3 operator*(const V3& v, float s);
   V3 operator-(const V3& a, const V3& b);
   V3 operator+(const V3& a, const V3& b);
 
@@ -94,10 +105,15 @@ namespace tano
   inline V3 Normalize(const V3& v)
   {
     float len = Length(v);
-    return 1 / len * v;
+    return len > 0 ? 1 / len * v : v;
   }
 
   inline V3 operator*(float s, const V3& v)
+  {
+    return V3(s*v.x, s*v.y, s*v.z);
+  }
+
+  inline V3 operator*(const V3& v, float s)
   {
     return V3(s*v.x, s*v.y, s*v.z);
   }
@@ -123,6 +139,15 @@ namespace tano
   inline Vector3 ClampVector(const Vector3& force, float maxLength)
   {
     float len = force.Length();
+    if (len <= maxLength)
+      return force;
+
+    return maxLength / len * force;
+  }
+
+  inline V3 ClampVector(const V3& force, float maxLength)
+  {
+    float len = Length(force);
     if (len <= maxLength)
       return force;
 

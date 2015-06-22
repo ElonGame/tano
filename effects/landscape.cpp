@@ -23,92 +23,15 @@ using namespace bristol;
 static const Vector3 ZERO3(0,0,0);
 static const float GRID_SIZE = 10;
 static const float NOISE_HEIGHT = 50;
-static const float NOISE_SCALE_X = 0.01;
-static const float NOISE_SCALE_Z = 0.01;
+static const float NOISE_SCALE_X = 0.01f;
+static const float NOISE_SCALE_Z = 0.01f;
+
+int Landscape::Chunk::nextId = 1;
 
 //------------------------------------------------------------------------------
-float NoiseAtPoint(const Vector3& v)
+float NoiseAtPoint(const V3& v)
 {
   return NOISE_HEIGHT * Perlin2D::Value(NOISE_SCALE_X * v.x, NOISE_SCALE_Z * v.z);
-}
-
-//------------------------------------------------------------------------------
-LandscapeOverlay::LandscapeOverlay()
-{
-  memset(data, 0, sizeof(data));
-}
-
-//------------------------------------------------------------------------------
-void LandscapeOverlay::Create(int x, int y, float amp, int size)
-{
-  for (int i = 0; i < size; ++i)
-  {
-    for (int j = 0; j < size; ++j)
-    {
-      int xOfs = x - size/2 + j;
-      int yOfs = y - size/2 + i;
-      if (xOfs < 0 || xOfs >= SIZE || yOfs < 0 || yOfs >= SIZE)
-        continue;
-
-      float dx = (float)(x - xOfs);
-      float dy = (float)(y - yOfs);
-      float r = Clamp(1.f, 10.f, sqrtf(dx*dx+dy*dy));
-      data[0][yOfs*SIZE+xOfs] += amp / (r*r);
-    }
-  }
-}
-
-//------------------------------------------------------------------------------
-void LandscapeOverlay::BlurLine(float* x, float scale, int m, float alpha, float* y)
-{
-  float* buffers[] = { x, scratch, scratch, x, x, y };
-
-  for (int b = 0; b < 3; ++b)
-  {
-    float* src = buffers[b*2+0];
-    float* dst = buffers[b*2+1];
-
-    // set up initial pixel
-    float sum = src[0];
-    for (int i = 0; i < m; ++i)
-      sum += src[i];
-    sum += alpha * src[m];
-
-    // note, the final pass is written transposed
-    int dstInc = b < 2 ? 1 : SIZE;
-    for (int i = 0; i < SIZE; ++i)
-    {
-      *dst = scale * sum;
-      dst += dstInc;
-      if (i + m + 2 < SIZE)
-        sum += lerp(src[i + m + 1], src[i + m + 2], alpha);
-
-      if (i - m - 1 > 0)
-        sum -= lerp(src[i - m], src[i - m - 1], alpha);
-    }
-  }
-}
-
-//------------------------------------------------------------------------------
-void LandscapeOverlay::Update()
-{
-  // Blur the data
-  float r = 5;
-  float scale = 1.f / (2.0f * r + 1.f);
-  int m = (int)r;
-  float alpha = r - m;
-
-  // horizontal pass
-  for (int i = 0; i < SIZE; ++i)
-  {
-    BlurLine(&data[0][i*SIZE], scale, m, alpha, &data[1][i]);
-  }
-
-  // vertical pass
-  for (int i = 0; i < SIZE; ++i)
-  {
-    BlurLine(&data[1][i*SIZE], scale, m, alpha, &data[0][i]);
-  }
 }
 
 //------------------------------------------------------------------------------
@@ -203,12 +126,23 @@ bool Landscape::Init(const char* configFile)
     .BlendDesc(blendDescBlendOneOne)
     .RasterizerDesc(rasterizeDescCullNone)));
 
-  MeshLoader loader;
-  INIT(loader.Load("gfx/boids.boba"));
-  u32 boidsVertexFlags = 0;
-  INIT(CreateBuffersFromMesh(loader, "Pyramid", &boidsVertexFlags, &_boidsMesh));
-  INIT_FATAL(_boidsMesh.LoadVertexShader("shaders/out/landscape", "VsBoids", boidsVertexFlags));
-  INIT_FATAL(_boidsMesh.LoadPixelShader("shaders/out/landscape", "PsBoids"));
+  INIT(_boidsBundle.Create(BundleOptions()
+    .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
+    .VertexShader("shaders/out/landscape", "VsParticle")
+    .GeometryShader("shaders/out/landscape", "GsParticle")
+    .PixelShader("shaders/out/landscape", "PsParticle")
+    .VertexFlags(VF_POS)
+    .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
+    .DepthStencilDesc(depthDescDepthWriteDisabled)
+    .BlendDesc(blendDescBlendOneOne)
+    .RasterizerDesc(rasterizeDescCullNone)));
+
+  //MeshLoader loader;
+  //INIT(loader.Load("gfx/boids.boba"));
+  //u32 boidsVertexFlags = 0;
+  //INIT(CreateBuffersFromMesh(loader, "Pyramid", &boidsVertexFlags, &_boidsMesh));
+  //INIT_FATAL(_boidsMesh.LoadVertexShader("shaders/out/landscape", "VsBoids", boidsVertexFlags));
+  //INIT_FATAL(_boidsMesh.LoadPixelShader("shaders/out/landscape", "PsBoids"));
 
   Reset();
   //InitBoids();
@@ -225,7 +159,9 @@ bool Landscape::Init(const char* configFile)
 //------------------------------------------------------------------------------
 void Landscape::InitBoids()
 {
-  SeqDelete(&_flocks);
+  for (Flock* flock : _flocks)
+    delete flock;
+  _flocks.Clear();
   SAFE_DELETE(_behaviorSeek);
   SAFE_DELETE(_behaviorSeparataion);
   SAFE_DELETE(_behaviorCohesion);
@@ -252,12 +188,12 @@ void Landscape::InitBoids()
     flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
 
     float s = 200.f;
-    Vector3 center(randf(-s, s), 0, randf(-s, s));
+    V3 center(randf(-s, s), 0, randf(-s, s));
 
     // Create a waypoint for the flock
     float angle = randf(-XM_PI, XM_PI);
     float dist = randf(100.f, 200.f);
-    flock->nextWaypoint = center + Vector3(dist * cos(angle), 0, dist * sin(angle));
+    flock->nextWaypoint = center + V3(dist * cos(angle), 0, dist * sin(angle));
     flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
     flock->wanderAngle = angle;
 
@@ -266,32 +202,59 @@ void Landscape::InitBoids()
     // Init the boids
     for (DynParticles::Body& b : flock->boids)
     {
-      b.pos = center + Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      b.pos = center + V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
       b.pos.y = 20 + NoiseAtPoint(b.pos);
-      b.force = 10 * Vector3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      b.force = 10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
     }
-    _flocks.push_back(flock);
+    _flocks.Append(flock);
   }
 }
 
 //------------------------------------------------------------------------------
-void BehaviorLandscapeFollow::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state)
+void BehaviorLandscapeFollow::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state, const float* distMatrix)
 {
   for (DynParticles::Body* b = bodies; b != bodies + numBodies; ++b)
   {
     // return a force to keep the boid above the ground
 
-    Vector3 probe = b->pos + Normalize(b->vel) * maxSpeed;
-    Vector3 d = probe;
+    V3 probe = b->pos + Normalize(b->vel) * maxSpeed;
+    V3 d = probe;
     d.y = 20 + NoiseAtPoint(probe);
 
     // if the probe is above the terrain height, move towards the average
     if (probe.y > d.y)
       d = 0.5f * (probe + d);
 
-    Vector3 desiredVel = Normalize(d - probe) * maxSpeed;
+    V3 desiredVel = Normalize(d - probe) * maxSpeed;
     b->force += ClampVector(desiredVel - b->vel, maxForce);
   }
+}
+
+//------------------------------------------------------------------------------
+void Landscape::UpdateFlock(const scheduler::TaskData& data)
+{
+  FlockKernelData* flockData = (FlockKernelData*)data.kernelData.data;
+  Flock* flock = flockData->flock;
+  float radius = flockData->waypointRadius;
+
+  // check if the flock has reached its waypoint
+  float closestDist = FLT_MAX;
+  Vector3 center(0, 0, 0);
+  for (DynParticles::Body& b : flock->boids)
+  {
+    if (Distance(b.pos, flock->nextWaypoint) < radius)
+    {
+      float angle = flock->wanderAngle + randf(-XM_PI / 2, XM_PI / 2);
+      float dist = randf(300.f, 400.f);
+      flock->nextWaypoint += V3(dist * cos(angle), 0, dist * sin(angle));
+      flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
+      flock->wanderAngle = angle;
+      break;
+    }
+  }
+
+  //_behaviorSeek->target = flock->nextWaypoint;
+  flock->boids.Update(flockData->updateState);
 }
 
 //------------------------------------------------------------------------------
@@ -301,8 +264,18 @@ void Landscape::UpdateBoids(const UpdateState& state)
 
   float dt = 1.0f / state.frequency;
 
+  SimpleAppendBuffer<TaskId, 2048> chunkTasks;
+
   for (Flock* flock : _flocks)
   {
+    FlockKernelData* data = (FlockKernelData*)ARENA.Alloc(sizeof(FlockKernelData));
+    *data = FlockKernelData{ flock, _settings.boids.waypoint_radius, state };
+    KernelData kd;
+    kd.data = data;
+    kd.size = sizeof(FlockKernelData);
+    chunkTasks.Append(SCHEDULER.AddTask(kd, UpdateFlock));
+
+#if 0
     // check if the flock has reached its waypoint
     float closestDist = FLT_MAX;
     Vector3 center(0,0,0);
@@ -321,7 +294,12 @@ void Landscape::UpdateBoids(const UpdateState& state)
 
     _behaviorSeek->target = flock->nextWaypoint;
     flock->boids.Update(state);
+#endif
   }
+
+  for (const TaskId& taskId : chunkTasks)
+    SCHEDULER.Wait(taskId);
+
 }
 
 //------------------------------------------------------------------------------
@@ -341,15 +319,15 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 {
   const IoState& ioState = TANO.GetIoState();
 
-  if (!_flocks.empty())
+  if (!_flocks.Empty())
   {
     if (g_KeyUpTrigger.IsTriggered('1'))
-      _followFlock = (_followFlock + 1) % _flocks.size();
+      _followFlock = (_followFlock + 1) % _flocks.Size();
 
     if (g_KeyUpTrigger.IsTriggered('2'))
-      _followFlock = (_followFlock - 1) % _flocks.size();
+      _followFlock = (_followFlock - 1) % _flocks.Size();
 
-    if (_followFlock != -1 && _followFlock < _flocks.size())
+    if (_followFlock != -1 && _followFlock < _flocks.Size())
     {
       _followCamera.SetFollowTarget(_flocks[_followFlock]->boids._center);
     }
@@ -364,7 +342,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   if (g_KeyUpTrigger.IsTriggered('9'))
     _drawFlags ^= 0x4;
 
-  if (_useFreeFlyCamera || _flocks.empty())
+  if (_useFreeFlyCamera || _flocks.Empty())
     _curCamera = &_freeflyCamera;
   else
     _curCamera = &_followCamera;
@@ -721,41 +699,36 @@ void Landscape::RasterizeLandscape()
 }
 
 //------------------------------------------------------------------------------
-void Landscape::RenderBoids()
+void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHandle)
 {
-  _ctx->SetGpuObjects(_boidsMesh);
+  V3* boidPos = _ctx->MapWriteDiscard<V3>(_boidsBundle.objects._vb);
 
-  Matrix view = _curCamera->_view;
-  Matrix proj = _curCamera->_proj;
-  Matrix viewProj = view * proj;
-
+  int numBoids = 0;
   for (const Flock* flock : _flocks)
   {
-    DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
-    DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1, 1, 1));
+    //DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
+    //DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1, 1, 1));
 
     for (const DynParticles::Body& b : flock->boids)
     {
-      Matrix mtxRot = Matrix::Identity();
-      Vector3 velN = b.vel;
-      velN.Normalize();
-      Vector3 dir = b.vel.LengthSquared() ? velN : Vector3(0, 0, 1);
-      Vector3 up(0, 1, 0);
-      Vector3 right = Cross(up, dir);
-      up = Cross(dir, right);
-      mtxRot.Backward(dir);
-      mtxRot.Up(up);
-      mtxRot.Right(right);
-      mtxRot.Translation(b.pos);
-      _cbPerFrame.world = mtxRot.Transpose();
-      _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
-      _ctx->DrawIndexed(_boidsMesh._numIndices, 0, 0);
-
-      DEBUG_API.AddDebugLine(b.pos, b.pos + b.vel, Color(1, 0, 0));
-      DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * up, Color(0, 1, 0));
-      DEBUG_API.AddDebugLine(b.pos, b.pos + 10 * right, Color(0, 0, 1));
+      boidPos->x = b.pos.x;
+      boidPos->y = b.pos.y;
+      boidPos->z = b.pos.z;
+      boidPos++;
+      numBoids++;
     }
   }
+
+  _ctx->Unmap(_boidsBundle.objects._vb);
+
+  _ctx->SetBundleWithSamplers(_boidsBundle, ShaderType::PixelShader);
+
+  // Unset the DSV, as we want to use it as a texture resource
+  _ctx->SetRenderTargets(renderTargets, 2, ObjectHandle(), nullptr);
+  ObjectHandle srv[] = { _particleTexture, dsHandle };
+  _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
+  _ctx->Draw(numBoids, 0);
+  _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
 }
 
 //------------------------------------------------------------------------------
@@ -766,27 +739,20 @@ bool Landscape::Render()
   static const Color* clearColors[] = { &clearColor, &clearColor};
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
 
-  ScopedRenderTargetFull rtColor(
-    DXGI_FORMAT_R16G16B16A16_FLOAT,
-    BufferFlags(BufferFlag::CreateSrv),
-    BufferFlags(BufferFlag::CreateSrv));
-
+  ScopedRenderTargetFull rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
   ScopedRenderTarget rtBloom(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
   _cbPerFrame.toneMappingParams = Vector4(_settings.tonemap.shoulder, _settings.tonemap.max_white, 0, 0);
-
   _cbPerFrame.world = Matrix::Identity();
-
-  _cbPerFrame.dim = Vector4((float)rtColor._width, (float)rtColor._height, 0, 0);
+  _cbPerFrame.dim = Vector4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
   u32 flags = ShaderType::VertexShader | ShaderType::GeometryShader | ShaderType::PixelShader;
   _ctx->SetConstantBuffer(_cbPerFrame, flags, 0);
 
   // We're using 2 render targets here. One for color, and one for bloom/emissive
-
-  // Render the sky
   ObjectHandle renderTargets[] = {rtColor, rtBloom};
   _ctx->SetRenderTargets(renderTargets, 2, rtColor._dsHandle, &clearColors[0]);
 
+  // Render the sky
   _ctx->SetBundle(_skyBundle);
   _ctx->Draw(3, 0);
 
@@ -827,42 +793,17 @@ bool Landscape::Render()
 
   if (_renderBoids)
   {
-    RenderBoids();
+    RenderBoids(renderTargets, rtColor._dsHandle);
   }
 
   _ctx->UnsetRenderTargets(0, 2);
 
-  ScopedRenderTarget rtBloomDownsampled(
-    rtColor._width / 2,
-    rtColor._height / 2, 
-    DXGI_FORMAT_R16G16B16A16_FLOAT);
+  RenderTargetDesc halfSize(rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-  fullscreen->Copy(rtBloom, rtBloomDownsampled, rtBloomDownsampled._desc, true);
+  ScopedRenderTarget rtBloomBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
+  fullscreen->Blur(rtBloom, rtBloomBlurred, 10);
 
-  ScopedRenderTarget rtBloomBlurred(
-    rtColor._width / 2,
-    rtColor._height / 2,
-    DXGI_FORMAT_R16G16B16A16_FLOAT,
-    BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
-
-  fullscreen->Blur(rtBloomDownsampled, rtBloomBlurred, 10);
-
-  //ScopedRenderTarget rtColorAndBloom(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  //{
-  //  ObjectHandle inputs[] = { rtColor, rtBloomBlurred };
-  //  postProcess->Execute(inputs, 2, rtColorAndBloom, ObjectHandle(), _addBundle.objects._ps);
-  //}
-
-  //ScopedRenderTarget rtColorAndBloomBlurred(DXGI_FORMAT_R16G16B16A16_FLOAT,
-  //  BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
-
-  //_blur.Apply(rtColorAndBloom, rtColorAndBloomBlurred, 10);
-
-  ScopedRenderTarget rtScaleBias(
-    rtColor._width / 2,
-    rtColor._height / 2,
-    DXGI_FORMAT_R16G16B16A16_FLOAT,
-    BufferFlags(BufferFlag::CreateSrv));
+  ScopedRenderTarget rtScaleBias(halfSize);
 
   fullscreen->ScaleBiasSecondary(
     rtColor,
@@ -872,18 +813,12 @@ bool Landscape::Render()
     _settings.lens_flare.scale_bias.scale,
     _settings.lens_flare.scale_bias.bias);
 
-  ScopedRenderTarget rtLensFlare(
-    rtScaleBias._desc.width,
-    rtScaleBias._desc.height,
-    DXGI_FORMAT_R16G16B16A16_FLOAT,
-    BufferFlags(BufferFlag::CreateSrv));
+  ScopedRenderTarget rtLensFlare(halfSize);
 
-  _cbLensFlare.params = Vector4(
-    _settings.lens_flare.dispersion,
-    (float)_settings.lens_flare.num_ghosts,
-    _settings.lens_flare.halo_width,
-    _settings.lens_flare.strength);
+  const LensFlareSettings& s = _settings.lens_flare;
+  _cbLensFlare.params = Vector4(s.dispersion, (float)s.num_ghosts, s.halo_width, s.strength);
   _ctx->SetConstantBuffer(_cbLensFlare, ShaderType::PixelShader, 1);
+
   fullscreen->Execute(
     rtScaleBias,
     rtLensFlare,

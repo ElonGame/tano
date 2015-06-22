@@ -180,6 +180,26 @@ namespace tano
   using std::make_unique;
   using std::thread;
 
+  template<typename T>
+  void hash_combine(size_t& seed, const T& key)
+  {
+    std::hash<T> hasher;
+    seed ^= hasher(key) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  }
+
+  template<typename T1, typename T2>
+  struct std::hash<std::pair<T1, T2>>
+  {
+    size_t operator()(const pair<T1, T2>& p) const
+    {
+      size_t seed = 0;
+      hash_combine(seed, p.first);
+      hash_combine(seed, p.second);
+      return seed;
+    }
+  };
+
+
   using DirectX::XMFLOAT3;
   using DirectX::BoundingSphere;
   using DirectX::XMConvertToRadians;

@@ -162,14 +162,14 @@ void FollowCam::Update(const UpdateState& state)
 {
   _particle.Update(state);
   const DynParticles::Body& b = _particle._bodies[0];
-  _pos = b.pos;
+  _pos = Vector3(b.pos.x, b.pos.y, b.pos.z);
 
-  _target = _pos + b.vel;
+  _target = _pos + Vector3(b.vel.x, b.vel.y, b.vel.z);
   _view = Matrix::CreateLookAt(_pos, _target, _up);
 }
 
 //------------------------------------------------------------------------------
-void FollowCam::SetFollowTarget(const Vector3& followTarget)
+void FollowCam::SetFollowTarget(const V3& followTarget)
 {
   _seek.target = followTarget;
 }

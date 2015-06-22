@@ -127,7 +127,7 @@ namespace tano
       }
       else
       {
-        map<pair<int, int>, DXGI_RATIONAL> highestRate;
+        unordered_map<pair<int, int>, DXGI_RATIONAL> highestRate;
         for (size_t i = 0; i < displayModes.size(); ++i)
         {
           auto &cur = displayModes[i];
@@ -415,6 +415,13 @@ ScopedRenderTarget::ScopedRenderTarget(int width, int height, DXGI_FORMAT format
 }
 
 //------------------------------------------------------------------------------
+ScopedRenderTarget::ScopedRenderTarget(const RenderTargetDesc& desc, const BufferFlags& bufferFlags)
+  : _desc(desc)
+  , _rtHandle(GRAPHICS.GetTempRenderTarget(desc.width, desc.height, desc.format, bufferFlags))
+{
+}
+
+//------------------------------------------------------------------------------
 ScopedRenderTarget::ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags)
 {
   _desc.format = format;
@@ -430,11 +437,11 @@ ScopedRenderTarget::~ScopedRenderTarget()
 
 //----------------------------------------------outputDe--------------------------------
 ScopedRenderTargetFull::ScopedRenderTargetFull(DXGI_FORMAT format, BufferFlags rtFlags, BufferFlags dsFlags)
-  : _format(format)
 {
-  GRAPHICS.GetBackBufferSize(&_width, &_height);
-  _rtHandle = GRAPHICS.GetTempRenderTarget(_width, _height, format, rtFlags);
-  _dsHandle = GRAPHICS.GetTempDepthStencil(_width, _height, dsFlags);
+  _desc.format = format;
+  GRAPHICS.GetBackBufferSize(&_desc.width, &_desc.height);
+  _rtHandle = GRAPHICS.GetTempRenderTarget(_desc.width, _desc.height, format, rtFlags);
+  _dsHandle = GRAPHICS.GetTempDepthStencil(_desc.width, _desc.height, dsFlags);
 }
 
 //------------------------------------------------------------------------------

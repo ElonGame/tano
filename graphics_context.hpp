@@ -15,7 +15,7 @@ namespace tano
     void SetRenderTarget(ObjectHandle renderTarget, const Color* clearTarget);
     void SetRenderTarget(ObjectHandle renderTarget, ObjectHandle depthStencil, const Color* clearTarget);
     void SetRenderTargets(
-      ObjectHandle* renderTargets,
+      const ObjectHandle* renderTargets,
       int numRenderTargets,
       ObjectHandle depthStencil,
       const Color** clearTarget);

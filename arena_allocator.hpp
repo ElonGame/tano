@@ -15,6 +15,8 @@ namespace tano
     void* Alloc(u32 size);
 
   private:
+    ArenaAllocator();
+    ~ArenaAllocator();
 
     bool Init(void* start, void* end);
 
@@ -23,6 +25,8 @@ namespace tano
     u8* _mem = nullptr;
     u32 _idx = 0;
     u32 _capacity = 0;
+
+    CRITICAL_SECTION _cs;
   };
 
 #define ARENA ArenaAllocator::Instance()

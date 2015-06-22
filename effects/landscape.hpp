@@ -19,21 +19,7 @@ namespace tano
   struct BehaviorLandscapeFollow : public ParticleKinematics
   {
     BehaviorLandscapeFollow(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
-    void Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state);
-  };
-
-  struct LandscapeOverlay
-  {
-    LandscapeOverlay();
-    void Create(int x, int y, float amp, int size);
-    void Update();
-    void BlurLine(float* x, float scale, int m, float alpha, float* y);
-    enum { SIZE = 50 };
-    float scratch[SIZE];
-    float data[2][SIZE*SIZE];
-    int curBuf = 0;
-    float x = 0;
-    float z = 0;
+    virtual void Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state, const float* distMatrix) override;
   };
 
   class Landscape : public Effect
@@ -57,7 +43,7 @@ namespace tano
     static Effect* Create(const char* name, u32 id);
     static void Register();
 
-  private:
+  //private:
 
     void Reset();
 #if WITH_IMGUI
@@ -70,7 +56,7 @@ namespace tano
 
     void InitBoids();
     void UpdateBoids(const UpdateState& state);
-    void RenderBoids();
+    void RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHandle);
 
     struct Boid;
     Vector3 LandscapeFollow(const Boid& boid);
@@ -79,6 +65,7 @@ namespace tano
 
     struct Chunk
     {
+      Chunk() : id(nextId++) {}
       float x, y;
       Vector3 center;
       float dist = 0;
@@ -95,9 +82,19 @@ namespace tano
       V3 noiseValues[(CHUNK_SIZE+1)*(CHUNK_SIZE+1)];
       float upperData[UPPER_DATA_SIZE];
       float lowerData[LOWER_DATA_SIZE];
+      int id;
+      static int nextId;
     };
 
     static void FillChunk(const scheduler::TaskData& data);
+    static void UpdateFlock(const scheduler::TaskData& data);
+
+    struct FlockKernelData
+    {
+      Flock* flock;
+      float waypointRadius;
+      UpdateState updateState;
+    };
 
     struct ChunkKernelData
     {
@@ -112,7 +109,7 @@ namespace tano
       static const int CACHE_SIZE = 2048;
       Chunk _cache[CACHE_SIZE];
       int _used = 0;
-      map<pair<float, float>, Chunk*> _chunkLookup;
+      unordered_map<pair<float, float>, Chunk*> _chunkLookup;
     };
 
     ChunkCache _chunkCache;
@@ -122,11 +119,11 @@ namespace tano
     {
       Flock(int numBoids);
       DynParticles boids;
-      Vector3 nextWaypoint;
+      V3 nextWaypoint;
       float wanderAngle = 0;
     };
 
-    vector<Flock*> _flocks;
+    SimpleAppendBuffer<Flock*, 128> _flocks;
 
     struct CBufferPerFrame
     {
@@ -173,20 +170,21 @@ namespace tano
     AnimatedInt _blinkFace;
 
     enum DrawFlags {
-      DrawUpper = 1,
-      DrawLower = 2,
-      DrawParticles = 4,
+      DrawUpper       = 0x1,
+      DrawLower       = 0x2,
+      DrawParticles   = 0x4,
     };
-    u32 _drawFlags = 7;
+    u32 _drawFlags    = 0x7;
 
     u32 _numUpperIndices = 0;
     u32 _numLowerIndices = 0;
     u32 _numParticles = 0;
 
-    GpuObjects _boidsMesh;
+    //GpuObjects _boidsMesh;
+    GpuBundle _boidsBundle;
     bool _renderLandscape = true;
-    bool _renderBoids = false;
-    bool _useFreeFlyCamera = true;
+    bool _renderBoids = true;
+    bool _useFreeFlyCamera = false;
 
     BehaviorSeek* _behaviorSeek = nullptr;
     BehaviorSeparataion* _behaviorSeparataion = nullptr;

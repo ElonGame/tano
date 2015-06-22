@@ -8,12 +8,7 @@ using namespace bristol;
 //------------------------------------------------------------------------------
 Scheduler* Scheduler::_instance;
 
-struct ScopedCriticalSection
-{
-  ScopedCriticalSection(CRITICAL_SECTION* cs) : cs(cs) { EnterCriticalSection(cs); }
-  ~ScopedCriticalSection() { LeaveCriticalSection(cs); }
-  CRITICAL_SECTION* cs;
-};
+#define SINGLE_THREADED 0
 
 //------------------------------------------------------------------------------
 bool Scheduler::Create()
@@ -71,6 +66,10 @@ bool Scheduler::Init()
     LOG_ERROR("Unable to get # hardware threads");
     return false;
   }
+
+#if SINGLE_THREADED
+  _maxNumThreads = 0;
+#endif
 
   for (int i = 0; i < _maxNumThreads-1; ++i)
   {

@@ -47,7 +47,7 @@ namespace tano
   {
     FollowCam();
     virtual void Update(const UpdateState& state) override;
-    void SetFollowTarget(const Vector3& followTarget);
+    void SetFollowTarget(const V3& followTarget);
 
     DynParticles _particle;
     BehaviorSeek _seek;

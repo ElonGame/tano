@@ -1,5 +1,7 @@
 #pragma once
 
+#include "tano_math.hpp"
+
 namespace tano
 {
   struct UpdateState;
@@ -16,10 +18,10 @@ namespace tano
 
     struct Body
     {
-      Vector3 pos = { 0, 0, 0 };
-      Vector3 vel = { 0, 0, 0 };
-      Vector3 acc = { 0, 0, 0 };
-      Vector3 force = { 0, 0, 0 };
+      V3 pos = { 0, 0, 0 };
+      V3 vel = { 0, 0, 0 };
+      V3 acc = { 0, 0, 0 };
+      V3 force = { 0, 0, 0 };
       float mass = 1.f;
     };
 
@@ -44,7 +46,7 @@ namespace tano
     vector<Kinematic> _kinematics;
     Body* _bodies = nullptr;
     int _numBodies = 0;
-    Vector3 _center = { 0, 0, 0 };
+    V3 _center = { 0, 0, 0 };
     float _maxSpeed = 10.f;
   };
 
@@ -52,7 +54,13 @@ namespace tano
   struct ParticleKinematics
   {
     ParticleKinematics(float maxForce, float maxSpeed) : maxForce(maxForce), maxSpeed(maxSpeed) {}
-    virtual void Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state) = 0;
+
+    virtual void Update(
+        DynParticles::Body* bodies,
+        int numBodies,
+        float weight,
+        const UpdateState& state,
+        const float* distMatrix) = 0;
     float maxForce = 10.f;
     float maxSpeed = 10.f;
   };
@@ -61,8 +69,13 @@ namespace tano
   struct BehaviorSeek : public ParticleKinematics
   {
     BehaviorSeek(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
-    virtual void Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state);
-    Vector3 target = { 0, 0, 0 };
+    virtual void Update(
+        DynParticles::Body* bodies,
+        int numBodies,
+        float weight,
+        const UpdateState& state,
+        const float* distMatrix) override;
+    V3 target = { 0, 0, 0 };
   };
 
   //------------------------------------------------------------------------------
@@ -70,7 +83,12 @@ namespace tano
   {
     BehaviorSeparataion(float maxForce, float maxSpeed, float separationDistance) 
       : ParticleKinematics(maxForce, maxSpeed), separationDistance(separationDistance) {}
-    virtual void Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state);
+    virtual void Update(
+        DynParticles::Body* bodies,
+        int numBodies,
+        float weight,
+        const UpdateState& state,
+        const float* distMatrix) override;
     float separationDistance = 10;
   };
 
@@ -79,16 +97,26 @@ namespace tano
   {
     BehaviorCohesion(float maxForce, float maxSpeed, float cohesionDistance) 
     : ParticleKinematics(maxForce, maxSpeed), cohesionDistance(cohesionDistance) {}
-    virtual void Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state);
+    virtual void Update(
+        DynParticles::Body* bodies,
+        int numBodies,
+        float weight,
+        const UpdateState& state,
+        const float* distMatrix) override;
     float cohesionDistance = 10;
   };
 
   //------------------------------------------------------------------------------
   struct BehaviorAlignment : public ParticleKinematics
   {
-    BehaviorAlignment(float maxForce, float maxSpeedfloat, float cohesionDistance) 
+    BehaviorAlignment(float maxForce, float maxSpeed, float cohesionDistance) 
     : ParticleKinematics(maxForce, maxSpeed), cohesionDistance(cohesionDistance) {}
-    virtual void Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state);
+    virtual void Update(
+        DynParticles::Body* bodies,
+        int numBodies,
+        float weight,
+        const UpdateState& state,
+        const float* distMatrix) override;
     float cohesionDistance = 10;
   };
 }

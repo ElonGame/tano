@@ -1,6 +1,7 @@
 #include "dyn_particles.hpp"
 #include "update_state.hpp"
 #include "tano_math.hpp"
+#include "arena_allocator.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -25,22 +26,43 @@ void DynParticles::Update(const UpdateState& updateState)
   if (!_numBodies)
     return;
 
-  Vector3 center(0,0,0);
-  for (int i = 0; i < _numBodies; ++i)
+  int numBodies = _numBodies;
+  V3 center(0,0,0);
+  for (int i = 0; i < numBodies; ++i)
   {
     _bodies[i].force = { 0, 0, 0 };
     center += _bodies[i].pos;
   }
 
-  _center = center /  (float)_numBodies;
+  _center = 1.0f / numBodies * center;
+
+  // precompute particle distance calculations
+  float* distMatrix = (float*)ARENA.Alloc(numBodies*numBodies*sizeof(float));
+  for (int i = 0; i < numBodies; ++i)
+  {
+    for (int j = i; j < numBodies; ++j)
+    {
+      if (i != j)
+      {
+        float tmp = Distance(_bodies[i].pos, _bodies[j].pos);
+        distMatrix[i*numBodies + j] = tmp;
+        distMatrix[j*numBodies + i] = tmp;
+      }
+      else
+      {
+        distMatrix[i*numBodies + j] = 0;
+      }
+    }
+  }
+
 
   for (Kinematic& k : _kinematics)
   {
-    k.kinematic->Update(_bodies, _numBodies, k.weight, updateState);
+    k.kinematic->Update(_bodies, _numBodies, k.weight, updateState, distMatrix);
   }
 
   float dt = 1.0f / updateState.frequency;
-  for (int i = 0; i < _numBodies; ++i)
+  for (int i = 0; i < numBodies; ++i)
   {
     Body& b = _bodies[i];
     b.acc = b.force;
@@ -69,26 +91,36 @@ void DynParticles::UpdateWeight(ParticleKinematics* kinematics, float weight)
 }
 
 //------------------------------------------------------------------------------
-void BehaviorSeek::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state)
+void BehaviorSeek::Update(
+    DynParticles::Body* bodies,
+    int numBodies,
+    float weight,
+    const UpdateState& state,
+    const float* distMatrix)
 {
   for (int i = 0; i < numBodies; ++i)
   {
     DynParticles::Body* b = &bodies[i];
 
-    Vector3 desiredVel = Normalize(target - b->pos) * maxSpeed;
+    V3 desiredVel = Normalize(target - b->pos) * maxSpeed;
     b->force += weight * ClampVector(desiredVel - b->vel, maxForce);
   }
 }
 
 //------------------------------------------------------------------------------
-void BehaviorSeparataion::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state)
+void BehaviorSeparataion::Update(
+    DynParticles::Body* bodies,
+    int numBodies,
+    float weight,
+    const UpdateState& state,
+    const float* distMatrix)
 {
   for (int i = 0; i < numBodies; ++i)
   {
     DynParticles::Body* b = &bodies[i];
 
     // return a force away from any close boids
-    Vector3 avg(0, 0, 0);
+    V3 avg(0, 0, 0);
 
     float cnt = 0.f;
     for (int j = 0; j < numBodies; ++j)
@@ -96,13 +128,14 @@ void BehaviorSeparataion::Update(DynParticles::Body* bodies, int numBodies, floa
       if (i == j)
         continue;
 
-      DynParticles::Body* inner = &bodies[j];
-
-      float dist = Vector3::Distance(inner->pos, b->pos);
+      float dist = distMatrix[i*numBodies+j];
       if (dist > separationDistance)
         continue;
 
-      avg += 1.f / dist * Normalize(b->pos - inner->pos);
+      DynParticles::Body* inner = &bodies[j];
+      V3 dir = (b->pos - inner->pos) * (1.0f / dist);
+
+      avg += 1.f / dist * dir;
       cnt += 1.f;
     }
 
@@ -112,20 +145,25 @@ void BehaviorSeparataion::Update(DynParticles::Body* bodies, int numBodies, floa
     avg /= cnt;
 
     // Reynolds uses: steering = desired - current
-    Vector3 desired = Normalize(avg) * maxSpeed;
+    V3 desired = Normalize(avg) * maxSpeed;
     b->force += weight * ClampVector(desired - b->vel, maxForce);
   }
 }
 
 //------------------------------------------------------------------------------
-void BehaviorCohesion::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state)
+void BehaviorCohesion::Update(
+    DynParticles::Body* bodies,
+    int numBodies,
+    float weight,
+    const UpdateState& state,
+    const float* distMatrix)
 {
   for (int i = 0; i < numBodies; ++i)
   {
     DynParticles::Body* b = &bodies[i];
 
     // Return a force towards the average boid position
-    Vector3 avg(0, 0, 0);
+    V3 avg(0, 0, 0);
 
     float cnt = 0.f;
 
@@ -134,11 +172,11 @@ void BehaviorCohesion::Update(DynParticles::Body* bodies, int numBodies, float w
       if (i == j)
         continue;
 
-      DynParticles::Body* inner = &bodies[j];
-
-      float dist = Vector3::Distance(inner->pos, b->pos);
+      float dist = distMatrix[i*numBodies + j];
       if (dist > cohesionDistance)
         continue;
+
+      DynParticles::Body* inner = &bodies[j];
 
       avg += inner->pos;
       cnt += 1.f;
@@ -149,20 +187,25 @@ void BehaviorCohesion::Update(DynParticles::Body* bodies, int numBodies, float w
 
     avg /= cnt;
 
-    Vector3 desiredVel = Normalize(avg - b->pos) * maxSpeed;
+    V3 desiredVel = Normalize(avg - b->pos) * maxSpeed;
     b->force += weight * ClampVector(desiredVel - b->vel, maxForce);
   }
 }
 
 //------------------------------------------------------------------------------
-void BehaviorAlignment::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state)
+void BehaviorAlignment::Update(
+    DynParticles::Body* bodies,
+    int numBodies,
+    float weight,
+    const UpdateState& state,
+    const float* distMatrix)
 {
   for (int i = 0; i < numBodies; ++i)
   {
     DynParticles::Body* b = &bodies[i];
 
     // return a force to align the boids velocity with the average velocity
-    Vector3 avg(0, 0, 0);
+    V3 avg(0, 0, 0);
 
     float cnt = 0.f;
     for (int j = 0; j < numBodies; ++j)
@@ -170,11 +213,11 @@ void BehaviorAlignment::Update(DynParticles::Body* bodies, int numBodies, float 
       if (i == j)
         continue;
 
-      DynParticles::Body* inner = &bodies[j];
-
-      float dist = Vector3::Distance(inner->pos, b->pos);
+      float dist = distMatrix[i*numBodies + j];
       if (dist > cohesionDistance)
         continue;
+
+      DynParticles::Body* inner = &bodies[j];
 
       avg += inner->vel;
       cnt += 1.f;
@@ -184,7 +227,7 @@ void BehaviorAlignment::Update(DynParticles::Body* bodies, int numBodies, float 
       continue;
 
     avg /= cnt;
-    Vector3 desired = Normalize(avg) * maxSpeed;
+    V3 desired = Normalize(avg) * maxSpeed;
     b->force += weight * ClampVector(desired - b->vel, maxForce);
   }
 }
