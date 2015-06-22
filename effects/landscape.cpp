@@ -201,12 +201,14 @@ void Landscape::InitBoids()
     _behaviorSeek->target = flock->nextWaypoint;
 
     // Init the boids
-    for (int i = 0; i < flock->boids._numBodies; ++i)
+    V3* pos = flock->boids._bodies.pos;
+    V3* force = flock->boids._bodies.force;
+    for (int i = 0; i < flock->boids._bodies.numBodies; ++i)
     {
-      DynParticles::Body& b = flock->boids._bodies[i];
-      flock->boids._bodyPos[i] = center + V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-      flock->boids._bodyPos[i].y = 20 + NoiseAtPoint(flock->boids._bodyPos[i]);
-      b.force = 10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      //DynParticles::Body& b = flock->boids._bodies[i];
+      pos[i] = center + V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      pos[i].y = 20 + NoiseAtPoint(pos[i]);
+      force[i] = 10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
     }
 
     //for (DynParticles::Body& b : flock->boids)
@@ -221,20 +223,22 @@ void Landscape::InitBoids()
 
 //------------------------------------------------------------------------------
 void BehaviorLandscapeFollow::Update(
-    DynParticles::Body* bodies,
-    const V3* bodyPos,
-    int numBodies,
-    float weight,
-    const UpdateState& state,
-    const float* distMatrix)
+  DynParticles::Bodies* bodies, float weight, const UpdateState& state)
 {
+  V3* pos = bodies->pos;
+  V3* acc = bodies->acc;
+  V3* vel = bodies->vel;
+  V3* force = bodies->force;
+  DynParticles::DistMatrix* dm = bodies->distMatrix;
+  int numBodies = bodies->numBodies;
+
   for (int i = 0; i < numBodies; ++i)
   {
-    DynParticles::Body* b = &bodies[i];
+    //DynParticles::Body* b = &bodies[i];
 
     // return a force to keep the boid above the ground
 
-    V3 probe = bodyPos[i] + Normalize(b->vel) * maxSpeed;
+    V3 probe = pos[i] + Normalize(vel[i]) * maxSpeed;
     V3 d = probe;
     d.y = 20 + NoiseAtPoint(probe);
 
@@ -243,7 +247,7 @@ void BehaviorLandscapeFollow::Update(
       d = 0.5f * (probe + d);
 
     V3 desiredVel = Normalize(d - probe) * maxSpeed;
-    b->force += ClampVector(desiredVel - b->vel, maxForce);
+    force[i] += ClampVector(desiredVel - vel[i], maxForce);
   }
 }
 
@@ -254,14 +258,15 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
   Flock* flock = flockData->flock;
   float radius = flockData->waypointRadius;
 
-  V3* bodyPos = flockData->flock->boids._bodyPos;
+  V3* pos = flockData->flock->boids._bodies.pos;
+  int numBodies = flockData->flock->boids._bodies.numBodies;
   // check if the flock has reached its waypoint
   float closestDist = FLT_MAX;
   Vector3 center(0, 0, 0);
-  for (int i = 0; i < flock->boids._numBodies; ++i)
+  for (int i = 0; i < numBodies; ++i)
   {
-    DynParticles::Body& b = flock->boids._bodies[i];
-    if (Distance(bodyPos[i], flock->nextWaypoint) < radius)
+    //DynParticles::Body& b = flock->boids._bodies[i];
+    if (Distance(pos[i], flock->nextWaypoint) < radius)
     {
       float angle = flock->wanderAngle + randf(-XM_PI / 2, XM_PI / 2);
       float dist = randf(300.f, 400.f);
@@ -715,11 +720,12 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
     //DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
     //DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1, 1, 1));
 
-    for (int i = 0; i < flock->boids._numBodies; ++i)
+    V3* pos = flock->boids._bodies.pos;
+    int numBodies = flock->boids._bodies.numBodies;
+
+    for (int i = 0; i < numBodies; ++i)
     {
-      const DynParticles::Body& b = flock->boids._bodies[i];
-      *boidPos = flock->boids._bodyPos[i];
-      boidPos++;
+      *boidPos++ = pos[i];
       numBoids++;
     }
   }

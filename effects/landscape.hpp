@@ -19,13 +19,7 @@ namespace tano
   struct BehaviorLandscapeFollow : public ParticleKinematics
   {
     BehaviorLandscapeFollow(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
-    virtual void Update(
-      DynParticles::Body* bodies, 
-      const V3* bodyPos,
-      int numBodies,
-      float weight,
-      const UpdateState& state,
-      const float* distMatrix) override;
+    virtual void Update(DynParticles::Bodies* bodies, float weight, const UpdateState& state) override;
   };
 
   class Landscape : public Effect
