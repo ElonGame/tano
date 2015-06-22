@@ -152,7 +152,8 @@ FollowCam::FollowCam()
   : _seek(50, 50)
 {
   _particle.Init(1);
-  _particle._bodies[0].pos = {0, 0, 0};
+  //_particle._bodies[0].pos = { 0, 0, 0 };
+  _particle._bodyPos[0] = { 0, 0, 0 };
   _particle.AddKinematics(&_seek, 1);
   _particle._maxSpeed = 50;
 }
@@ -162,7 +163,8 @@ void FollowCam::Update(const UpdateState& state)
 {
   _particle.Update(state);
   const DynParticles::Body& b = _particle._bodies[0];
-  _pos = Vector3(b.pos.x, b.pos.y, b.pos.z);
+//  _pos = Vector3(b.pos.x, b.pos.y, b.pos.z);
+  _pos = Vector3(_particle._bodyPos[0].x, _particle._bodyPos[0].y, _particle._bodyPos[0].z);
 
   _target = _pos + Vector3(b.vel.x, b.vel.y, b.vel.z);
   _view = Matrix::CreateLookAt(_pos, _target, _up);

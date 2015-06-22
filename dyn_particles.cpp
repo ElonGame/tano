@@ -10,14 +10,17 @@ using namespace bristol;
 DynParticles::~DynParticles()
 {
   SAFE_ADELETE(_bodies);
+  SAFE_ADELETE(_bodyPos);
 }
 
 //------------------------------------------------------------------------------
 void DynParticles::Init(int numBodies)
 {
   SAFE_ADELETE(_bodies);
+  SAFE_ADELETE(_bodyPos);
   _numBodies = numBodies;
   _bodies = new Body[_numBodies];
+  _bodyPos = new V3[_numBodies];
 }
 
 //------------------------------------------------------------------------------
@@ -31,7 +34,8 @@ void DynParticles::Update(const UpdateState& updateState)
   for (int i = 0; i < numBodies; ++i)
   {
     _bodies[i].force = { 0, 0, 0 };
-    center += _bodies[i].pos;
+    //center += _bodies[i].pos;
+    center += _bodyPos[i];
   }
 
   _center = 1.0f / numBodies * center;
@@ -44,7 +48,8 @@ void DynParticles::Update(const UpdateState& updateState)
     {
       if (i != j)
       {
-        float tmp = Distance(_bodies[i].pos, _bodies[j].pos);
+        //float tmp = Distance(_bodies[i].pos, _bodies[j].pos);
+        float tmp = Distance(_bodyPos[i], _bodyPos[j]);
         distMatrix[i*numBodies + j] = tmp;
         distMatrix[j*numBodies + i] = tmp;
       }
@@ -58,7 +63,7 @@ void DynParticles::Update(const UpdateState& updateState)
 
   for (Kinematic& k : _kinematics)
   {
-    k.kinematic->Update(_bodies, _numBodies, k.weight, updateState, distMatrix);
+    k.kinematic->Update(_bodies, _bodyPos, _numBodies, k.weight, updateState, distMatrix);
   }
 
   float dt = 1.0f / updateState.frequency;
@@ -67,7 +72,8 @@ void DynParticles::Update(const UpdateState& updateState)
     Body& b = _bodies[i];
     b.acc = b.force;
     b.vel = ClampVector(b.vel + dt * b.acc, _maxSpeed);
-    b.pos += dt * b.vel;
+    _bodyPos[i] += dt * b.vel;
+//    b.pos += dt * b.vel;
   }
 }
 
@@ -93,6 +99,7 @@ void DynParticles::UpdateWeight(ParticleKinematics* kinematics, float weight)
 //------------------------------------------------------------------------------
 void BehaviorSeek::Update(
     DynParticles::Body* bodies,
+    const V3* bodyPos,
     int numBodies,
     float weight,
     const UpdateState& state,
@@ -102,7 +109,8 @@ void BehaviorSeek::Update(
   {
     DynParticles::Body* b = &bodies[i];
 
-    V3 desiredVel = Normalize(target - b->pos) * maxSpeed;
+    //V3 desiredVel = Normalize(target - b->pos) * maxSpeed;
+    V3 desiredVel = Normalize(target - bodyPos[i]) * maxSpeed;
     b->force += weight * ClampVector(desiredVel - b->vel, maxForce);
   }
 }
@@ -110,6 +118,7 @@ void BehaviorSeek::Update(
 //------------------------------------------------------------------------------
 void BehaviorSeparataion::Update(
     DynParticles::Body* bodies,
+    const V3* bodyPos,
     int numBodies,
     float weight,
     const UpdateState& state,
@@ -132,10 +141,8 @@ void BehaviorSeparataion::Update(
       if (dist > separationDistance)
         continue;
 
-      DynParticles::Body* inner = &bodies[j];
-      V3 dir = (b->pos - inner->pos) * (1.0f / dist);
-
-      avg += 1.f / dist * dir;
+      float invDist = 1.0f / dist;
+      avg += (bodyPos[i] - bodyPos[j]) * (invDist * invDist);
       cnt += 1.f;
     }
 
@@ -153,6 +160,7 @@ void BehaviorSeparataion::Update(
 //------------------------------------------------------------------------------
 void BehaviorCohesion::Update(
     DynParticles::Body* bodies,
+    const V3* bodyPos,
     int numBodies,
     float weight,
     const UpdateState& state,
@@ -178,7 +186,8 @@ void BehaviorCohesion::Update(
 
       DynParticles::Body* inner = &bodies[j];
 
-      avg += inner->pos;
+//      avg += inner->pos;
+      avg += bodyPos[j];
       cnt += 1.f;
     }
 
@@ -187,7 +196,8 @@ void BehaviorCohesion::Update(
 
     avg /= cnt;
 
-    V3 desiredVel = Normalize(avg - b->pos) * maxSpeed;
+//    V3 desiredVel = Normalize(avg - b->pos) * maxSpeed;
+    V3 desiredVel = Normalize(avg - bodyPos[i]) * maxSpeed;
     b->force += weight * ClampVector(desiredVel - b->vel, maxForce);
   }
 }
@@ -195,6 +205,7 @@ void BehaviorCohesion::Update(
 //------------------------------------------------------------------------------
 void BehaviorAlignment::Update(
     DynParticles::Body* bodies,
+    const V3* bodyPos,
     int numBodies,
     float weight,
     const UpdateState& state,

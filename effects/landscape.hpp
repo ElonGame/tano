@@ -19,7 +19,13 @@ namespace tano
   struct BehaviorLandscapeFollow : public ParticleKinematics
   {
     BehaviorLandscapeFollow(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
-    virtual void Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state, const float* distMatrix) override;
+    virtual void Update(
+      DynParticles::Body* bodies, 
+      const V3* bodyPos,
+      int numBodies,
+      float weight,
+      const UpdateState& state,
+      const float* distMatrix) override;
   };
 
   class Landscape : public Effect
@@ -184,7 +190,7 @@ namespace tano
     GpuBundle _boidsBundle;
     bool _renderLandscape = true;
     bool _renderBoids = true;
-    bool _useFreeFlyCamera = false;
+    bool _useFreeFlyCamera = true;
 
     BehaviorSeek* _behaviorSeek = nullptr;
     BehaviorSeparataion* _behaviorSeparataion = nullptr;

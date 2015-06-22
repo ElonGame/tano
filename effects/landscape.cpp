@@ -15,6 +15,7 @@
 #include "../scheduler.hpp"
 #include "../arena_allocator.hpp"
 #include "../perlin2d.hpp"
+#include "../stop_watch.hpp"
 
 using namespace tano;
 using namespace tano::scheduler;
@@ -200,24 +201,40 @@ void Landscape::InitBoids()
     _behaviorSeek->target = flock->nextWaypoint;
 
     // Init the boids
-    for (DynParticles::Body& b : flock->boids)
+    for (int i = 0; i < flock->boids._numBodies; ++i)
     {
-      b.pos = center + V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-      b.pos.y = 20 + NoiseAtPoint(b.pos);
+      DynParticles::Body& b = flock->boids._bodies[i];
+      flock->boids._bodyPos[i] = center + V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      flock->boids._bodyPos[i].y = 20 + NoiseAtPoint(flock->boids._bodyPos[i]);
       b.force = 10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
     }
+
+    //for (DynParticles::Body& b : flock->boids)
+    //{
+    //  b.pos = center + V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+    //  b.pos.y = 20 + NoiseAtPoint(b.pos);
+    //  b.force = 10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+    //}
     _flocks.Append(flock);
   }
 }
 
 //------------------------------------------------------------------------------
-void BehaviorLandscapeFollow::Update(DynParticles::Body* bodies, int numBodies, float weight, const UpdateState& state, const float* distMatrix)
+void BehaviorLandscapeFollow::Update(
+    DynParticles::Body* bodies,
+    const V3* bodyPos,
+    int numBodies,
+    float weight,
+    const UpdateState& state,
+    const float* distMatrix)
 {
-  for (DynParticles::Body* b = bodies; b != bodies + numBodies; ++b)
+  for (int i = 0; i < numBodies; ++i)
   {
+    DynParticles::Body* b = &bodies[i];
+
     // return a force to keep the boid above the ground
 
-    V3 probe = b->pos + Normalize(b->vel) * maxSpeed;
+    V3 probe = bodyPos[i] + Normalize(b->vel) * maxSpeed;
     V3 d = probe;
     d.y = 20 + NoiseAtPoint(probe);
 
@@ -237,12 +254,14 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
   Flock* flock = flockData->flock;
   float radius = flockData->waypointRadius;
 
+  V3* bodyPos = flockData->flock->boids._bodyPos;
   // check if the flock has reached its waypoint
   float closestDist = FLT_MAX;
   Vector3 center(0, 0, 0);
-  for (DynParticles::Body& b : flock->boids)
+  for (int i = 0; i < flock->boids._numBodies; ++i)
   {
-    if (Distance(b.pos, flock->nextWaypoint) < radius)
+    DynParticles::Body& b = flock->boids._bodies[i];
+    if (Distance(bodyPos[i], flock->nextWaypoint) < radius)
     {
       float angle = flock->wanderAngle + randf(-XM_PI / 2, XM_PI / 2);
       float dist = randf(300.f, 400.f);
@@ -261,6 +280,9 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
 void Landscape::UpdateBoids(const UpdateState& state)
 {
   rmt_ScopedCPUSample(Boids_Update);
+  
+  static AvgStopWatch stopWatch;
+  stopWatch.Start();
 
   float dt = 1.0f / state.frequency;
 
@@ -274,31 +296,15 @@ void Landscape::UpdateBoids(const UpdateState& state)
     kd.data = data;
     kd.size = sizeof(FlockKernelData);
     chunkTasks.Append(SCHEDULER.AddTask(kd, UpdateFlock));
-
-#if 0
-    // check if the flock has reached its waypoint
-    float closestDist = FLT_MAX;
-    Vector3 center(0,0,0);
-    for (DynParticles::Body& b : flock->boids)
-    {
-      if (Vector3::Distance(b.pos, flock->nextWaypoint) < _settings.boids.waypoint_radius)
-      {
-        float angle = flock->wanderAngle + randf(-XM_PI / 2, XM_PI / 2);
-        float dist = randf(300.f, 400.f);
-        flock->nextWaypoint += Vector3(dist * cos(angle), 0, dist * sin(angle));
-        flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
-        flock->wanderAngle = angle;
-        break;
-      }
-    }
-
-    _behaviorSeek->target = flock->nextWaypoint;
-    flock->boids.Update(state);
-#endif
   }
 
   for (const TaskId& taskId : chunkTasks)
     SCHEDULER.Wait(taskId);
+
+  double avg = stopWatch.Stop();
+  TANO.AddPerfCallback([=]() {
+    ImGui::Text("Update time: %.3fms", 1000 * avg);
+  });
 
 }
 
@@ -709,11 +715,10 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
     //DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
     //DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1, 1, 1));
 
-    for (const DynParticles::Body& b : flock->boids)
+    for (int i = 0; i < flock->boids._numBodies; ++i)
     {
-      boidPos->x = b.pos.x;
-      boidPos->y = b.pos.y;
-      boidPos->z = b.pos.z;
+      const DynParticles::Body& b = flock->boids._bodies[i];
+      *boidPos = flock->boids._bodyPos[i];
       boidPos++;
       numBoids++;
     }
@@ -785,10 +790,6 @@ bool Landscape::Render()
       _ctx->Draw(_numParticles, 0);
       _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
     }
-  }
-  else
-  {
-    _ctx->SetGpuState(_landscapeState);
   }
 
   if (_renderBoids)

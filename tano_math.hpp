@@ -58,18 +58,19 @@ namespace tano
   struct V3
   {
     V3() {}
+#if WITH_INVALID_CHECK 
     V3(float x, float y, float z) : x(x), y(y), z(z) { IsNan(); }
     explicit V3(const Vector3& v) : x(v.x), y(v.y), z(v.z) { IsNan(); }
+#else
+    V3(float x, float y, float z) : x(x), y(y), z(z) { }
+    explicit V3(const Vector3& v) : x(v.x), y(v.y), z(v.z) { }
+#endif
 
     V3& operator+=(const V3& v) { x += v.x; y += v.y; z += v.z; return *this; }
     V3& operator-=(const V3& v) { x -= v.x; y -= v.y; z -= v.z; return *this; }
     V3& operator/=(float s) { x /= s; y /= s; z /= s; return *this; }
 
-#if WITH_INVALID_CHECK 
     void IsNan() { assert(!isnan(x)); assert(!isnan(y)); assert(!isnan(z)); }
-#else
-    void IsNan() {}
-#endif
 
     float x, y, z;
   };

@@ -18,7 +18,7 @@ namespace tano
 
     struct Body
     {
-      V3 pos = { 0, 0, 0 };
+      //V3 pos = { 0, 0, 0 };
       V3 vel = { 0, 0, 0 };
       V3 acc = { 0, 0, 0 };
       V3 force = { 0, 0, 0 };
@@ -45,6 +45,7 @@ namespace tano
 
     vector<Kinematic> _kinematics;
     Body* _bodies = nullptr;
+    V3* _bodyPos = nullptr;
     int _numBodies = 0;
     V3 _center = { 0, 0, 0 };
     float _maxSpeed = 10.f;
@@ -57,6 +58,7 @@ namespace tano
 
     virtual void Update(
         DynParticles::Body* bodies,
+        const V3* bodyPos,
         int numBodies,
         float weight,
         const UpdateState& state,
@@ -71,6 +73,7 @@ namespace tano
     BehaviorSeek(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
     virtual void Update(
         DynParticles::Body* bodies,
+        const V3* bodyPos,
         int numBodies,
         float weight,
         const UpdateState& state,
@@ -85,6 +88,7 @@ namespace tano
       : ParticleKinematics(maxForce, maxSpeed), separationDistance(separationDistance) {}
     virtual void Update(
         DynParticles::Body* bodies,
+        const V3* bodyPos,
         int numBodies,
         float weight,
         const UpdateState& state,
@@ -99,6 +103,7 @@ namespace tano
     : ParticleKinematics(maxForce, maxSpeed), cohesionDistance(cohesionDistance) {}
     virtual void Update(
         DynParticles::Body* bodies,
+        const V3* bodyPos,
         int numBodies,
         float weight,
         const UpdateState& state,
@@ -113,6 +118,7 @@ namespace tano
     : ParticleKinematics(maxForce, maxSpeed), cohesionDistance(cohesionDistance) {}
     virtual void Update(
         DynParticles::Body* bodies,
+        const V3* bodyPos,
         int numBodies,
         float weight,
         const UpdateState& state,
