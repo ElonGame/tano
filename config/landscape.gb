@@ -1,9 +1,9 @@
 {
   camera: {
-    yaw: 0.000000;
-    pitch: 0.000000;
+    yaw: 0.350141;
+    pitch: 0.732113;
     roll: 0.000000;
-    pos: { 0.000000, 10.000000, 30.000000 };
+    pos: { 7.462798, 125.926994, -10.136116 };
   };
   boids: {
     separation_scale: 25.000000;
@@ -13,8 +13,8 @@
     follow_scale: 10.000000;
     cohesion_distance: 25.000000;
     separation_distance: 20.000000;
-    max_speed: 300.000000;
-    max_force: 100.000000;
+    max_speed: 100.000008;
+    max_force: 30.000002;
     waypoint_radius: 10.000000;
     num_flocks: 25;
     boids_per_flock: 250;

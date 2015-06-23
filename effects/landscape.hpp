@@ -117,9 +117,11 @@ namespace tano
 
     struct Flock
     {
-      Flock(int numBoids);
+      Flock(const BoidSettings& settings);
+      ~Flock();
       DynParticles boids;
       V3 nextWaypoint;
+      BehaviorSeek* seek = nullptr;
       float wanderAngle = 0;
     };
 
@@ -186,7 +188,7 @@ namespace tano
     bool _renderBoids = true;
     bool _useFreeFlyCamera = true;
 
-    BehaviorSeek* _behaviorSeek = nullptr;
+    //BehaviorSeek* _behaviorSeek = nullptr;
     BehaviorSeparataion* _behaviorSeparataion = nullptr;
     BehaviorCohesion* _behaviorCohesion = nullptr;
     BehaviorAlignment* _behaviorAlignment = nullptr;

@@ -36,9 +36,16 @@ float NoiseAtPoint(const V3& v)
 }
 
 //------------------------------------------------------------------------------
-Landscape::Flock::Flock(int numBoids)
+Landscape::Flock::Flock(const BoidSettings& settings)
 {
-  boids.Init(numBoids);
+  boids.Init(settings.boids_per_flock);
+  seek = new BehaviorSeek(settings.max_force, settings.max_speed);
+}
+
+//------------------------------------------------------------------------------
+Landscape::Flock::~Flock()
+{
+  SAFE_DELETE(seek);
 }
 
 //------------------------------------------------------------------------------
@@ -140,6 +147,8 @@ bool Landscape::Init(const char* configFile)
 
   Reset();
 
+  INIT(_cbPerFrame.Create());
+
   END_INIT_SEQUENCE();
 }
 
@@ -149,14 +158,12 @@ void Landscape::InitBoids()
   for (Flock* flock : _flocks)
     delete flock;
   _flocks.Clear();
-  SAFE_DELETE(_behaviorSeek);
   SAFE_DELETE(_behaviorSeparataion);
   SAFE_DELETE(_behaviorCohesion);
   SAFE_DELETE(_behaviorAlignment);
   SAFE_DELETE(_landscapeFollow);
 
   const BoidSettings& b = _settings.boids;
-  _behaviorSeek = new BehaviorSeek(b.max_force, b.max_speed);
   _behaviorSeparataion = new BehaviorSeparataion(b.max_force, b.max_speed, b.separation_distance);
   _behaviorCohesion = new BehaviorCohesion(b.max_force, b.max_speed, b.cohesion_distance);
   _behaviorAlignment = new BehaviorAlignment(b.max_force, b.max_speed, b.cohesion_distance);
@@ -164,12 +171,13 @@ void Landscape::InitBoids()
 
   for (int i = 0; i < _settings.boids.num_flocks; ++i)
   {
-    Flock* flock = new Flock(_settings.boids.boids_per_flock);
+    Flock* flock = new Flock(_settings.boids);
     flock->boids._maxSpeed = b.max_speed;
 
     float sum = 
       b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
-    flock->boids.AddKinematics(_behaviorSeek, _settings.boids.wander_scale / sum);
+    // Each flock gets its own seek behavior, because they need per flock information
+    flock->boids.AddKinematics(flock->seek, _settings.boids.wander_scale / sum);
     flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
     flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
     flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
@@ -185,7 +193,7 @@ void Landscape::InitBoids()
     flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
     flock->wanderAngle = angle;
 
-    _behaviorSeek->target = flock->nextWaypoint;
+    flock->seek->target = flock->nextWaypoint;
 
     // Init the boids
     V3* pos = flock->boids._bodies.pos;
@@ -256,7 +264,7 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
     }
   }
 
-  //_behaviorSeek->target = flock->nextWaypoint;
+  flock->seek->target = flock->nextWaypoint;
   flock->boids.Update(flockData->updateState);
 }
 
@@ -890,7 +898,8 @@ void Landscape::RenderParameterSet()
     UpdateWeight(_behaviorSeparataion, _settings.boids.separation_scale / sum);
     UpdateWeight(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
     UpdateWeight(_behaviorAlignment, _settings.boids.alignment_scale / sum);
-    UpdateWeight(_behaviorSeek, _settings.boids.wander_scale / sum);
+    for (Flock* flock : _flocks)
+      UpdateWeight(flock->seek, _settings.boids.wander_scale / sum);
     UpdateWeight(_landscapeFollow, _settings.boids.follow_scale / sum);
   }
 
