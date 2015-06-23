@@ -21,7 +21,13 @@ void DynParticles::Init(int numBodies)
   _bodies.vel = new V3[numBodies];
   _bodies.acc = new V3[numBodies];
   _bodies.force = new V3[numBodies];
-  _bodies.distMatrix = new DistMatrix[numBodies];
+  _bodies.distMatrix = new DistMatrix[numBodies*numBodies];
+
+  V3 zero(0,0,0);
+  for (int i = 0; i < numBodies; ++i)
+  {
+    _bodies.pos[i] = _bodies.vel[i] = _bodies.acc[i] = _bodies.force[i] = zero;
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -47,37 +53,54 @@ void DynParticles::Update(const UpdateState& updateState)
   V3* force = _bodies.force;
   DynParticles::DistMatrix* distMatrix = _bodies.distMatrix;
 
+  _tickCount++;
+  int step = _tickCount % 4;
+  bool updateForces = step == 0 || step == 2;
+  bool updateDistances = step == 1;
+
   V3 center(0,0,0);
   for (int i = 0; i < numBodies; ++i)
   {
-    force[i] = { 0, 0, 0 };
+    if (updateForces)
+    {
+      force[i] = { 0, 0, 0 };
+    }
     center += pos[i];
   }
 
   _center = 1.0f / numBodies * center;
 
-  // precompute particle distance calculations
-  for (int i = 0; i < numBodies; ++i)
+  if (updateDistances)
   {
-    for (int j = i; j < numBodies; ++j)
+    // precompute particle distance calculations
+    for (int i = 0; i < numBodies; ++i)
     {
-      if (i != j)
+      for (int j = i; j < numBodies; ++j)
       {
-        float tmp = Distance(pos[i], pos[j]);
-        distMatrix[i*numBodies + j].dist = tmp;
-        distMatrix[j*numBodies + i].dist = tmp;
-      }
-      else
-      {
-        distMatrix[i*numBodies + j].dist = 0;
+        if (i != j)
+        {
+          float dist = Distance(pos[i], pos[j]);
+          float invDist = 1.0f / dist;
+          distMatrix[i*numBodies + j].dist = dist;
+          distMatrix[j*numBodies + i].dist = dist;
+          distMatrix[i*numBodies + j].invDist = invDist;
+          distMatrix[j*numBodies + i].invDist = invDist;
+        }
+        else
+        {
+          distMatrix[i*numBodies + j].dist = 0;
+          distMatrix[i*numBodies + j].invDist = 0;
+        }
       }
     }
   }
 
-
-  for (Kinematic& k : _kinematics)
+  if (updateForces)
   {
-    k.kinematic->Update(&_bodies, k.weight, updateState);
+    for (Kinematic& k : _kinematics)
+    {
+      k.kinematic->Update(&_bodies, k.weight, updateState);
+    }
   }
 
   float dt = 1.0f / updateState.frequency;
@@ -139,27 +162,29 @@ void BehaviorSeparataion::Update(DynParticles::Bodies* bodies, float weight, con
     // return a force away from any close boids
     V3 avg(0, 0, 0);
 
-    float cnt = 0.f;
+    int numRejected = 0;
     for (int j = 0; j < numBodies; ++j)
     {
-      if (i == j)
-        continue;
+      float dist = dm[i*numBodies + j].dist;
 
-      float dist = dm[i*numBodies+j].dist;
-      if (dist > separationDistance)
+      if (dist > separationDistance || i == j)
+      {
+        ++numRejected;
         continue;
+      }
 
-      float invDist = 1.0f / dist;
+      // Note, what's really happening is that we're first normalizing the repelling
+      // vector, then scaling by 1/r
+      float invDist = dm[i*numBodies+j].invDist;
       avg += (pos[i] - pos[j]) * (invDist * invDist);
-      cnt += 1.f;
     }
 
-    if (cnt == 0.f)
+    if (numRejected == numBodies)
       continue;
 
-    avg /= cnt;
+    avg /= (float)(numBodies - numRejected);
 
-    // Reynolds uses: steering = desired - current
+    // Reynolds uses: steering = desired - current (current + steering = desired)
     V3 desired = Normalize(avg) * maxSpeed;
     force[i] += weight * ClampVector(desired - vel[i], maxForce);
   }
@@ -180,30 +205,25 @@ void BehaviorCohesion::Update(DynParticles::Bodies* bodies, float weight, const 
     // Return a force towards the average boid position
     V3 avg(0, 0, 0);
 
-    float cnt = 0.f;
-
+    int numRejected = 0;
     for (int j = 0; j < numBodies; ++j)
     {
-      if (i == j)
-        continue;
-
       float dist = dm[i*numBodies + j].dist;
-      if (dist > cohesionDistance)
+
+      if (dist > cohesionDistance || i == j)
+      {
+        ++numRejected;
         continue;
+      }
 
-      //DynParticles::Body* inner = &bodies[j];
-
-//      avg += inner->pos;
       avg += pos[j];
-      cnt += 1.f;
     }
 
-    if (cnt == 0.f)
+    if (numBodies == numRejected)
       continue;
 
-    avg /= cnt;
+    avg /= (float)(numBodies - numRejected);
 
-//    V3 desiredVel = Normalize(avg - b->pos) * maxSpeed;
     V3 desiredVel = Normalize(avg - pos[i]) * maxSpeed;
     force[i] += weight * ClampVector(desiredVel - vel[i], maxForce);
   }
@@ -221,31 +241,27 @@ void BehaviorAlignment::Update(DynParticles::Bodies* bodies, float weight, const
 
   for (int i = 0; i < numBodies; ++i)
   {
-    //DynParticles::Body* b = &bodies[i];
-
     // return a force to align the boids velocity with the average velocity
     V3 avg(0, 0, 0);
 
-    float cnt = 0.f;
+    int numRejected = 0;
     for (int j = 0; j < numBodies; ++j)
     {
-      if (i == j)
-        continue;
 
       float dist = dm[i*numBodies + j].dist;
-      if (dist > cohesionDistance)
+      if (dist > cohesionDistance || i == j)
+      {
+        numRejected++;
         continue;
-
-      //DynParticles::Body* inner = &bodies[j];
+      }
 
       avg += vel[j];
-      cnt += 1.f;
     }
 
-    if (cnt == 0.f)
+    if (numRejected == numBodies)
       continue;
 
-    avg /= cnt;
+    avg /= (float)(numBodies - numRejected);
     V3 desired = Normalize(avg) * maxSpeed;
     force[i] += weight * ClampVector(desired - vel[i], maxForce);
   }

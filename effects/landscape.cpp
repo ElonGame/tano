@@ -138,21 +138,7 @@ bool Landscape::Init(const char* configFile)
     .BlendDesc(blendDescBlendOneOne)
     .RasterizerDesc(rasterizeDescCullNone)));
 
-  //MeshLoader loader;
-  //INIT(loader.Load("gfx/boids.boba"));
-  //u32 boidsVertexFlags = 0;
-  //INIT(CreateBuffersFromMesh(loader, "Pyramid", &boidsVertexFlags, &_boidsMesh));
-  //INIT_FATAL(_boidsMesh.LoadVertexShader("shaders/out/landscape", "VsBoids", boidsVertexFlags));
-  //INIT_FATAL(_boidsMesh.LoadPixelShader("shaders/out/landscape", "PsBoids"));
-
   Reset();
-  //InitBoids();
-
-  int w, h;
-  INIT(_cbPerFrame.Create());
-  GRAPHICS.GetBackBufferSize(&w, &h);
-
-//  _camera._pos = Vector3(0, 200, 500);
 
   END_INIT_SEQUENCE();
 }
@@ -181,7 +167,8 @@ void Landscape::InitBoids()
     Flock* flock = new Flock(_settings.boids.boids_per_flock);
     flock->boids._maxSpeed = b.max_speed;
 
-    float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale;
+    float sum = 
+      b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
     flock->boids.AddKinematics(_behaviorSeek, _settings.boids.wander_scale / sum);
     flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
     flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
@@ -211,12 +198,6 @@ void Landscape::InitBoids()
       force[i] = 10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
     }
 
-    //for (DynParticles::Body& b : flock->boids)
-    //{
-    //  b.pos = center + V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-    //  b.pos.y = 20 + NoiseAtPoint(b.pos);
-    //  b.force = 10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-    //}
     _flocks.Append(flock);
   }
 }
@@ -234,8 +215,6 @@ void BehaviorLandscapeFollow::Update(
 
   for (int i = 0; i < numBodies; ++i)
   {
-    //DynParticles::Body* b = &bodies[i];
-
     // return a force to keep the boid above the ground
 
     V3 probe = pos[i] + Normalize(vel[i]) * maxSpeed;
@@ -260,12 +239,12 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
 
   V3* pos = flockData->flock->boids._bodies.pos;
   int numBodies = flockData->flock->boids._bodies.numBodies;
+
   // check if the flock has reached its waypoint
   float closestDist = FLT_MAX;
   Vector3 center(0, 0, 0);
   for (int i = 0; i < numBodies; ++i)
   {
-    //DynParticles::Body& b = flock->boids._bodies[i];
     if (Distance(pos[i], flock->nextWaypoint) < radius)
     {
       float angle = flock->wanderAngle + randf(-XM_PI / 2, XM_PI / 2);

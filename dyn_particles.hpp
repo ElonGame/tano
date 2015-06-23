@@ -20,6 +20,7 @@ namespace tano
     struct DistMatrix
     {
       float dist;
+      float invDist;
     };
 
     struct Bodies
@@ -30,11 +31,6 @@ namespace tano
       V3* acc = nullptr;
       V3* force = nullptr;
       DistMatrix* distMatrix = nullptr;
-      //V3 pos = { 0, 0, 0 };
-      //V3 vel = { 0, 0, 0 };
-      //V3 acc = { 0, 0, 0 };
-      //V3 force = { 0, 0, 0 };
-      //float mass = 1.f;
     };
 
     struct Kinematics
@@ -42,12 +38,6 @@ namespace tano
       float weight;
       ParticleKinematics* kinematics;
     };
-
-    //Body* begin() { return _bodies ? &_bodies[0] : nullptr; }
-    //Body* end() { return _bodies ? &_bodies[_numBodies] : nullptr; }
-
-    //const Body* begin() const { return _bodies ? &_bodies[0] : nullptr; }
-    //const Body* end() const { return _bodies ? &_bodies[_numBodies] : nullptr; }
 
     struct Kinematic
     {
@@ -57,11 +47,9 @@ namespace tano
 
     vector<Kinematic> _kinematics;
     Bodies _bodies;
-    //Body* _bodies = nullptr;
-    //V3* _bodyPos = nullptr;
-    //int _numBodies = 0;
     V3 _center = { 0, 0, 0 };
     float _maxSpeed = 10.f;
+    int _tickCount = 0;
   };
 
   //------------------------------------------------------------------------------
