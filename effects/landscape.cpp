@@ -29,6 +29,42 @@ static const float NOISE_SCALE_Z = 0.01f;
 
 int Landscape::Chunk::nextId = 1;
 
+vector<V3> spline;
+
+void CardinalSpline(const V3* controlPoints, int numPoints, float a, vector<V3>* out)
+{
+  int numSteps = 20;
+  float sInc = 1.0f / numSteps;
+ 
+  out->reserve(numPoints * numSteps);
+
+  for (int i = 0; i < numPoints-1; ++i)
+  {
+    V3 p0 = controlPoints[max(0, i-1)];
+    V3 p1 = controlPoints[i];
+    V3 p2 = controlPoints[i+1];
+    V3 p3 = controlPoints[min(numPoints-1, i+2)];
+
+    V3 t1 = a*(p2-p0);
+    V3 t2 = a*(p3-p1);
+
+    float s = 0;
+    for (int j = 0; j < numSteps; ++j)
+    {
+      // P = h1 * P1 + h2 * P2 + h3 * T1 + h4 * T2;
+      float s2 = s*s;
+      float s3 = s2*s;
+      float h1 = + 2 * s3 - 3 * s2 + 1;
+      float h2 = - 2 * s2 + 3 * s2;
+      float h3 =       s3 - 2 * s2 + s;
+      float h4 =       s3 -     s2;
+
+      out->push_back(h1 * p1 + h2 * p2 + h3 * t1 + h4 * t2);
+      s += sInc;
+    }
+  }
+}
+
 //------------------------------------------------------------------------------
 float NoiseAtPoint(const V3& v)
 {
@@ -168,6 +204,16 @@ void Landscape::InitBoids()
   _behaviorCohesion = new BehaviorCohesion(b.max_force, b.max_speed, b.cohesion_distance);
   _behaviorAlignment = new BehaviorAlignment(b.max_force, b.max_speed, b.cohesion_distance);
   _landscapeFollow = new BehaviorLandscapeFollow(b.max_force, b.max_speed);
+
+  vector<V3> controlPoints;
+  for (int i = 0; i < 10; ++i)
+  {
+    V3 pt(randf(-500.f, 500.f), 0, i*100.f);
+    float y = NoiseAtPoint(pt);
+    controlPoints.push_back({pt.x, y, pt.z});
+  }
+
+  CardinalSpline(controlPoints.data(), 10, 0.5f, &spline);
 
   for (int i = 0; i < _settings.boids.num_flocks; ++i)
   {
@@ -699,6 +745,16 @@ void Landscape::RasterizeLandscape()
 //------------------------------------------------------------------------------
 void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHandle)
 {
+
+  for (int i = 0; i < spline.size()-1; ++i)
+  {
+    Vector3 p0(spline[i].x, spline[i].y, spline[i].z);
+    Vector3 p1(spline[i+1].x, spline[i+1].y, spline[i+1].z);
+    DEBUG_API.AddDebugLine(p0, p1, Color(1, 1, 1));
+  }
+
+  return;
+
   V3* boidPos = _ctx->MapWriteDiscard<V3>(_boidsBundle.objects._vb);
 
   int numBoids = 0;

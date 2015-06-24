@@ -63,6 +63,7 @@ void AddVertex(vector<Vector3>* verts, const Vector3& v)
   verts->push_back(v / len);
 }
 
+//------------------------------------------------------------------------------
 void ExpandTriangle(vector<Vector3>* expanded, const vector<Vector3>& verts, int a, int b, int c)
 {
   expanded->push_back(verts[a]);
@@ -73,6 +74,7 @@ void ExpandTriangle(vector<Vector3>* expanded, const vector<Vector3>& verts, int
   expanded->push_back(verts[a]);
 }
 
+//------------------------------------------------------------------------------
 void DebugApi::CreateDebugGeometry()
 {
   float t = (1.f + sqrtf(5)) / 2;
@@ -117,7 +119,7 @@ void DebugApi::CreateDebugGeometry()
   ExpandTriangle(&expanded, verts, 8, 6, 7);
   ExpandTriangle(&expanded, verts, 9, 8, 1);
 
-  _unitSphere = expanded;
+  _unitSphere.swap(expanded);
 }
 
 //------------------------------------------------------------------------------
