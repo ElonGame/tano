@@ -29,41 +29,83 @@ static const float NOISE_SCALE_Z = 0.01f;
 
 int Landscape::Chunk::nextId = 1;
 
-vector<V3> spline;
-
-void CardinalSpline(const V3* controlPoints, int numPoints, float a, vector<V3>* out)
+struct CardinalSpline
 {
-  int numSteps = 20;
-  float sInc = 1.0f / numSteps;
- 
-  out->reserve(numPoints * numSteps);
-
-  for (int i = 0; i < numPoints-1; ++i)
+  void Create(const V3* pts, int numPoints)
   {
-    V3 p0 = controlPoints[max(0, i-1)];
-    V3 p1 = controlPoints[i];
-    V3 p2 = controlPoints[i+1];
-    V3 p3 = controlPoints[min(numPoints-1, i+2)];
+    int numSteps = 50;
+    float sInc = 1.0f / numSteps;
+    float a = 0.5f;
 
-    V3 t1 = a*(p2-p0);
-    V3 t2 = a*(p3-p1);
+    controlPoints.resize(numPoints);
+    copy(pts, pts + numPoints, controlPoints.begin());
+    spline.reserve(numPoints * numSteps);
 
-    float s = 0;
-    for (int j = 0; j < numSteps; ++j)
+    for (int i = 0; i < numPoints - 1; ++i)
     {
-      // P = h1 * P1 + h2 * P2 + h3 * T1 + h4 * T2;
-      float s2 = s*s;
-      float s3 = s2*s;
-      float h1 = + 2 * s3 - 3 * s2 + 1;
-      float h2 = - 2 * s2 + 3 * s2;
-      float h3 =       s3 - 2 * s2 + s;
-      float h4 =       s3 -     s2;
+      V3 p0 = controlPoints[max(0, i - 1)];
+      V3 p1 = controlPoints[i];
+      V3 p2 = controlPoints[i + 1];
+      V3 p3 = controlPoints[min(numPoints - 1, i + 2)];
 
-      out->push_back(h1 * p1 + h2 * p2 + h3 * t1 + h4 * t2);
-      s += sInc;
+      V3 t1 = a*(p2 - p0);
+      V3 t2 = a*(p3 - p1);
+
+      float s = 0;
+      for (int j = 0; j < numSteps; ++j)
+      {
+        // P = h1 * P1 + h2 * P2 + h3 * T1 + h4 * T2;
+        float s2 = s*s;
+        float s3 = s2*s;
+        float h1 = +2 * s3 - 3 * s2 + 1;
+        float h2 = -2 * s3 + 3 * s2;
+        float h3 = s3 - 2 * s2 + s;
+        float h4 = s3 - s2;
+
+        spline.push_back(h1 * p1 + h2 * p2 + h3 * t1 + h4 * t2);
+        s += sInc;
+      }
     }
   }
-}
+
+  V3 Interpolate()
+  {
+    int numPts = (int)controlPoints.size();
+    int idx = ((int)curTime) % numPts;
+
+    V3 p0 = controlPoints[max(0, idx - 1)];
+    V3 p1 = controlPoints[idx];
+    V3 p2 = controlPoints[idx + 1];
+    V3 p3 = controlPoints[min(numPts - 1, idx + 2)];
+
+    return InterpolateInner(p0, p1, p2, p3, curTime);
+  }
+
+  V3 InterpolateInner(const V3& p0, const V3& p1, const V3& p2, const V3& p3, float s)
+  {
+    float a = 0.5f;
+
+    V3 t1 = a*(p2 - p0);
+    V3 t2 = a*(p3 - p1);
+
+    // P = h1 * P1 + h2 * P2 + h3 * T1 + h4 * T2;
+    float s2 = s*s;
+    float s3 = s2*s;
+    float h1 = +2 * s3 - 3 * s2 + 1;
+    float h2 = -2 * s3 + 3 * s2;
+    float h3 = s3 - 2 * s2 + s;
+    float h4 = s3 - s2;
+
+    return h1 * p1 + h2 * p2 + h3 * t1 + h4 * t2;
+  }
+
+  float curTime = 0;
+  vector<V3> spline;
+  vector<V3> controlPoints;
+};
+
+CardinalSpline spline;
+
 
 //------------------------------------------------------------------------------
 float NoiseAtPoint(const V3& v)
@@ -206,14 +248,22 @@ void Landscape::InitBoids()
   _landscapeFollow = new BehaviorLandscapeFollow(b.max_force, b.max_speed);
 
   vector<V3> controlPoints;
-  for (int i = 0; i < 10; ++i)
+  int numPts = 100;
+  float angleInc = 2 * XM_PI / numPts;
+  float angle = 0;
+  float radius = 500;
+  for (int i = 0; i < numPts; ++i)
   {
-    V3 pt(randf(-500.f, 500.f), 0, i*100.f);
-    float y = NoiseAtPoint(pt);
-    controlPoints.push_back({pt.x, y, pt.z});
+    V3 pt;
+    pt.x = radius * sin(angle);
+    pt.z = radius * cos(angle);
+    pt.y = 5 + NoiseAtPoint(pt);
+    controlPoints.push_back(pt);
+    angle += angleInc;
   }
 
-  CardinalSpline(controlPoints.data(), 10, 0.5f, &spline);
+  
+  spline.Create(controlPoints.data(), (int)controlPoints.size());
 
   for (int i = 0; i < _settings.boids.num_flocks; ++i)
   {
@@ -289,6 +339,7 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
 {
   FlockKernelData* flockData = (FlockKernelData*)data.kernelData.data;
   Flock* flock = flockData->flock;
+#if 0
   float radius = flockData->waypointRadius;
 
   V3* pos = flockData->flock->boids._bodies.pos;
@@ -311,6 +362,8 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
   }
 
   flock->seek->target = flock->nextWaypoint;
+#endif
+  flock->seek->target = spline.Interpolate();
   flock->boids.Update(flockData->updateState);
 }
 
@@ -344,6 +397,8 @@ void Landscape::UpdateBoids(const UpdateState& state)
     ImGui::Text("Update time: %.3fms", 1000 * avg);
   });
 
+
+  spline.curTime += dt;
 }
 
 //------------------------------------------------------------------------------
@@ -427,6 +482,8 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   _cbPerFrame.nearFar = Vector4(n, f, f*n, f-n);
 
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
+  DEBUG_API.AddDebugSphere(ToVector3(spline.Interpolate()), 10, Color(1, 1, 1));
+
 }
 
 //------------------------------------------------------------------------------
@@ -746,14 +803,12 @@ void Landscape::RasterizeLandscape()
 void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHandle)
 {
 
-  for (int i = 0; i < spline.size()-1; ++i)
+  for (int i = 0; i < spline.spline.size()-1; ++i)
   {
-    Vector3 p0(spline[i].x, spline[i].y, spline[i].z);
-    Vector3 p1(spline[i+1].x, spline[i+1].y, spline[i+1].z);
+    Vector3 p0(spline.spline[i].x, spline.spline[i].y, spline.spline[i].z);
+    Vector3 p1(spline.spline[i+1].x, spline.spline[i+1].y, spline.spline[i+1].z);
     DEBUG_API.AddDebugLine(p0, p1, Color(1, 1, 1));
   }
-
-  return;
 
   V3* boidPos = _ctx->MapWriteDiscard<V3>(_boidsBundle.objects._vb);
 

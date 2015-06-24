@@ -171,4 +171,9 @@ namespace tano
       (a.x * b.y) - (a.y * b.x));
   }
 
+  inline Vector3 ToVector3(const V3& v)
+  {
+    return Vector3(v.x, v.y, v.z);
+  }
+
 }

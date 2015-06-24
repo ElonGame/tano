@@ -1,22 +1,22 @@
 {
   camera: {
-    yaw: 0.350141;
-    pitch: 0.732113;
+    yaw: 1.400564;
+    pitch: 0.159155;
     roll: 0.000000;
-    pos: { 7.462798, 125.926994, -10.136116 };
+    pos: { -72.231445, 40.811394, 495.082001 };
   };
   boids: {
-    separation_scale: 25.000000;
-    cohesion_scale: 20.000000;
-    alignment_scale: 20.000000;
-    wander_scale: 60.000000;
-    follow_scale: 10.000000;
-    cohesion_distance: 25.000000;
-    separation_distance: 20.000000;
+    separation_scale: 12.626000;
+    cohesion_scale: 8.081000;
+    alignment_scale: 10.101001;
+    wander_scale: 20.202002;
+    follow_scale: 0.000000;
+    cohesion_distance: 500.000000;
+    separation_distance: 500.000000;
     max_speed: 100.000008;
     max_force: 30.000002;
     waypoint_radius: 10.000000;
-    num_flocks: 25;
+    num_flocks: 1;
     boids_per_flock: 250;
   };
   particle_texture: 'gfx/particle3.png';
