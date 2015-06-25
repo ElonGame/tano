@@ -135,7 +135,6 @@ void DynParticles::UpdateWeight(ParticleKinematics* kinematics, float weight)
 void BehaviorSeek::Update(DynParticles::Bodies* bodies, float weight, const UpdateState& state)
 {
   V3* pos = bodies->pos;
-  V3* acc = bodies->acc;
   V3* vel = bodies->vel;
   V3* force = bodies->force;
   int numBodies = bodies->numBodies;

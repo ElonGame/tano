@@ -1,15 +1,15 @@
 {
   camera: {
-    yaw: 1.400564;
-    pitch: 0.159155;
+    yaw: 1.909860;
+    pitch: 0.222817;
     roll: 0.000000;
-    pos: { -72.231445, 40.811394, 495.082001 };
+    pos: { 118.431137, 21.485031, 463.912231 };
   };
   boids: {
-    separation_scale: 12.626000;
-    cohesion_scale: 8.081000;
-    alignment_scale: 10.101001;
-    wander_scale: 20.202002;
+    separation_scale: 4.040000;
+    cohesion_scale: 6.061000;
+    alignment_scale: 0.000000;
+    wander_scale: 13.636001;
     follow_scale: 0.000000;
     cohesion_distance: 500.000000;
     separation_distance: 500.000000;

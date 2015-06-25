@@ -4,34 +4,6 @@ using namespace tano;
 using namespace bristol;
 
 //------------------------------------------------------------------------------
-ArenaAllocator* ArenaAllocator::_instance;
-
-//------------------------------------------------------------------------------
-bool ArenaAllocator::Create(void* start, void* end)
-{
-  if (_instance)
-    return true;
-
-  _instance = new ArenaAllocator();
-  return _instance->Init(start, end);
-}
-
-//------------------------------------------------------------------------------
-void ArenaAllocator::Destroy()
-{
-  if (!_instance)
-    return;
-
-  delete exch_null(_instance);
-}
-
-//------------------------------------------------------------------------------
-ArenaAllocator& ArenaAllocator::Instance()
-{
-  return *_instance;
-}
-
-//------------------------------------------------------------------------------
 ArenaAllocator::ArenaAllocator()
 {
   InitializeCriticalSection(&_cs);
@@ -58,14 +30,19 @@ void ArenaAllocator::NewFrame()
 }
 
 //------------------------------------------------------------------------------
-void* ArenaAllocator::Alloc(u32 size)
+void* ArenaAllocator::Alloc(u32 size, u32 alignment)
 {
   ScopedCriticalSection cs(&_cs);
 
-  if (size + _idx > _capacity)
+  // Calc padding needed for requested alignment
+  u32 mask = alignment - 1;
+  u32 padding = (alignment - (_idx & mask)) & mask;
+
+  u32 alignedSize = size + padding;
+  if (alignedSize + _idx > _capacity)
     return nullptr;
 
-  void* res = _mem + _idx;
-  _idx += size;
+  u8* res = _mem + _idx + padding;
+  _idx += alignedSize;
   return res;
 }

@@ -71,14 +71,16 @@ struct CardinalSpline
   V3 Interpolate()
   {
     int numPts = (int)controlPoints.size();
-    int idx = ((int)curTime) % numPts;
+    int intTime = (int)curTime;
+    float fracTime = curTime - intTime;
+    int idx = intTime % numPts;
 
     V3 p0 = controlPoints[max(0, idx - 1)];
     V3 p1 = controlPoints[idx];
     V3 p2 = controlPoints[idx + 1];
     V3 p3 = controlPoints[min(numPts - 1, idx + 2)];
 
-    return InterpolateInner(p0, p1, p2, p3, curTime);
+    return InterpolateInner(p0, p1, p2, p3, fracTime);
   }
 
   V3 InterpolateInner(const V3& p0, const V3& p1, const V3& p2, const V3& p3, float s)
@@ -99,7 +101,13 @@ struct CardinalSpline
     return h1 * p1 + h2 * p2 + h3 * t1 + h4 * t2;
   }
 
+  void Update(float dt)
+  {
+    curTime += dt * speed;
+  }
+
   float curTime = 0;
+  float speed = 1;
   vector<V3> spline;
   vector<V3> controlPoints;
 };
@@ -262,7 +270,6 @@ void Landscape::InitBoids()
     angle += angleInc;
   }
 
-  
   spline.Create(controlPoints.data(), (int)controlPoints.size());
 
   for (int i = 0; i < _settings.boids.num_flocks; ++i)
@@ -279,18 +286,19 @@ void Landscape::InitBoids()
     flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
     flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
 
-    float s = 200.f;
-    V3 center(randf(-s, s), 0, randf(-s, s));
+    //float s = 200.f;
+    //V3 center(randf(-s, s), 0, randf(-s, s));
 
-    // Create a waypoint for the flock
-    float angle = randf(-XM_PI, XM_PI);
-    float dist = randf(100.f, 200.f);
-    flock->nextWaypoint = center + V3(dist * cos(angle), 0, dist * sin(angle));
-    flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
-    flock->wanderAngle = angle;
+    //// Create a waypoint for the flock
+    //float angle = randf(-XM_PI, XM_PI);
+    //float dist = randf(100.f, 200.f);
+    //flock->nextWaypoint = center + V3(dist * cos(angle), 0, dist * sin(angle));
+    //flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
+    //flock->wanderAngle = angle;
 
-    flock->seek->target = flock->nextWaypoint;
+    //flock->seek->target = flock->nextWaypoint;
 
+    V3 center = spline.controlPoints[0];
     // Init the boids
     V3* pos = flock->boids._bodies.pos;
     V3* force = flock->boids._bodies.force;
@@ -381,7 +389,7 @@ void Landscape::UpdateBoids(const UpdateState& state)
 
   for (Flock* flock : _flocks)
   {
-    FlockKernelData* data = (FlockKernelData*)ARENA.Alloc(sizeof(FlockKernelData));
+    FlockKernelData* data = (FlockKernelData*)g_ScratchMemory.Alloc(sizeof(FlockKernelData));
     *data = FlockKernelData{ flock, _settings.boids.waypoint_radius, state };
     KernelData kd;
     kd.data = data;
@@ -398,7 +406,7 @@ void Landscape::UpdateBoids(const UpdateState& state)
   });
 
 
-  spline.curTime += dt;
+  spline.Update(dt);
 }
 
 //------------------------------------------------------------------------------
@@ -713,7 +721,7 @@ void Landscape::RasterizeLandscape()
       {
         ++chunkMisses;
         chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
-        ChunkKernelData* data = (ChunkKernelData*)ARENA.Alloc(sizeof(ChunkKernelData));
+        ChunkKernelData* data = (ChunkKernelData*)g_ScratchMemory.Alloc(sizeof(ChunkKernelData));
         *data = ChunkKernelData{ chunk, x, z };
         KernelData kd;
         kd.data = data;
@@ -976,6 +984,8 @@ void Landscape::RenderParameterSet()
       f->boids.UpdateWeight(k, w);
     }
   };
+
+  ImGui::SliderFloat("spline-speed", &spline.speed, 0, 20);
 
   ImGui::SliderFloat("dispersion", &_settings.lens_flare.dispersion, 0, 2);
   ImGui::SliderInt("Num ghosts", &_settings.lens_flare.num_ghosts, 1, 10);

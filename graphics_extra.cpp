@@ -51,7 +51,7 @@ namespace tano
   u32* GenerateQuadIndices(u32 numQuads, u32* ibSize)
   {
     u32 ibSizeLocal = numQuads * 6 * sizeof(u32);
-    u32* triangleIndices = (u32*)ARENA.Alloc(ibSizeLocal);
+    u32* triangleIndices = (u32*)g_ScratchMemory.Alloc(ibSizeLocal);
     for (u32 i = 0; i < numQuads; ++i)
     {
       // 0, 1, 3

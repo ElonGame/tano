@@ -6,21 +6,14 @@ namespace tano
   class ArenaAllocator
   {
   public:
-
-    static bool Create(void* start, void* end);
-    static void Destroy();
-    static ArenaAllocator& Instance();
-
-    void NewFrame();
-    void* Alloc(u32 size);
-
-  private:
     ArenaAllocator();
     ~ArenaAllocator();
 
     bool Init(void* start, void* end);
+    void NewFrame();
+    void* Alloc(u32 size, u32 alignment = 16);
 
-    static ArenaAllocator* _instance;
+  private:
 
     u8* _mem = nullptr;
     u32 _idx = 0;
@@ -29,5 +22,6 @@ namespace tano
     CRITICAL_SECTION _cs;
   };
 
-#define ARENA ArenaAllocator::Instance()
+  extern ArenaAllocator g_ScratchMemory;
+  extern ArenaAllocator g_GlobalMemory;
 }
