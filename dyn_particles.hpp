@@ -26,10 +26,10 @@ namespace tano
     struct Bodies
     {
       int numBodies = 0;
-      V3* pos = nullptr;
-      V3* vel = nullptr;
-      V3* acc = nullptr;
-      V3* force = nullptr;
+      XMVECTOR* pos = nullptr;
+      XMVECTOR* vel = nullptr;
+      XMVECTOR* acc = nullptr;
+      XMVECTOR* force = nullptr;
       DistMatrix* distMatrix = nullptr;
     };
 
@@ -47,7 +47,7 @@ namespace tano
 
     vector<Kinematic> _kinematics;
     Bodies _bodies;
-    V3 _center = { 0, 0, 0 };
+    XMVECTOR _center = XMVectorZero();
     float _maxSpeed = 10.f;
     int _tickCount = 0;
   };
@@ -67,7 +67,7 @@ namespace tano
   {
     BehaviorSeek(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
     virtual void Update(DynParticles::Bodies* bodies, float weight, const UpdateState& state) override;
-    V3 target = { 0, 0, 0 };
+    XMVECTOR target = XMVectorZero();
   };
 
   //------------------------------------------------------------------------------

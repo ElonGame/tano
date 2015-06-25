@@ -20,6 +20,7 @@
 using namespace tano;
 using namespace tano::scheduler;
 using namespace bristol;
+using namespace DirectX;
 
 static const Vector3 ZERO3(0,0,0);
 static const float GRID_SIZE = 10;
@@ -298,16 +299,23 @@ void Landscape::InitBoids()
 
     //flock->seek->target = flock->nextWaypoint;
 
-    V3 center = spline.controlPoints[0];
+    XMVECTOR center = XMLoadFloat3(&XMFLOAT3(
+      spline.controlPoints[0].x,
+      spline.controlPoints[0].y,
+      spline.controlPoints[0].z));
     // Init the boids
-    V3* pos = flock->boids._bodies.pos;
-    V3* force = flock->boids._bodies.force;
+    XMVECTOR* pos = flock->boids._bodies.pos;
+    XMVECTOR* force = flock->boids._bodies.force;
     for (int i = 0; i < flock->boids._bodies.numBodies; ++i)
     {
       //DynParticles::Body& b = flock->boids._bodies[i];
-      pos[i] = center + V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-      pos[i].y = 20 + NoiseAtPoint(pos[i]);
-      force[i] = 10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      V3 pp(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      float h = 20 + NoiseAtPoint(pp);
+      XMVECTOR tmp = XMLoadFloat3(&XMFLOAT3(pp.x, h, pp.z));
+      pos[i] = XMVectorAdd(center, tmp);
+      //pos[i].y = 20 + NoiseAtPoint(pos[i]);
+      tmp = XMLoadFloat3(&XMFLOAT3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f)));
+      force[i] = XMVectorScale(tmp, 10); //V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
     }
 
     _flocks.Append(flock);
@@ -318,19 +326,19 @@ void Landscape::InitBoids()
 void BehaviorLandscapeFollow::Update(
   DynParticles::Bodies* bodies, float weight, const UpdateState& state)
 {
-  V3* pos = bodies->pos;
-  V3* acc = bodies->acc;
-  V3* vel = bodies->vel;
-  V3* force = bodies->force;
+  XMVECTOR* pos = bodies->pos;
+  XMVECTOR* acc = bodies->acc;
+  XMVECTOR* vel = bodies->vel;
+  XMVECTOR* force = bodies->force;
   DynParticles::DistMatrix* dm = bodies->distMatrix;
   int numBodies = bodies->numBodies;
-
+/*
   for (int i = 0; i < numBodies; ++i)
   {
     // return a force to keep the boid above the ground
 
-    V3 probe = pos[i] + Normalize(vel[i]) * maxSpeed;
-    V3 d = probe;
+    XMVECTOR probe = pos[i] + Normalize(vel[i]) * maxSpeed;
+    XMVECTOR d = probe;
     d.y = 20 + NoiseAtPoint(probe);
 
     // if the probe is above the terrain height, move towards the average
@@ -340,6 +348,7 @@ void BehaviorLandscapeFollow::Update(
     V3 desiredVel = Normalize(d - probe) * maxSpeed;
     force[i] += ClampVector(desiredVel - vel[i], maxForce);
   }
+*/
 }
 
 //------------------------------------------------------------------------------
@@ -371,7 +380,10 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
 
   flock->seek->target = flock->nextWaypoint;
 #endif
-  flock->seek->target = spline.Interpolate();
+  V3 pp = spline.Interpolate();
+//  flock->seek->target = spline.Interpolate();
+  flock->seek->target = XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z));
+  //XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z));
   flock->boids.Update(flockData->updateState);
 }
 
@@ -413,9 +425,9 @@ void Landscape::UpdateBoids(const UpdateState& state)
 bool Landscape::Update(const UpdateState& state)
 {
   _cbPerFrame.time.x = (float)(state.localTime.TotalMilliseconds() / 1e6);
-  _cbPerFrame.time.y = _flocks[0]->boids._center.x;
-  _cbPerFrame.time.z = _flocks[0]->boids._center.y;
-  _cbPerFrame.time.w = _flocks[0]->boids._center.z;
+//  _cbPerFrame.time.y = _flocks[0]->boids._center.x;
+//  _cbPerFrame.time.z = _flocks[0]->boids._center.y;
+//  _cbPerFrame.time.w = _flocks[0]->boids._center.z;
   UpdateBoids(state);
   UpdateCameraMatrix(state);
   return true;
@@ -818,7 +830,7 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
     DEBUG_API.AddDebugLine(p0, p1, Color(1, 1, 1));
   }
 
-  V3* boidPos = _ctx->MapWriteDiscard<V3>(_boidsBundle.objects._vb);
+  XMFLOAT3* boidPos = _ctx->MapWriteDiscard<XMFLOAT3>(_boidsBundle.objects._vb);
 
   int numBoids = 0;
   for (const Flock* flock : _flocks)
@@ -826,12 +838,14 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
     //DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
     //DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1, 1, 1));
 
-    V3* pos = flock->boids._bodies.pos;
+    XMVECTOR* pos = flock->boids._bodies.pos;
     int numBodies = flock->boids._bodies.numBodies;
 
     for (int i = 0; i < numBodies; ++i)
     {
-      *boidPos++ = pos[i];
+      XMStoreFloat3(boidPos, pos[i]);
+      ++boidPos;
+      //*boidPos++ = pos[i];
       numBoids++;
     }
   }

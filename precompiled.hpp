@@ -200,6 +200,9 @@ namespace tano
   };
 
 
+  using DirectX::XMVectorZero;
+  using DirectX::XMVECTOR;
+  using DirectX::FXMVECTOR;
   using DirectX::XMFLOAT3;
   using DirectX::BoundingSphere;
   using DirectX::XMConvertToRadians;
