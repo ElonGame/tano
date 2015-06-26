@@ -838,6 +838,10 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
     //DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
     //DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1, 1, 1));
 
+    //int curNum = flock->boids._bodies.numBodies;
+    //memcpy(boidPos, flock->boids._bodies.pos, curNum * sizeof(XMFLOAT3));
+    //boidPos += flock->boids._bodies.numBodies;
+    //numBoids += curNum;
     XMVECTOR* pos = flock->boids._bodies.pos;
     int numBodies = flock->boids._bodies.numBodies;
 
@@ -999,6 +1003,14 @@ void Landscape::RenderParameterSet()
     }
   };
 
+  auto UpdateDist = [this](DynParticles::DistMeasureType type, float w)
+  {
+    for (Flock* f : _flocks)
+    {
+      f->boids.SetDistCutOff(type, w);
+    }
+  };
+
   ImGui::SliderFloat("spline-speed", &spline.speed, 0, 20);
 
   ImGui::SliderFloat("dispersion", &_settings.lens_flare.dispersion, 0, 2);
@@ -1042,6 +1054,10 @@ void Landscape::RenderParameterSet()
   ImGui::SliderFloat("MaxForce", &_settings.boids.max_force, 10.f, 1000.f);
   ImGui::SliderFloat("SepDist", &_settings.boids.separation_distance, 1.f, 100.f);
   ImGui::SliderFloat("CohDist", &_settings.boids.cohesion_distance, 1.f, 100.f);
+
+  // todo: move to init
+  UpdateDist(DynParticles::DistSeperation, _settings.boids.separation_distance);
+  UpdateDist(DynParticles::DistCohesion, _settings.boids.cohesion_distance);
 
   if (ImGui::Button("Reset"))
     Reset();

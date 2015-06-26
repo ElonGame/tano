@@ -2,6 +2,8 @@
 
 #define WITH_INVALID_CHECK 0
 
+using namespace DirectX;
+
 namespace tano
 {
   struct V2
@@ -153,6 +155,48 @@ namespace tano
       return force;
 
     return maxLength / len * force;
+  }
+
+  inline XMVECTOR XM_CALLCONV XMVector3ClampLengthMax(FXMVECTOR V, float maxLength)
+  {
+    XMVECTOR LengthMax = XMVectorReplicate(maxLength);
+
+    assert((XMVectorGetY(LengthMax) == XMVectorGetX(LengthMax)) && (XMVectorGetZ(LengthMax) == XMVectorGetX(LengthMax)));
+    assert(XMVector3GreaterOrEqual(LengthMax, XMVectorZero()));
+
+    // ||r||^2
+    XMVECTOR LengthSq = XMVector3LengthSq(V);
+
+    const XMVECTOR Zero = XMVectorZero();
+
+    // 1/||r||
+    XMVECTOR RcpLength = XMVectorReciprocalSqrt(LengthSq);
+
+    // 0xffffffff on equal, 0 otherwise
+    XMVECTOR InfiniteLength = XMVectorEqualInt(LengthSq, g_XMInfinity.v);
+    XMVECTOR ZeroLength = XMVectorEqual(LengthSq, Zero);
+
+    // r/||r|| = r normalized
+    XMVECTOR Normal = XMVectorMultiply(V, RcpLength);
+
+    // ||r||^2 / ||r|| = ||r||
+    XMVECTOR Length = XMVectorMultiply(LengthSq, RcpLength);
+
+    // -0xff if not zero or inf
+    XMVECTOR Select = XMVectorEqualInt(InfiniteLength, ZeroLength);
+    Length = XMVectorSelect(LengthSq, Length, Select);
+    Normal = XMVectorSelect(LengthSq, Normal, Select);
+
+    XMVECTOR ControlMax = XMVectorGreater(Length, LengthMax);
+    XMVECTOR ClampLength = XMVectorSelect(Length, LengthMax, ControlMax);
+
+    XMVECTOR Result = XMVectorMultiply(Normal, ClampLength);
+
+    // Preserve the original vector (with no precision loss) if the length is shorter than max
+    XMVECTOR Control = XMVectorEqualInt(ControlMax, g_XMZero.v);
+    Result = XMVectorSelect(Result, V, Control);
+
+    return Result;
   }
 
   inline Vector3 Normalize(const Vector3& v)

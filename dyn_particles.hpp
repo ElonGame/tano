@@ -10,17 +10,39 @@ namespace tano
   //------------------------------------------------------------------------------
   struct DynParticles
   {
+    enum DistMeasureType
+    {
+      DistCohesion,
+      DistSeperation,
+      DistCount
+    };
+
     ~DynParticles();
     void Init(int numBodies);
     void Reset();
     void AddKinematics(ParticleKinematics* kinematics, float weight);
     void UpdateWeight(ParticleKinematics* kinematics, float weight);
     void Update(const UpdateState& updateState);
+    void UpdateDistMatrix();
+    void SetDistCutOff(DistMeasureType type, float cutoff);
 
     struct DistMatrix
     {
       float dist;
       float invDist;
+    };
+
+    struct DistMeasureEntry
+    {
+      int idx;
+      float dist;
+      float invDist;
+    };
+
+    struct DistMeasure
+    {
+      float cutoff = 0;
+      DistMeasureEntry* values;
     };
 
     struct Bodies
@@ -31,6 +53,8 @@ namespace tano
       XMVECTOR* acc = nullptr;
       XMVECTOR* force = nullptr;
       DistMatrix* distMatrix = nullptr;
+
+      DistMeasure distMeasures[DistCount];
     };
 
     struct Kinematics

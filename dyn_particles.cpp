@@ -33,8 +33,12 @@ void DynParticles::Init(int numBodies)
   V3 zero(0,0,0);
   for (int i = 0; i < numBodies; ++i)
   {
-
     _bodies.pos[i] = _bodies.vel[i] = _bodies.acc[i] = _bodies.force[i] = XMVectorZero();
+  }
+
+  for (int i = 0; i < DistCount; ++i)
+  {
+    _bodies.distMeasures[i].values = new DistMeasureEntry[numBodies*numBodies];
   }
 }
 
@@ -42,6 +46,12 @@ void DynParticles::Init(int numBodies)
 void DynParticles::Reset()
 {
   SAFE_ADELETE(_bodies.distMatrix);
+}
+
+//------------------------------------------------------------------------------
+void DynParticles::SetDistCutOff(DistMeasureType type, float cutoff)
+{
+  _bodies.distMeasures[type].cutoff = cutoff;
 }
 
 //------------------------------------------------------------------------------
@@ -62,8 +72,8 @@ void DynParticles::Update(const UpdateState& updateState)
   bool updateForces = step == 0 || step == 2;
   bool updateDistances = step == 1;
 
-  updateForces = true;
-  updateDistances = true;
+  //updateForces = true;
+  //updateDistances = true;
 
   XMVECTOR center = XMVectorZero();
   //V3 center(0,0,0);
@@ -81,30 +91,7 @@ void DynParticles::Update(const UpdateState& updateState)
 
   if (updateDistances)
   {
-    // precompute particle distance calculations
-    for (int i = 0; i < numBodies; ++i)
-    {
-      for (int j = i; j < numBodies; ++j)
-      {
-        if (i != j)
-        {
-          XMVECTOR tmp = XMVector3LengthEst(XMVectorSubtract(pos[i], pos[j]));
-          float dist;
-          XMStoreFloat(&dist, tmp);
-          //float dist = Distance(pos[i], pos[j]);
-          float invDist = 1.0f / dist;
-          distMatrix[i*numBodies + j].dist = dist;
-          distMatrix[j*numBodies + i].dist = dist;
-          distMatrix[i*numBodies + j].invDist = invDist;
-          distMatrix[j*numBodies + i].invDist = invDist;
-        }
-        else
-        {
-          distMatrix[i*numBodies + j].dist = 0;
-          distMatrix[i*numBodies + j].invDist = 0;
-        }
-      }
-    }
+    UpdateDistMatrix();
   }
 
   if (updateForces)
@@ -119,13 +106,82 @@ void DynParticles::Update(const UpdateState& updateState)
   for (int i = 0; i < numBodies; ++i)
   {
     _bodies.acc[i] = _bodies.force[i];
-    _bodies.vel[i] = XMVector3ClampLength(
+    _bodies.vel[i] = XMVector3ClampLengthMax(
         XMVectorAdd(_bodies.vel[i], XMVectorScale(_bodies.acc[i], dt)), 
-        0, 
         _maxSpeed);
-    //_bodies.vel[i] = ClampVector(XMVectorAdd(_bodies.vel[i], XMVectorScale(_bodies.acc[i], dt)), _maxSpeed);
     _bodies.pos[i] = XMVectorAdd(_bodies.pos[i], XMVectorScale(_bodies.vel[i], dt));
   }
+}
+
+//------------------------------------------------------------------------------
+void DynParticles::UpdateDistMatrix()
+{
+  int numBodies = _bodies.numBodies;
+  XMVECTOR* pos = _bodies.pos;
+  DynParticles::DistMatrix* distMatrix = _bodies.distMatrix;
+
+  for (int i = 0; i < DistCount; ++i)
+  {
+    for (int j = 0; j < numBodies; ++j)
+    {
+      _bodies.distMeasures[i].values[j*numBodies].idx = -1;
+    }
+  }
+
+  for (int k = 0; k < DistCount; ++k)
+  {
+    // precompute particle distance calculations
+    for (int i = 0; i < numBodies; ++i)
+    {
+      DistMeasureEntry* e = &_bodies.distMeasures[k].values[i*numBodies];
+      float cutOff = _bodies.distMeasures[k].cutoff;
+      for (int j = 0; j < numBodies; ++j)
+      {
+        if (i != j)
+        {
+          XMVECTOR tmp = XMVector3LengthEst(XMVectorSubtract(pos[i], pos[j]));
+          float dist;
+          XMStoreFloat(&dist, tmp);
+          if (dist < cutOff)
+          {
+            float invDist = 1.0f / dist;
+            e->idx = j;
+            e->dist = dist;
+            e->invDist = invDist;
+            e++;
+          }
+        }
+      }
+      // use -1 as a sentinal
+      e->idx = -1;
+    }
+  }
+
+  //// precompute particle distance calculations
+  //for (int i = 0; i < numBodies; ++i)
+  //{
+  //  for (int j = i; j < numBodies; ++j)
+  //  {
+  //    if (i != j)
+  //    {
+  //      XMVECTOR tmp = XMVector3LengthEst(XMVectorSubtract(pos[i], pos[j]));
+  //      float dist;
+  //      XMStoreFloat(&dist, tmp);
+  //      float invDist = 1.0f / dist;
+
+  //      distMatrix[i*numBodies + j].dist = dist;
+  //      distMatrix[j*numBodies + i].dist = dist;
+  //      distMatrix[i*numBodies + j].invDist = invDist;
+  //      distMatrix[j*numBodies + i].invDist = invDist;
+  //    }
+  //    else
+  //    {
+  //      // set dist to flt-max, so we can avoid a conditional later
+  //      distMatrix[i*numBodies + j].dist = FLT_MAX;
+  //      distMatrix[i*numBodies + j].invDist = 0;
+  //    }
+  //  }
+  //}
 }
 
 //------------------------------------------------------------------------------
@@ -161,7 +217,7 @@ void BehaviorSeek::Update(DynParticles::Bodies* bodies, float weight, const Upda
     force[i] = XMVectorAdd(
       force[i], 
       XMVectorScale(
-        XMVector3ClampLength(XMVectorSubtract(desiredVel, vel[i]), 0, maxForce), 
+        XMVector3ClampLengthMax(XMVectorSubtract(desiredVel, vel[i]), maxForce), 
         weight));
   }
 }
@@ -181,34 +237,43 @@ void BehaviorSeparataion::Update(DynParticles::Bodies* bodies, float weight, con
     // return a force away from any close boids
     XMVECTOR avg = XMVectorZero();
 
-    int numRejected = 0;
-    for (int j = 0; j < numBodies; ++j)
+    DynParticles::DistMeasureEntry* values = &bodies->distMeasures[DynParticles::DistSeperation].values[i*numBodies];
+    DynParticles::DistMeasureEntry* start = values;
+    while (values->idx != -1)
     {
-      float dist = dm[i*numBodies + j].dist;
-
-      if (dist > separationDistance || i == j)
-      {
-        ++numRejected;
-        continue;
-      }
-
-      // Note, what's really happening is that we're first normalizing the repelling
-      // vector, then scaling by 1/r
-      float invDist = dm[i*numBodies+j].invDist;
-      avg = XMVectorAdd(avg, XMVectorScale(XMVectorSubtract(pos[i], pos[j]), invDist * invDist));
+      float invDist = values->invDist;
+      int idx = values->idx;
+      avg = XMVectorAdd(avg, XMVectorScale(XMVectorSubtract(pos[i], pos[idx]), invDist * invDist));
+      values++;
     }
+    int numCounted = (int)(values - start);
 
-    if (numRejected == numBodies)
+    //int numCounted = 0;
+    //for (int j = 0; j < numBodies; ++j)
+    //{
+    //  float dist = dm[i*numBodies + j].dist;
+
+    //  if (dist < separationDistance)
+    //  {
+    //    ++numCounted;
+    //    // Note, what's really happening is that we're first normalizing the repelling
+    //    // vector, then scaling by 1/r
+    //    float invDist = dm[i*numBodies + j].invDist;
+    //    avg = XMVectorAdd(avg, XMVectorScale(XMVectorSubtract(pos[i], pos[j]), invDist * invDist));
+    //  }
+    //}
+
+    if (numCounted == 0)
       continue;
 
-    avg = XMVectorDivide(avg, XMVectorReplicate((float)(numBodies - numRejected)));
+    avg = XMVectorDivide(avg, XMVectorReplicate((float)numCounted));
 
     // Reynolds uses: steering = desired - current (current + steering = desired)
     XMVECTOR desired = XMVectorScale(XMVector3Normalize(avg), maxSpeed);
     force[i] = XMVectorAdd(
       force[i],
       XMVectorScale(
-        XMVector3ClampLength(XMVectorSubtract(desired, vel[i]), 0, maxForce),
+        XMVector3ClampLengthMax(XMVectorSubtract(desired, vel[i]), maxForce),
         weight));
 
   }
@@ -229,28 +294,44 @@ void BehaviorCohesion::Update(DynParticles::Bodies* bodies, float weight, const 
     // Return a force towards the average boid position
     XMVECTOR avg = XMVectorZero();
 
-    int numRejected = 0;
-    for (int j = 0; j < numBodies; ++j)
+    DynParticles::DistMeasureEntry* values = &bodies->distMeasures[DynParticles::DistCohesion].values[i*numBodies];
+    DynParticles::DistMeasureEntry* start = values;
+    while (values->idx != -1)
     {
-      float dist = dm[i*numBodies + j].dist;
-
-      if (dist > cohesionDistance || i == j)
-      {
-        ++numRejected;
-        continue;
-      }
-      avg = XMVectorAdd(avg, pos[j]);
+      float invDist = values->invDist;
+      int idx = values->idx;
+      avg = XMVectorAdd(avg, pos[idx]);
+      values++;
     }
+    int numCounted = (int)(values - start);
 
-    if (numBodies == numRejected)
+    if (numCounted == 0)
       continue;
 
-    avg = XMVectorDivide(avg, XMVectorReplicate((float)(numBodies - numRejected)));
+    avg = XMVectorDivide(avg, XMVectorReplicate((float)numCounted));
+
+    //int numRejected = 0;
+    //for (int j = 0; j < numBodies; ++j)
+    //{
+    //  float dist = dm[i*numBodies + j].dist;
+
+    //  if (dist > cohesionDistance || i == j)
+    //  {
+    //    ++numRejected;
+    //    continue;
+    //  }
+    //  avg = XMVectorAdd(avg, pos[j]);
+    //}
+
+    //if (numBodies == numRejected)
+    //  continue;
+
+    //avg = XMVectorDivide(avg, XMVectorReplicate((float)(numBodies - numRejected)));
 
     XMVECTOR desiredVel = XMVectorScale(XMVector3Normalize(XMVectorSubtract(avg, pos[i])), maxSpeed);
     force[i] = XMVectorAdd(
       force[i], 
-      XMVectorScale(XMVector3ClampLength(XMVectorSubtract(desiredVel, vel[i]), 0, maxForce), weight));
+      XMVectorScale(XMVector3ClampLengthMax(XMVectorSubtract(desiredVel, vel[i]), maxForce), weight));
   }
 }
 
@@ -269,26 +350,40 @@ void BehaviorAlignment::Update(DynParticles::Bodies* bodies, float weight, const
     // return a force to align the boids velocity with the average velocity
     XMVECTOR avg = XMVectorZero();
 
-    int numRejected = 0;
-    for (int j = 0; j < numBodies; ++j)
+    DynParticles::DistMeasureEntry* values = &bodies->distMeasures[DynParticles::DistCohesion].values[i*numBodies];
+    DynParticles::DistMeasureEntry* start = values;
+    while (values->idx != -1)
     {
-
-      float dist = dm[i*numBodies + j].dist;
-      if (dist > cohesionDistance || i == j)
-      {
-        numRejected++;
-        continue;
-      }
-      avg = XMVectorAdd(avg, vel[j]);
+      float invDist = values->invDist;
+      int idx = values->idx;
+      avg = XMVectorAdd(avg, vel[idx]);
+      values++;
     }
+    int numCounted = (int)(values - start);
 
-    if (numRejected == numBodies)
+    if (numCounted == 0)
       continue;
 
-    avg = XMVectorDivide(avg, XMVectorReplicate((float)(numBodies - numRejected)));
+    //int numRejected = 0;
+    //for (int j = 0; j < numBodies; ++j)
+    //{
+
+    //  float dist = dm[i*numBodies + j].dist;
+    //  if (dist > cohesionDistance || i == j)
+    //  {
+    //    numRejected++;
+    //    continue;
+    //  }
+    //  avg = XMVectorAdd(avg, vel[j]);
+    //}
+
+    //if (numRejected == numBodies)
+    //  continue;
+
+    avg = XMVectorDivide(avg, XMVectorReplicate((float)numCounted));
     XMVECTOR desired = XMVectorScale(XMVector3Normalize(avg), maxSpeed);
     force[i] = XMVectorAdd(
       force[i],
-      XMVectorScale(XMVector3ClampLength(XMVectorSubtract(desired, vel[i]), 0, maxForce), weight));
+      XMVectorScale(XMVector3ClampLengthMax(XMVectorSubtract(desired, vel[i]), maxForce), weight));
   }
 }
