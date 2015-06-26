@@ -42,7 +42,7 @@ namespace tano
     struct DistMeasure
     {
       float cutoff = 0;
-      DistMeasureEntry* values;
+      DistMeasureEntry* values = nullptr;
     };
 
     struct Bodies
@@ -52,7 +52,6 @@ namespace tano
       XMVECTOR* vel = nullptr;
       XMVECTOR* acc = nullptr;
       XMVECTOR* force = nullptr;
-      DistMatrix* distMatrix = nullptr;
 
       DistMeasure distMeasures[DistCount];
     };

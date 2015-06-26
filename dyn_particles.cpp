@@ -3,6 +3,7 @@
 
   Baseline (mothership): 39 ms
   First pass, converted to XMVECTOR: 35 ms
+  Use smarter distmatrix thing: 23 ms
 */
 #include "dyn_particles.hpp"
 #include "update_state.hpp"
@@ -24,11 +25,10 @@ void DynParticles::Init(int numBodies)
 {
   Reset();
   _bodies.numBodies = numBodies;
-  _bodies.pos = (XMVECTOR*)g_GlobalMemory.Alloc(numBodies * sizeof(XMVECTOR));
-  _bodies.vel = (XMVECTOR*)g_GlobalMemory.Alloc(numBodies * sizeof(XMVECTOR));
-  _bodies.acc = (XMVECTOR*)g_GlobalMemory.Alloc(numBodies * sizeof(XMVECTOR));
-  _bodies.force = (XMVECTOR*)g_GlobalMemory.Alloc(numBodies * sizeof(XMVECTOR));
-  _bodies.distMatrix = new DistMatrix[numBodies*numBodies];
+  _bodies.pos = g_GlobalMemory.Alloc<XMVECTOR>(numBodies);
+  _bodies.vel = g_GlobalMemory.Alloc<XMVECTOR>(numBodies);
+  _bodies.acc = g_GlobalMemory.Alloc<XMVECTOR>(numBodies);
+  _bodies.force = g_GlobalMemory.Alloc<XMVECTOR>(numBodies);
 
   V3 zero(0,0,0);
   for (int i = 0; i < numBodies; ++i)
@@ -45,7 +45,10 @@ void DynParticles::Init(int numBodies)
 //------------------------------------------------------------------------------
 void DynParticles::Reset()
 {
-  SAFE_ADELETE(_bodies.distMatrix);
+  for (int i = 0; i < DistCount; ++i)
+  {
+    SAFE_ADELETE(_bodies.distMeasures[i].values);
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -65,15 +68,11 @@ void DynParticles::Update(const UpdateState& updateState)
   XMVECTOR* acc = _bodies.acc;
   XMVECTOR* vel = _bodies.vel;
   XMVECTOR* force = _bodies.force;
-  DynParticles::DistMatrix* distMatrix = _bodies.distMatrix;
 
   _tickCount++;
-  int step = _tickCount % 4;
-  bool updateForces = step == 0 || step == 2;
+  int step = _tickCount % 8;
+  bool updateForces = step == 0 || step == 2 || step == 4 || step == 6;
   bool updateDistances = step == 1;
-
-  //updateForces = true;
-  //updateDistances = true;
 
   XMVECTOR center = XMVectorZero();
   //V3 center(0,0,0);
@@ -118,7 +117,6 @@ void DynParticles::UpdateDistMatrix()
 {
   int numBodies = _bodies.numBodies;
   XMVECTOR* pos = _bodies.pos;
-  DynParticles::DistMatrix* distMatrix = _bodies.distMatrix;
 
   for (int i = 0; i < DistCount; ++i)
   {
@@ -157,31 +155,6 @@ void DynParticles::UpdateDistMatrix()
     }
   }
 
-  //// precompute particle distance calculations
-  //for (int i = 0; i < numBodies; ++i)
-  //{
-  //  for (int j = i; j < numBodies; ++j)
-  //  {
-  //    if (i != j)
-  //    {
-  //      XMVECTOR tmp = XMVector3LengthEst(XMVectorSubtract(pos[i], pos[j]));
-  //      float dist;
-  //      XMStoreFloat(&dist, tmp);
-  //      float invDist = 1.0f / dist;
-
-  //      distMatrix[i*numBodies + j].dist = dist;
-  //      distMatrix[j*numBodies + i].dist = dist;
-  //      distMatrix[i*numBodies + j].invDist = invDist;
-  //      distMatrix[j*numBodies + i].invDist = invDist;
-  //    }
-  //    else
-  //    {
-  //      // set dist to flt-max, so we can avoid a conditional later
-  //      distMatrix[i*numBodies + j].dist = FLT_MAX;
-  //      distMatrix[i*numBodies + j].invDist = 0;
-  //    }
-  //  }
-  //}
 }
 
 //------------------------------------------------------------------------------
@@ -229,7 +202,6 @@ void BehaviorSeparataion::Update(DynParticles::Bodies* bodies, float weight, con
   XMVECTOR* acc = bodies->acc;
   XMVECTOR* vel = bodies->vel;
   XMVECTOR* force = bodies->force;
-  DynParticles::DistMatrix* dm = bodies->distMatrix;
   int numBodies = bodies->numBodies;
 
   for (int i = 0; i < numBodies; ++i)
@@ -247,21 +219,6 @@ void BehaviorSeparataion::Update(DynParticles::Bodies* bodies, float weight, con
       values++;
     }
     int numCounted = (int)(values - start);
-
-    //int numCounted = 0;
-    //for (int j = 0; j < numBodies; ++j)
-    //{
-    //  float dist = dm[i*numBodies + j].dist;
-
-    //  if (dist < separationDistance)
-    //  {
-    //    ++numCounted;
-    //    // Note, what's really happening is that we're first normalizing the repelling
-    //    // vector, then scaling by 1/r
-    //    float invDist = dm[i*numBodies + j].invDist;
-    //    avg = XMVectorAdd(avg, XMVectorScale(XMVectorSubtract(pos[i], pos[j]), invDist * invDist));
-    //  }
-    //}
 
     if (numCounted == 0)
       continue;
@@ -286,7 +243,6 @@ void BehaviorCohesion::Update(DynParticles::Bodies* bodies, float weight, const 
   XMVECTOR* acc = bodies->acc;
   XMVECTOR* vel = bodies->vel;
   XMVECTOR* force = bodies->force;
-  DynParticles::DistMatrix* dm = bodies->distMatrix;
   int numBodies = bodies->numBodies;
 
   for (int i = 0; i < numBodies; ++i)
@@ -310,24 +266,6 @@ void BehaviorCohesion::Update(DynParticles::Bodies* bodies, float weight, const 
 
     avg = XMVectorDivide(avg, XMVectorReplicate((float)numCounted));
 
-    //int numRejected = 0;
-    //for (int j = 0; j < numBodies; ++j)
-    //{
-    //  float dist = dm[i*numBodies + j].dist;
-
-    //  if (dist > cohesionDistance || i == j)
-    //  {
-    //    ++numRejected;
-    //    continue;
-    //  }
-    //  avg = XMVectorAdd(avg, pos[j]);
-    //}
-
-    //if (numBodies == numRejected)
-    //  continue;
-
-    //avg = XMVectorDivide(avg, XMVectorReplicate((float)(numBodies - numRejected)));
-
     XMVECTOR desiredVel = XMVectorScale(XMVector3Normalize(XMVectorSubtract(avg, pos[i])), maxSpeed);
     force[i] = XMVectorAdd(
       force[i], 
@@ -342,7 +280,6 @@ void BehaviorAlignment::Update(DynParticles::Bodies* bodies, float weight, const
   XMVECTOR* acc = bodies->acc;
   XMVECTOR* vel = bodies->vel;
   XMVECTOR* force = bodies->force;
-  DynParticles::DistMatrix* dm = bodies->distMatrix;
   int numBodies = bodies->numBodies;
 
   for (int i = 0; i < numBodies; ++i)
@@ -363,22 +300,6 @@ void BehaviorAlignment::Update(DynParticles::Bodies* bodies, float weight, const
 
     if (numCounted == 0)
       continue;
-
-    //int numRejected = 0;
-    //for (int j = 0; j < numBodies; ++j)
-    //{
-
-    //  float dist = dm[i*numBodies + j].dist;
-    //  if (dist > cohesionDistance || i == j)
-    //  {
-    //    numRejected++;
-    //    continue;
-    //  }
-    //  avg = XMVectorAdd(avg, vel[j]);
-    //}
-
-    //if (numRejected == numBodies)
-    //  continue;
 
     avg = XMVectorDivide(avg, XMVectorReplicate((float)numCounted));
     XMVECTOR desired = XMVectorScale(XMVector3Normalize(avg), maxSpeed);

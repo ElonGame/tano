@@ -330,7 +330,6 @@ void BehaviorLandscapeFollow::Update(
   XMVECTOR* acc = bodies->acc;
   XMVECTOR* vel = bodies->vel;
   XMVECTOR* force = bodies->force;
-  DynParticles::DistMatrix* dm = bodies->distMatrix;
   int numBodies = bodies->numBodies;
 /*
   for (int i = 0; i < numBodies; ++i)

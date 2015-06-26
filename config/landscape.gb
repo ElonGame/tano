@@ -1,9 +1,9 @@
 {
   camera: {
-    yaw: 0.000000;
-    pitch: -0.159155;
+    yaw: -0.350141;
+    pitch: 0.000000;
     roll: 0.000000;
-    pos: { 0.000000, 13.645926, 65.719414 };
+    pos: { 59.792252, 10.000000, 80.662163 };
   };
   boids: {
     separation_scale: 12.626000;
@@ -17,7 +17,7 @@
     max_force: 30.000002;
     waypoint_radius: 10.000000;
     num_flocks: 25;
-    boids_per_flock: 1000;
+    boids_per_flock: 250;
   };
   particle_texture: 'gfx/particle3.png';
   tonemap: {
