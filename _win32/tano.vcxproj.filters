@@ -64,9 +64,6 @@
     <ClCompile Include="..\demo_engine.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\effect.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\gpu_objects.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -211,6 +208,9 @@
     <ClCompile Include="..\fullscreen_effect.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\BaseEffect.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -223,9 +223,6 @@
       <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\demo_engine.hpp">
-      <Filter>inc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\effect.hpp">
       <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\gpu_objects.hpp">
@@ -430,6 +427,9 @@
       <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\fullscreen_effect.hpp">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BaseEffect.hpp">
       <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>

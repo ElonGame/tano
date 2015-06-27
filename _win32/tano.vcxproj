@@ -187,7 +187,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\effect.cpp">
+    <ClCompile Include="..\BaseEffect.cpp">
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
@@ -376,7 +376,7 @@
     <ClInclude Include="..\bristol\utils.hpp" />
     <ClInclude Include="..\graphics_context.hpp" />
     <ClInclude Include="..\demo_engine.hpp" />
-    <ClInclude Include="..\effect.hpp" />
+    <ClInclude Include="..\BaseEffect.hpp" />
     <ClInclude Include="..\effects\particle_tunnel.hpp" />
     <ClInclude Include="..\generated\app.parse.hpp" />
     <ClInclude Include="..\generated\app.types.hpp" />

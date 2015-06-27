@@ -16,7 +16,7 @@ using namespace bristol;
 
 //------------------------------------------------------------------------------
 Blob::Blob(const string &name, u32 id)
-  : Effect(name, id)
+  : BaseEffect(name, id)
 {
 #if WITH_IMGUI
   PROPERTIES.Register(Name(),
@@ -428,7 +428,7 @@ bool Blob::Close()
 }
 
 //------------------------------------------------------------------------------
-Effect* Blob::Create(const char* name, u32 id)
+BaseEffect* Blob::Create(const char* name, u32 id)
 {
   return new Blob(name, id);
 }

@@ -38,7 +38,7 @@ StopWatch g_stopWatch;
 
 //------------------------------------------------------------------------------
 Cloth::Cloth(const string &name, u32 id)
-  : Effect(name, id)
+  : BaseEffect(name, id)
   , _avgUpdate(100)
 {
 #if WITH_IMGUI
@@ -558,7 +558,7 @@ bool Cloth::Close()
 }
 
 //------------------------------------------------------------------------------
-Effect* Cloth::Create(const char* name, u32 id)
+BaseEffect* Cloth::Create(const char* name, u32 id)
 {
   return new Cloth(name, id);
 }

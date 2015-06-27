@@ -4,13 +4,13 @@
 #include "timer.hpp"
 #include "property_manager.hpp"
 #include "generated/demo.types.hpp"
-#include "effect.hpp"
+#include "BaseEffect.hpp"
 
 namespace tano
 {
 
-  class Effect;
-  typedef function<Effect*(const char*, u32)> EffectFactory;
+  class BaseEffect;
+  typedef function<BaseEffect*(const char*, u32)> EffectFactory;
 
   class DemoEngine
   {
@@ -55,15 +55,15 @@ namespace tano
     void KillEffects();
 
     void UpdateEffects();
-    Effect* FindEffectByName(const string &name);
+    BaseEffect* FindEffectByName(const string &name);
     bool ApplySettingsChange(const DemoSettings& settings);
 
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-    deque<Effect*> _activeEffects;
-    deque<Effect*> _inactiveEffects;
-    deque<Effect*> _expiredEffects;
-    vector<Effect*> _effects;
+    deque<BaseEffect*> _activeEffects;
+    deque<BaseEffect*> _inactiveEffects;
+    deque<BaseEffect*> _expiredEffects;
+    vector<BaseEffect*> _effects;
     int _cur_effect;
     TimeDuration _duration;
     TimeDuration _accumulated;
@@ -95,7 +95,7 @@ namespace tano
 #endif
 #endif
     UpdateState _initialState;
-    Effect* _forceEffect = nullptr;
+    BaseEffect* _forceEffect = nullptr;
   };
 
 #define DEMO_ENGINE DemoEngine::Instance()

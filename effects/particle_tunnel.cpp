@@ -236,7 +236,7 @@ void ParticleTunnel::TextParticles::Update(float seconds, float start, float end
 
 //------------------------------------------------------------------------------
 ParticleTunnel::ParticleTunnel(const string &name, u32 id)
-  : Effect(name, id)
+  : BaseEffect(name, id)
   , _neuroticaParticles(_settings)
   , _radioSilenceParticles(_settings)
   , _partyParticles(_settings)
@@ -739,7 +739,7 @@ bool ParticleTunnel::Close()
 }
 
 //------------------------------------------------------------------------------
-Effect* ParticleTunnel::Create(const char* name, u32 id)
+BaseEffect* ParticleTunnel::Create(const char* name, u32 id)
 {
   return new ParticleTunnel(name, id);
 }

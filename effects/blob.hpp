@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../effect.hpp"
+#include "../BaseEffect.hpp"
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
 #include "../mesh_loader.hpp"
@@ -10,7 +10,7 @@
 
 namespace tano
 {
-  class Blob : public Effect
+  class Blob : public BaseEffect
   {
   public:
 
@@ -23,7 +23,7 @@ namespace tano
     virtual bool InitAnimatedParameters() override;
 
     static const char* Name();
-    static Effect* Create(const char* name, u32 id);
+    static BaseEffect* Create(const char* name, u32 id);
     static void Register();
 
   private:

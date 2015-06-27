@@ -23,7 +23,7 @@ namespace
 
 //------------------------------------------------------------------------------
 Cluster::Cluster(const string &name, u32 id)
-  : Effect(name, id)
+  : BaseEffect(name, id)
   , _blinkFace("blinkface")
 {
 #if WITH_IMGUI
@@ -158,7 +158,7 @@ bool Cluster::Close()
 }
 
 //------------------------------------------------------------------------------
-Effect* Cluster::Create(const char* name, u32 id)
+BaseEffect* Cluster::Create(const char* name, u32 id)
 {
   return new Cluster(name, id);
 }

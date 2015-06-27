@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../effect.hpp"
+#include "../BaseEffect.hpp"
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
 #include "../mesh_loader.hpp"
@@ -22,7 +22,7 @@ namespace tano
     virtual void Update(DynParticles::Bodies* bodies, float weight, const UpdateState& state) override;
   };
 
-  class Landscape : public Effect
+  class Landscape : public BaseEffect
   {
   public:
 
@@ -40,7 +40,7 @@ namespace tano
     virtual bool InitAnimatedParameters() override;
 
     static const char* Name();
-    static Effect* Create(const char* name, u32 id);
+    static BaseEffect* Create(const char* name, u32 id);
     static void Register();
 
   //private:

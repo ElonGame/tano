@@ -8,12 +8,12 @@ namespace tano
   class GraphicsContext;
 
 
-  class Effect
+  class BaseEffect
   {
   public:
 
-    Effect(const string& instanceName, u32 id);
-    virtual ~Effect() {}
+    BaseEffect(const string& instanceName, u32 id);
+    virtual ~BaseEffect() {}
     virtual bool Init(const char* configFile);
     virtual bool Show();
     virtual bool Hide();

@@ -137,7 +137,7 @@ Landscape::Flock::~Flock()
 
 //------------------------------------------------------------------------------
 Landscape::Landscape(const string &name, u32 id)
-  : Effect(name, id)
+  : BaseEffect(name, id)
   , _blinkFace("blinkface")
 {
 #if WITH_IMGUI
@@ -1099,7 +1099,7 @@ bool Landscape::Close()
 }
 
 //------------------------------------------------------------------------------
-Effect* Landscape::Create(const char* name, u32 id)
+BaseEffect* Landscape::Create(const char* name, u32 id)
 {
   return new Landscape(name, id);
 }

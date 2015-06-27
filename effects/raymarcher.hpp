@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../effect.hpp"
+#include "../BaseEffect.hpp"
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
 
 namespace tano
 {
-  class RayMarcher : public Effect
+  class RayMarcher : public BaseEffect
   {
   public:
 
@@ -18,7 +18,7 @@ namespace tano
     virtual bool Close() override;
 
     static const char* Name();
-    static Effect* Create(const char* name, u32 id);
+    static BaseEffect* Create(const char* name, u32 id);
     static void Register();
 
   private:

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../effect.hpp"
+#include "../BaseEffect.hpp"
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
 #include "../text_writer.hpp"
@@ -17,7 +17,7 @@ namespace tano
     struct TaskData;
   }
 
-  class ParticleTunnel : public Effect
+  class ParticleTunnel : public BaseEffect
   {
   public:
 
@@ -29,7 +29,7 @@ namespace tano
     virtual bool Close() override;
 
     static const char* Name();
-    static Effect* Create(const char* name, u32 id);
+    static BaseEffect* Create(const char* name, u32 id);
     static void Register();
 
   private:

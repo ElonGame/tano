@@ -14,7 +14,7 @@ using namespace bristol;
 
 //------------------------------------------------------------------------------
 RayMarcher::RayMarcher(const string &name, u32 id)
-  : Effect(name, id)
+  : BaseEffect(name, id)
 {
 #if WITH_IMGUI
   PROPERTIES.Register("ray marcher",
@@ -116,7 +116,7 @@ bool RayMarcher::Close()
 }
 
 //------------------------------------------------------------------------------
-Effect* RayMarcher::Create(const char* name, u32 id)
+BaseEffect* RayMarcher::Create(const char* name, u32 id)
 {
   return new RayMarcher(name, id);
 }

@@ -1,5 +1,5 @@
 #include "demo_engine.hpp"
-#include "effect.hpp"
+#include "BaseEffect.hpp"
 #include "graphics.hpp"
 #include "resource_manager.hpp"
 #include "tano.hpp"
@@ -36,9 +36,9 @@ float TimeDurationToFloat(TimeDuration t)
 //------------------------------------------------------------------------------
 namespace
 {
-  Effect* Transfer(deque<Effect*>& src, deque<Effect*>& dst)
+  BaseEffect* Transfer(deque<BaseEffect*>& src, deque<BaseEffect*>& dst)
   {
-    Effect* e = src.front();
+    BaseEffect* e = src.front();
     src.pop_front();
     dst.push_back(e);
     return e;
@@ -177,7 +177,7 @@ void DemoEngine::ReclassifyEffects()
 {
   TimeDuration currentTime = _timer.Elapsed(nullptr);
 
-  sort(_effects.begin(), _effects.end(), [](const Effect* a, const Effect* b) { return a->StartTime() < b->StartTime(); });
+  sort(_effects.begin(), _effects.end(), [](const BaseEffect* a, const BaseEffect* b) { return a->StartTime() < b->StartTime(); });
 
   _expiredEffects.clear();
   _inactiveEffects.clear();
@@ -298,7 +298,7 @@ void DemoEngine::UpdateEffects()
   // check for any effects that have ended
   while (!_activeEffects.empty() && _activeEffects.front()->EndTime() <= current)
   {
-    Effect* e = Transfer(_activeEffects, _expiredEffects);
+    BaseEffect* e = Transfer(_activeEffects, _expiredEffects);
     e->SetRunning(false);
   }
 
@@ -315,7 +315,7 @@ void DemoEngine::UpdateEffects()
   // Tick all the effects that start now
   while (!_inactiveEffects.empty() && _inactiveEffects.front()->StartTime() <= current)
   {
-    Effect* e = Transfer(_inactiveEffects, _activeEffects);
+    BaseEffect* e = Transfer(_inactiveEffects, _activeEffects);
     e->SetRunning(true);
     e->InitAnimatedParameters();
     e->Update(_initialState);
@@ -334,9 +334,9 @@ void DemoEngine::Destroy()
 }
 
 //------------------------------------------------------------------------------
-Effect *DemoEngine::FindEffectByName(const string &name)
+BaseEffect *DemoEngine::FindEffectByName(const string &name)
 {
-  auto it = find_if(_effects.begin(), _effects.end(), [&](const Effect *e) { return e->InstanceName() == name; });
+  auto it = find_if(_effects.begin(), _effects.end(), [&](const BaseEffect *e) { return e->InstanceName() == name; });
   return it == end(_effects) ? nullptr : *it;
 }
 
@@ -362,7 +362,7 @@ bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
 
     // Create and init the effect
     EffectFactory factory = it->second;
-    Effect* effect = factory(e.name.c_str(), _nextEffectId++);
+    BaseEffect* effect = factory(e.name.c_str(), _nextEffectId++);
     _effects.push_back(effect);
 
     TimeDuration start = TimeDuration::Milliseconds(e.start_time);

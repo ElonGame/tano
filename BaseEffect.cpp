@@ -1,11 +1,11 @@
 
-#include "effect.hpp"
+#include "BaseEffect.hpp"
 #include "graphics.hpp"
 
 using namespace tano;
 
 //------------------------------------------------------------------------------
-Effect::Effect(const string& instanceName, u32 id)
+BaseEffect::BaseEffect(const string& instanceName, u32 id)
   : _instanceName(instanceName)
   , _id(id)
   , _running(false)
@@ -15,68 +15,68 @@ Effect::Effect(const string& instanceName, u32 id)
 }
 
 //------------------------------------------------------------------------------
-bool Effect::Show()
+bool BaseEffect::Show()
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
-bool Effect::Hide()
+bool BaseEffect::Hide()
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
-bool Effect::Init(const char* configFile)
+bool BaseEffect::Init(const char* configFile)
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
-bool Effect::InitAnimatedParameters()
+bool BaseEffect::InitAnimatedParameters()
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
-bool Effect::Update(const UpdateState& state)
+bool BaseEffect::Update(const UpdateState& state)
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
-bool Effect::Render()
+bool BaseEffect::Render()
 {
   return true; 
 }
 
 //------------------------------------------------------------------------------
-bool Effect::Close()
+bool BaseEffect::Close()
 {
   return true; 
 }
 
 //------------------------------------------------------------------------------
-void Effect::SetDuration(TimeDuration startTime, TimeDuration endTime)
+void BaseEffect::SetDuration(TimeDuration startTime, TimeDuration endTime)
 {
   _startTime = startTime;
   _endTime = endTime;
 }
 
 //------------------------------------------------------------------------------
-void Effect::SetStartTime(TimeDuration startTime)
+void BaseEffect::SetStartTime(TimeDuration startTime)
 {
   _startTime = startTime;
 }
 
 //------------------------------------------------------------------------------
-bool Effect::Running() const
+bool BaseEffect::Running() const
 {
   return _running; 
 }
 
 //------------------------------------------------------------------------------
-void Effect::SetRunning(bool b)
+void BaseEffect::SetRunning(bool b)
 { 
   _running = b; 
 }
