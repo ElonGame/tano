@@ -32,7 +32,7 @@ namespace tano
       } streamingData;
     };
 
-    typedef function<void(const TaskData&)> Kernel;
+    typedef void(*Kernel)(const TaskData&);
 
     typedef u32 TaskOffset;
 
@@ -81,7 +81,6 @@ namespace tano
 
       void WorkerThread();
 
-      Task* GetAvailableTask();
       void QueueTask(Task* task);
 
       Task* AllocTask();

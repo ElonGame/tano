@@ -13,9 +13,7 @@ Scheduler* Scheduler::_instance;
 //------------------------------------------------------------------------------
 bool Scheduler::Create()
 {
-  if (_instance)
-    return true;
-
+  assert(!_instance);
   _instance = new Scheduler();
   return _instance->Init();
 }
@@ -79,17 +77,6 @@ bool Scheduler::Init()
   return true;
 }
 
-
-//------------------------------------------------------------------------------
-Task* Scheduler::GetAvailableTask()
-{
-  // Note, _csTask must be acquired before accessing the queue
-  if (_taskQueue.IsEmpty())
-    return nullptr;
-
-  return _taskQueue.Pop();
-}
-
 //------------------------------------------------------------------------------
 void Scheduler::QueueTask(Task* task)
 {
@@ -111,28 +98,28 @@ void Scheduler::QueueTask(Task* task)
 //------------------------------------------------------------------------------
 void Scheduler::WorkerThread()
 {
-  bool lock = true;
+  bool acquireLock = true;
   while (!InterlockedCompareExchange(&_done, TRUE, TRUE))
   {
-    if (lock)
+    if (acquireLock)
     {
       // Lock must be help when sleeping on the CV, so acquire it here
       EnterCriticalSection(&_csTask);
     }
 
     // Queue is locked, so look for tasks
-    Task* task = GetAvailableTask();
-    if (task)
+    if (Task* task = _taskQueue.IsEmpty() ? nullptr : _taskQueue.Pop())
     {
       LeaveCriticalSection(&_csTask);
       WorkOnTask(task);
-      lock = true;
+      acquireLock = true;
     }
     else
     {
       // No task available, so wait for CV to signal. This will release the CS
+      // and reacquire it when the CV is signaled
       SleepConditionVariableCS(&_cvTask, &_csTask, INFINITE);
-      lock = false;
+      acquireLock = false;
     }
   }
 
@@ -150,6 +137,8 @@ Task* Scheduler::AllocTask()
 
   Task* task = new (memory)Task();
 
+  // The alloc generation is used to be able to know if a task handle has been
+  // recycled, which implies that the task's work is completed.
   InterlockedIncrement(&_allocGeneration);
   task->generation = _allocGeneration;
   return task;
@@ -214,7 +203,7 @@ void Scheduler::HelpWithWork()
   Task* task;
   {
     ScopedCriticalSection cs(&_csTask);
-    task = GetAvailableTask();
+    task = _taskQueue.IsEmpty() ? nullptr : _taskQueue.Pop();
   }
   if (task)
   {
@@ -230,12 +219,15 @@ void Scheduler::HelpWithWork()
 void Scheduler::FinishTask(Task* task)
 {
   u32 openTasks = InterlockedDecrement(&task->openTasks);
+
+  // Tell parent we're finished
   if (task->parent != Task::NO_PARENT)
   {
     Task* parent = OffsetToTask(task->parent);
     FinishTask(parent);
   }
 
+  // No more dependent tasks, so release the task handle
   if (openTasks == 0)
   {
     FreeTask(task);
@@ -264,6 +256,7 @@ TaskId Scheduler::AddStreamingTask(
   const StreamData& inputStream0,
   const StreamData& outputStream0)
 {
+  // TODO: Not implemented yet
   Task* task = AllocTask();
 
   task->kernel = kernel;
