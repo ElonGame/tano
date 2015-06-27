@@ -42,13 +42,19 @@ namespace tano
 
     void UpdateCameraMatrix();
 
+    struct ParticleType
+    {
+      V4 pos;
+      V4 data;
+    };
+
     struct ParticleEmitter
     {
       void Create(const V3& center, int numParticles);
       void Destroy();
       void Update(float dt);
       void CreateParticle(int idx, float s);
-      void CopyToBuffer(bristol::PosTex3* vtx);
+      void CopyToBuffer(ParticleType* vtx);
 
       // TODO: test speed diff if these are double buffered, to avoid LHS
       // NOTE: this is just trams.. let's make these guys XMVECTORs first
@@ -79,7 +85,7 @@ namespace tano
       ParticleEmitter* emitter;
       float dt;
       int ticks;
-      bristol::PosTex3* vtx;
+      ParticleType* vtx;
     };
 
     static void UpdateEmitter(const scheduler::TaskData& data);

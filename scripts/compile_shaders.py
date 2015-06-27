@@ -43,7 +43,7 @@ cs = {
 }
 
 gs = {
-    'particle_tunnel' : ['GsLines'],
+    'particle_tunnel' : ['GsParticle', 'GsLines'],
     'landscape' : ['GsParticle', 'GsLandscape'],
 }
 

@@ -124,12 +124,8 @@ void ParticleTunnel::ParticleEmitter::Update(float dt)
   }
 }
 
-void ParticleTunnel::ParticleEmitter::CopyToBuffer(bristol::PosTex3* vtx)
+void ParticleTunnel::ParticleEmitter::CopyToBuffer(ParticleType* vtx)
 {
-  // TODO: all this is pretty stupid. we should store as much static data as
-  // possible, and do a big memcpy. also, texture coords can be created in the VS,
-  // and we should be using indexed tris.
-
   float* xx = x;
   float* yy = y;
   float* zz = z;
@@ -141,34 +137,10 @@ void ParticleTunnel::ParticleEmitter::CopyToBuffer(bristol::PosTex3* vtx)
   {
     float s = 10.f * ss[i];
 
-    // 0--1
-    // 2--3
-
     float lifetime = (float)ll[i].left / ll[i].total;
-
-    PosTex3 v0 = { Vector3(-s, +s, s), Vector3(0, 0, lifetime) };
-    PosTex3 v1 = { Vector3(+s, +s, s), Vector3(1, 0, lifetime) };
-    PosTex3 v2 = { Vector3(-s, -s, s), Vector3(0, 1, lifetime) };
-    PosTex3 v3 = { Vector3(+s, -s, s), Vector3(1, 1, lifetime) };
-
-    Vector3 v(xx[i], yy[i], zz[i]);
-
-    v0.pos += v;
-    v1.pos += v;
-    v2.pos += v;
-    v3.pos += v;
-
-    // 0, 1, 2
-    // 2, 1, 3
-    vtx[0] = v0;
-    vtx[1] = v1;
-    vtx[2] = v2;
-
-    vtx[3] = v2;
-    vtx[4] = v1;
-    vtx[5] = v3;
-
-    vtx += 6;
+    vtx->pos = V4{xx[i], yy[i], zz[i], 0};
+    vtx->data = V4{lifetime, 0, 0, 0};
+    vtx++;
   }
 }
 
@@ -307,11 +279,17 @@ bool ParticleTunnel::Init(const char* configFile)
     .PixelShader("shaders/out/particle_tunnel", "PsBackground")));
 
   // Particle state setup
+  vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
+    CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT),
+    CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32B32_FLOAT) };
+
   INIT(_particleBundle.Create(BundleOptions()
     .VertexShader("shaders/out/particle_tunnel", "VsParticle")
-    .VertexFlags(VertexFlags::VF_POS | VertexFlags::VF_TEX3_0)
+    .GeometryShader("shaders/out/particle_tunnel", "GsParticle")
     .PixelShader("shaders/out/particle_tunnel", "PsParticle")
-    .DynamicVb(24 * 6 * _settings.num_particles, sizeof(PosTex3))
+    .InputElements(inputs)
+    .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
+    .DynamicVb(24 * _settings.num_particles, sizeof(ParticleType))
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescPreMultipliedAlpha)
     .RasterizerDesc(rasterizeDescCullNone)));
@@ -484,7 +462,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
     float dt = 1.f / state.frequency;
 
     ObjectHandle vb = _particleBundle.objects._vb;
-    PosTex3* vtx = _ctx->MapWriteDiscard<PosTex3>(_particleBundle.objects._vb);
+    ParticleType* vtx = _ctx->MapWriteDiscard<ParticleType>(_particleBundle.objects._vb);
 
 #if 0
 
@@ -506,7 +484,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
     for (int i = 0; i < _particleEmitters.Size(); ++i)
     {
       EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-      *data = EmitterKernelData{ &_particleEmitters[i], dt, state.numTicks, vtx + i * 6 * _settings.num_particles };
+      *data = EmitterKernelData{ &_particleEmitters[i], dt, state.numTicks, vtx + i * _settings.num_particles };
       KernelData kd;
       kd.data = data;
       kd.size = sizeof(EmitterKernelData);
@@ -639,7 +617,7 @@ bool ParticleTunnel::Render()
   // Render particles
   _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
   _ctx->SetShaderResource(_particleTexture);
-  _ctx->Draw(6 * _settings.num_particles * _particleEmitters.Size(), 0);
+  _ctx->Draw(_settings.num_particles * _particleEmitters.Size(), 0);
 
 #if WITH_TEXT
   // text

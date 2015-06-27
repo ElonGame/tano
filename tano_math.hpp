@@ -220,4 +220,9 @@ namespace tano
     return Vector3(v.x, v.y, v.z);
   }
 
+  struct V4
+  {
+    float x, y, z, w;
+  };
+
 }
