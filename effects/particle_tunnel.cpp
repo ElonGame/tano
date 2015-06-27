@@ -11,8 +11,12 @@
 #include "../generated/output_buffer.hpp"
 #include "../mesh_loader.hpp"
 #include "../fullscreen_effect.hpp"
+#include "../scheduler.hpp"
+#include "../arena_allocator.hpp"
+#include "../stop_watch.hpp"
 
 using namespace tano;
+using namespace tano::scheduler;
 using namespace bristol;
 
 namespace
@@ -25,23 +29,24 @@ namespace
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::Particles::Create(int num)
+void ParticleTunnel::ParticleEmitter::Create(const V3& center, int numParticles)
 {
-  numParticles = num;
-  x = new float[numParticles];
-  y = new float[numParticles];
-  z = new float[numParticles];
+  _center = center;
+  _numParticles = numParticles;
+  x = new float[_numParticles];
+  y = new float[_numParticles];
+  z = new float[_numParticles];
 
-  vx = new float[numParticles];
-  vy = new float[numParticles];
-  vz = new float[numParticles];
+  vx = new float[_numParticles];
+  vy = new float[_numParticles];
+  vz = new float[_numParticles];
 
-  lifetime = new Lifetime[numParticles];
-  scale = new float[numParticles];
-  deadParticles = new int[numParticles];
+  _lifetime = new Lifetime[_numParticles];
+  scale = new float[_numParticles];
+  _deadParticles = new int[_numParticles];
 
   float s = 100;
-  for (int i = 0; i < numParticles; ++i)
+  for (int i = 0; i < _numParticles; ++i)
   {
     CreateParticle(i, s);
   }
@@ -53,34 +58,34 @@ void ParticleTunnel::Particles::Create(int num)
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::Particles::CreateParticle(int idx, float s)
+void ParticleTunnel::ParticleEmitter::CreateParticle(int idx, float s)
 {
-  x[idx] = randf(-s, s);
-  y[idx] = randf(-s, s);
-  z[idx] = randf(1500.f, 2000.f);
+  x[idx] = _center.x + randf(-s, s);
+  y[idx] = _center.y + randf(-s, s);
+  z[idx] = _center.z + randf(1500.f, 2000.f);
 
   vx[idx] = randf(-s, s);
   vy[idx] = randf(-s, s);
   vz[idx] = -randf(10.f, 200.f);
 
   int ll = randf(2000, 3000);
-  lifetime[idx].left = ll;
-  lifetime[idx].total = ll;
+  _lifetime[idx].left = ll;
+  _lifetime[idx].total = ll;
   scale[idx] = randf(1.f, 5.f);
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::Particles::Destroy()
+void ParticleTunnel::ParticleEmitter::Destroy()
 {
   SAFE_ADELETE(x);  SAFE_ADELETE(y);  SAFE_ADELETE(z);
   SAFE_ADELETE(vx); SAFE_ADELETE(vy); SAFE_ADELETE(vz);
-  SAFE_ADELETE(lifetime);
+  SAFE_ADELETE(_lifetime);
   SAFE_ADELETE(scale);
-  SAFE_ADELETE(deadParticles);
+  SAFE_ADELETE(_deadParticles);
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::Particles::Update(float dt)
+void ParticleTunnel::ParticleEmitter::Update(float dt)
 {
   float* xx = x;
   float* yy = y;
@@ -90,13 +95,13 @@ void ParticleTunnel::Particles::Update(float dt)
   float *vvy = vy;
   float *vvz = vz;
 
-  Lifetime* ll = lifetime;
+  Lifetime* ll = _lifetime;
 
   int numDead = 0;
-  int* dead = deadParticles;
+  int* dead = _deadParticles;
 
   float s = 100;
-  for (int i = 0, e = numParticles; i < e; ++i)
+  for (int i = 0, e = _numParticles; i < e; ++i)
   {
     *xx += dt * *vvx;
     *yy += dt * *vvy;
@@ -105,7 +110,7 @@ void ParticleTunnel::Particles::Update(float dt)
 
     if (*zz < -1500)
     {
-      dead[numDead++] = i;
+      *dead++ = i;
     }
 
     xx++; yy++; zz++;
@@ -115,7 +120,55 @@ void ParticleTunnel::Particles::Update(float dt)
 
   for (int i = 0; i < numDead; ++i)
   {
-    CreateParticle(deadParticles[i], s);
+    CreateParticle(_deadParticles[i], s);
+  }
+}
+
+void ParticleTunnel::ParticleEmitter::CopyToBuffer(bristol::PosTex3* vtx)
+{
+  // TODO: all this is pretty stupid. we should store as much static data as
+  // possible, and do a big memcpy. also, texture coords can be created in the VS,
+  // and we should be using indexed tris.
+
+  float* xx = x;
+  float* yy = y;
+  float* zz = z;
+
+  float* ss = scale;
+  ParticleEmitter::Lifetime* ll = _lifetime;
+
+  for (int i = 0, e = _numParticles; i < e; ++i)
+  {
+    float s = 10.f * ss[i];
+
+    // 0--1
+    // 2--3
+
+    float lifetime = (float)ll[i].left / ll[i].total;
+
+    PosTex3 v0 = { Vector3(-s, +s, s), Vector3(0, 0, lifetime) };
+    PosTex3 v1 = { Vector3(+s, +s, s), Vector3(1, 0, lifetime) };
+    PosTex3 v2 = { Vector3(-s, -s, s), Vector3(0, 1, lifetime) };
+    PosTex3 v3 = { Vector3(+s, -s, s), Vector3(1, 1, lifetime) };
+
+    Vector3 v(xx[i], yy[i], zz[i]);
+
+    v0.pos += v;
+    v1.pos += v;
+    v2.pos += v;
+    v3.pos += v;
+
+    // 0, 1, 2
+    // 2, 1, 3
+    vtx[0] = v0;
+    vtx[1] = v1;
+    vtx[2] = v2;
+
+    vtx[3] = v2;
+    vtx[4] = v1;
+    vtx[5] = v3;
+
+    vtx += 6;
   }
 }
 
@@ -227,7 +280,10 @@ ParticleTunnel::ParticleTunnel(const string &name, u32 id)
 //------------------------------------------------------------------------------
 ParticleTunnel::~ParticleTunnel()
 {
-  _particles.Destroy();
+  for (int i = 0; i < _particleEmitters.Size(); ++i)
+  {
+    _particleEmitters[i].Destroy();
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -246,24 +302,32 @@ bool ParticleTunnel::Init(const char* configFile)
   });
 
   // Background state setup
-  INIT(_backgroundGpuObjects.LoadVertexShader("shaders/out/common", "VsQuad"));
-  INIT(_backgroundGpuObjects.LoadPixelShader("shaders/out/particle_tunnel", "PsBackground"));
-  INIT(_backgroundState.Create());
+  INIT(_backgroundBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/particle_tunnel", "PsBackground")));
 
   // Particle state setup
+  INIT(_particleBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/particle_tunnel", "VsParticle")
+    .VertexFlags(VertexFlags::VF_POS | VertexFlags::VF_TEX3_0)
+    .PixelShader("shaders/out/particle_tunnel", "PsParticle")
+    .DynamicVb(24 * 6 * _settings.num_particles, sizeof(PosTex3))
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .BlendDesc(blendDescPreMultipliedAlpha)
+    .RasterizerDesc(rasterizeDescCullNone)));
+
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
-  INIT(_particleGpuObjects.LoadVertexShader("shaders/out/particle_tunnel", "VsParticle", VertexFlags::VF_POS | VertexFlags::VF_TEX3_0));
-  INIT(_particleGpuObjects.LoadPixelShader("shaders/out/particle_tunnel", "PsParticle"));
-  INIT(_particleGpuObjects.CreateDynamicVb(sizeof(PosTex3) * 6 * _settings.num_particles, sizeof(PosTex3)));
-
-  INIT(_particleState.Create(&depthDescDepthDisabled, &blendDescPreMultipliedAlpha, &rasterizeDescCullNone));
-
-  _particles.Create(_settings.num_particles);
-
+  
+  // Create default emitter
+  for (int i = 0; i < 10; ++i)
+  {
+    _particleEmitters.Append(ParticleEmitter()).Create(V3(0, 0, 0), _settings.num_particles);
+  }
+  
   // Composite state setup
-  INIT(_compositeGpuObjects.LoadVertexShader("shaders/out/common", "VsQuad"));
-  INIT(_compositeGpuObjects.LoadPixelShader("shaders/out/particle_tunnel", "PsComposite"));
-  INIT(_compositeState.Create());
+  INIT(_compositeBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/particle_tunnel", "PsComposite")));
 
   // Text setup
   INIT(_textWriter.Init("gfx/text1.boba"));
@@ -299,31 +363,18 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(_textGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsText", nullptr, "PsText", VertexFlags::VF_POS));
 #endif
 
-  {
-    CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
-    rssDesc.CullMode = D3D11_CULL_NONE;
-    if (wireframe)
-      rssDesc.FillMode = D3D11_FILL_WIREFRAME;
-
-    CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
-    dsDesc.DepthEnable = FALSE;
-
-    CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
-
-    // pre-multiplied alpha
-    D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
-    b.BlendEnable = TRUE;
-    b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    b.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
-
-    INIT(_linesState.Create(&dsDesc, &blendDesc, &rssDesc));
-  }
   INIT_RESOURCE(_lineTexture, RESOURCE_MANAGER.LoadTexture("gfx/line.png"));
-  INIT(_linesGpuObjects.CreateDynamicVb((u32)_neuroticaTris.size() * sizeof(Vector3) * 3 * 2, sizeof(Vector3)));
-  INIT(_linesGpuObjects.LoadVertexShader("shaders/out/particle_tunnel", "VsLines", VertexFlags::VF_POS));
-  INIT(_linesGpuObjects.LoadGeometryShader("shaders/out/particle_tunnel", "GsLines"));
-  INIT(_linesGpuObjects.LoadPixelShader("shaders/out/particle_tunnel", "PsLines"));
-  _linesGpuObjects._topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+
+  INIT(_lineBundle.Create(BundleOptions()
+    .RasterizerDesc(rasterizeDescCullNone)
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .BlendDesc(blendDescPreMultipliedAlpha)
+    .DynamicVb((u32)_neuroticaTris.size() * 3 * 2, sizeof(Vector3))
+    .VertexShader("shaders/out/particle_tunnel", "VsLines")
+    .VertexFlags(VertexFlags::VF_POS)
+    .GeometryShader("shaders/out/particle_tunnel", "GsLines")
+    .PixelShader("shaders/out/particle_tunnel", "PsLines")
+    .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
   // Generic setup
   INIT(_cbPerFrame.Create());
@@ -363,9 +414,31 @@ void ParticleTunnel::UpdateCameraMatrix()
 }
 
 //------------------------------------------------------------------------------
+void ParticleTunnel::UpdateEmitter(const TaskData& data)
+{
+  EmitterKernelData* emitterData = (EmitterKernelData*)data.kernelData.data;
+  ParticleEmitter* emitter = emitterData->emitter;
+
+  for (int i = 0; i < emitterData->ticks; ++i)
+  {
+    emitter->Update(emitterData->dt);
+  }
+
+  emitter->CopyToBuffer(emitterData->vtx);
+}
+
+//------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
   UpdateCameraMatrix();
+
+  if (g_KeyUpTrigger.IsTriggered('1'))
+  {
+    float s = 500;
+    V3 center(randf(-s, s), randf(-s, s), 0);
+    _particleEmitters.Append(ParticleEmitter()).Create(center, _settings.num_particles);
+  }
+
 
   float ms = state.localTime.TotalMilliseconds() / 1000.f;
   _cbPerFrame.time.x = ms;
@@ -400,13 +473,57 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
   rmt_ScopedCPUSample(ParticleTunnel_Update);
 
-  float dt = 1.f / state.frequency;
+  rmt_ScopedCPUSample(MapWriteDiscard);
+
+
   {
+    static AvgStopWatch stopWatch;
+    stopWatch.Start();
+
     rmt_ScopedCPUSample(Particles_Update);
-    for (int tick = 0; tick < state.numTicks; ++tick)
+    float dt = 1.f / state.frequency;
+
+    ObjectHandle vb = _particleBundle.objects._vb;
+    PosTex3* vtx = _ctx->MapWriteDiscard<PosTex3>(_particleBundle.objects._vb);
+
+#if 0
+
+    for (int j = 0; j < state.numTicks; ++j)
     {
-      _particles.Update(dt);
+      for (int i = 0; i < _particleEmitters.Size(); ++i)
+      {
+        _particleEmitters[i].Update(dt);
+      }
     }
+
+    for (int i = 0; i < _particleEmitters.Size(); ++i)
+    {
+      _particleEmitters[i].CopyToBuffer(vtx + i * 6 * _settings.num_particles);
+    }
+#else
+    SimpleAppendBuffer<TaskId, 32> tasks;
+
+    for (int i = 0; i < _particleEmitters.Size(); ++i)
+    {
+      EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
+      *data = EmitterKernelData{ &_particleEmitters[i], dt, state.numTicks, vtx + i * 6 * _settings.num_particles };
+      KernelData kd;
+      kd.data = data;
+      kd.size = sizeof(EmitterKernelData);
+      tasks.Append(SCHEDULER.AddTask(kd, UpdateEmitter));
+    }
+
+    for (const TaskId& taskId : tasks)
+      SCHEDULER.Wait(taskId);
+#endif
+
+    _ctx->Unmap(vb);
+
+    double avg = stopWatch.Stop();
+    TANO.AddPerfCallback([=]() {
+      ImGui::Text("Update time: %.3fms", 1000 * avg);
+    });
+
   }
 
   {
@@ -449,7 +566,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
     float* yy = _curParticles->curY;
     float* zz = _curParticles->curZ;
 
-    Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_linesGpuObjects._vb);
+    Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_lineBundle.objects._vb);
 
 #if 0
     _numLinesPoints = 2;
@@ -498,61 +615,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
 #endif
 
-    _ctx->Unmap(_linesGpuObjects._vb);
-  }
-
-  // TODO: all this is pretty stupid. we should store as much static data as
-  // possible, and do a big memcpy. also, texture coords can be created in the VS,
-  // and we should be using indexed tris.
-  {
-    rmt_ScopedCPUSample(MapWriteDiscard);
-
-    PosTex3* vtx = _ctx->MapWriteDiscard<PosTex3>(_particleGpuObjects._vb);
-    if (!vtx)
-      return false;
-
-    float* xx = _particles.x;
-    float* yy = _particles.y;
-    float* zz = _particles.z;
-
-    float* ss = _particles.scale;
-    Particles::Lifetime* ll = _particles.lifetime;
-
-    for (int i = 0, e = _settings.num_particles; i < e; ++i)
-    {
-      float s = 10.f * ss[i];
-
-      // 0--1
-      // 2--3
-
-      float lifetime = (float)ll[i].left / ll[i].total;
-
-      PosTex3 v0 = { Vector3(-s, +s, s), Vector3(0, 0, lifetime) };
-      PosTex3 v1 = { Vector3(+s, +s, s), Vector3(1, 0, lifetime) };
-      PosTex3 v2 = { Vector3(-s, -s, s), Vector3(0, 1, lifetime) };
-      PosTex3 v3 = { Vector3(+s, -s, s), Vector3(1, 1, lifetime) };
-
-      Vector3 v(xx[i], yy[i], zz[i]);
-
-      v0.pos += v;
-      v1.pos += v;
-      v2.pos += v;
-      v3.pos += v;
-
-      // 0, 1, 2
-      // 2, 1, 3
-      vtx[0] = v0;
-      vtx[1] = v1;
-      vtx[2] = v2;
-
-      vtx[3] = v2;
-      vtx[4] = v1;
-      vtx[5] = v3;
-
-      vtx += 6;
-    }
-
-    _ctx->Unmap(_particleGpuObjects._vb);
+    _ctx->Unmap(_lineBundle.objects._vb);
   }
 
   return true;
@@ -570,16 +633,13 @@ bool ParticleTunnel::Render()
 
   // Render the background
   _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), &black);
-  _ctx->SetGpuObjects(_backgroundGpuObjects);
-  _ctx->SetGpuState(_backgroundState);
+  _ctx->SetBundle(_backgroundBundle);
   _ctx->Draw(3, 0);
 
   // Render particles
-  _ctx->SetGpuObjects(_particleGpuObjects);
-  _ctx->SetGpuState(_particleState);
-  _ctx->SetSamplerState(_particleState._samplers[GpuState::Linear]);
+  _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
   _ctx->SetShaderResource(_particleTexture);
-  _ctx->Draw(6 * _settings.num_particles, 0);
+  _ctx->Draw(6 * _settings.num_particles * _particleEmitters.Size(), 0);
 
 #if WITH_TEXT
   // text
@@ -593,9 +653,10 @@ bool ParticleTunnel::Render()
   _ctx->SetRenderTarget(rtLines._rtHandle, GRAPHICS.GetDepthStencil(), &black);
   if (_curParticles)
   {
-    _ctx->SetGpuObjects(_linesGpuObjects);
-    _ctx->SetGpuState(_linesState);
-    _ctx->SetSamplerState(_linesState._samplers[GpuState::Linear]);
+    _ctx->SetBundleWithSamplers(_lineBundle, PixelShader);
+    //_ctx->SetGpuObjects(_linesGpuObjects);
+    //_ctx->SetGpuState(_linesState);
+    //_ctx->SetSamplerState(_linesState._samplers[GpuState::Linear]);
     _ctx->SetShaderResource(_lineTexture);
     _ctx->Draw(_numLinesPoints, 0);
   }
@@ -615,7 +676,7 @@ bool ParticleTunnel::Render()
     inputs, 3,
     GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(),
     GRAPHICS.GetDepthStencil(),
-    _compositeGpuObjects._ps,
+    _compositeBundle.objects._ps,
     false);
 
   return true;
@@ -636,26 +697,26 @@ void ParticleTunnel::RenderParameterSet()
 
     ImGui::SliderFloat("blur", &_settings.blur_radius, 1, 100);
 
-    if (ImGui::Checkbox("wireframe", &wireframe))
-    {
-      CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
-      rssDesc.CullMode = D3D11_CULL_NONE;
-      if (wireframe)
-        rssDesc.FillMode = D3D11_FILL_WIREFRAME;
+    //if (ImGui::Checkbox("wireframe", &wireframe))
+    //{
+    //  CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
+    //  rssDesc.CullMode = D3D11_CULL_NONE;
+    //  if (wireframe)
+    //    rssDesc.FillMode = D3D11_FILL_WIREFRAME;
 
-      CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
-      dsDesc.DepthEnable = FALSE;
+    //  CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
+    //  dsDesc.DepthEnable = FALSE;
 
-      CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+    //  CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
 
-      // pre-multiplied alpha
-      D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
-      b.BlendEnable = TRUE;
-      b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-      b.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+    //  // pre-multiplied alpha
+    //  D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
+    //  b.BlendEnable = TRUE;
+    //  b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    //  b.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
 
-      _linesState.Create(&dsDesc, &blendDesc, &rssDesc);
-    }
+    //  _linesState.Create(&dsDesc, &blendDesc, &rssDesc);
+    //}
 
     if (ImGui::SliderFloat("min dist", &_settings.text_min_dist, 1, 2000)) Reset();
     if (ImGui::SliderFloat("max dist", &_settings.text_max_dist, 1, 2000)) Reset();

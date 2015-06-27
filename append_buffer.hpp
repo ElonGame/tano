@@ -92,10 +92,11 @@ namespace tano
       return _size == 0;
     }
 
-    void Append(const T& t)
+    T& Append(const T& t)
     { 
       assert(_size < Capacity);
-      _elems[_size++] = t; 
+      _elems[_size] = t;
+      return _elems[_size++];
     }
 
     void Clear()

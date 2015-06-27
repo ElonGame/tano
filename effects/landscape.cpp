@@ -416,7 +416,6 @@ void Landscape::UpdateBoids(const UpdateState& state)
     ImGui::Text("Update time: %.3fms", 1000 * avg);
   });
 
-
   spline.Update(dt);
 }
 

@@ -120,12 +120,6 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   // |  |
   // 0--2
 
-  static float s = 0.75;
-  static float3 ofs0 = float3(-s, -s, 0);
-  static float3 ofs1 = float3(-s, +s, 0);
-  static float3 ofs2 = float3(+s, +s, 0);
-  static float3 ofs3 = float3(+s, -s, 0);
-
   matrix worldViewProj = mul(world, viewProj);
 
   float3 pos = input[0].pos;
@@ -135,6 +129,7 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
 
   VsParticleOut p;
   p.alpha = 1;
+  float s = 0.75;
   float3 p0 = float3(pos - s * right - s * up);
   float3 p1 = float3(pos - s * right + s * up);
   float3 p2 = float3(pos + s * right - s * up);

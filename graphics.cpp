@@ -216,7 +216,7 @@ ID3D11ShaderResourceView* Graphics::GetShaderResourceView(ObjectHandle h)
       return _depthStencils.Get(h)->srv.ptr;
 
     default:
-      LOG_WARN("Trying to set a non supported resource view type!");
+      LOG_ERROR("Trying to set a non supported resource view type!");
       return nullptr;
   }
 }

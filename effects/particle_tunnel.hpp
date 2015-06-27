@@ -5,11 +5,18 @@
 #include "../generated/demo.types.hpp"
 #include "../text_writer.hpp"
 #include "../animation_helpers.hpp"
+#include "../append_buffer.hpp"
+#include "../tano_math.hpp"
 
 #define WITH_TEXT 0
 
 namespace tano
 {
+  namespace scheduler
+  {
+    struct TaskData;
+  }
+
   class ParticleTunnel : public Effect
   {
   public:
@@ -35,15 +42,16 @@ namespace tano
 
     void UpdateCameraMatrix();
 
-    // SOA style
-    struct Particles
+    struct ParticleEmitter
     {
-      void Create(int numParticles);
+      void Create(const V3& center, int numParticles);
       void Destroy();
       void Update(float dt);
       void CreateParticle(int idx, float s);
+      void CopyToBuffer(bristol::PosTex3* vtx);
 
       // TODO: test speed diff if these are double buffered, to avoid LHS
+      // NOTE: this is just trams.. let's make these guys XMVECTORs first
       float* x = nullptr;
       float* y = nullptr;
       float* z = nullptr;
@@ -58,12 +66,23 @@ namespace tano
         int total;
         int left;
       };
-      Lifetime* lifetime = nullptr;
+      Lifetime* _lifetime = nullptr;
 
-      int* deadParticles = nullptr;
+      int* _deadParticles = nullptr;
 
-      int numParticles = 0;
+      int _numParticles = 0;
+      V3 _center = { 0, 0, 0 };
     };
+
+    struct EmitterKernelData
+    {
+      ParticleEmitter* emitter;
+      float dt;
+      int ticks;
+      bristol::PosTex3* vtx;
+    };
+
+    static void UpdateEmitter(const scheduler::TaskData& data);
 
     struct TextParticles
     {
@@ -87,7 +106,7 @@ namespace tano
       vector<int> selectedTris;
     };
 
-    Particles _particles;
+    SimpleAppendBuffer<ParticleEmitter, 24> _particleEmitters;
 
     struct CBufferPerFrame
     {
@@ -108,12 +127,10 @@ namespace tano
 
     string _configName;
 
-    GpuState _backgroundState;
-    GpuObjects _backgroundGpuObjects;
+    GpuBundle _backgroundBundle;
 
     ObjectHandle _particleTexture;
-    GpuState _particleState;
-    GpuObjects _particleGpuObjects;
+    GpuBundle _particleBundle;
 
 #if WITH_TEXT
     GpuState _textState;
@@ -121,12 +138,10 @@ namespace tano
 #endif
 
     ObjectHandle _lineTexture;
-    GpuState _linesState;
-    GpuObjects _linesGpuObjects;
+    GpuBundle _lineBundle;
     u32 _numLinesPoints = 0;
 
-    GpuState _compositeState;
-    GpuObjects _compositeGpuObjects;
+    GpuBundle _compositeBundle;
 
     ParticleTunnelSettings _settings;
 
