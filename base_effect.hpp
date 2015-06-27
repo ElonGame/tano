@@ -41,5 +41,6 @@ namespace tano
 
     GraphicsContext* _ctx;
     bool _firstTick;
+    string _configName;
   };
 }

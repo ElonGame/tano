@@ -112,6 +112,7 @@
     <ClCompile Include="..\effects\cloth.cpp" />
     <ClCompile Include="..\effects\cluster.cpp" />
     <ClCompile Include="..\effects\landscape.cpp" />
+    <ClCompile Include="..\effects\plexus.cpp" />
     <ClCompile Include="..\effects\raymarcher.cpp" />
     <ClCompile Include="..\free_list.cpp" />
     <ClCompile Include="..\lz4\lz4.c">
@@ -187,7 +188,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\BaseEffect.cpp">
+    <ClCompile Include="..\base_effect.cpp">
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
@@ -359,6 +360,7 @@
     <ClInclude Include="..\effects\cloth.hpp" />
     <ClInclude Include="..\effects\cluster.hpp" />
     <ClInclude Include="..\effects\landscape.hpp" />
+    <ClInclude Include="..\effects\plexus.hpp" />
     <ClInclude Include="..\effects\raymarcher.hpp" />
     <ClInclude Include="..\free_list.hpp" />
     <ClInclude Include="..\lz4\lz4.h" />
@@ -376,7 +378,7 @@
     <ClInclude Include="..\bristol\utils.hpp" />
     <ClInclude Include="..\graphics_context.hpp" />
     <ClInclude Include="..\demo_engine.hpp" />
-    <ClInclude Include="..\BaseEffect.hpp" />
+    <ClInclude Include="..\base_effect.hpp" />
     <ClInclude Include="..\effects\particle_tunnel.hpp" />
     <ClInclude Include="..\generated\app.parse.hpp" />
     <ClInclude Include="..\generated\app.types.hpp" />

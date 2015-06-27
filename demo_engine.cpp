@@ -1,5 +1,5 @@
 #include "demo_engine.hpp"
-#include "BaseEffect.hpp"
+#include "base_effect.hpp"
 #include "graphics.hpp"
 #include "resource_manager.hpp"
 #include "tano.hpp"

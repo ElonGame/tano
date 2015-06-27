@@ -3,15 +3,16 @@
 #include "../base_effect.hpp"
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
+#include "../camera.hpp"
 
 namespace tano
 {
-  class RayMarcher : public BaseEffect
+  class Plexus : public BaseEffect
   {
   public:
 
-    RayMarcher(const string &name, u32 id);
-    ~RayMarcher();
+    Plexus(const string &name, u32 id);
+    ~Plexus();
     virtual bool Init(const char* configFile) override;
     virtual bool Update(const UpdateState& state) override;
     virtual bool Render() override;
@@ -23,23 +24,34 @@ namespace tano
 
   private:
 
-    void Reset();
 #if WITH_IMGUI
     void RenderParameterSet();
     void SaveParameterSet();
 #endif
 
+    void Reset();
+    void UpdateCameraMatrix(const UpdateState& state);
+
     struct CBufferPerFrame
     {
-      Vector2 dim;
-      float time;
+      Matrix world;
+      Matrix view;
+      Matrix proj;
+      Matrix viewProj;
+      Vector4 dim;
+      Vector3 cameraPos;
+      float pad1;
+      Vector3 cameraLookAt;
+      float pad2;
+      Vector3 cameraUp;
+      float pad3;
+      Vector4 cook;
+      Color diffuse;
     };
-
-    GpuState _raymarcherState;
-    GpuObjects _raymarcherGpuObjects;
-
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
-    RayMarcherSettings _settings;
-    string _configName;
+
+    PlexusSettings _settings;
+
+    FreeFlyCamera _camera;
   };
 }

@@ -208,7 +208,10 @@
     <ClCompile Include="..\fullscreen_effect.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\BaseEffect.cpp">
+    <ClCompile Include="..\effects\plexus.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\base_effect.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
@@ -429,7 +432,10 @@
     <ClInclude Include="..\fullscreen_effect.hpp">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="..\BaseEffect.hpp">
+    <ClInclude Include="..\effects\plexus.hpp">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\base_effect.hpp">
       <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>

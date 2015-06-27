@@ -1,5 +1,5 @@
 
-#include "BaseEffect.hpp"
+#include "base_effect.hpp"
 #include "graphics.hpp"
 
 using namespace tano;

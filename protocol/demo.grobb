@@ -109,3 +109,8 @@ struct cloth_settings
     float damping = 0.01;
     vec3 gravity = {0, -1, 0};
 };
+
+struct plexus_settings
+{
+    camera_settings camera;
+};

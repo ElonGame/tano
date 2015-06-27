@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../BaseEffect.hpp"
+#include "../base_effect.hpp"
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
 #include "../mesh_loader.hpp"
@@ -80,7 +80,6 @@ namespace tano
     GpuState _blobState;
     GpuObjects _blobGpuObjects;
     BlobSettings _settings;
-    string _configName;
     MeshLoader _meshLoader;
 
     FreeFlyCamera _camera;

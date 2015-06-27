@@ -4,7 +4,7 @@
 #include "timer.hpp"
 #include "property_manager.hpp"
 #include "generated/demo.types.hpp"
-#include "BaseEffect.hpp"
+#include "base_effect.hpp"
 
 namespace tano
 {

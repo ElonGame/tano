@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../BaseEffect.hpp"
+#include "../base_effect.hpp"
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
 #include "../mesh_loader.hpp"
