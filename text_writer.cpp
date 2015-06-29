@@ -71,8 +71,8 @@ bool TextWriter::Init(const char* filename)
 //------------------------------------------------------------------------------
 void TextWriter::GenerateTris(
     const char* str,
-    vector<Vector3>* outlineTris,
-    vector<Vector3>* capTris)
+    vector<V3>* outlineTris,
+    vector<V3>* capTris)
 {
   // split text into rows
   vector<string> rows;
@@ -102,8 +102,8 @@ void TextWriter::GenerateTris(
 
   vector<RowDim> dims;
 
-  Vector3 vMin(+FLT_MAX, +FLT_MAX, +FLT_MAX);
-  Vector3 vMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+  V3 vMin(+FLT_MAX, +FLT_MAX, +FLT_MAX);
+  V3 vMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
   u32 outlineIdx = 0;
   u32 capIdx = 0;
   for (const string& str : rows)
@@ -138,9 +138,9 @@ void TextWriter::GenerateTris(
         for (u32 j = 0; j < numIndices; ++j)
         {
           int vertIdx = elem->indices[j] * 3;
-          Vector3 v(elem->verts[vertIdx + 0] + xOfs, elem->verts[vertIdx + 1], elem->verts[vertIdx + 2]);
-          vMin = Vector3::Min(v, vMin);
-          vMax = Vector3::Max(v, vMax);
+          V3 v(elem->verts[vertIdx + 0] + xOfs, elem->verts[vertIdx + 1], elem->verts[vertIdx + 2]);
+          vMin = Min(v, vMin);
+          vMax = Max(v, vMax);
           (*outlineTris)[outlineIdx + j] = v;
         }
 
@@ -155,11 +155,11 @@ void TextWriter::GenerateTris(
         for (u32 j = 0; j < numIndices; ++j)
         {
           int vertIdx = elem->indices[j] * 3;
-          Vector3 v(elem->verts[vertIdx + 0] + xOfs, elem->verts[vertIdx + 1], elem->verts[vertIdx + 2]);
+          V3 v(elem->verts[vertIdx + 0] + xOfs, elem->verts[vertIdx + 1], elem->verts[vertIdx + 2]);
           if (!outlineTris)
           {
-            vMin = Vector3::Min(v, vMin);
-            vMax = Vector3::Max(v, vMax);
+            vMin = Min(v, vMin);
+            vMax = Max(v, vMax);
           }
           (*capTris)[capIdx + j] = v;
         }

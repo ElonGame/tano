@@ -148,6 +148,17 @@ namespace tano
       (a.z * b.x) - (a.x * b.z),
       (a.x * b.y) - (a.y * b.x));
   }
+
+  inline V3 Min(const V3& a, const V3& b)
+  {
+    return V3(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z));
+  }
+
+  inline V3 Max(const V3& a, const V3& b)
+  {
+    return V3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z));
+  }
+
 /*
   inline Vector3 ClampVector(const Vector3& force, float maxLength)
   {

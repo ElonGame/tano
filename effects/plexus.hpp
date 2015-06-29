@@ -4,6 +4,7 @@
 #include "../gpu_objects.hpp"
 #include "../generated/demo.types.hpp"
 #include "../camera.hpp"
+#include "../text_writer.hpp"
 
 namespace tano
 {
@@ -78,6 +79,10 @@ namespace tano
       Color diffuse;
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
+
+    TextWriter _textWriter;
+    vector<V3> _tris;
+    vector<V3> _capTris;
 
     PlexusSettings _settings;
 

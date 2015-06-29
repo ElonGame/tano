@@ -81,6 +81,9 @@ bool Plexus::Init(const char* configFile)
 
   CalcPoints(true);
 
+  INIT(_textWriter.Init("gfx/text1.boba"));
+  _textWriter.GenerateTris("neurotica efs", &_tris, &_capTris);
+
   END_INIT_SEQUENCE();
 }
 

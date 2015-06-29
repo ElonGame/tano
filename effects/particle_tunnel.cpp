@@ -146,7 +146,7 @@ void ParticleTunnel::ParticleEmitter::CopyToBuffer(ParticleType* vtx)
 
 //------------------------------------------------------------------------------
 void ParticleTunnel::TextParticles::Create(
-    const vector<Vector3>& verts,
+    const vector<V3>& verts,
     float targetTime)
 {
   numParticles = (int)verts.size();

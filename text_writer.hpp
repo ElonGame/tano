@@ -1,5 +1,6 @@
 #pragma once
 #include "mesh_loader.hpp"
+#include "tano_math.hpp"
 
 namespace tano
 {
@@ -7,7 +8,8 @@ namespace tano
   {
     bool Init(const char* filename);
 
-    void GenerateTris(const char* str, vector<Vector3>* outlineLines, vector<Vector3>* capTris);
+    void GenerateTris(const char* str, vector<V3>* outlineLines, vector<V3>* capTris);
+    void GenerateIndexedTris(const char* str, vector<V3>* outlineLines, vector<V3>* capTris);
 
     struct Letter
     {

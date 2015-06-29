@@ -93,7 +93,7 @@ namespace tano
     struct TextParticles
     {
       TextParticles(const ParticleTunnelSettings& settings) : settings(settings) {}
-      void Create(const vector<Vector3>& verts, float targetTime);
+      void Create(const vector<V3>& verts, float targetTime);
       void Destroy();
       void Update(float seconds, float start, float end);
 
@@ -152,12 +152,12 @@ namespace tano
     ParticleTunnelSettings _settings;
 
     TextWriter _textWriter;
-    vector<Vector3> _neuroticaTris;
-    vector<Vector3> _neuroticaCapTris;
-    vector<Vector3> _radioSilenceTris;
-    vector<Vector3> _radioSilenceCapTris;
-    vector<Vector3> _partyTris;
-    vector<Vector3> _partyCapTris;
+    vector<V3> _neuroticaTris;
+    vector<V3> _neuroticaCapTris;
+    vector<V3> _radioSilenceTris;
+    vector<V3> _radioSilenceCapTris;
+    vector<V3> _partyTris;
+    vector<V3> _partyCapTris;
 
     TextParticles _neuroticaParticles;
     TextParticles _radioSilenceParticles;
