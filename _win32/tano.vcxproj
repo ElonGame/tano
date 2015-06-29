@@ -410,6 +410,7 @@
     <ClInclude Include="..\scene.hpp" />
     <ClInclude Include="..\scheduler.hpp" />
     <ClInclude Include="..\stb\stb_image.h" />
+    <ClInclude Include="..\stb\stb_perlin.h" />
     <ClInclude Include="..\stop_watch.hpp" />
     <ClInclude Include="..\sync\base.h" />
     <ClInclude Include="..\sync\data.h" />

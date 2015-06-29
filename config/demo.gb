@@ -9,7 +9,6 @@
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/particle_tunnel.gb';
-    force: true;
   },
   {
     name: 'landscape';
@@ -24,7 +23,6 @@
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/blob.gb';
-    force: false;
   },
   {
     name: 'cloth';
@@ -32,16 +30,21 @@
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/cloth.gb';
-    force: false;
   },
-
   {
     name: 'raymarcher';
     factory: 'raymarcher';
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/raymarcher.gb';
-    force: false;
+  },
+  {
+    name: 'plexus';
+    factory: 'plexus';
+    start_time: 1300000;
+    end_time: 1300000;
+    settings: 'config/plexus.gb';
+    force: true;
   },
 
   ];

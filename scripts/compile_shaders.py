@@ -23,7 +23,8 @@ vs = {
     'cluster' : ['VsMesh'],
     'blob' : ['VsMesh'],
     'landscape' : ['VsLandscape', 'VsBoids', 'VsParticle'],
-    'lines': ['VsMain']
+    'lines': ['VsMain'],
+    'plexus': ['VsLines'],
 }
 
 ps = {
@@ -36,6 +37,7 @@ ps = {
     'blob' : ['PsMesh'],
     'landscape' : ['PsLandscape', 'PsComposite', 'PsSky', 'PsBoids', 'PsParticle', 'PsHighPassFilter', 'PsLensFlare'],
     'lines': ['PsMain'],
+    'plexus': ['PsLines'],
 }
 
 cs = {
@@ -45,6 +47,7 @@ cs = {
 gs = {
     'particle_tunnel' : ['GsParticle', 'GsLines'],
     'landscape' : ['GsParticle', 'GsLandscape'],
+    'plexus': ['GsLines'],
 }
 
 vs_data = { 'shaders': vs, 'profile': 'vs', 'obj_ext': 'vso', 'asm_ext': 'vsa' }

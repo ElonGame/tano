@@ -18,6 +18,7 @@
 #include "effects/landscape.hpp"
 #include "effects/blob.hpp"
 #include "effects/cloth.hpp"
+#include "effects/plexus.hpp"
 
 #if WITH_IMGUI
 #include "imgui_helpers.hpp"
@@ -154,7 +155,7 @@ bool App::Init(HINSTANCE hinstance)
   //width = 800;
   //height = 600;
 
-  GRAPHICS.CreateDefaultSwapChain(width, height, DXGI_FORMAT_R16G16B16A16_FLOAT, WndProc, hinstance);
+  GRAPHICS.CreateDefaultSwapChain(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, WndProc, hinstance);
 
 #if WITH_IMGUI
   INIT_FATAL(InitImGui());
@@ -172,6 +173,7 @@ bool App::Init(HINSTANCE hinstance)
   Landscape::Register();
   Blob::Register();
   Cloth::Register();
+  Plexus::Register();
 
   INIT_FATAL(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
 
@@ -188,7 +190,7 @@ bool App::Run()
   RollingAverage<float> avgFrameTime(200);
   StopWatch stopWatch;
   u64 numFrames = 0;
-  bool renderImgui = false;
+  bool renderImgui = true;
   while (WM_QUIT != msg.message)
   {
     g_ScratchMemory.NewFrame();

@@ -14,6 +14,7 @@ cbuffer PerFrame : register(b0)
   float4 camPos;
   float4 dofSettings; // near-z-start, near-z-end, far-z-start, far-z-end
   float4 time; // x = local-time, y = text fade
+  float3 cameraPos;
 };
 
 //------------------------------------------------------
@@ -294,3 +295,5 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float r = 0.5 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
   return smoothstep(0, 2, time.x) * r * col;
 }
+
+

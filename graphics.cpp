@@ -93,7 +93,7 @@ const DXGI_MODE_DESC &Graphics::SelectedDisplayMode() const
 //------------------------------------------------------------------------------
 bool Graphics::CreateDevice()
 {
-  int flags = 0;
+  int flags = D3D11_CREATE_DEVICE_SINGLETHREADED;
 #if WITH_DXGI_DEBUG
   flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif

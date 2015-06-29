@@ -78,12 +78,18 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
-  template <typename T, int Capacity>
-  class SimpleAppendBuffer
+  template <typename T>
+  class SimpleAppendBufferExternal
   {
   public:
+    SimpleAppendBufferExternal(void* start, void* end)
+    {
+      _mem = (T*)start;
+      _capacity = (int)((T*)end - _mem);
+    }
+
     int Size() const
-    { 
+    {
       return _size;
     }
 
@@ -93,10 +99,10 @@ namespace tano
     }
 
     T& Append(const T& t)
-    { 
-      assert(_size < Capacity);
-      _elems[_size] = t;
-      return _elems[_size++];
+    {
+      assert(_size < _capacity);
+      _mem[_size] = t;
+      return _mem[_size++];
     }
 
     void Clear()
@@ -104,30 +110,52 @@ namespace tano
       _size = 0;
     }
 
+    T* Data()
+    {
+      return &_mem[0];
+    }
+
+    int DataSize()
+    {
+      return _size * sizeof(T);
+    }
+
     const T& operator[](int idx) const
     {
       assert(idx < _size);
-      return _elems[idx];
+      return _mem[idx];
     }
 
     T& operator[](int idx)
     {
       assert(idx < _size);
-      return _elems[idx];
+      return _mem[idx];
     }
 
     T* begin()
     {
-      return &_elems[0];
+      return &_mem[0];
     }
 
     T* end()
     {
-      return &_elems[_size];
+      return &_mem[_size];
     }
 
-  private:
+  protected:
+    int _capacity = 0;
     int _size = 0;
+    T* _mem = 0;
+  };
+
+  //------------------------------------------------------------------------------
+  template <typename T, int Capacity>
+  class SimpleAppendBuffer : public SimpleAppendBufferExternal<T>
+  {
+  public:
+    SimpleAppendBuffer() : SimpleAppendBufferExternal(&_elems[0], &_elems[Capacity]) {}
+
+  private:
     T _elems[Capacity];
   };
 }

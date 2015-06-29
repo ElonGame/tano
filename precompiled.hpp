@@ -224,8 +224,6 @@ namespace tano
   using bristol::TimeStamp;
   using bristol::TimeDuration;
   using bristol::RollingAverage;
-
-  using bristol::Spherical;
 }
 
 #pragma comment(lib, "DXGI.lib")

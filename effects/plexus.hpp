@@ -32,6 +32,35 @@ namespace tano
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
 
+    void PointsTest(const UpdateState& state);
+    void CalcPoints(bool recalcEdges);
+    int CalcLines(V3* vtx);
+    enum { MAX_POINTS = 16 * 1024 };
+    SimpleAppendBuffer<V3, MAX_POINTS> _points;
+
+    struct Edge
+    {
+      int e[6];
+    };
+    SimpleAppendBuffer<Edge, MAX_POINTS> _edges;
+    int* _neighbours = nullptr;
+
+    bool _renderPoints = false;
+    GpuBundle _pointBundle;
+    GpuBundle _lineBundle;
+    GpuBundle _line2Bundle;
+
+    struct CBufferBasic
+    {
+      Matrix world;
+      Matrix view;
+      Matrix proj;
+      Matrix viewProj;
+      Vector4 cameraPos;
+      Vector4 dim;
+    };
+    ConstantBuffer<CBufferBasic> _cbBasic;
+
     struct CBufferPerFrame
     {
       Matrix world;

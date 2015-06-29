@@ -78,6 +78,7 @@ namespace tano
   };
 
   float Distance(const V3& a, const V3& b);
+  float DistanceSquared(const V3& a, const V3& b);
   float Length(const V3& a);
   float LengthSquared(const V3& a);
   V3 Normalize(const V3& v);
@@ -93,6 +94,15 @@ namespace tano
     float dz = a.z - b.z;
 
     return sqrtf(dx*dx + dy*dy + dz*dz);
+  }
+
+  inline float DistanceSquared(const V3& a, const V3& b)
+  {
+    float dx = a.x - b.x;
+    float dy = a.y - b.y;
+    float dz = a.z - b.z;
+
+    return dx*dx + dy*dy + dz*dz;
   }
 
   inline float Length(const V3& a)
@@ -225,4 +235,17 @@ namespace tano
     float x, y, z, w;
   };
 
+  //------------------------------------------------------------------------------
+  struct Spherical
+  {
+    float r;
+    // phi is angle around x axis, ccw, starting at 0 at the x-axis
+    // theta is angle around the z axis
+    float phi, theta;
+  };
+
+  //------------------------------------------------------------------------------
+  V3 FromSpherical(float r, float phi, float theta);
+  V3 FromSpherical(const Spherical& s);
+  Spherical ToSpherical(const V3& v);
 }
