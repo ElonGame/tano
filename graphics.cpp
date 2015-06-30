@@ -637,13 +637,6 @@ TextureResource* Graphics::CreateTexturePtr(const D3D11_TEXTURE2D_DESC &desc)
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateTexture(int width, int height, DXGI_FORMAT fmt, void* data, int pitch)
-{
-  TextureResource* resource = CreateTexturePtr(width, height, fmt, data, width, height, pitch);
-  return resource ? InsertTexture(resource) : emptyHandle;
-}
-
-//------------------------------------------------------------------------------
 ObjectHandle Graphics::CreateTexture(
     int width,
     int height,
@@ -667,29 +660,36 @@ TextureResource* Graphics::CreateTexturePtr(
     int data_height,
     int data_pitch)
 {
-  TextureResource* t = CreateTexturePtr(CD3D11_TEXTURE2D_DESC(
-    fmt, width, height, 1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE));
+  CD3D11_TEXTURE2D_DESC desc(
+    fmt, width, height, 1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+
+  TextureResource* t = CreateTexturePtr(desc);
   if (!t)
     return nullptr;
 
-  D3D11_MAPPED_SUBRESOURCE resource;
-  if (FAILED(_immediateContext->Map(t->texture.ptr, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource)))
+  if (data)
   {
-    delete t;
-    return nullptr;
+    D3D11_MAPPED_SUBRESOURCE resource;
+    if (FAILED(_immediateContext->Map(t->texture.ptr, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource)))
+    {
+      delete t;
+      return nullptr;
+    }
+
+    uint8_t *src = (uint8_t *)data;
+    uint8_t *dst = (uint8_t *)resource.pData;
+    const int w = data_width == -1 ? width : min<int>(width, data_width);
+    const int h = data_height == -1 ? height : min<int>(height, data_height);
+    const int pitch = data_pitch == -1 ? width * SizeFromFormat(fmt) : data_pitch;
+    for (int i = 0; i < h; ++i)
+    {
+      memcpy(dst, src, pitch);
+      src += pitch;
+      dst += resource.RowPitch;
+    }
+    _immediateContext->Unmap(t->texture.ptr, 0);
   }
 
-  uint8_t *src = (uint8_t *)data;
-  uint8_t *dst = (uint8_t *)resource.pData;
-  const int w = std::min<int>(width, data_width);
-  const int h = std::min<int>(height, data_height);
-  for (int i = 0; i < h; ++i)
-  {
-    memcpy(dst, src, data_pitch);
-    src += data_pitch;
-    dst += resource.RowPitch;
-  }
-  _immediateContext->Unmap(t->texture.ptr, 0);
 
   return t;
 }

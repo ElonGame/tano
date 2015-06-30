@@ -90,6 +90,8 @@ namespace tano
 
     PlexusSettings _settings;
 
+    ObjectHandle _perlinTexture;
+
     FreeFlyCamera _camera;
   };
 }

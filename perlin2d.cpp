@@ -35,7 +35,6 @@ void Perlin2D::Init()
 //------------------------------------------------------------------------------
 float Perlin2D::Value(float x, float y)
 {
-  //return 0;
   int x0 = (int)floorf(x);
   int y0 = (int)floorf(y);
 

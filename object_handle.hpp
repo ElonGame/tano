@@ -7,7 +7,7 @@ namespace tano
   public:
     enum Type
     {
-      kInvalid = -1,    // NB: You have to compare _raw against kInvalid to test
+      kInvalid = 0,    // NB: You have to compare _raw against kInvalid to test
 
       // Graphics
       kContext,

@@ -66,8 +66,7 @@ namespace tano
     bool ReadTexture(const char *filename, D3DX11_IMAGE_INFO *info, u32 *pitch, vector<u8> *bits);
 
     // Create a texture, and fill it with data
-    ObjectHandle CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int data_width, int data_height, int data_pitch);
-    ObjectHandle CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int pitch);
+    ObjectHandle CreateTexture(int width, int height, DXGI_FORMAT fmt, void *data, int data_width = -1, int data_height = -1, int data_pitch = -1);
 
     SwapChain* GetSwapChain(ObjectHandle h);
 

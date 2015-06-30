@@ -84,6 +84,20 @@ bool Plexus::Init(const char* configFile)
   INIT(_textWriter.Init("gfx/text1.boba"));
   _textWriter.GenerateIndexedTris("neurotica efs", TextWriter::TextOutline, &_textVerts, &_textIndices);
 
+  _perlinTexture = GRAPHICS.CreateTexture(256, 256, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+
+  u32* pixels = _ctx->MapWriteDiscard<u32>(_perlinTexture);
+
+  for (int i = 0; i < 256; ++i)
+  {
+    for (int j = 0; j < 256; ++j)
+    {
+      // ARGB
+      pixels[i*256+j] = 0x8000ffff;
+    }
+  }
+  _ctx->Unmap(_perlinTexture);
+
   CalcText();
 
   END_INIT_SEQUENCE();
@@ -513,6 +527,8 @@ void Plexus::RenderParameterSet()
   recalc |= ImGui::SliderInt("layers", &_settings.sphere.layers, 1, 50);
   recalc |= ImGui::SliderInt("num-nearest", &_settings.sphere.num_nearest, 1, 20);
   recalc |= ImGui::SliderInt("num-neighbours", &_settings.sphere.num_neighbours, 1, 100);
+
+  ImGui::Image((void*)&_perlinTexture, ImVec2(256, 256));
 
   if (recalc)
   {

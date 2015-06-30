@@ -193,8 +193,12 @@ static void ImImpl_RenderDrawLists(ImDrawList** const cmd_lists, int cmd_lists_c
       const ImDrawCmd* pcmd = &cmd_list->commands[cmd_i];
       const D3D11_RECT r ={ (LONG)pcmd->clip_rect.x, (LONG)pcmd->clip_rect.y, (LONG)pcmd->clip_rect.z, (LONG)pcmd->clip_rect.w };
 
-      //ObjectHandle h = *(ObjectHandle*)&pcmd->texture_id;
-      g_ctx->SetShaderResource(g_texture, ShaderType::PixelShader);
+      ObjectHandle* h = (ObjectHandle*)pcmd->texture_id;
+      if (h && h->IsValid())
+        g_ctx->SetShaderResource(*h, ShaderType::PixelShader);
+      else
+        g_ctx->SetShaderResource(g_texture, ShaderType::PixelShader);
+
       g_ctx->SetScissorRect(1, &r);
       g_ctx->Draw(pcmd->vtx_count, vtx_offset);
       vtx_offset += pcmd->vtx_count;
