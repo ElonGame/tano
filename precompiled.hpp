@@ -172,6 +172,7 @@ namespace tano
   using std::pair;
   using std::make_pair;
   using std::sort;
+  using std::copy;
 
   using std::function;
   using std::bind;

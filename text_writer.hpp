@@ -6,10 +6,17 @@ namespace tano
 {
   struct TextWriter
   {
+    enum TextSegment
+    {
+      TextOutline,
+      TextCap1,
+      TextCap2,
+    };
+
     bool Init(const char* filename);
 
-    void GenerateTris(const char* str, vector<V3>* outlineLines, vector<V3>* capTris);
-    void GenerateIndexedTris(const char* str, vector<V3>* outlineLines, vector<V3>* capTris);
+    void GenerateTris(const char* str, TextSegment segment, vector<V3>* verts);
+    void GenerateIndexedTris(const char* str, TextSegment segment, vector<V3>* verts, vector<int>* indices);
 
     struct Letter
     {

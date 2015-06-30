@@ -4,6 +4,37 @@
 using namespace tano;
 
 //------------------------------------------------------------------------------
+namespace
+{
+  struct RowDim
+  {
+    u32 triStart, triEnd;
+    float xMin, xMax;
+    float yMin, yMax;
+  };
+
+  void MakeRows(const char* str, vector<string>* rows)
+  {
+    // split text into rows
+    u32 len = (u32)strlen(str);
+    const char* start = str;
+    const char* end = str + len;
+    const char* cur = start;
+    while (start != end)
+    {
+      cur = strchr(start, '\n');
+      if (!cur)
+        break;
+      rows->push_back(string(start, cur - start));
+      start = cur + 1;
+    }
+
+    if (start != end)
+      rows->push_back(string(start, end - start));
+  }
+};
+
+//------------------------------------------------------------------------------
 void TextWriter::Letter::CalcBounds()
 {
   u32 numIndices = cap1->numIndices;
@@ -69,49 +100,22 @@ bool TextWriter::Init(const char* filename)
 }
 
 //------------------------------------------------------------------------------
-void TextWriter::GenerateTris(
-    const char* str,
-    vector<V3>* outlineTris,
-    vector<V3>* capTris)
+void TextWriter::GenerateTris(const char* str, TextSegment segment, vector<V3>* verts)
 {
   // split text into rows
   vector<string> rows;
-  u32 len = (u32)strlen(str);
-  const char* start = str;
-  const char* end = str + len;
-  const char* cur = start;
-  while (start != end)
-  {
-    cur = strchr(start, '\n');
-    if (!cur)
-      break;
-    rows.push_back(string(start, cur - start));
-    start = cur + 1;
-  }
+  MakeRows(str, &rows);
 
-  if (start != end)
-    rows.push_back(string(start, end - start));
-
-  struct RowDim
-  {
-    u32 outlineTriStart, outlineTriEnd;
-    u32 capTriStart, capTriEnd;
-    float xMin, xMax;
-    float yMin, yMax;
-  };
-
-  vector<RowDim> dims;
+  vector<RowDim> lineInfo;
 
   V3 vMin(+FLT_MAX, +FLT_MAX, +FLT_MAX);
   V3 vMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-  u32 outlineIdx = 0;
-  u32 capIdx = 0;
+  u32 vtxIdx = 0;
   for (const string& str : rows)
   {
     float xOfs = 0;
     u32 curLen = (u32)str.size();
-    u32 outlineTriStart = (u32)outlineTris->size();
-    u32 capTriStart = (u32)capTris->size();
+    u32 triStart = (u32)verts->size();
     for (u32 i = 0; i < curLen; ++i)
     {
       char ch = toupper(str[i]);
@@ -130,91 +134,58 @@ void TextWriter::GenerateTris(
 
       // Copy vertices to @tris
       // The actual mesh data uses indices, so we expand those here
-      if (outlineTris)
+      const protocol::MeshBlob* blobs[] = { letter.outline, letter.cap1, letter.cap2 };
+      const protocol::MeshBlob* elem = blobs[(int)segment];
+      u32 numIndices = elem->numIndices;
+      verts->resize(verts->size() + numIndices);
+      for (u32 j = 0; j < numIndices; ++j)
       {
-        protocol::MeshBlob* elem = letter.outline;
-        u32 numIndices = elem->numIndices;
-        outlineTris->resize(outlineTris->size() + numIndices);
-        for (u32 j = 0; j < numIndices; ++j)
-        {
-          int vertIdx = elem->indices[j] * 3;
-          V3 v(elem->verts[vertIdx + 0] + xOfs, elem->verts[vertIdx + 1], elem->verts[vertIdx + 2]);
-          vMin = Min(v, vMin);
-          vMax = Max(v, vMax);
-          (*outlineTris)[outlineIdx + j] = v;
-        }
-
-        outlineIdx += numIndices;
+        int vertIdx = elem->indices[j] * 3;
+        V3 v(elem->verts[vertIdx + 0] + xOfs, elem->verts[vertIdx + 1], elem->verts[vertIdx + 2]);
+        vMin = Min(v, vMin);
+        vMax = Max(v, vMax);
+        (*verts)[vtxIdx + j] = v;
       }
 
-      if (capTris)
-      {
-        protocol::MeshBlob* elem = letter.cap1;
-        u32 numIndices = elem->numIndices;
-        capTris->resize(capTris->size() + numIndices);
-        for (u32 j = 0; j < numIndices; ++j)
-        {
-          int vertIdx = elem->indices[j] * 3;
-          V3 v(elem->verts[vertIdx + 0] + xOfs, elem->verts[vertIdx + 1], elem->verts[vertIdx + 2]);
-          if (!outlineTris)
-          {
-            vMin = Min(v, vMin);
-            vMax = Max(v, vMax);
-          }
-          (*capTris)[capIdx + j] = v;
-        }
-
-        capIdx += numIndices;
-      }
+      vtxIdx += numIndices;
 
       xOfs += letter.width * 1.05f;
     }
 
-    dims.push_back({
-      outlineTriStart, (u32)outlineTris->size(), capTriStart, (u32)capTris->size(),
+    lineInfo.push_back({
+      triStart, (u32)verts->size(),
       vMin.x, vMax.x, vMin.y, vMax.y});
   }
 
-  float xStart = dims[0].xMin;
-  float xEnd = dims[0].xMax;
+  float xStart = lineInfo[0].xMin;
+  float xEnd = lineInfo[0].xMax;
   float ySize = 0;
-  for (size_t i = 1; i < dims.size(); ++i)
+  for (size_t i = 1; i < lineInfo.size(); ++i)
   {
-    xStart = min(xStart, dims[i].xMin);
-    xEnd = max(xEnd, dims[i].xMax);
-    ySize += dims[i].yMax - dims[i].yMin;
+    xStart = min(xStart, lineInfo[i].xMin);
+    xEnd = max(xEnd, lineInfo[i].xMax);
+    ySize += lineInfo[i].yMax - lineInfo[i].yMin;
   }
 
   float sx = xEnd - xStart;
   float xCenter = sx / 2;
   float yOfs = ySize / 2;
 
-  for (const RowDim& row : dims)
+  for (const RowDim& row : lineInfo)
   {
     float rx = row.xMax - row.xMin;
     float ry = row.yMax - row.yMin;
     float xRowOfs = (sx - rx) / 2;
 
     // loop over all the verts and center the text
-    if (outlineTris)
+    if (verts)
     {
-      for (u32 i = row.outlineTriStart, e = row.outlineTriEnd; i < e; ++i)
+      for (u32 i = row.triStart, e = row.triEnd; i < e; ++i)
       {
-        (*outlineTris)[i].x -= (xCenter - xRowOfs);
+        (*verts)[i].x -= (xCenter - xRowOfs);
         // we first center the text around its local origin, and then move it
         // to the correct global position
-        (*outlineTris)[i].y += -ry / 2 + yOfs;
-      }
-    }
-
-    if (capTris)
-    {
-      for (u32 i = row.capTriStart, e = row.capTriEnd; i < e; ++i)
-      {
-        (*capTris)[i].x -= (xCenter - xRowOfs);
-        // we first center the text around its local origin, and then move it
-        // to the correct global position
-        (*capTris)[i].y += -ry / 2 + yOfs;
+        (*verts)[i].y += -ry / 2 + yOfs;
       }
     }
 
@@ -222,3 +193,105 @@ void TextWriter::GenerateTris(
   }
 }
 
+//------------------------------------------------------------------------------
+void TextWriter::GenerateIndexedTris(
+    const char* str,
+    TextSegment segment,
+    vector<V3>* verts,
+    vector<int>* indices)
+{
+
+  vector<string> rows;
+  MakeRows(str, &rows);
+
+  vector<RowDim> lineInfo;
+
+  V3 vMin(+FLT_MAX, +FLT_MAX, +FLT_MAX);
+  V3 vMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+  for (const string& str : rows)
+  {
+    float xOfs = 0;
+    u32 curLen = (u32)str.size();
+    u32 triStart = (u32)verts->size();
+    for (u32 i = 0; i < curLen; ++i)
+    {
+      char ch = toupper(str[i]);
+
+      if (ch == ' ')
+      {
+        xOfs += 50;
+        continue;
+      }
+      else if (ch < 'A' || ch > 'Z')
+      {
+        continue;
+      }
+
+      const TextWriter::Letter& letter = _letters[ch - 'A'];
+      const protocol::MeshBlob* blobs[] = { letter.outline, letter.cap1, letter.cap2 };
+      const protocol::MeshBlob* elem = blobs[(int)segment];
+
+      // copy verts/indices
+      u32 numIndices = elem->numIndices;
+      u32 prevIndices = (u32)indices->size();
+      u32 numVerts = elem->numVerts;
+      u32 prevVerts = (u32)verts->size();
+      indices->resize(indices->size() + numIndices);
+      verts->resize(verts->size() + numVerts);
+
+      for (u32 j = 0; j < numIndices; ++j)
+      {
+        (*indices)[j+prevIndices] = elem->indices[j] + prevVerts;
+      }
+
+      //copy(elem->indices, elem->indices + numIndices, indices->begin() + prevIndices);
+
+      // get max vertex dimensions
+      for (u32 j = 0; j < numVerts; ++j)
+      {
+        V3 v(elem->verts[j*3 + 0] + xOfs, elem->verts[j*3 + 1], elem->verts[j*3 + 2]);
+        (*verts)[j+prevVerts] = v;
+        vMin = Min(v, vMin);
+        vMax = Max(v, vMax);
+      }
+
+      xOfs += letter.width * 1.05f;
+    }
+
+    lineInfo.push_back({
+      triStart, (u32)verts->size(),
+      vMin.x, vMax.x, vMin.y, vMax.y });
+  }
+
+  float xStart = lineInfo[0].xMin;
+  float xEnd = lineInfo[0].xMax;
+  float ySize = 0;
+  for (size_t i = 1; i < lineInfo.size(); ++i)
+  {
+    xStart = min(xStart, lineInfo[i].xMin);
+    xEnd = max(xEnd, lineInfo[i].xMax);
+    ySize += lineInfo[i].yMax - lineInfo[i].yMin;
+  }
+
+  float sx = xEnd - xStart;
+  float xCenter = sx / 2;
+  float yOfs = ySize / 2;
+
+  for (const RowDim& row : lineInfo)
+  {
+    float rx = row.xMax - row.xMin;
+    float ry = row.yMax - row.yMin;
+    float xRowOfs = (sx - rx) / 2;
+
+    // loop over all the verts and center the text
+    for (u32 i = row.triStart, e = row.triEnd; i < e; ++i)
+    {
+      (*verts)[i].x -= (xCenter - xRowOfs);
+      // we first center the text around its local origin, and then move it
+      // to the correct global position
+      (*verts)[i].y += -ry / 2 + yOfs;
+    }
+
+    yOfs -= ry;
+  }
+}

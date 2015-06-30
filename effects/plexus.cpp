@@ -79,12 +79,80 @@ bool Plexus::Init(const char* configFile)
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
-  CalcPoints(true);
+  //CalcPoints(true);
 
   INIT(_textWriter.Init("gfx/text1.boba"));
-  _textWriter.GenerateTris("neurotica efs", &_tris, &_capTris);
+  _textWriter.GenerateIndexedTris("neurotica efs", TextWriter::TextOutline, &_textVerts, &_textIndices);
+
+  CalcText();
 
   END_INIT_SEQUENCE();
+}
+
+//------------------------------------------------------------------------------
+void CalcNeighbours(int num, const vector<int>& tris, int* neighbours)
+{
+  unordered_map<int, vector<int>> tmp;
+
+  int numTris = (int)tris.size() / 3;
+  for (int i = 0; i < numTris; ++i)
+  {
+    int a = tris[i * 3 + 0];
+    int b = tris[i * 3 + 1];
+    int c = tris[i * 3 + 2];
+
+    tmp[a].push_back(b);
+    tmp[a].push_back(c);
+
+    tmp[b].push_back(a);
+    tmp[b].push_back(c);
+
+    tmp[c].push_back(a);
+    tmp[c].push_back(b);
+  }
+
+  for (int i = 0; i < num; ++i)
+  {
+    const vector<int>& n = tmp[i];
+    int cnt = (u32)n.size();
+    for (int j = 0; j < cnt; ++j)
+    {
+      neighbours[i*num+j] = n[j];
+    }
+    // terminate
+    neighbours[i*num+cnt] = -1;
+  }
+
+}
+
+//------------------------------------------------------------------------------
+void Plexus::TextTest(const UpdateState& state)
+{
+  float perlinScale = _settings.sphere.perlin_scale;
+
+  _points.Clear();
+  int num = (u32)_textVerts.size();
+  for (int i = 0; i < num; ++i)
+  {
+    V3 pt(_textVerts[i]);
+    float s = stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale);
+    _points.Append(pt + _settings.sphere.noise_strength * s * pt);
+  }
+}
+
+//------------------------------------------------------------------------------
+void Plexus::CalcText()
+{
+  _points.Clear();
+  int num = (u32)_textVerts.size();
+  for (int i = 0; i < num; ++i)
+  {
+    _points.Append(_textVerts[i]);
+  }
+
+  SAFE_ADELETE(_neighbours);
+  _neighbours = new int[num*num];
+  CalcNeighbours(num, _textIndices, _neighbours);
 }
 
 //------------------------------------------------------------------------------
@@ -275,12 +343,10 @@ int Plexus::CalcLines(V3* vtx)
   int numNeighbours = _settings.sphere.num_neighbours;
 
   float eps = _settings.sphere.eps;
-  float negEps = -eps;
 
   auto fnSort = [&](int a, int b) { 
     float da = dist[a].dist;
     float db = dist[b].dist;
-    //if (fabs(da - db) < _settings.sphere.eps)
     float d = da - db;
     if (d < 0) d *= -1;
     if (d < eps)
@@ -294,10 +360,11 @@ int Plexus::CalcLines(V3* vtx)
   for (int i = 0; i < num; ++i)
   {
     int numValid = 0;
-//    for (int j = 0; j < num && numValid < num; ++j)
     for (int j = 0; j < numNeighbours; ++j)
     {
       int curIdx = _neighbours[i*num+j];
+      if (curIdx == -1)
+        break;
 
       float d = Distance(_points[i], _points[curIdx]);
 
@@ -309,8 +376,6 @@ int Plexus::CalcLines(V3* vtx)
       dist[numValid].idx = curIdx;
       numValid++;
     }
-
-    //numNeighbours = min(numNeighbours, numValid);
 
     sort(idx, idx+numValid, fnSort);
 
@@ -344,7 +409,8 @@ int Plexus::CalcLines(V3* vtx)
 bool Plexus::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
-  PointsTest(state);
+  TextTest(state);
+  //PointsTest(state);
   //CalcPoints();
   return true;
 }

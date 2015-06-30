@@ -34,11 +34,15 @@ namespace tano
     void UpdateCameraMatrix(const UpdateState& state);
 
     void PointsTest(const UpdateState& state);
+
+    void CalcText();
+    void TextTest(const UpdateState& state);
     void CalcPoints(bool recalcEdges);
     int CalcLines(V3* vtx);
     enum { MAX_POINTS = 16 * 1024 };
     SimpleAppendBuffer<V3, MAX_POINTS> _points;
 
+    // TODO: move this into cpp file (and use scratch-memory)
     struct Edge
     {
       int e[6];
@@ -81,8 +85,8 @@ namespace tano
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 
     TextWriter _textWriter;
-    vector<V3> _tris;
-    vector<V3> _capTris;
+    vector<V3> _textVerts;
+    vector<int> _textIndices;
 
     PlexusSettings _settings;
 
