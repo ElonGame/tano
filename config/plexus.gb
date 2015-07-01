@@ -1,10 +1,11 @@
 {
   tonemap: {
-    shoulder: 0.758000;
-    toe: 0.286000;
-    white_point: 3.456000;
-    black_point: 0.082000;
-    cross_over: 2.507000;
+    enabled: true;
+    shoulder: 0.822000;
+    toe: 0.239000;
+    white_point: 1.637000;
+    black_point: 0.087000;
+    cross_over: 0.933000;
   };
   sphere: {
     radius: 680.303040;
@@ -23,14 +24,14 @@
     yaw: 0.063662;
     pitch: 0.095493;
     roll: 0.000000;
-    pos: { -102.569687, 88.245689, -817.649414 };
+    pos: { -100.569687, 88.245689, -815.649414 };
   };
   noise: {
     layer_lock: -1;
     num_layers: 4;
     max_scale: 1.942000;
     scale_factor: 3.729000;
-    max_opacity: 1.000000;
-    opacity_factor: 0.992000;
+    max_opacity: 0.367000;
+    opacity_factor: 0.870000;
   };
 };

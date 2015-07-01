@@ -138,13 +138,18 @@ void Plexus::UpdateNoise()
   recalc |= ImGui::SliderFloat("scale-factor", &_settings.noise.scale_factor, 1.0f, 25.0f);
   recalc |= ImGui::SliderFloat("max opacity", &_settings.noise.max_opacity, 0, 1);
   recalc |= ImGui::SliderFloat("opacity factor", &_settings.noise.opacity_factor, 0.1f, 2.0f);
+  recalc |= ImGui::SliderFloat("turbulence", &_settings.noise.turbulence, 1, 500);
 
   ImGui::Separator();
-  recalc |= ImGui::SliderFloat("black-point", &_settings.tonemap.black_point, 0, 1);
-  recalc |= ImGui::SliderFloat("white-point", &_settings.tonemap.white_point, 0.5, 20);
-  recalc |= ImGui::SliderFloat("cross-over", &_settings.tonemap.cross_over, 0, 20);
-  recalc |= ImGui::SliderFloat("toe", &_settings.tonemap.toe, 0, 1);
-  recalc |= ImGui::SliderFloat("shoulder", &_settings.tonemap.shoulder, 0, 1);
+  recalc |= ImGui::Checkbox("tonemap enabled", &_settings.tonemap.enabled);
+  if (_settings.tonemap.enabled)
+  {
+    recalc |= ImGui::SliderFloat("black-point", &_settings.tonemap.black_point, 0, 1);
+    recalc |= ImGui::SliderFloat("white-point", &_settings.tonemap.white_point, 0.5, 20);
+    recalc |= ImGui::SliderFloat("cross-over", &_settings.tonemap.cross_over, 0, 20);
+    recalc |= ImGui::SliderFloat("toe", &_settings.tonemap.toe, 0, 1);
+    recalc |= ImGui::SliderFloat("shoulder", &_settings.tonemap.shoulder, 0, 1);
+  }
 
   ImGui::Image((void*)&_perlinTexture, ImVec2((float)NOISE_WIDTH, (float)NOISE_HEIGHT));
 
@@ -159,9 +164,7 @@ void Plexus::UpdateNoise()
   float layerOpacity = _settings.noise.max_opacity;
 
   float* pixels = g_ScratchMemory.Alloc<float>(NOISE_HEIGHT * NOISE_WIDTH);
-  for (int i = 0; i < NOISE_WIDTH * NOISE_HEIGHT; ++i)
-    pixels[i] = 0;
-  //memset(pixels, 0, NOISE_WIDTH * NOISE_HEIGHT * 4);
+  memset(pixels, 0, NOISE_WIDTH * NOISE_HEIGHT * 4);
 
   int layerLock = _settings.noise.layer_lock;
   for (int layer = 0; layer < _settings.noise.num_layers; ++layer)
@@ -196,8 +199,21 @@ void Plexus::UpdateNoise()
   {
     for (int j = 0; j < NOISE_WIDTH; ++j)
     {
-      float f = 255 * Clamp(0.f, 1.f, 
-        ToneMap(pixels[i*NOISE_WIDTH+j], t.cross_over, t.black_point, t.white_point, t.toe, t.shoulder));
+      float f;
+      if (_settings.tonemap.enabled)
+      {
+        f = 255 * Clamp(0.f, 1.f,
+          ToneMap(pixels[i*NOISE_WIDTH + j], t.cross_over, t.black_point, t.white_point, t.toe, t.shoulder));
+      }
+      else
+      {
+        f = pixels[i*NOISE_WIDTH + j];
+        float angle = 2 * XM_PI * f;
+        float s = _settings.noise.turbulence;
+        float x = Clamp(0.f, (float)NOISE_WIDTH - 1, (float)(j + s * cos(angle)));
+        float y = Clamp(0.f, (float)NOISE_HEIGHT - 1, (float)(i + s * sin(angle)));
+        f = 255 * Clamp(0.f, 1.f, pixels[(int)y*NOISE_WIDTH + (int)x]);
+      }
       u32 val = (u32)f;
       p[i*NOISE_WIDTH+j] = (0xff000000) | (val << 16) | (val << 8) | (val << 0);
     }

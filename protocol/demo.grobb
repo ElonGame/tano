@@ -25,6 +25,7 @@ struct tonemap_settings
 
 struct full_tonemap_settings
 {
+  bool enabled = false;
   float shoulder = 0.8;
   float toe = 0.2;
   float white_point = 5.0;
@@ -142,6 +143,7 @@ struct noise_settings
   float scale_factor = 0.5;
   float max_opacity = 1;
   float opacity_factor = 0.5;
+  float turbulence = 10;
 };
 
 struct plexus_settings
