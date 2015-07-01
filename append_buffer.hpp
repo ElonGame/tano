@@ -93,6 +93,11 @@ namespace tano
       return _size;
     }
 
+    int Capacity() const
+    {
+      return _capacity;
+    }
+
     bool Empty() const
     {
       return _size == 0;
@@ -149,13 +154,13 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
-  template <typename T, int Capacity>
+  template <typename T, int Cap>
   class SimpleAppendBuffer : public SimpleAppendBufferExternal<T>
   {
   public:
-    SimpleAppendBuffer() : SimpleAppendBufferExternal(&_elems[0], &_elems[Capacity]) {}
+    SimpleAppendBuffer() : SimpleAppendBufferExternal(&_elems[0], &_elems[Cap]) {}
 
   private:
-    T _elems[Capacity];
+    T _elems[Cap];
   };
 }

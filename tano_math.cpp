@@ -28,5 +28,28 @@ namespace tano
     return{ r, atan2f(v.z, v.x), acosf(v.y / r) };
   }
 
+
+  //------------------------------------------------------------------------------
+  float ToneMap(float x, float c, float b, float w, float t, float s)
+  {
+    auto ToneMapK = [=]()
+    {
+      return ((1 - t)*(c - b)) / ((1 - s)*(w - c) + (1 - t)*(c - b));
+    };
+
+    auto ToneMapToe = [=](float k)
+    {
+      return (k*(1 - t)*(x - b)) / (c - (1 - t) * b - t * x);
+    };
+
+    auto ToneMapShoulder = [=](float k)
+    {
+      return k + ((1 - k)*(c - x)) / (s*x + (1 - s)*w - c);
+    };
+
+    float k = ToneMapK();
+    return x < c ? ToneMapToe(k) : ToneMapShoulder(k);
+  }
+
 }
 

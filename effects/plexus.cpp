@@ -40,10 +40,24 @@ Plexus::~Plexus()
 {
 }
 
+SimpleAppendBuffer<V3, 1024> g_randomPoints;
+
+void GenRandomPoints()
+{
+  for (int i = 0; i < g_randomPoints.Capacity(); ++i)
+  {
+    V3 v(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(-1.f, 1.f));
+    v = Normalize(v);
+    g_randomPoints.Append(v);
+  }
+}
+
 //------------------------------------------------------------------------------
 bool Plexus::Init(const char* configFile)
 {
   BEGIN_INIT_SEQUENCE();
+
+  GenRandomPoints();
 
   _configName = configFile;
   vector<char> buf;
@@ -83,42 +97,18 @@ bool Plexus::Init(const char* configFile)
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
-  //CalcPoints(true);
+  CalcPoints(true);
 
   INIT(_textWriter.Init("gfx/text1.boba"));
   _textWriter.GenerateIndexedTris("neurotica efs", TextWriter::TextOutline, &_textVerts, &_textIndices);
 
   _perlinTexture = GRAPHICS.CreateTexture(NOISE_WIDTH, NOISE_HEIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
 
-  CalcText();
+  //CalcText();
 
   END_INIT_SEQUENCE();
 }
 
-
-//------------------------------------------------------------------------------
-// This implements the tone mapping operator in the Insomniac paper
-
-float ToneMapK(float t, float s, float b, float w, float c)
-{
-  return ((1-t)*(c-b)) / ((1-s)*(w-c)+(1-t)*(c-b));
-}
-
-float ToneMapToe(float x, float k, float t, float b, float c)
-{
-  return (k*(1-t)*(x-b)) / (c - (1-t) * b - t * x);
-}
-
-float ToneMapShoulder(float x, float k, float s, float w, float c)
-{
-  return k + ((1-k)*(c-x)) / (s*x + (1-s)*w - c);
-}
-
-float ToneMap(float x, float c, float b, float w, float t, float s)
-{
-  float k = ToneMapK(t, s, b, w, c);
-  return x < c ? ToneMapToe(x, k, t, b, c) : ToneMapShoulder(x, k, s, w, c);
-}
 
 //------------------------------------------------------------------------------
 void Plexus::UpdateNoise()
@@ -210,9 +200,11 @@ void Plexus::UpdateNoise()
         f = pixels[i*NOISE_WIDTH + j];
         float angle = 2 * XM_PI * f;
         float s = _settings.noise.turbulence;
-        float x = Clamp(0.f, (float)NOISE_WIDTH - 1, (float)(j + s * cos(angle)));
-        float y = Clamp(0.f, (float)NOISE_HEIGHT - 1, (float)(i + s * sin(angle)));
-        f = 255 * Clamp(0.f, 1.f, pixels[(int)y*NOISE_WIDTH + (int)x]);
+        int xx = (int)(j + s * cos(angle));
+        int yy = (int)(i + s * sin(angle));
+        int x = IntMod(xx, NOISE_WIDTH);
+        int y = IntMod(yy, NOISE_HEIGHT);
+        f = 255 * Clamp(0.f, 1.f, pixels[y*NOISE_WIDTH + x]);
       }
       u32 val = (u32)f;
       p[i*NOISE_WIDTH+j] = (0xff000000) | (val << 16) | (val << 8) | (val << 0);
@@ -267,8 +259,9 @@ void Plexus::TextTest(const UpdateState& state)
   for (int i = 0; i < num; ++i)
   {
     V3 pt(_textVerts[i]);
-    float s = stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale);
-    _points.Append(pt + _settings.sphere.noise_strength * s * pt);
+    float s = fabs(1024 * stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale));
+    V3 v = g_randomPoints[IntMod((int)s, 1024)];
+    _points.Append(pt + _settings.sphere.noise_strength * v);
   }
 }
 
@@ -287,13 +280,6 @@ void Plexus::CalcText()
   CalcNeighbours(num, _textIndices, _neighbours);
 }
 
-//------------------------------------------------------------------------------
-int IntMod(int v, int m)
-{
-  if (v < 0)
-    v += m;
-  return v % m;
-}
 
 //------------------------------------------------------------------------------
 void Plexus::PointsTest(const UpdateState& state)
@@ -332,8 +318,12 @@ void Plexus::PointsTest(const UpdateState& state)
         V3 pt = FromSpherical(r, phi, theta);
         //float s = sinf(state.localTime.TotalMilliseconds() / 1000.f) * _settings.sphere.noise_strength *
         //  stb_perlin_noise3(pt.x / _perlinScale, pt.y / _perlinScale, pt.z / _perlinScale);
-        float s = stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale);
-        pt = pt + _settings.sphere.noise_strength * s * pt;
+
+        float s = fabs(1024 * stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale));
+        V3 v = g_randomPoints[IntMod((int)s, 1024)];
+
+        //float s = stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale);
+        pt = pt + _settings.sphere.noise_strength * v;
 
         _points.Append(pt);
 
@@ -542,8 +532,8 @@ bool Plexus::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
   TextTest(state);
-  UpdateNoise();
-  //PointsTest(state);
+  //UpdateNoise();
+  PointsTest(state);
   //CalcPoints();
   return true;
 }

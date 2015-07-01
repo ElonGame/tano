@@ -1,6 +1,6 @@
 {
   tonemap: {
-    enabled: true;
+    enabled: false;
     shoulder: 0.822000;
     toe: 0.239000;
     white_point: 1.637000;
@@ -24,14 +24,15 @@
     yaw: 0.063662;
     pitch: 0.095493;
     roll: 0.000000;
-    pos: { -100.569687, 88.245689, -815.649414 };
+    pos: { -98.569687, 88.245689, -813.649414 };
   };
   noise: {
     layer_lock: -1;
     num_layers: 4;
-    max_scale: 1.942000;
+    max_scale: 1.000000;
     scale_factor: 3.729000;
     max_opacity: 0.367000;
-    opacity_factor: 0.870000;
+    opacity_factor: 0.864000;
+    turbulence: 104.292007;
   };
 };
