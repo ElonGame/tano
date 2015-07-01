@@ -42,6 +42,8 @@ namespace tano
     enum { MAX_POINTS = 16 * 1024 };
     SimpleAppendBuffer<V3, MAX_POINTS> _points;
 
+    void UpdateNoise();
+
     // TODO: move this into cpp file (and use scratch-memory)
     struct Edge
     {

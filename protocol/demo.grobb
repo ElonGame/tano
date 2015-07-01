@@ -23,6 +23,15 @@ struct tonemap_settings
   float max_white = 5.0;
 };
 
+struct full_tonemap_settings
+{
+  float shoulder = 0.8;
+  float toe = 0.2;
+  float white_point = 5.0;
+  float black_point = 0.1;
+  float cross_over = 0.2;
+};
+
 struct scale_bias
 {
   float scale = 1;
@@ -125,8 +134,20 @@ struct plexus_sphere
   int num_nearest = 2;
 };
 
+struct noise_settings
+{
+  int layer_lock = -1;
+  int num_layers = 1;
+  float max_scale = 1000;
+  float scale_factor = 0.5;
+  float max_opacity = 1;
+  float opacity_factor = 0.5;
+};
+
 struct plexus_settings
 {
+  full_tonemap_settings tonemap;
   plexus_sphere sphere;
   camera_settings camera;
+  noise_settings noise;
 };

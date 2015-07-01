@@ -12,11 +12,15 @@
 #include "../fullscreen_effect.hpp"
 #include "../arena_allocator.hpp"
 #include "../stop_watch.hpp"
+#include "../perlin2d.hpp"
 
 using namespace tano;
 using namespace bristol;
 
 extern "C" float stb_perlin_noise3(float x, float y, float z);
+
+static int NOISE_WIDTH = 512;
+static int NOISE_HEIGHT = 512;
 
 //------------------------------------------------------------------------------
 Plexus::Plexus(const string &name, u32 id)
@@ -84,23 +88,121 @@ bool Plexus::Init(const char* configFile)
   INIT(_textWriter.Init("gfx/text1.boba"));
   _textWriter.GenerateIndexedTris("neurotica efs", TextWriter::TextOutline, &_textVerts, &_textIndices);
 
-  _perlinTexture = GRAPHICS.CreateTexture(256, 256, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
-
-  u32* pixels = _ctx->MapWriteDiscard<u32>(_perlinTexture);
-
-  for (int i = 0; i < 256; ++i)
-  {
-    for (int j = 0; j < 256; ++j)
-    {
-      // ARGB
-      pixels[i*256+j] = 0x8000ffff;
-    }
-  }
-  _ctx->Unmap(_perlinTexture);
+  _perlinTexture = GRAPHICS.CreateTexture(NOISE_WIDTH, NOISE_HEIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
 
   CalcText();
 
   END_INIT_SEQUENCE();
+}
+
+
+//------------------------------------------------------------------------------
+// This implements the tone mapping operator in the Insomniac paper
+
+float ToneMapK(float t, float s, float b, float w, float c)
+{
+  return ((1-t)*(c-b)) / ((1-s)*(w-c)+(1-t)*(c-b));
+}
+
+float ToneMapToe(float x, float k, float t, float b, float c)
+{
+  return (k*(1-t)*(x-b)) / (c - (1-t) * b - t * x);
+}
+
+float ToneMapShoulder(float x, float k, float s, float w, float c)
+{
+  return k + ((1-k)*(c-x)) / (s*x + (1-s)*w - c);
+}
+
+float ToneMap(float x, float c, float b, float w, float t, float s)
+{
+  float k = ToneMapK(t, s, b, w, c);
+  return x < c ? ToneMapToe(x, k, t, b, c) : ToneMapShoulder(x, k, s, w, c);
+}
+
+//------------------------------------------------------------------------------
+void Plexus::UpdateNoise()
+{
+  static bool opened = false;
+  static bool firstTime = true;
+  if (!ImGui::Begin("Noise", &opened))
+  {
+    ImGui::End();
+    return;
+  }
+
+  bool recalc = firstTime;
+  recalc |= ImGui::SliderInt("layer-lock", &_settings.noise.layer_lock, -1, 10);
+  recalc |= ImGui::SliderInt("layers", &_settings.noise.num_layers, 1, 10);
+  recalc |= ImGui::SliderFloat("max-scale", &_settings.noise.max_scale, 1, 20);
+  recalc |= ImGui::SliderFloat("scale-factor", &_settings.noise.scale_factor, 1.0f, 25.0f);
+  recalc |= ImGui::SliderFloat("max opacity", &_settings.noise.max_opacity, 0, 1);
+  recalc |= ImGui::SliderFloat("opacity factor", &_settings.noise.opacity_factor, 0.1f, 2.0f);
+
+  ImGui::Separator();
+  recalc |= ImGui::SliderFloat("black-point", &_settings.tonemap.black_point, 0, 1);
+  recalc |= ImGui::SliderFloat("white-point", &_settings.tonemap.white_point, 0.5, 20);
+  recalc |= ImGui::SliderFloat("cross-over", &_settings.tonemap.cross_over, 0, 20);
+  recalc |= ImGui::SliderFloat("toe", &_settings.tonemap.toe, 0, 1);
+  recalc |= ImGui::SliderFloat("shoulder", &_settings.tonemap.shoulder, 0, 1);
+
+  ImGui::Image((void*)&_perlinTexture, ImVec2((float)NOISE_WIDTH, (float)NOISE_HEIGHT));
+
+  ImGui::End();
+
+  firstTime = false;
+  if (!recalc)
+    return;
+
+  float scale = _settings.noise.max_scale;
+  float opacity = 0;
+  float layerOpacity = _settings.noise.max_opacity;
+
+  float* pixels = g_ScratchMemory.Alloc<float>(NOISE_HEIGHT * NOISE_WIDTH);
+  for (int i = 0; i < NOISE_WIDTH * NOISE_HEIGHT; ++i)
+    pixels[i] = 0;
+  //memset(pixels, 0, NOISE_WIDTH * NOISE_HEIGHT * 4);
+
+  int layerLock = _settings.noise.layer_lock;
+  for (int layer = 0; layer < _settings.noise.num_layers; ++layer)
+  {
+    if (layerLock != -1 && layerLock != layer)
+    {
+      scale *= _settings.noise.scale_factor;
+      layerOpacity *= _settings.noise.opacity_factor;
+      continue;
+    }
+
+    opacity = min(1.0f, opacity + layerOpacity);
+    u32 a = 0xff;
+
+    for (int i = 0; i < NOISE_HEIGHT; ++i)
+    {
+      for (int j = 0; j < NOISE_WIDTH; ++j)
+      {
+        float f = 0.5f + 0.5f * Perlin2D::Value(scale * j / NOISE_WIDTH, scale * i / NOISE_HEIGHT);
+        float v = layerOpacity * f;
+        pixels[i*NOISE_WIDTH+j] += v;
+      }
+    }
+
+    scale *= _settings.noise.scale_factor;
+    layerOpacity *= _settings.noise.opacity_factor;
+  }
+
+  const FullTonemapSettings& t = _settings.tonemap;
+  u32* p = _ctx->MapWriteDiscard<u32>(_perlinTexture);
+  for (int i = 0; i < NOISE_HEIGHT; ++i)
+  {
+    for (int j = 0; j < NOISE_WIDTH; ++j)
+    {
+      float f = 255 * Clamp(0.f, 1.f, 
+        ToneMap(pixels[i*NOISE_WIDTH+j], t.cross_over, t.black_point, t.white_point, t.toe, t.shoulder));
+      u32 val = (u32)f;
+      p[i*NOISE_WIDTH+j] = (0xff000000) | (val << 16) | (val << 8) | (val << 0);
+    }
+  }
+  _ctx->Unmap(_perlinTexture);
 }
 
 //------------------------------------------------------------------------------
@@ -424,6 +526,7 @@ bool Plexus::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
   TextTest(state);
+  UpdateNoise();
   //PointsTest(state);
   //CalcPoints();
   return true;
@@ -527,8 +630,6 @@ void Plexus::RenderParameterSet()
   recalc |= ImGui::SliderInt("layers", &_settings.sphere.layers, 1, 50);
   recalc |= ImGui::SliderInt("num-nearest", &_settings.sphere.num_nearest, 1, 20);
   recalc |= ImGui::SliderInt("num-neighbours", &_settings.sphere.num_neighbours, 1, 100);
-
-  ImGui::Image((void*)&_perlinTexture, ImVec2(256, 256));
 
   if (recalc)
   {
