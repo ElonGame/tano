@@ -115,6 +115,12 @@ namespace tano
       _size = 0;
     }
 
+    void  Resize(int s)
+    {
+      assert(s <= _capacity);
+      _size = s;
+    }
+
     T* Data()
     {
       return &_mem[0];

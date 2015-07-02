@@ -123,6 +123,7 @@ struct cloth_settings
 struct plexus_sphere
 {
   float radius = 600;
+  float blur_kernel = 10;
   float noise_strength = 0;
   float perlin_scale = 10;
   float eps = 0.01;

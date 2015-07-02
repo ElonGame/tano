@@ -22,6 +22,32 @@ extern "C" float stb_perlin_noise3(float x, float y, float z);
 static int NOISE_WIDTH = 512;
 static int NOISE_HEIGHT = 512;
 
+#define WITH_TEXT 1
+
+//------------------------------------------------------------------------------
+template <typename T>
+void BlurLine(const T* src, T* dst, int size, float r)
+{
+  // Blur the data
+  float scale = 1.f / (2.0f * r + 1.f);
+  int m = (int)r;
+  float alpha = r - m;
+
+  // set up initial pixel
+
+  T sum = src[0];
+  for (int i = 0; i < m; i++)
+    sum += src[IntMod(-i, size)] + src[IntMod(i, size)];
+  sum += alpha * (src[IntMod(-m, size)] + src[IntMod(m, size)]);
+
+  for (int i = 0; i < size; ++i)
+  {
+    dst[i] = sum * scale;
+    sum += lerp(src[IntMod(i + m + 1, size)], src[IntMod(i + m + 2, size)], alpha);
+    sum -= lerp(src[IntMod(i - m, size)], src[IntMod(i - m - 1, size)], alpha);
+  }
+}
+
 //------------------------------------------------------------------------------
 Plexus::Plexus(const string &name, u32 id)
   : BaseEffect(name, id)
@@ -42,14 +68,19 @@ Plexus::~Plexus()
 
 SimpleAppendBuffer<V3, 1024> g_randomPoints;
 
-void GenRandomPoints()
+void GenRandomPoints(float kernelSize)
 {
+  V3* tmp = g_ScratchMemory.Alloc<V3>(g_randomPoints.Capacity());
   for (int i = 0; i < g_randomPoints.Capacity(); ++i)
   {
     V3 v(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(-1.f, 1.f));
     v = Normalize(v);
-    g_randomPoints.Append(v);
+    tmp[i] = v;
   }
+
+  g_randomPoints.Resize(g_randomPoints.Capacity());
+
+  BlurLine(tmp, g_randomPoints.Data(), g_randomPoints.Capacity(), kernelSize);
 }
 
 //------------------------------------------------------------------------------
@@ -57,7 +88,7 @@ bool Plexus::Init(const char* configFile)
 {
   BEGIN_INIT_SEQUENCE();
 
-  GenRandomPoints();
+  GenRandomPoints(5);
 
   _configName = configFile;
   vector<char> buf;
@@ -97,14 +128,16 @@ bool Plexus::Init(const char* configFile)
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
-  CalcPoints(true);
-
   INIT(_textWriter.Init("gfx/text1.boba"));
   _textWriter.GenerateIndexedTris("neurotica efs", TextWriter::TextOutline, &_textVerts, &_textIndices);
 
-  _perlinTexture = GRAPHICS.CreateTexture(NOISE_WIDTH, NOISE_HEIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+#if WITH_TEXT
+  CalcText();
+#else
+  CalcPoints(true);
+#endif
 
-  //CalcText();
+  _perlinTexture = GRAPHICS.CreateTexture(NOISE_WIDTH, NOISE_HEIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
 
   END_INIT_SEQUENCE();
 }
@@ -265,6 +298,7 @@ void Plexus::TextTest(const UpdateState& state)
   }
 }
 
+int* gg;
 //------------------------------------------------------------------------------
 void Plexus::CalcText()
 {
@@ -277,9 +311,11 @@ void Plexus::CalcText()
 
   SAFE_ADELETE(_neighbours);
   _neighbours = new int[num*num];
+  gg = _neighbours;
+  memset(_neighbours, 0xff, num*num*sizeof(int));
   CalcNeighbours(num, _textIndices, _neighbours);
+  int a = 10;
 }
-
 
 //------------------------------------------------------------------------------
 void Plexus::PointsTest(const UpdateState& state)
@@ -316,13 +352,10 @@ void Plexus::PointsTest(const UpdateState& state)
         bool edgeDown = k < stacks - 1;
 
         V3 pt = FromSpherical(r, phi, theta);
-        //float s = sinf(state.localTime.TotalMilliseconds() / 1000.f) * _settings.sphere.noise_strength *
-        //  stb_perlin_noise3(pt.x / _perlinScale, pt.y / _perlinScale, pt.z / _perlinScale);
 
         float s = fabs(1024 * stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale));
         V3 v = g_randomPoints[IntMod((int)s, 1024)];
 
-        //float s = stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale);
         pt = pt + _settings.sphere.noise_strength * v;
 
         _points.Append(pt);
@@ -531,10 +564,11 @@ int Plexus::CalcLines(V3* vtx)
 bool Plexus::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
+#if WITH_TEXT
   TextTest(state);
-  //UpdateNoise();
+#else
   PointsTest(state);
-  //CalcPoints();
+#endif
   return true;
 }
 
@@ -562,7 +596,12 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
   _cbPerFrame.cameraLookAt = _camera._target;
   _cbPerFrame.cameraUp = _camera._up;
 
-  _cbBasic.world = Matrix::Identity();
+  //static float angle = 0;
+  //angle += state.numTicks / 100.0f;
+  //Matrix mtx = Matrix::CreateRotationY(angle);
+  Matrix mtx = Matrix::Identity();
+
+  _cbBasic.world = mtx.Transpose();
   _cbBasic.view = view.Transpose();
   _cbBasic.proj = proj.Transpose();
   _cbBasic.viewProj = viewProj.Transpose();
@@ -620,7 +659,7 @@ void Plexus::RenderParameterSet()
     recalcEdges = false;
   }
 
-  if (ImGui::SliderFloat("noise-strength", &_settings.sphere.noise_strength, -250, 250))
+  if (ImGui::SliderFloat("noise-strength", &_settings.sphere.noise_strength, -2500, 2500))
   {
     recalc = true;
     recalcEdges = false;
@@ -636,6 +675,9 @@ void Plexus::RenderParameterSet()
   recalc |= ImGui::SliderInt("layers", &_settings.sphere.layers, 1, 50);
   recalc |= ImGui::SliderInt("num-nearest", &_settings.sphere.num_nearest, 1, 20);
   recalc |= ImGui::SliderInt("num-neighbours", &_settings.sphere.num_neighbours, 1, 100);
+
+  if (ImGui::SliderFloat("blur-kernel", &_settings.sphere.blur_kernel, 1, 50))
+    GenRandomPoints(_settings.sphere.blur_kernel);
 
   if (recalc)
   {
