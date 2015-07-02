@@ -352,7 +352,6 @@ void Plexus::PointsTest(const UpdateState& state)
 
         float s = fabs(1024 * stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale));
         V3 v = g_randomPoints[IntMod((int)s, 1024)];
-
         pt = pt + _settings.sphere.noise_strength * v;
 
         _points.Append(pt);
@@ -369,9 +368,13 @@ void Plexus::PointsTest(const UpdateState& state)
 //------------------------------------------------------------------------------
 void Plexus::CalcPoints(bool recalcEdges)
 {
+  struct Edge
+  {
+    int e[6];
+  };
+  SimpleAppendBuffer<Edge, MAX_POINTS> edges;
+
   _points.Clear();
-  if (recalcEdges)
-    _edges.Clear();
 
   float radiusInc = _settings.sphere.radius / _settings.sphere.layers;
   float phiInc = 2 * XM_PI / _settings.sphere.slices;
@@ -412,7 +415,7 @@ void Plexus::CalcPoints(bool recalcEdges)
         if (recalcEdges)
         {
           int edgeIdx = 2;
-          int(&e)[6] = _edges.Append(Edge()).e;
+          int(&e)[6] = edges.Append(Edge()).e;
           e[0] = IntMod(nodeIdx - stacks, num);
           e[1] = IntMod(nodeIdx - stacks, num);
 
@@ -458,7 +461,7 @@ void Plexus::CalcPoints(bool recalcEdges)
 
         for (int j = 0; j < 6; ++j)
         {
-          int tmp = _edges[cur].e[j];
+          int tmp = edges[cur].e[j];
           if (tmp == -1)
             break;
           if (!visited[tmp])

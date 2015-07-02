@@ -40,17 +40,12 @@ namespace tano
     void CalcPoints(bool recalcEdges);
     int CalcLines(V3* vtx);
     enum { MAX_POINTS = 16 * 1024 };
+
     SimpleAppendBuffer<V3, MAX_POINTS> _points;
+    SimpleAppendBuffer<V3, MAX_POINTS> _tris;
+    int* _neighbours = nullptr;
 
     void UpdateNoise();
-
-    // TODO: move this into cpp file (and use scratch-memory)
-    struct Edge
-    {
-      int e[6];
-    };
-    SimpleAppendBuffer<Edge, MAX_POINTS> _edges;
-    int* _neighbours = nullptr;
 
     bool _renderPoints = false;
     GpuBundle _pointBundle;
