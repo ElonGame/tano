@@ -49,8 +49,7 @@ namespace tano
 
     bool _renderPoints = false;
     GpuBundle _pointBundle;
-    GpuBundle _lineBundle;
-    GpuBundle _line2Bundle;
+    GpuBundle _plexusLineBundle;
 
     struct CBufferBasic
     {

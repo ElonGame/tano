@@ -22,7 +22,7 @@ extern "C" float stb_perlin_noise3(float x, float y, float z);
 static int NOISE_WIDTH = 512;
 static int NOISE_HEIGHT = 512;
 
-#define WITH_TEXT 0
+#define WITH_TEXT 1
 
 //------------------------------------------------------------------------------
 template <typename T>
@@ -99,7 +99,7 @@ bool Plexus::Init(const char* configFile)
   _camera._roll = _settings.camera.roll;
   _camera._pos = _settings.camera.pos;
 
-  GenRandomPoints(_settings.sphere.blur_kernel);
+  GenRandomPoints(_settings.plexus.blur_kernel);
 
   INIT(_cbPerFrame.Create());
   INIT(_cbBasic.Create());
@@ -111,14 +111,7 @@ bool Plexus::Init(const char* configFile)
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)));
 
-  INIT(_lineBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/basic", "VsPos")
-    .VertexFlags(VF_POS)
-    .PixelShader("shaders/out/basic", "PsPos")
-    .DynamicVb(128 * 1024, sizeof(V3))
-    .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
-
-  INIT(_line2Bundle.Create(BundleOptions()
+  INIT(_plexusLineBundle.Create(BundleOptions()
     .VertexShader("shaders/out/plexus", "VsLines")
     .GeometryShader("shaders/out/plexus", "GsLines")
     .PixelShader("shaders/out/plexus", "PsLines")
@@ -247,7 +240,7 @@ void Plexus::UpdateNoise()
 }
 
 //------------------------------------------------------------------------------
-void CalcNeighbours(int num, const vector<int>& tris, int* neighbours)
+void CalcTextNeighbours(int num, const vector<int>& tris, int* neighbours)
 {
   unordered_map<int, vector<int>> tmp;
 
@@ -285,7 +278,7 @@ void CalcNeighbours(int num, const vector<int>& tris, int* neighbours)
 //------------------------------------------------------------------------------
 void Plexus::TextTest(const UpdateState& state)
 {
-  float perlinScale = _settings.sphere.perlin_scale;
+  float perlinScale = _settings.plexus.perlin_scale;
 
   _points.Clear();
   int num = (u32)_textVerts.size();
@@ -294,7 +287,7 @@ void Plexus::TextTest(const UpdateState& state)
     V3 pt(_textVerts[i]);
     float s = fabs(1024 * stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale));
     V3 v = g_randomPoints[IntMod((int)s, 1024)];
-    _points.Append(pt + _settings.sphere.noise_strength * v);
+    _points.Append(pt + _settings.plexus.noise_strength * v);
   }
 }
 
@@ -311,7 +304,7 @@ void Plexus::CalcText()
   SAFE_ADELETE(_neighbours);
   _neighbours = new int[num*num];
   memset(_neighbours, 0xff, num*num*sizeof(int));
-  CalcNeighbours(num, _textIndices, _neighbours);
+  CalcTextNeighbours(num, _textIndices, _neighbours);
 }
 
 //------------------------------------------------------------------------------
@@ -319,16 +312,16 @@ void Plexus::PointsTest(const UpdateState& state)
 {
   _points.Clear();
 
-  float radiusInc = _settings.sphere.radius / _settings.sphere.layers;
-  float phiInc = 2 * XM_PI / _settings.sphere.slices;
-  float thetaInc = XM_PI / (_settings.sphere.stacks > 1 ? _settings.sphere.stacks - 1 : 1);
+  float radiusInc = _settings.plexus.radius / _settings.plexus.layers;
+  float phiInc = 2 * XM_PI / _settings.plexus.slices;
+  float thetaInc = XM_PI / (_settings.plexus.stacks > 1 ? _settings.plexus.stacks - 1 : 1);
 
-  float r = _settings.sphere.radius;
-  float perlinScale = _settings.sphere.perlin_scale;
+  float r = _settings.plexus.radius;
+  float perlinScale = _settings.plexus.perlin_scale;
 
-  int layers = _settings.sphere.layers;
-  int slices = _settings.sphere.slices;
-  int stacks = _settings.sphere.stacks;
+  int layers = _settings.plexus.layers;
+  int slices = _settings.plexus.slices;
+  int stacks = _settings.plexus.stacks;
 
   int num = layers * slices * stacks;
 
@@ -352,7 +345,7 @@ void Plexus::PointsTest(const UpdateState& state)
 
         float s = fabs(1024 * stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale));
         V3 v = g_randomPoints[IntMod((int)s, 1024)];
-        pt = pt + _settings.sphere.noise_strength * v;
+        pt = pt + _settings.plexus.noise_strength * v;
 
         _points.Append(pt);
 
@@ -376,15 +369,15 @@ void Plexus::CalcPoints(bool recalcEdges)
 
   _points.Clear();
 
-  float radiusInc = _settings.sphere.radius / _settings.sphere.layers;
-  float phiInc = 2 * XM_PI / _settings.sphere.slices;
-  float thetaInc = XM_PI / (_settings.sphere.stacks > 1 ? _settings.sphere.stacks - 1 : 1);
+  float radiusInc = _settings.plexus.radius / _settings.plexus.layers;
+  float phiInc = 2 * XM_PI / _settings.plexus.slices;
+  float thetaInc = XM_PI / (_settings.plexus.stacks > 1 ? _settings.plexus.stacks - 1 : 1);
 
-  float r = _settings.sphere.radius;
+  float r = _settings.plexus.radius;
 
-  int layers = _settings.sphere.layers;
-  int slices = _settings.sphere.slices;
-  int stacks = _settings.sphere.stacks;
+  int layers = _settings.plexus.layers;
+  int slices = _settings.plexus.slices;
+  int stacks = _settings.plexus.stacks;
 
   int num = layers * slices * stacks;
 
@@ -405,7 +398,7 @@ void Plexus::CalcPoints(bool recalcEdges)
         bool edgeDown = k < stacks - 1;
 
         V3 pt = FromSpherical(r, phi, theta);
-        float s = _settings.sphere.noise_strength * stb_perlin_noise3(pt.x, pt.y, pt.z);
+        float s = _settings.plexus.noise_strength * stb_perlin_noise3(pt.x, pt.y, pt.z);
         pt = pt + s * pt;
 
         _points.Append(pt);
@@ -493,11 +486,11 @@ int Plexus::CalcLines(V3* vtx)
 
   V3* orgVtx = vtx;
 
-  float minDist = _settings.sphere.min_dist;
-  float maxDist = _settings.sphere.max_dist;
-  int numNeighbours = _settings.sphere.num_neighbours;
+  float minDist = _settings.plexus.min_dist;
+  float maxDist = _settings.plexus.max_dist;
+  int numNeighbours = _settings.plexus.num_neighbours;
 
-  float eps = _settings.sphere.eps;
+  float eps = _settings.plexus.eps;
 
   auto fnSort = [&](int a, int b) { 
     float da = dist[a].dist;
@@ -534,7 +527,7 @@ int Plexus::CalcLines(V3* vtx)
 
     sort(idx, idx+numValid, fnSort);
 
-    int left = _settings.sphere.num_nearest;
+    int left = _settings.plexus.num_nearest;
     for (int j = 0; j < numValid; ++j)
     {
       int curIdx = dist[idx[j]].idx;
@@ -633,11 +626,11 @@ bool Plexus::Render()
   }
   else
   {
-    ObjectHandle vb = _line2Bundle.objects._vb;
+    ObjectHandle vb = _plexusLineBundle.objects._vb;
     V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
     int numLines = CalcLines(vtx);
     _ctx->Unmap(vb);
-    _ctx->SetBundle(_line2Bundle);
+    _ctx->SetBundle(_plexusLineBundle);
     _ctx->Draw(numLines, 0);
   }
 
@@ -653,31 +646,31 @@ void Plexus::RenderParameterSet()
 
   bool recalc = false;
   bool recalcEdges = true;
-  if (ImGui::SliderFloat("radius", &_settings.sphere.radius, 50, 2000))
+  if (ImGui::SliderFloat("radius", &_settings.plexus.radius, 50, 2000))
   {
     recalc = true;
     recalcEdges = false;
   }
 
-  if (ImGui::SliderFloat("noise-strength", &_settings.sphere.noise_strength, -2500, 2500))
+  if (ImGui::SliderFloat("noise-strength", &_settings.plexus.noise_strength, -2500, 2500))
   {
     recalc = true;
     recalcEdges = false;
   }
 
-  ImGui::SliderFloat("perlin-scale", &_settings.sphere.perlin_scale, 0, 1000);
+  ImGui::SliderFloat("perlin-scale", &_settings.plexus.perlin_scale, 0, 1000);
 
-  recalc |= ImGui::SliderFloat("eps", &_settings.sphere.eps, 0.1f, 25.0f);
-  recalc |= ImGui::SliderFloat("min-dist", &_settings.sphere.min_dist, 0.1f, 25.0f);
-  recalc |= ImGui::SliderFloat("max-dist", &_settings.sphere.max_dist, 10.0, 150.0f);
-  recalc |= ImGui::SliderInt("slices", &_settings.sphere.slices, 1, 50);
-  recalc |= ImGui::SliderInt("stacks", &_settings.sphere.stacks, 1, 50);
-  recalc |= ImGui::SliderInt("layers", &_settings.sphere.layers, 1, 50);
-  recalc |= ImGui::SliderInt("num-nearest", &_settings.sphere.num_nearest, 1, 20);
-  recalc |= ImGui::SliderInt("num-neighbours", &_settings.sphere.num_neighbours, 1, 100);
+  recalc |= ImGui::SliderFloat("eps", &_settings.plexus.eps, 0.1f, 25.0f);
+  recalc |= ImGui::SliderFloat("min-dist", &_settings.plexus.min_dist, 0.1f, 25.0f);
+  recalc |= ImGui::SliderFloat("max-dist", &_settings.plexus.max_dist, 10.0, 150.0f);
+  recalc |= ImGui::SliderInt("slices", &_settings.plexus.slices, 1, 50);
+  recalc |= ImGui::SliderInt("stacks", &_settings.plexus.stacks, 1, 50);
+  recalc |= ImGui::SliderInt("layers", &_settings.plexus.layers, 1, 50);
+  recalc |= ImGui::SliderInt("num-nearest", &_settings.plexus.num_nearest, 1, 20);
+  recalc |= ImGui::SliderInt("num-neighbours", &_settings.plexus.num_neighbours, 1, 100);
 
-  if (ImGui::SliderFloat("blur-kernel", &_settings.sphere.blur_kernel, 1, 250))
-    GenRandomPoints(_settings.sphere.blur_kernel);
+  if (ImGui::SliderFloat("blur-kernel", &_settings.plexus.blur_kernel, 1, 250))
+    GenRandomPoints(_settings.plexus.blur_kernel);
 
   if (recalc)
   {

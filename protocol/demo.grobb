@@ -39,6 +39,23 @@ struct scale_bias
   float bias = 0.5;
 };
 
+
+struct plexus_object
+{
+  float radius = 600;
+  float blur_kernel = 10;
+  float noise_strength = 0;
+  float perlin_scale = 10;
+  float eps = 0.01;
+  float min_dist = 0.1;
+  float max_dist = 200;
+  int num_neighbours = 10;
+  int slices = 13;
+  int stacks = 6;
+  int layers = 14;
+  int num_nearest = 2;
+};
+
 struct particle_tunnel_settings
 {
   string texture;
@@ -54,6 +71,7 @@ struct particle_tunnel_settings
   float text_length;
   float fade_delay;
   float fade_out;
+  plexus_object plexus;
 };
 
 struct ray_marcher_settings
@@ -120,21 +138,6 @@ struct cloth_settings
     vec3 gravity = {0, -1, 0};
 };
 
-struct plexus_sphere
-{
-  float radius = 600;
-  float blur_kernel = 10;
-  float noise_strength = 0;
-  float perlin_scale = 10;
-  float eps = 0.01;
-  float min_dist = 0.1;
-  float max_dist = 200;
-  int num_neighbours = 10;
-  int slices = 13;
-  int stacks = 6;
-  int layers = 14;
-  int num_nearest = 2;
-};
 
 struct noise_settings
 {
@@ -150,7 +153,7 @@ struct noise_settings
 struct plexus_settings
 {
   full_tonemap_settings tonemap;
-  plexus_sphere sphere;
+  plexus_object plexus;
   camera_settings camera;
   noise_settings noise;
 };

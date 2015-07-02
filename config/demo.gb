@@ -9,6 +9,7 @@
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/particle_tunnel.gb';
+    force: true;
   },
   {
     name: 'landscape';
@@ -44,7 +45,6 @@
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/plexus.gb';
-    force: true;
   },
 
   ];

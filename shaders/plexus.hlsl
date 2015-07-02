@@ -166,7 +166,7 @@ float4 PsLines(PsLinesIn p) : SV_Target
     projPt = a;
   float dist = distance(pt, projPt);
 
-  float t = smoothstep(0, 10, dist);
+  float t = smoothstep(0, 2, dist);
   float alpha = 1 - pow(t, 0.25);
   alpha *= 1-smoothstep(0, 150, distAB);
 

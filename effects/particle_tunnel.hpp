@@ -41,6 +41,9 @@ namespace tano
 #endif
 
     void UpdateCameraMatrix();
+    void GenRandomPoints(float kernelSize);
+
+    int CalcLines(V3* vtx);
 
     struct ParticleType
     {
@@ -152,12 +155,15 @@ namespace tano
     ParticleTunnelSettings _settings;
 
     TextWriter _textWriter;
-    vector<V3> _neuroticaTris;
-    vector<V3> _neuroticaCapTris;
-    vector<V3> _radioSilenceTris;
-    vector<V3> _radioSilenceCapTris;
-    vector<V3> _partyTris;
-    vector<V3> _partyCapTris;
+    struct TextData
+    {
+      vector<V3> _outline;
+      vector<V3> _cap;
+      vector<V3> _verts;
+      vector<int> _indices;
+      int* _neighbours;
+    };
+    TextData _textData[3];
 
     TextParticles _neuroticaParticles;
     TextParticles _radioSilenceParticles;
@@ -167,5 +173,9 @@ namespace tano
     TextParticles* _curParticles = nullptr;
 
     AnimatedFloat _beatTrack;
+
+    SimpleAppendBuffer<V3, 1024> _randomPoints;
+    GpuBundle _plexusLineBundle;
+
   };
 }

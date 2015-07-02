@@ -28,6 +28,83 @@ namespace
   bool extended = false;
 }
 
+
+//------------------------------------------------------------------------------
+template <typename T>
+void BlurLine(const T* src, T* dst, int size, float r)
+{
+  // Blur the data
+  float scale = 1.f / (2.0f * r + 1.f);
+  int m = (int)r;
+  float alpha = r - m;
+
+  // set up initial pixel
+
+  T sum = src[0];
+  for (int i = 0; i < m; i++)
+    sum += src[IntMod(-i, size)] + src[IntMod(i, size)];
+  sum += alpha * (src[IntMod(-m, size)] + src[IntMod(m, size)]);
+
+  for (int i = 0; i < size; ++i)
+  {
+    dst[i] = sum * scale;
+    sum += lerp(src[IntMod(i + m + 1, size)], src[IntMod(i + m + 2, size)], alpha);
+    sum -= lerp(src[IntMod(i - m, size)], src[IntMod(i - m - 1, size)], alpha);
+  }
+}
+
+//------------------------------------------------------------------------------
+static void CalcTextNeighbours(int num, const vector<int>& tris, int* neighbours)
+{
+  unordered_map<int, vector<int>> tmp;
+
+  int numTris = (int)tris.size() / 3;
+  for (int i = 0; i < numTris; ++i)
+  {
+    int a = tris[i * 3 + 0];
+    int b = tris[i * 3 + 1];
+    int c = tris[i * 3 + 2];
+
+    tmp[a].push_back(b);
+    tmp[a].push_back(c);
+
+    tmp[b].push_back(a);
+    tmp[b].push_back(c);
+
+    tmp[c].push_back(a);
+    tmp[c].push_back(b);
+  }
+
+  for (int i = 0; i < num; ++i)
+  {
+    const vector<int>& n = tmp[i];
+    int cnt = (u32)n.size();
+    for (int j = 0; j < cnt; ++j)
+    {
+      neighbours[i*num + j] = n[j];
+    }
+    // terminate
+    neighbours[i*num + cnt] = -1;
+  }
+
+}
+
+//------------------------------------------------------------------------------
+void ParticleTunnel::GenRandomPoints(float kernelSize)
+{
+  V3* tmp = g_ScratchMemory.Alloc<V3>(_randomPoints.Capacity());
+  for (int i = 0; i < _randomPoints.Capacity(); ++i)
+  {
+    V3 v(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(-1.f, 1.f));
+    v = Normalize(v);
+    tmp[i] = v;
+  }
+
+  _randomPoints.Resize(_randomPoints.Capacity());
+
+  BlurLine(tmp, _randomPoints.Data(), _randomPoints.Capacity(), kernelSize);
+}
+
 //------------------------------------------------------------------------------
 void ParticleTunnel::ParticleEmitter::Create(const V3& center, int numParticles)
 {
@@ -124,6 +201,7 @@ void ParticleTunnel::ParticleEmitter::Update(float dt)
   }
 }
 
+//------------------------------------------------------------------------------
 void ParticleTunnel::ParticleEmitter::CopyToBuffer(ParticleType* vtx)
 {
   float* xx = x;
@@ -307,42 +385,47 @@ bool ParticleTunnel::Init(const char* configFile)
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/particle_tunnel", "PsComposite")));
 
+  GenRandomPoints(_settings.plexus.blur_kernel);
+
   // Text setup
   INIT(_textWriter.Init("gfx/text1.boba"));
-  _textWriter.GenerateTris("neurotica efs", TextWriter::TextOutline, &_neuroticaTris);
-  _textWriter.GenerateTris("neurotica efs", TextWriter::TextCap1, &_neuroticaCapTris);
-  _textWriter.GenerateTris("radio\nsilence", TextWriter::TextOutline, &_radioSilenceTris);
-  _textWriter.GenerateTris("radio\nsilence", TextWriter::TextCap1, &_radioSilenceCapTris);
-  _textWriter.GenerateTris("solskogen", TextWriter::TextOutline, &_partyTris);
-  _textWriter.GenerateTris("solskogen", TextWriter::TextCap1, &_partyCapTris);
+  const char* text[] = {
+    "neurotica efs",
+    "radio\nsilence",
+    "solskogen",
+  };
 
-  _neuroticaParticles.Create(_neuroticaTris, 5.f);
-  _radioSilenceParticles.Create(_radioSilenceTris, 5.f);
-  _partyParticles.Create(_partyTris, 5.f);
+  int maxVerts = 0;
+  for (int i = 0; i < ELEMS_IN_ARRAY(text); ++i)
+  {
+    _textWriter.GenerateTris(text[i], TextWriter::TextOutline, &_textData[i]._outline);
+    _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &_textData[i]._cap);
+    _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &_textData[i]._verts, &_textData[i]._indices);
+
+    int num = (u32)_textData[i]._verts.size();
+    _textData[i]._neighbours = new int[num*num];
+    memset(_textData[i]._neighbours, 0xff, num*num*sizeof(int));
+    CalcTextNeighbours(num, _textData[i]._indices, _textData[i]._neighbours);
+
+    maxVerts = max(maxVerts, (int)_textData[i]._outline.size());
+  }
+
+  _neuroticaParticles.Create(_textData[0]._outline, 5.f);
+  _radioSilenceParticles.Create(_textData[1]._outline, 5.f);
+  _partyParticles.Create(_textData[2]._outline, 5.f);
 
   _curParticles = &_neuroticaParticles;
 
-#if WITH_TEXT
-  {
-    CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
-    rssDesc.CullMode = D3D11_CULL_NONE;
-
-    CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
-    dsDesc.DepthEnable = FALSE;
-
-    // pre-multiplied alpha
-    CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
-    D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
-    b.BlendEnable = TRUE;
-    b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    b.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
-
-    INIT(_textState.Create(&dsDesc, &blendDesc, &rssDesc));
-  }
-
-  INIT(_textGpuObjects.CreateDynamicVb((u32)_neuroticaTris.size() * sizeof(Vector3), sizeof(Vector3)));
-  INIT(_textGpuObjects.LoadShadersFromFile("shaders/out/particle_tunnel", "VsText", nullptr, "PsText", VertexFlags::VF_POS));
-#endif
+  INIT(_plexusLineBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/plexus", "VsLines")
+    .GeometryShader("shaders/out/plexus", "GsLines")
+    .PixelShader("shaders/out/plexus", "PsLines")
+    .VertexFlags(VF_POS)
+    .RasterizerDesc(rasterizeDescCullNone)
+    .BlendDesc(blendDescBlendOneOne)
+    .DepthStencilDesc(depthDescDepthWriteDisabled)
+    .DynamicVb(128 * 1024, sizeof(V3))
+    .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
   INIT_RESOURCE(_lineTexture, RESOURCE_MANAGER.LoadTexture("gfx/line.png"));
 
@@ -350,7 +433,7 @@ bool ParticleTunnel::Init(const char* configFile)
     .RasterizerDesc(rasterizeDescCullNone)
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescPreMultipliedAlpha)
-    .DynamicVb((u32)_neuroticaTris.size() * 3 * 2, sizeof(Vector3))
+    .DynamicVb((u32)maxVerts * 3 * 2, sizeof(Vector3))
     .VertexShader("shaders/out/particle_tunnel", "VsLines")
     .VertexFlags(VertexFlags::VF_POS)
     .GeometryShader("shaders/out/particle_tunnel", "GsLines")
@@ -664,6 +747,91 @@ bool ParticleTunnel::Render()
 }
 
 //------------------------------------------------------------------------------
+int ParticleTunnel::CalcLines(V3* vtx)
+{
+  static AvgStopWatch stopWatch;
+  stopWatch.Start();
+
+  int num = _points.Size();
+  u8* connected = g_ScratchMemory.Alloc<u8>(num*num);
+  memset(connected, 0, num*num);
+
+  struct DistEntry { float dist; int idx; };
+  DistEntry* dist = g_ScratchMemory.Alloc<DistEntry>(num);
+  int* idx = g_ScratchMemory.Alloc<int>(num);
+  u8* degree = g_ScratchMemory.Alloc<u8>(num);
+  memset(degree, 0, num);
+
+  V3* orgVtx = vtx;
+
+  float minDist = _settings.plexus.min_dist;
+  float maxDist = _settings.plexus.max_dist;
+  int numNeighbours = _settings.plexus.num_neighbours;
+
+  float eps = _settings.plexus.eps;
+
+  auto fnSort = [&](int a, int b) {
+    float da = dist[a].dist;
+    float db = dist[b].dist;
+    float d = da - db;
+    if (d < 0) d *= -1;
+    if (d < eps)
+      return degree[a] < degree[b];
+    return da < db;
+  };
+
+  for (int i = 0; i < num; ++i)
+    idx[i] = i;
+
+  for (int i = 0; i < num; ++i)
+  {
+    int numValid = 0;
+    for (int j = 0; j < numNeighbours; ++j)
+    {
+      int curIdx = _neighbours[i*num + j];
+      if (curIdx == -1)
+        break;
+
+      float d = Distance(_points[i], _points[curIdx]);
+
+      if (curIdx == i || d < minDist || d > maxDist || connected[i*num + curIdx] || connected[curIdx*num + i])
+        continue;
+
+      idx[numValid] = numValid;
+      dist[numValid].dist = d;
+      dist[numValid].idx = curIdx;
+      numValid++;
+    }
+
+    sort(idx, idx + numValid, fnSort);
+
+    int left = _settings.plexus.num_nearest;
+    for (int j = 0; j < numValid; ++j)
+    {
+      int curIdx = dist[idx[j]].idx;
+
+      vtx[0] = _points[i];
+      vtx[1] = _points[curIdx];
+      vtx += 2;
+
+      connected[i*num + curIdx] = 1;
+      degree[i]++;
+      degree[curIdx]++;
+
+      if (--left == 0)
+        break;
+    }
+  }
+
+  double avg = stopWatch.Stop();
+  TANO.AddPerfCallback([=]() {
+    ImGui::Text("Update time: %.3fms", 1000 * avg);
+  });
+
+  return (int)(vtx - orgVtx);
+}
+
+//------------------------------------------------------------------------------
 #if WITH_IMGUI
 void ParticleTunnel::RenderParameterSet()
 {
@@ -677,27 +845,6 @@ void ParticleTunnel::RenderParameterSet()
     ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
 
     ImGui::SliderFloat("blur", &_settings.blur_radius, 1, 100);
-
-    //if (ImGui::Checkbox("wireframe", &wireframe))
-    //{
-    //  CD3D11_RASTERIZER_DESC rssDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
-    //  rssDesc.CullMode = D3D11_CULL_NONE;
-    //  if (wireframe)
-    //    rssDesc.FillMode = D3D11_FILL_WIREFRAME;
-
-    //  CD3D11_DEPTH_STENCIL_DESC dsDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
-    //  dsDesc.DepthEnable = FALSE;
-
-    //  CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
-
-    //  // pre-multiplied alpha
-    //  D3D11_RENDER_TARGET_BLEND_DESC& b = blendDesc.RenderTarget[0];
-    //  b.BlendEnable = TRUE;
-    //  b.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    //  b.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
-
-    //  _linesState.Create(&dsDesc, &blendDesc, &rssDesc);
-    //}
 
     if (ImGui::SliderFloat("min dist", &_settings.text_min_dist, 1, 2000)) Reset();
     if (ImGui::SliderFloat("max dist", &_settings.text_max_dist, 1, 2000)) Reset();
@@ -732,7 +879,7 @@ void ParticleTunnel::SaveParameterSet()
 //------------------------------------------------------------------------------
 void ParticleTunnel::Reset()
 {
-  _curParticles->Create(_neuroticaTris, _settings.text_length);
+  _curParticles->Create(_textData[0]._outline, _settings.text_length);
 }
 
 //------------------------------------------------------------------------------
