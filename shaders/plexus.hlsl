@@ -73,7 +73,7 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<PsLinesIn> outStream
   float3 dir, right, up;
 
   PsLinesIn p;
-  float s = 1.5;
+  float s = 5.5;
 
   dir = normalize(cameraPos - pos0);
   right = cross(dir, float3(0,1,0));
@@ -166,8 +166,8 @@ float4 PsLines(PsLinesIn p) : SV_Target
     projPt = a;
   float dist = distance(pt, projPt);
 
-  float t = smoothstep(0, 5, dist);
-  float alpha = 1 - pow(t, 0.15);
+  float t = smoothstep(0, 10, dist);
+  float alpha = 1 - pow(t, 0.25);
   alpha *= 1-smoothstep(0, 150, distAB);
 
   // Cull fragments too far from the edge.

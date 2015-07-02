@@ -22,7 +22,7 @@ extern "C" float stb_perlin_noise3(float x, float y, float z);
 static int NOISE_WIDTH = 512;
 static int NOISE_HEIGHT = 512;
 
-#define WITH_TEXT 1
+#define WITH_TEXT 0
 
 //------------------------------------------------------------------------------
 template <typename T>
@@ -68,6 +68,7 @@ Plexus::~Plexus()
 
 SimpleAppendBuffer<V3, 1024> g_randomPoints;
 
+//------------------------------------------------------------------------------
 void GenRandomPoints(float kernelSize)
 {
   V3* tmp = g_ScratchMemory.Alloc<V3>(g_randomPoints.Capacity());
@@ -88,8 +89,6 @@ bool Plexus::Init(const char* configFile)
 {
   BEGIN_INIT_SEQUENCE();
 
-  GenRandomPoints(5);
-
   _configName = configFile;
   vector<char> buf;
   INIT_FATAL(RESOURCE_MANAGER.LoadFile(configFile, &buf));
@@ -99,6 +98,8 @@ bool Plexus::Init(const char* configFile)
   _camera._yaw = _settings.camera.yaw;
   _camera._roll = _settings.camera.roll;
   _camera._pos = _settings.camera.pos;
+
+  GenRandomPoints(_settings.sphere.blur_kernel);
 
   INIT(_cbPerFrame.Create());
   INIT(_cbBasic.Create());
@@ -141,7 +142,6 @@ bool Plexus::Init(const char* configFile)
 
   END_INIT_SEQUENCE();
 }
-
 
 //------------------------------------------------------------------------------
 void Plexus::UpdateNoise()
@@ -298,7 +298,6 @@ void Plexus::TextTest(const UpdateState& state)
   }
 }
 
-int* gg;
 //------------------------------------------------------------------------------
 void Plexus::CalcText()
 {
@@ -311,10 +310,8 @@ void Plexus::CalcText()
 
   SAFE_ADELETE(_neighbours);
   _neighbours = new int[num*num];
-  gg = _neighbours;
   memset(_neighbours, 0xff, num*num*sizeof(int));
   CalcNeighbours(num, _textIndices, _neighbours);
-  int a = 10;
 }
 
 //------------------------------------------------------------------------------
@@ -676,12 +673,16 @@ void Plexus::RenderParameterSet()
   recalc |= ImGui::SliderInt("num-nearest", &_settings.sphere.num_nearest, 1, 20);
   recalc |= ImGui::SliderInt("num-neighbours", &_settings.sphere.num_neighbours, 1, 100);
 
-  if (ImGui::SliderFloat("blur-kernel", &_settings.sphere.blur_kernel, 1, 50))
+  if (ImGui::SliderFloat("blur-kernel", &_settings.sphere.blur_kernel, 1, 250))
     GenRandomPoints(_settings.sphere.blur_kernel);
 
   if (recalc)
   {
+#if WITH_TEXT
+    CalcText();
+#else
     CalcPoints(recalcEdges);
+#endif
   }
 
   if (ImGui::Button("Reset"))

@@ -9,9 +9,9 @@
   };
   sphere: {
     radius: 680.303040;
-    blur_kernel: 50.000004;
-    noise_strength: 75.758003;
-    perlin_scale: 797.980042;
+    blur_kernel: 190.894012;
+    noise_strength: -2499.999023;
+    perlin_scale: 1000.000061;
     eps: 0.010000;
     min_dist: 0.100000;
     max_dist: 123.838005;
@@ -25,7 +25,7 @@
     yaw: 0.063662;
     pitch: 0.095493;
     roll: 0.000000;
-    pos: { -96.569687, 88.245689, -811.649414 };
+    pos: { -94.569687, 88.245689, -809.649414 };
   };
   noise: {
     layer_lock: -1;
