@@ -69,13 +69,14 @@ bool GpuObjects::LoadVertexShader(
   u32 flags,
   vector<D3D11_INPUT_ELEMENT_DESC>* elements)
 {
+  BEGIN_INIT_SEQUENCE();
   ObjectHandle* layout = (flags || elements) ? &_layout : nullptr;
 
   if (flags)
   {
     vector<D3D11_INPUT_ELEMENT_DESC> desc;
     VertexFlagsToLayoutDesc(flags, &desc);
-    _vs = GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, &_layout, &desc);
+    INIT_RESOURCE(_vs, GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, &_layout, &desc));
   }
   else if (elements)
   {
@@ -88,14 +89,14 @@ bool GpuObjects::LoadVertexShader(
       e.SemanticIndex = semanticIndex[e.SemanticName]++;
       ofs += SizeFromFormat(e.Format);
     }
-    _vs = GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, &_layout, elements);
+    INIT_RESOURCE(_vs, GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, &_layout, elements));
   }
   else
   {
-    _vs = GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, nullptr, nullptr);
+    INIT_RESOURCE(_vs, GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, nullptr, nullptr));
   }
 
-  return _vs.IsValid();
+  END_INIT_SEQUENCE();
 }
 
 //------------------------------------------------------------------------------

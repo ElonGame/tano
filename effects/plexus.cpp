@@ -593,7 +593,6 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
   //angle += state.numTicks / 100.0f;
   //Matrix mtx = Matrix::CreateRotationY(angle);
   Matrix mtx = Matrix::Identity();
-
   _cbBasic.world = mtx.Transpose();
   _cbBasic.view = view.Transpose();
   _cbBasic.proj = proj.Transpose();

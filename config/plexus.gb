@@ -7,7 +7,7 @@
     black_point: 0.087000;
     cross_over: 0.933000;
   };
-  sphere: {
+  plexus: {
     radius: 680.303040;
     blur_kernel: 190.894012;
     noise_strength: -2499.999023;

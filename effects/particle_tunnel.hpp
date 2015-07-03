@@ -8,8 +8,6 @@
 #include "../append_buffer.hpp"
 #include "../tano_math.hpp"
 
-#define WITH_TEXT 0
-
 namespace tano
 {
   namespace scheduler
@@ -42,8 +40,6 @@ namespace tano
 
     void UpdateCameraMatrix();
     void GenRandomPoints(float kernelSize);
-
-    int CalcLines(V3* vtx);
 
     struct ParticleType
     {
@@ -134,17 +130,23 @@ namespace tano
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 
+    struct CBufferBasic
+    {
+      Matrix world;
+      Matrix view;
+      Matrix proj;
+      Matrix viewProj;
+      Vector4 cameraPos;
+      Vector4 dim;
+    };
+    ConstantBuffer<CBufferBasic> _cbBasic;
+
     string _configName;
 
     GpuBundle _backgroundBundle;
 
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
-
-#if WITH_TEXT
-    GpuState _textState;
-    GpuObjects _textGpuObjects;
-#endif
 
     ObjectHandle _lineTexture;
     GpuBundle _lineBundle;
@@ -157,11 +159,12 @@ namespace tano
     TextWriter _textWriter;
     struct TextData
     {
-      vector<V3> _outline;
-      vector<V3> _cap;
-      vector<V3> _verts;
-      vector<int> _indices;
-      int* _neighbours;
+      vector<V3> outline;
+      vector<V3> cap;
+      vector<V3> verts;
+      vector<V3> transformedVerts;
+      vector<int> indices;
+      int* neighbours;
     };
     TextData _textData[3];
 

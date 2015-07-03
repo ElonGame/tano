@@ -19,6 +19,8 @@ using namespace tano;
 using namespace tano::scheduler;
 using namespace bristol;
 
+extern "C" float stb_perlin_noise3(float x, float y, float z);
+
 namespace
 {
   bool wireframe = false;
@@ -27,7 +29,6 @@ namespace
   float distance = 1300;
   bool extended = false;
 }
-
 
 //------------------------------------------------------------------------------
 template <typename T>
@@ -50,6 +51,102 @@ void BlurLine(const T* src, T* dst, int size, float r)
     dst[i] = sum * scale;
     sum += lerp(src[IntMod(i + m + 1, size)], src[IntMod(i + m + 2, size)], alpha);
     sum -= lerp(src[IntMod(i - m, size)], src[IntMod(i - m - 1, size)], alpha);
+  }
+}
+
+//------------------------------------------------------------------------------
+int CalcLines(V3* vtx, const V3* points, int num, int* neighbours, const PlexusObject& config)
+{
+  static AvgStopWatch stopWatch;
+  stopWatch.Start();
+
+  u8* connected = g_ScratchMemory.Alloc<u8>(num*num);
+  memset(connected, 0, num*num);
+
+  struct DistEntry { float dist; int idx; };
+  DistEntry* dist = g_ScratchMemory.Alloc<DistEntry>(num);
+  int* idx = g_ScratchMemory.Alloc<int>(num);
+  u8* degree = g_ScratchMemory.Alloc<u8>(num);
+  memset(degree, 0, num);
+
+  V3* orgVtx = vtx;
+
+  float minDist = config.min_dist;
+  float maxDist = config.max_dist;
+  int numNeighbours = config.num_neighbours;
+
+  float eps = config.eps;
+
+  auto fnSort = [&](int a, int b) {
+    float da = dist[a].dist;
+    float db = dist[b].dist;
+    float d = da - db;
+    if (d < 0) d *= -1;
+    if (d < eps)
+      return degree[a] < degree[b];
+    return da < db;
+  };
+
+  for (int i = 0; i < num; ++i)
+    idx[i] = i;
+
+  for (int i = 0; i < num; ++i)
+  {
+    int numValid = 0;
+    for (int j = 0; j < numNeighbours; ++j)
+    {
+      int curIdx = neighbours[i*num + j];
+      if (curIdx == -1)
+        break;
+
+      float d = Distance(points[i], points[curIdx]);
+
+      if (curIdx == i || d < minDist || d > maxDist || connected[i*num + curIdx] || connected[curIdx*num + i])
+        continue;
+
+      idx[numValid] = numValid;
+      dist[numValid].dist = d;
+      dist[numValid].idx = curIdx;
+      numValid++;
+    }
+
+    sort(idx, idx + numValid, fnSort);
+
+    int left = config.num_nearest;
+    for (int j = 0; j < numValid; ++j)
+    {
+      int curIdx = dist[idx[j]].idx;
+
+      vtx[0] = points[i];
+      vtx[1] = points[curIdx];
+      vtx += 2;
+
+      connected[i*num + curIdx] = 1;
+      degree[i]++;
+      degree[curIdx]++;
+
+      if (--left == 0)
+        break;
+    }
+  }
+
+  double avg = stopWatch.Stop();
+  TANO.AddPerfCallback([=]() {
+    ImGui::Text("Update time: %.3fms", 1000 * avg);
+  });
+
+  return (int)(vtx - orgVtx);
+}
+
+//------------------------------------------------------------------------------
+void DistortVerts(V3* dst, const V3* src, int num, const V3* randomPoints, float scale, float strength)
+{
+  for (int i = 0; i < num; ++i)
+  {
+    V3 pt(src[i]);
+    float s = fabs(1024 * stb_perlin_noise3(pt.x / scale, pt.y / scale, pt.z / scale));
+    V3 v = randomPoints[IntMod((int)s, 1024)];
+    dst[i] = pt + strength * v;
   }
 }
 
@@ -398,21 +495,24 @@ bool ParticleTunnel::Init(const char* configFile)
   int maxVerts = 0;
   for (int i = 0; i < ELEMS_IN_ARRAY(text); ++i)
   {
-    _textWriter.GenerateTris(text[i], TextWriter::TextOutline, &_textData[i]._outline);
-    _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &_textData[i]._cap);
-    _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &_textData[i]._verts, &_textData[i]._indices);
+    TextData& t = _textData[i];
+    _textWriter.GenerateTris(text[i], TextWriter::TextOutline, &t.outline);
+    _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap);
+    _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &t.verts, &t.indices);
+    t.transformedVerts.resize(t.verts.size());
+    copy(t.verts.begin(), t.verts.end(), t.transformedVerts.begin());
 
-    int num = (u32)_textData[i]._verts.size();
-    _textData[i]._neighbours = new int[num*num];
-    memset(_textData[i]._neighbours, 0xff, num*num*sizeof(int));
-    CalcTextNeighbours(num, _textData[i]._indices, _textData[i]._neighbours);
+    int num = (u32)_textData[i].verts.size();
+    _textData[i].neighbours = new int[num*num];
+    memset(_textData[i].neighbours, 0xff, num*num*sizeof(int));
+    CalcTextNeighbours(num, _textData[i].indices, _textData[i].neighbours);
 
-    maxVerts = max(maxVerts, (int)_textData[i]._outline.size());
+    maxVerts = max(maxVerts, (int)_textData[i].outline.size());
   }
 
-  _neuroticaParticles.Create(_textData[0]._outline, 5.f);
-  _radioSilenceParticles.Create(_textData[1]._outline, 5.f);
-  _partyParticles.Create(_textData[2]._outline, 5.f);
+  _neuroticaParticles.Create(_textData[0].outline, 5.f);
+  _radioSilenceParticles.Create(_textData[1].outline, 5.f);
+  _partyParticles.Create(_textData[2].outline, 5.f);
 
   _curParticles = &_neuroticaParticles;
 
@@ -423,7 +523,7 @@ bool ParticleTunnel::Init(const char* configFile)
     .VertexFlags(VF_POS)
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
-    .DepthStencilDesc(depthDescDepthWriteDisabled)
+    .DepthStencilDesc(depthDescDepthDisabled)
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
@@ -452,6 +552,8 @@ bool ParticleTunnel::Init(const char* configFile)
   _cbPerFrame.dim.x = (float)w;
   _cbPerFrame.dim.y = (float)h;
 
+  INIT(_cbBasic.Create());
+
   END_INIT_SEQUENCE();
 }
 
@@ -475,6 +577,13 @@ void ParticleTunnel::UpdateCameraMatrix()
   _cbPerFrame.viewProj = viewProj.Transpose();
   _cbPerFrame.viewDir = Vector4(dir.x, dir.y, dir.z, 1);
   _cbPerFrame.camPos = Vector4(pos.x, pos.y, pos.z, 1);
+
+  Matrix mtx = Matrix::Identity();
+  _cbBasic.world = mtx.Transpose();
+  _cbBasic.view = view.Transpose();
+  _cbBasic.proj = proj.Transpose();
+  _cbBasic.viewProj = viewProj.Transpose();
+  _cbBasic.cameraPos = _cbPerFrame.camPos;
 }
 
 //------------------------------------------------------------------------------
@@ -494,6 +603,8 @@ void ParticleTunnel::UpdateEmitter(const TaskData& data)
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
+  rmt_ScopedCPUSample(ParticleTunnel_Update);
+
   UpdateCameraMatrix();
 
   if (g_KeyUpTrigger.IsTriggered('1'))
@@ -503,6 +614,13 @@ bool ParticleTunnel::Update(const UpdateState& state)
     _particleEmitters.Append(ParticleEmitter()).Create(center, _settings.num_particles);
   }
 
+  DistortVerts(
+    _textData[0].transformedVerts.data(),
+    _textData[0].verts.data(),
+    (int)_textData[0].verts.size(),
+    _randomPoints.Data(),
+    _settings.plexus.perlin_scale,
+    (float)max(0ull, 5000ull - state.localTime.TotalMilliseconds()));
 
   float ms = state.localTime.TotalMilliseconds() / 1000.f;
   _cbPerFrame.time.x = ms;
@@ -535,93 +653,40 @@ bool ParticleTunnel::Update(const UpdateState& state)
     _curParticles = nullptr;
   }
 
-  rmt_ScopedCPUSample(ParticleTunnel_Update);
 
-  rmt_ScopedCPUSample(MapWriteDiscard);
+  static AvgStopWatch stopWatch;
+  stopWatch.Start();
 
+  rmt_ScopedCPUSample(Particles_Update);
+  float dt = 1.f / state.frequency;
 
+  ObjectHandle vb = _particleBundle.objects._vb;
+  ParticleType* vtx = _ctx->MapWriteDiscard<ParticleType>(_particleBundle.objects._vb);
+
+  SimpleAppendBuffer<TaskId, 32> tasks;
+
+  for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
-    static AvgStopWatch stopWatch;
-    stopWatch.Start();
-
-    rmt_ScopedCPUSample(Particles_Update);
-    float dt = 1.f / state.frequency;
-
-    ObjectHandle vb = _particleBundle.objects._vb;
-    ParticleType* vtx = _ctx->MapWriteDiscard<ParticleType>(_particleBundle.objects._vb);
-
-#if 0
-
-    for (int j = 0; j < state.numTicks; ++j)
-    {
-      for (int i = 0; i < _particleEmitters.Size(); ++i)
-      {
-        _particleEmitters[i].Update(dt);
-      }
-    }
-
-    for (int i = 0; i < _particleEmitters.Size(); ++i)
-    {
-      _particleEmitters[i].CopyToBuffer(vtx + i * 6 * _settings.num_particles);
-    }
-#else
-    SimpleAppendBuffer<TaskId, 32> tasks;
-
-    for (int i = 0; i < _particleEmitters.Size(); ++i)
-    {
-      EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-      *data = EmitterKernelData{ &_particleEmitters[i], dt, state.numTicks, vtx + i * _settings.num_particles };
-      KernelData kd;
-      kd.data = data;
-      kd.size = sizeof(EmitterKernelData);
-      tasks.Append(SCHEDULER.AddTask(kd, UpdateEmitter));
-    }
-
-    for (const TaskId& taskId : tasks)
-      SCHEDULER.Wait(taskId);
-#endif
-
-    _ctx->Unmap(vb);
-
-    double avg = stopWatch.Stop();
-    TANO.AddPerfCallback([=]() {
-      ImGui::Text("Update time: %.3fms", 1000 * avg);
-    });
-
+    EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
+    *data = EmitterKernelData{ &_particleEmitters[i], dt, state.numTicks, vtx + i * _settings.num_particles };
+    KernelData kd;
+    kd.data = data;
+    kd.size = sizeof(EmitterKernelData);
+    tasks.Append(SCHEDULER.AddTask(kd, UpdateEmitter));
   }
 
-  {
-    rmt_ScopedCPUSample(TextParticles_Update);
-    if (_curParticles)
-      _curParticles->Update(ms - _particlesStart, _particlesStart, _particlesEnd);
-  }
+  for (const TaskId& taskId : tasks)
+    SCHEDULER.Wait(taskId);
 
-#if WITH_TEXT
-  {
-    // Blit text
-    rmt_ScopedCPUSample(TextParticle_Map);
+  _ctx->Unmap(vb);
 
-    float* xx = _curParticles->curX;
-    float* yy = _curParticles->curY;
-    float* zz = _curParticles->curZ;
+  double avg = stopWatch.Stop();
+  TANO.AddPerfCallback([=]() {
+    ImGui::Text("Update time: %.3fms", 1000 * avg);
+  });
 
-    Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_textGpuObjects._vb);
-
-    for (int i = 0, e = (int)_curParticles->selectedTris.size(); i < e; ++i)
-    {
-      int triIdx = _curParticles->selectedTris[i];
-      for (int j = 0; j < 3; ++j)
-      {
-        vtx->x = xx[triIdx + j];
-        vtx->y = yy[triIdx + j];
-        vtx->z = zz[triIdx + j];
-
-        vtx++;
-      }
-    }
-    _ctx->Unmap(_textGpuObjects._vb);
-  }
-#endif
+  if (_curParticles)
+    _curParticles->Update(ms - _particlesStart, _particlesStart, _particlesEnd);
 
   // Blit lines
   if (_curParticles)
@@ -632,27 +697,6 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
     Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_lineBundle.objects._vb);
 
-#if 0
-    _numLinesPoints = 2;
-
-    float angle = 0;
-    float angleInc = 2 * 3.1415f / 20;
-    float r = 20;
-    Vector3 prev(r * cos(angle - angleInc), r * sin(angle - angleInc), 1);
-    for (int i = 0; i < 20; ++i)
-    {
-      Vector3 cur(r * cos(angle), r * sin(angle), 1);
-      vtx[i * 2 + 0] = prev;
-      vtx[i * 2 + 1] = cur;
-      prev = cur;
-      angle += angleInc;
-    }
-
-    _numLinesPoints = 2 * 20;
-
-    //vtx[0] = Vector3(-50, 0, 0);
-    //vtx[1] = Vector3(+50, 0, 0);
-#else
     int numTris = (int)_curParticles->selectedTris.size();
     _numLinesPoints = 6 * numTris;
 
@@ -677,8 +721,6 @@ bool ParticleTunnel::Update(const UpdateState& state)
       }
     }
 
-#endif
-
     _ctx->Unmap(_lineBundle.objects._vb);
   }
 
@@ -692,8 +734,8 @@ bool ParticleTunnel::Render()
 
   ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-  u32 flags = ShaderType::VertexShader | ShaderType::GeometryShader | ShaderType::PixelShader;
-  _ctx->SetConstantBuffer(_cbPerFrame, flags, 0);
+  u32 cbFlags = ShaderType::VertexShader | ShaderType::GeometryShader | ShaderType::PixelShader;
+  _ctx->SetConstantBuffer(_cbPerFrame, cbFlags, 0);
 
   // Render the background
   _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), &black);
@@ -705,22 +747,25 @@ bool ParticleTunnel::Render()
   _ctx->SetShaderResource(_particleTexture);
   _ctx->Draw(_settings.num_particles * _particleEmitters.Size(), 0);
 
-#if WITH_TEXT
-  // text
-  _ctx->SetGpuObjects(_textGpuObjects);
-  _ctx->SetGpuState(_textState);
-  _ctx->Draw((u32)_curParticles->selectedTris.size(), 0);
-#endif
+  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+  _cbBasic.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
+  _ctx->SetConstantBuffer(_cbBasic, cbFlags, 0);
+
+  ObjectHandle vb = _plexusLineBundle.objects._vb;
+  V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
+  TextData& t = _textData[0];
+  int numLines = CalcLines(vtx, t.transformedVerts.data(), (int)t.transformedVerts.size(), t.neighbours, _settings.plexus);
+  _ctx->Unmap(vb);
+  _ctx->SetBundle(_plexusLineBundle);
+  _ctx->Draw(numLines, 0);
 
   // lines
+  _ctx->SetConstantBuffer(_cbPerFrame, cbFlags, 0);
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
   _ctx->SetRenderTarget(rtLines._rtHandle, GRAPHICS.GetDepthStencil(), &black);
   if (_curParticles)
   {
     _ctx->SetBundleWithSamplers(_lineBundle, PixelShader);
-    //_ctx->SetGpuObjects(_linesGpuObjects);
-    //_ctx->SetGpuState(_linesState);
-    //_ctx->SetSamplerState(_linesState._samplers[GpuState::Linear]);
     _ctx->SetShaderResource(_lineTexture);
     _ctx->Draw(_numLinesPoints, 0);
   }
@@ -744,91 +789,6 @@ bool ParticleTunnel::Render()
     false);
 
   return true;
-}
-
-//------------------------------------------------------------------------------
-int ParticleTunnel::CalcLines(V3* vtx)
-{
-  static AvgStopWatch stopWatch;
-  stopWatch.Start();
-
-  int num = _points.Size();
-  u8* connected = g_ScratchMemory.Alloc<u8>(num*num);
-  memset(connected, 0, num*num);
-
-  struct DistEntry { float dist; int idx; };
-  DistEntry* dist = g_ScratchMemory.Alloc<DistEntry>(num);
-  int* idx = g_ScratchMemory.Alloc<int>(num);
-  u8* degree = g_ScratchMemory.Alloc<u8>(num);
-  memset(degree, 0, num);
-
-  V3* orgVtx = vtx;
-
-  float minDist = _settings.plexus.min_dist;
-  float maxDist = _settings.plexus.max_dist;
-  int numNeighbours = _settings.plexus.num_neighbours;
-
-  float eps = _settings.plexus.eps;
-
-  auto fnSort = [&](int a, int b) {
-    float da = dist[a].dist;
-    float db = dist[b].dist;
-    float d = da - db;
-    if (d < 0) d *= -1;
-    if (d < eps)
-      return degree[a] < degree[b];
-    return da < db;
-  };
-
-  for (int i = 0; i < num; ++i)
-    idx[i] = i;
-
-  for (int i = 0; i < num; ++i)
-  {
-    int numValid = 0;
-    for (int j = 0; j < numNeighbours; ++j)
-    {
-      int curIdx = _neighbours[i*num + j];
-      if (curIdx == -1)
-        break;
-
-      float d = Distance(_points[i], _points[curIdx]);
-
-      if (curIdx == i || d < minDist || d > maxDist || connected[i*num + curIdx] || connected[curIdx*num + i])
-        continue;
-
-      idx[numValid] = numValid;
-      dist[numValid].dist = d;
-      dist[numValid].idx = curIdx;
-      numValid++;
-    }
-
-    sort(idx, idx + numValid, fnSort);
-
-    int left = _settings.plexus.num_nearest;
-    for (int j = 0; j < numValid; ++j)
-    {
-      int curIdx = dist[idx[j]].idx;
-
-      vtx[0] = _points[i];
-      vtx[1] = _points[curIdx];
-      vtx += 2;
-
-      connected[i*num + curIdx] = 1;
-      degree[i]++;
-      degree[curIdx]++;
-
-      if (--left == 0)
-        break;
-    }
-  }
-
-  double avg = stopWatch.Stop();
-  TANO.AddPerfCallback([=]() {
-    ImGui::Text("Update time: %.3fms", 1000 * avg);
-  });
-
-  return (int)(vtx - orgVtx);
 }
 
 //------------------------------------------------------------------------------
@@ -879,7 +839,7 @@ void ParticleTunnel::SaveParameterSet()
 //------------------------------------------------------------------------------
 void ParticleTunnel::Reset()
 {
-  _curParticles->Create(_textData[0]._outline, _settings.text_length);
+  _curParticles->Create(_textData[0].outline, _settings.text_length);
 }
 
 //------------------------------------------------------------------------------
