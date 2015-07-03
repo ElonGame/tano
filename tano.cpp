@@ -10,6 +10,7 @@
 #include "arena_allocator.hpp"
 #include "stop_watch.hpp"
 #include "perlin2d.hpp"
+#include "blackboard.hpp"
 #include "generated/app.parse.hpp"
 #include "generated/input_buffer.hpp"
 #include "effects/particle_tunnel.hpp"
@@ -138,6 +139,8 @@ bool App::Init(HINSTANCE hinstance)
 #endif
   INIT_FATAL(LoadSettings());
 
+  INIT_FATAL(Blackboard::Create("config/scratch.bb"));
+
   INIT_FATAL(Scheduler::Create());
 
   INIT_FATAL(Graphics::Create(hinstance));
@@ -176,6 +179,7 @@ bool App::Init(HINSTANCE hinstance)
   Plexus::Register();
 
   INIT_FATAL(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
+
 
   END_INIT_SEQUENCE();
 }
