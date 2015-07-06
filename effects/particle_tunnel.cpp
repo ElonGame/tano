@@ -14,6 +14,8 @@
 #include "../scheduler.hpp"
 #include "../arena_allocator.hpp"
 #include "../stop_watch.hpp"
+#include "../blackboard.hpp"
+#include "../mesh_utils.hpp"
 
 using namespace tano;
 using namespace tano::scheduler;
@@ -139,11 +141,15 @@ int CalcLines(V3* vtx, const V3* points, int num, int* neighbours, const PlexusO
 }
 
 //------------------------------------------------------------------------------
-void DistortVerts(V3* dst, const V3* src, int num, const V3* randomPoints, float scale, float strength)
+void DistortVerts(
+  V3* dst, const V3* src, int num, 
+  const V3* randomPoints, float scale, float strength,
+  const V3 ptOfs, float ptScale
+  )
 {
   for (int i = 0; i < num; ++i)
   {
-    V3 pt(src[i]);
+    V3 pt(ptScale * (src[i] + ptOfs));
     float s = fabs(1024 * stb_perlin_noise3(pt.x / scale, pt.y / scale, pt.z / scale));
     V3 v = randomPoints[IntMod((int)s, 1024)];
     dst[i] = pt + strength * v;
@@ -285,6 +291,7 @@ void ParticleTunnel::ParticleEmitter::Update(float dt)
     if (*zz < -1500)
     {
       *dead++ = i;
+      numDead++;
     }
 
     xx++; yy++; zz++;
@@ -320,101 +327,8 @@ void ParticleTunnel::ParticleEmitter::CopyToBuffer(ParticleType* vtx)
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::TextParticles::Create(
-    const vector<V3>& verts,
-    float targetTime)
-{
-  numParticles = (int)verts.size();
-  if (!curX)
-  {
-    curX = new float[numParticles];
-    curY = new float[numParticles];
-    curZ = new float[numParticles];
-
-    startX = new float[numParticles]; 
-    startY = new float[numParticles];
-    startZ = new float[numParticles];
-
-    endX = new float[numParticles];
-    endY = new float[numParticles];
-    endZ = new float[numParticles];
-  }
-
-  // note, everything is done on a per triangle basis, and not per vertex
-  int numTris = (int)verts.size() / 3;
-  int idx = 0;
-  for (int i = 0; i < numTris; ++i)
-  {
-    //float dist = randf(settings.text_min_dist, settings.text_max_dist);
-
-    for (int j = 0; j < 3; ++j)
-    {
-      float x = verts[idx].x;
-      float y = verts[idx].y;
-      float s = (x + y) / 50;
-
-      float dist = settings.text_max_dist * (2 + cos(s) * sin(s));
-
-      //    Vector3 dir(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(0.f, 1.f));
-      // project each vertex outwards along the hemisphere in the z-plane
-      Vector3 dir((float)(0.1 * sin(s)), (float)(0.1 * cos(s)), 1);
-      dir.Normalize();
-
-      startX[idx] = verts[idx].x - dir.x * dist;
-      startY[idx] = verts[idx].y - dir.y * dist;
-      startZ[idx] = verts[idx].z - dir.z * dist;
-
-      endX[idx] = verts[idx].x;
-      endY[idx] = verts[idx].y;
-      endZ[idx] = verts[idx].z;
-
-      ++idx;
-    }
-  }
-
-  selectedTris.clear();
-
-  selectedTris.reserve(numTris);
-  for (int i = 0; i < numTris; ++i)
-  {
-    float p = randf(0.f, 1.f);
-    if (p > settings.text_triangle_prob)
-      selectedTris.push_back(i);
-  }
-}
-
-//------------------------------------------------------------------------------
-void ParticleTunnel::TextParticles::Destroy()
-{
-  SAFE_ADELETE(curX); SAFE_ADELETE(curY); SAFE_ADELETE(curZ);
-  SAFE_ADELETE(startX);  SAFE_ADELETE(startY);  SAFE_ADELETE(startZ);
-  SAFE_ADELETE(endX); SAFE_ADELETE(endY); SAFE_ADELETE(endZ);
-}
-
-//------------------------------------------------------------------------------
-void ParticleTunnel::TextParticles::Update(float seconds, float start, float end)
-{
-  float* xx = curX;
-  float* yy = curY;
-  float* zz = curZ;
-
-  float duration = end - start;
-  float s = Clamp(0.f, 1.f, seconds / duration);
-
-  for (int i = 0, e = numParticles; i < e; ++i)
-  {
-    xx[i] = lerp(startX[i], endX[i], s);
-    yy[i] = lerp(startY[i], endY[i], s);
-    zz[i] = lerp(startZ[i], endZ[i], s);
-  }
-}
-
-//------------------------------------------------------------------------------
 ParticleTunnel::ParticleTunnel(const string &name, u32 id)
   : BaseEffect(name, id)
-  , _neuroticaParticles(_settings)
-  , _radioSilenceParticles(_settings)
-  , _partyParticles(_settings)
   , _beatTrack("beat")
 {
 #if WITH_IMGUI
@@ -488,7 +402,7 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(_textWriter.Init("gfx/text1.boba"));
   const char* text[] = {
     "neurotica efs",
-    "radio\nsilence",
+    "radio silence",
     "solskogen",
   };
 
@@ -509,12 +423,6 @@ bool ParticleTunnel::Init(const char* configFile)
 
     maxVerts = max(maxVerts, (int)_textData[i].outline.size());
   }
-
-  _neuroticaParticles.Create(_textData[0].outline, 5.f);
-  _radioSilenceParticles.Create(_textData[1].outline, 5.f);
-  _partyParticles.Create(_textData[2].outline, 5.f);
-
-  _curParticles = &_neuroticaParticles;
 
   INIT(_plexusLineBundle.Create(BundleOptions()
     .VertexShader("shaders/out/plexus", "VsLines")
@@ -542,7 +450,7 @@ bool ParticleTunnel::Init(const char* configFile)
 
   // Generic setup
   INIT(_cbPerFrame.Create());
-  UpdateCameraMatrix();
+  //UpdateCameraMatrix();
   _cbPerFrame.tint = _settings.tint;
   _cbPerFrame.inner = _settings.inner_color;
   _cbPerFrame.outer = _settings.outer_color;
@@ -551,14 +459,24 @@ bool ParticleTunnel::Init(const char* configFile)
   GRAPHICS.GetBackBufferSize(&w, &h);
   _cbPerFrame.dim.x = (float)w;
   _cbPerFrame.dim.y = (float)h;
-
   INIT(_cbBasic.Create());
+  INIT(_cbFracture.Create());
+
+  MeshLoader meshLoader;
+  INIT(meshLoader.Load("gfx/shatter_plane1.boba"));
+  CreateScene(meshLoader, false, &_scene);
+
+  INIT(_fractureBundle.Create(BundleOptions()
+    .RasterizerDesc(rasterizeDescCullNone)
+    .VertexShader("shaders/out/particle_tunnel", "VsFracture")
+    .VertexFlags(VertexFlags::VF_POS | VertexFlags::VF_NORMAL | VertexFlags::VF_TEX2_0)
+    .PixelShader("shaders/out/particle_tunnel", "PsFracture")));
 
   END_INIT_SEQUENCE();
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::UpdateCameraMatrix()
+void ParticleTunnel::UpdateCameraMatrix(const UpdateState& state)
 {
   float x = distance * sin(angle);
   float z = -distance * cos(angle);
@@ -584,6 +502,16 @@ void ParticleTunnel::UpdateCameraMatrix()
   _cbBasic.proj = proj.Transpose();
   _cbBasic.viewProj = viewProj.Transpose();
   _cbBasic.cameraPos = _cbPerFrame.camPos;
+
+  _fixedCamera.Update(state);
+  view = _fixedCamera._view;
+  proj = _fixedCamera._proj;
+  viewProj = view * proj;
+  _cbFracture.world = Matrix::Identity();
+  _cbFracture.view = view.Transpose();
+  _cbFracture.proj = proj.Transpose();
+  _cbFracture.viewProj = viewProj.Transpose();
+  _cbFracture.cameraPos = Expand(_fixedCamera._pos, 0);
 }
 
 //------------------------------------------------------------------------------
@@ -600,12 +528,26 @@ void ParticleTunnel::UpdateEmitter(const TaskData& data)
   emitter->CopyToBuffer(emitterData->vtx);
 }
 
+
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
+  auto fnCalcFade = [](float ms, const char* s, const char* e, bool invert)
+  {
+    float ss = BLACKBOARD.GetFloatVar(s);
+    float ee = BLACKBOARD.GetFloatVar(e);
+    if (Inside(ms, ss, ee))
+    {
+      float dd = (ms - ss) / (ee - ss);;
+      return invert ? 1 - dd : dd;
+    }
+
+    return 1.0f;
+  };
+
   rmt_ScopedCPUSample(ParticleTunnel_Update);
 
-  UpdateCameraMatrix();
+  UpdateCameraMatrix(state);
 
   if (g_KeyUpTrigger.IsTriggered('1'))
   {
@@ -614,44 +556,74 @@ bool ParticleTunnel::Update(const UpdateState& state)
     _particleEmitters.Append(ParticleEmitter()).Create(center, _settings.num_particles);
   }
 
-  DistortVerts(
-    _textData[0].transformedVerts.data(),
-    _textData[0].verts.data(),
-    (int)_textData[0].verts.size(),
-    _randomPoints.Data(),
-    _settings.plexus.perlin_scale,
-    (float)max(0ull, 5000ull - state.localTime.TotalMilliseconds()));
-
   float ms = state.localTime.TotalMilliseconds() / 1000.f;
+  
+  TextData* t = nullptr;
+  float scale;
+  V3 ptOfs(0,0,0);
+  float ptScale = 1;
+  BLACKBOARD.SetNamespace("intro");
+  if (Inside(ms, BLACKBOARD.GetFloatVar("text0FadeInStart"), BLACKBOARD.GetFloatVar("text0FadeOutEnd")))
+  {
+    t = &_textData[0];
+    scale = ms - BLACKBOARD.GetFloatVar("text0FadeInStart");
+    float delta = BLACKBOARD.GetFloatVar("text0FadeInEnd") - BLACKBOARD.GetFloatVar("text0FadeInStart");
+    _lineFade = min(
+      fnCalcFade(ms, "text0FadeInStart", "text0FadeInEnd", false), 
+      fnCalcFade(ms, "text0FadeOutStart", "text0FadeOutEnd", true));
+    scale = Clamp(0.f, 1.f, scale / delta);
+    ptOfs = BLACKBOARD.GetVec3Var("text0pos");
+    ptScale = BLACKBOARD.GetFloatVar("text0Scale");
+  }
+  else if (Inside(ms, BLACKBOARD.GetFloatVar("text1FadeInStart"), BLACKBOARD.GetFloatVar("text1FadeOutEnd")))
+  {
+    t = &_textData[1];
+    scale = ms - BLACKBOARD.GetFloatVar("text1FadeInStart");
+    float delta = BLACKBOARD.GetFloatVar("text1FadeInEnd") - BLACKBOARD.GetFloatVar("text1FadeInStart");
+    _lineFade = min(
+      fnCalcFade(ms, "text1FadeInStart", "text1FadeInEnd", false),
+      fnCalcFade(ms, "text1FadeOutStart", "text1FadeOutEnd", true));
+    scale = Clamp(0.f, 1.f, scale / delta);
+    ptOfs = BLACKBOARD.GetVec3Var("text1pos");
+    ptScale = BLACKBOARD.GetFloatVar("text1Scale");
+  }
+  else if (Inside(ms, BLACKBOARD.GetFloatVar("text2FadeInStart"), BLACKBOARD.GetFloatVar("text2FadeOutEnd")))
+  {
+    t = &_textData[2];
+    scale = ms - BLACKBOARD.GetFloatVar("text2FadeInStart");
+    float delta = BLACKBOARD.GetFloatVar("text2FadeInEnd") - BLACKBOARD.GetFloatVar("text2FadeInStart");
+    _lineFade = min(
+      fnCalcFade(ms, "text2FadeInStart", "text2FadeInEnd", false),
+      fnCalcFade(ms, "text2FadeOutStart", "text2FadeOutStart", true));
+    scale = Clamp(0.f, 1.f, scale / delta);
+    ptOfs = BLACKBOARD.GetVec3Var("text2pos");
+    ptScale = BLACKBOARD.GetFloatVar("text2Scale");
+  }
+
+  _drawText = false;
+  _curText = nullptr;
+  if (t)
+  {
+    _drawText = true;
+    _curText = t;
+    scale = (1-scale) * BLACKBOARD.GetFloatVar("maxStrength");
+
+    DistortVerts(
+      t->transformedVerts.data(),
+      t->verts.data(),
+      (int)t->verts.size(),
+      _randomPoints.Data(),
+      _settings.plexus.perlin_scale,
+      scale,
+      ptOfs,
+      ptScale);
+  }
+
+  BLACKBOARD.ClearNamespace();
+
+
   _cbPerFrame.time.x = ms;
   _cbPerFrame.time.w = _beatTrack;
-
-  // check which text segment we're in
-  float partLength = _settings.text_length + _settings.fade_delay + _settings.fade_out;
-  int idx = (int)((ms - _settings.text_start) / partLength);
-  TextParticles* particles[] = { &_neuroticaParticles, &_radioSilenceParticles, &_partyParticles };
-  if (ms >= _settings.text_start && idx < ELEMS_IN_ARRAY(particles))
-  {
-    _curParticles = particles[idx];
-    float ofs = ms - _settings.text_start - idx * partLength;
-    // check if we're fading out
-    if (ofs < _settings.text_length + _settings.fade_delay)
-    {
-      _cbPerFrame.time.y = 0;
-      _cbPerFrame.time.z = Clamp(0.f, 1.f, 1.f - ofs / _settings.text_length);
-    }
-    else
-    {
-      _cbPerFrame.time.y = (ofs - _settings.text_length - _settings.fade_delay) / _settings.fade_out;
-      _cbPerFrame.time.z = 0;
-    }
-    _particlesStart = _settings.text_start + idx * partLength;
-    _particlesEnd = _particlesStart + _settings.text_length;
-  }
-  else
-  {
-    _curParticles = nullptr;
-  }
 
 
   static AvgStopWatch stopWatch;
@@ -685,45 +657,6 @@ bool ParticleTunnel::Update(const UpdateState& state)
     ImGui::Text("Update time: %.3fms", 1000 * avg);
   });
 
-  if (_curParticles)
-    _curParticles->Update(ms - _particlesStart, _particlesStart, _particlesEnd);
-
-  // Blit lines
-  if (_curParticles)
-  {
-    float* xx = _curParticles->curX;
-    float* yy = _curParticles->curY;
-    float* zz = _curParticles->curZ;
-
-    Vector3* vtx = _ctx->MapWriteDiscard<Vector3>(_lineBundle.objects._vb);
-
-    int numTris = (int)_curParticles->selectedTris.size();
-    _numLinesPoints = 6 * numTris;
-
-    for (int i = 0; i < numTris; ++i)
-    {
-      int triIdx = _curParticles->selectedTris[i];
-      // Barrett enumeration :)
-      for (int j = 2, k = 0; k < 3; j = k++)
-      {
-        int idx0 = triIdx * 3 + j;
-        int idx1 = triIdx * 3 + k;
-
-        vtx->x = xx[idx0];
-        vtx->y = yy[idx0];
-        vtx->z = zz[idx0];
-        vtx++;
-
-        vtx->x = xx[idx1];
-        vtx->y = yy[idx1];
-        vtx->z = zz[idx1];
-        vtx++;
-      }
-    }
-
-    _ctx->Unmap(_lineBundle.objects._vb);
-  }
-
   return true;
 }
 
@@ -742,33 +675,41 @@ bool ParticleTunnel::Render()
   _ctx->SetBundle(_backgroundBundle);
   _ctx->Draw(3, 0);
 
+  _cbPerFrame.world = Matrix::Identity();
+  _ctx->SetConstantBuffer(_cbPerFrame, cbFlags, 0);
+
   // Render particles
   _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
   _ctx->SetShaderResource(_particleTexture);
   _ctx->Draw(_settings.num_particles * _particleEmitters.Size(), 0);
 
-  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-  _cbBasic.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
-  _ctx->SetConstantBuffer(_cbBasic, cbFlags, 0);
+  ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  _ctx->SetRenderTarget(rtLines._rtHandle, GRAPHICS.GetDepthStencil(), &black);
 
-  ObjectHandle vb = _plexusLineBundle.objects._vb;
-  V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
-  TextData& t = _textData[0];
-  int numLines = CalcLines(vtx, t.transformedVerts.data(), (int)t.transformedVerts.size(), t.neighbours, _settings.plexus);
-  _ctx->Unmap(vb);
-  _ctx->SetBundle(_plexusLineBundle);
-  _ctx->Draw(numLines, 0);
+  if (_drawText && _curText)
+  {
+
+    RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+    _cbBasic.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
+    V3 params = BLACKBOARD.GetVec3Var("intro.lineParams");
+    _cbBasic.params = Vector4(params.x, params.y, params.z, _lineFade);
+    _ctx->SetConstantBuffer(_cbBasic, cbFlags, 0);
+
+    ObjectHandle vb = _plexusLineBundle.objects._vb;
+    V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
+    int numLines = CalcLines(
+      vtx,
+      _curText->transformedVerts.data(),
+      (int)_curText->transformedVerts.size(),
+      _curText->neighbours,
+      _settings.plexus);
+    _ctx->Unmap(vb);
+    _ctx->SetBundle(_plexusLineBundle);
+    _ctx->Draw(numLines, 0);
+  }
 
   // lines
   _ctx->SetConstantBuffer(_cbPerFrame, cbFlags, 0);
-  ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  _ctx->SetRenderTarget(rtLines._rtHandle, GRAPHICS.GetDepthStencil(), &black);
-  if (_curParticles)
-  {
-    _ctx->SetBundleWithSamplers(_lineBundle, PixelShader);
-    _ctx->SetShaderResource(_lineTexture);
-    _ctx->Draw(_numLinesPoints, 0);
-  }
   _ctx->UnsetRenderTargets(0, 1);
 
   ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
@@ -776,17 +717,42 @@ bool ParticleTunnel::Render()
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
   fullscreen->Blur(rtLines._rtHandle, rtBlur._rtHandle, _settings.blur_radius);
 
-  // compose final image on default swap chain
-
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
+
+  ScopedRenderTarget rtCompose(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv);
   ObjectHandle inputs[] = { rt, rtLines, rtBlur };
   fullscreen->Execute(
     inputs, 3,
-    GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(),
+    rtCompose, rtCompose._desc,
     GRAPHICS.GetDepthStencil(),
     _compositeBundle.objects._ps,
-    false);
+    true,
+    &black);
+
+  _ctx->SetShaderResource(rtCompose._rtHandle);
+  _ctx->SetRenderTarget(GRAPHICS.GetBackBuffer(), GRAPHICS.GetDepthStencil(), &black);
+
+  _ctx->SetBundle(_fractureBundle);
+  int jj = 0;
+  static float hax = 0;
+  hax++;
+
+  for (scene::Mesh* mesh : _scene.meshes)
+  {
+    jj++;
+    Matrix mtx = mesh->mtxGlobal;
+    //Matrix mtxTrans = Matrix::CreateTranslation(0, 0, 10 * sin(0.1f * (hax + jj)));
+    //_cbFracture.world = (mtxTrans * mtx).Transpose();
+    _cbFracture.world = mtx.Transpose();
+
+    _ctx->SetConstantBuffer(_cbFracture, cbFlags, 0);
+    _ctx->SetVertexBuffer(mesh->gpuObjects._vb);
+    _ctx->SetIndexBuffer(mesh->gpuObjects._ib);
+    _ctx->DrawIndexed(mesh->gpuObjects._numIndices, 0, 0);
+  }
+
+
 
   return true;
 }
@@ -839,7 +805,6 @@ void ParticleTunnel::SaveParameterSet()
 //------------------------------------------------------------------------------
 void ParticleTunnel::Reset()
 {
-  _curParticles->Create(_textData[0].outline, _settings.text_length);
 }
 
 //------------------------------------------------------------------------------

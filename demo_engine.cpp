@@ -177,13 +177,16 @@ void DemoEngine::ReclassifyEffects()
 {
   TimeDuration currentTime = _timer.Elapsed(nullptr);
 
-  sort(_effects.begin(), _effects.end(), [](const BaseEffect* a, const BaseEffect* b) { return a->StartTime() < b->StartTime(); });
+  sort(_effects.begin(), _effects.end(), [](const BaseEffect* a, const BaseEffect* b) 
+  { 
+    return a->StartTime() < b->StartTime(); 
+  });
 
   _expiredEffects.clear();
   _inactiveEffects.clear();
   _activeEffects.clear();
 
-  for (auto& effect : _effects)
+  for (BaseEffect* effect : _effects)
   {
     bool started = currentTime >= effect->StartTime();
     bool ended = currentTime > effect->EndTime();
@@ -284,7 +287,6 @@ void DemoEngine::UpdateEffects()
   curState.frequency = UPDATE_FREQUENCY;
   curState.numTicks = intNumTicks;
   curState.ticksFraction = numTicks - intNumTicks;
-
 
   // If a force effect is set, just tick this guy
   if (_forceEffect)

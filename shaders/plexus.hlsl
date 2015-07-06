@@ -8,6 +8,7 @@ cbuffer PerFrame : register(b0)
   matrix viewProj;
   float3 cameraPos;
   float4 dim;
+  float4 lineParams;      // x = 
 };
 
 //------------------------------------------------------
@@ -111,45 +112,11 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<PsLinesIn> outStream
 }
 
 
-float MainDistanceToEdge(in PsLinesIn input)
-{
-    float dist;
-
-    // Use Pythogoras to compute distance from point F to line
-    float2 AF = input.pos.xy - input.posDir.xy;
-    float sqAF = dot(AF,AF);
-    float AFprojA = dot(AF, input.posDir.zw);
-    return sqrt(sqAF - AFprojA*AFprojA);
-}
-
-
-float CalcDist2(in PsLinesIn input)
-{
-  float2 a = input.endPoints.xy;
-  float2 b = input.endPoints.zw;
-  float2 p = input.pos.xy;
-  float dist = distance(a, b);
-  float2 v = normalize(b-a);
-  // calc projection of point on b-a
-  float2 pt;
-  float t = dot(v, p-a);
-  if (t > dist)
-    pt = b;
-  else if (t > 0)
-    pt = a + t * v;
-  else
-    pt = a;
-  return distance(p, pt);
-}
-
 static float4 WireColor = float4(0.5, 0.7, 0.7, 1);
 static float LineWidth = 2.5;
 
 float4 PsLines(PsLinesIn p) : SV_Target
 {
-//  return 1;
-    // Compute the shortest distance between the fragment and the edges.
-    //float dist = MainDistanceToEdge(p);
   float2 a = p.endPoints.xy;
   float2 b = p.endPoints.zw;
   float2 pt = p.pos.xy;
@@ -166,15 +133,20 @@ float4 PsLines(PsLinesIn p) : SV_Target
     projPt = a;
   float dist = distance(pt, projPt);
 
-  float t = smoothstep(0, 10, dist);
-  float alpha = 1 - pow(t, 0.25);
-  alpha *= 1-smoothstep(0, 150, distAB);
+  float3 params = lineParams.xyz;
+  float fade = lineParams.w;
+
+//  float t = smoothstep(0, 5, dist);
+//  float alpha = 1 - pow(t, 0.25);
+//  alpha *= 1-smoothstep(0, 250, distAB);
+
+  float t = smoothstep(0, params.x, dist);
+  float alpha = 1 - pow(t, params.y);
+  alpha *= 1-smoothstep(0, params.z, distAB);
 
   // Cull fragments too far from the edge.
   //if (dist > 0.5*LineWidth+1)
     //discard;
 
-  float4 color = WireColor;
-  color *= alpha;
-  return color;
+  return WireColor * alpha * fade;
 }

@@ -19,7 +19,7 @@ static DirectX::SimpleMath::Vector3 Cross(const DirectX::SimpleMath::Vector3& a,
 namespace tano
 {
   //------------------------------------------------------------------------------
-  bool CreateScene(const MeshLoader& loader, scene::Scene* scene)
+  bool CreateScene(const MeshLoader& loader, bool createShaders, scene::Scene* scene)
   {
     BEGIN_INIT_SEQUENCE();
 
@@ -57,7 +57,7 @@ namespace tano
         const auto& fnCopy = [&dst, i, meshBlob](float* src, int n)
         {
           for (int j = 0; j < n; ++j)
-            dst[j] = *(src + i*3 + j);
+            dst[j] = *(src + i*n + j);
           dst += n;
         };
 
@@ -76,8 +76,11 @@ namespace tano
         mesh->materialGroups.push_back({ mg->materialId, mg->startIndex, mg->numIndices });
       }
 
-      INIT(mesh->gpuObjects.LoadVertexShader("shaders/out/blob", "VsMesh", vertexFormat));
-      INIT(mesh->gpuObjects.LoadPixelShader("shaders/out/blob", "PsMesh"));
+      if (createShaders)
+      {
+        INIT(mesh->gpuObjects.LoadVertexShader("shaders/out/blob", "VsMesh", vertexFormat));
+        INIT(mesh->gpuObjects.LoadPixelShader("shaders/out/blob", "PsMesh"));
+      }
 
       INIT(mesh->gpuObjects.CreateVertexBuffer(meshBlob->numVerts * vertexSize, vertexSize, buf.data()));
       INIT(mesh->gpuObjects.CreateIndexBuffer(meshBlob->numIndices * sizeof(u32), DXGI_FORMAT_R32_UINT, meshBlob->indices));

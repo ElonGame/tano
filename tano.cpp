@@ -339,6 +339,27 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       TANO._ioState.mouseWheel += GET_WHEEL_DELTA_WPARAM(wParam) > 0 ? +1.0f : -1.0f;
       break;
 
+    case WM_KEYDOWN:
+
+      switch (wParam) {
+      case VK_LEFT:
+        DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() - TimeDuration::Seconds(1));
+        return 0;
+
+      case VK_RIGHT:
+        DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() + TimeDuration::Seconds(1));
+        return 0;
+
+      case VK_UP:
+        DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() - TimeDuration::Milliseconds(100));
+        return 0;
+
+      case VK_DOWN:
+        DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() + TimeDuration::Milliseconds(100));
+        return 0;
+      }
+      break;
+
     case WM_KEYUP:
 
       switch (wParam) {
@@ -392,22 +413,6 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case VK_NEXT:
           DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() + TimeDuration::Seconds(30));
-          return 0;
-
-        case VK_LEFT:
-          DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() - TimeDuration::Seconds(1));
-          return 0;
-
-        case VK_RIGHT:
-          DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() + TimeDuration::Seconds(1));
-          return 0;
-
-        case VK_UP:
-          DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() - TimeDuration::Milliseconds(100));
-          return 0;
-
-        case VK_DOWN:
-          DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() + TimeDuration::Milliseconds(100));
           return 0;
 
         case VK_HOME:

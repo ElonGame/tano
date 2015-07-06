@@ -7,8 +7,23 @@
   text_min_dist: 500.000000;
   text_max_dist: 2000.000000;
   text_triangle_prob: 0.000000;
-  text_start: 4;
-  text_length: 5;
-  fade_delay: 1;
-  fade_out: 2;
+  blur_radius: 15.000000;
+  text_start: 4.000000;
+  text_length: 5.000000;
+  fade_delay: 1.000000;
+  fade_out: 2.000000;
+  plexus: {
+    radius: 600.000000;
+    blur_kernel: 10.000000;
+    noise_strength: 0.000000;
+    perlin_scale: 10.000000;
+    eps: 0.010000;
+    min_dist: 0.100000;
+    max_dist: 200.000000;
+    num_neighbours: 10;
+    slices: 13;
+    stacks: 6;
+    layers: 14;
+    num_nearest: 2;
+  };
 };

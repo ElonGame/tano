@@ -7,6 +7,8 @@
 #include "../animation_helpers.hpp"
 #include "../append_buffer.hpp"
 #include "../tano_math.hpp"
+#include "../mesh_utils.hpp"
+#include "../camera.hpp"
 
 namespace tano
 {
@@ -38,7 +40,7 @@ namespace tano
     void SaveParameterSet();
 #endif
 
-    void UpdateCameraMatrix();
+    void UpdateCameraMatrix(const UpdateState& state);
     void GenRandomPoints(float kernelSize);
 
     struct ParticleType
@@ -89,28 +91,6 @@ namespace tano
 
     static void UpdateEmitter(const scheduler::TaskData& data);
 
-    struct TextParticles
-    {
-      TextParticles(const ParticleTunnelSettings& settings) : settings(settings) {}
-      void Create(const vector<V3>& verts, float targetTime);
-      void Destroy();
-      void Update(float seconds, float start, float end);
-
-      float* curX = nullptr;
-      float* curY = nullptr;
-      float* curZ = nullptr;
-      float* startX = nullptr;
-      float* startY = nullptr;
-      float* startZ = nullptr;
-      float* endX = nullptr;
-      float* endY = nullptr;
-      float* endZ = nullptr;
-
-      int numParticles = 0;
-      const ParticleTunnelSettings& settings;
-      vector<int> selectedTris;
-    };
-
     SimpleAppendBuffer<ParticleEmitter, 24> _particleEmitters;
 
     struct CBufferPerFrame
@@ -138,8 +118,19 @@ namespace tano
       Matrix viewProj;
       Vector4 cameraPos;
       Vector4 dim;
+      Vector4 params = Vector4(5.0, 0.25f, 250.f, 1);
     };
     ConstantBuffer<CBufferBasic> _cbBasic;
+
+    struct CBufferFracture
+    {
+      Matrix world;
+      Matrix view;
+      Matrix proj;
+      Matrix viewProj;
+      Vector4 cameraPos;
+    };
+    ConstantBuffer<CBufferFracture> _cbFracture;
 
     string _configName;
 
@@ -167,18 +158,20 @@ namespace tano
       int* neighbours;
     };
     TextData _textData[3];
+    TextData* _curText = nullptr;
 
-    TextParticles _neuroticaParticles;
-    TextParticles _radioSilenceParticles;
-    TextParticles _partyParticles;
     float _particlesStart, _particlesEnd;
-
-    TextParticles* _curParticles = nullptr;
 
     AnimatedFloat _beatTrack;
 
     SimpleAppendBuffer<V3, 1024> _randomPoints;
     GpuBundle _plexusLineBundle;
 
+    bool _drawText = false;
+    float _lineFade = 1.0f;
+
+    scene::Scene _scene;
+    GpuBundle _fractureBundle;
+    FreeFlyCamera _fixedCamera;
   };
 }

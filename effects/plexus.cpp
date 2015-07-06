@@ -566,12 +566,6 @@ bool Plexus::Update(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-Vector4 Expand(const Vector3& v, float x)
-{
-  return Vector4(v.x, v.y, v.z, x);
-}
-
-//------------------------------------------------------------------------------
 void Plexus::UpdateCameraMatrix(const UpdateState& state)
 {
   _camera.Update(state);

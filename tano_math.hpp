@@ -243,6 +243,8 @@ namespace tano
 
   struct V4
   {
+    V4() {}
+    V4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
     float x, y, z, w;
   };
 
@@ -277,5 +279,11 @@ namespace tano
   {
     int a, b, c;
   };
+
+  //------------------------------------------------------------------------------
+  inline Vector4 Expand(const Vector3& v, float x)
+  {
+    return Vector4(v.x, v.y, v.z, x);
+  }
 
 }

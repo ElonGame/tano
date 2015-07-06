@@ -50,7 +50,7 @@ bool Blob::Init(const char* configFile)
   // load the blob mesh
   MeshLoader loader;
   INIT(loader.Load("gfx/crystals_flat.boba"));
-  INIT(CreateScene(loader, &_scene));
+  INIT(CreateScene(loader, true, &_scene));
 //   u32 blobVertexFlags = 0;
 //   INIT(CreateBuffersFromMesh(loader, nullptr, &blobVertexFlags, &_blobGpuObjects));
    //INIT(_blobGpuObjects.LoadShadersFromFile("shaders/out/blob", "VsMesh", nullptr, "PsMesh", _scene.meshes[0].vertexFormat));

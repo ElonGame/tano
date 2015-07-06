@@ -7,7 +7,7 @@ namespace tano
   struct GpuObjects;
   struct MeshLoader;
 
-  bool CreateScene(const MeshLoader& loader, scene::Scene* scene);
+  bool CreateScene(const MeshLoader& loader, bool createShaders, scene::Scene* scene);
   bool CreateBuffersFromMesh(const MeshLoader& loader, const char* name, u32* vertexFlags, GpuObjects* objects);
   bool CreateBuffersFromMeshFaceted(const MeshLoader& loader, const char* name, u32* vertexFlags, GpuObjects* objects);
 

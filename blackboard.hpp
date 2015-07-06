@@ -1,4 +1,5 @@
 #pragma once
+#include "tano_math.hpp"
 
 namespace tano
 {
@@ -7,23 +8,24 @@ namespace tano
   class Blackboard
   {
   public:
-#define ADD_VAR(type, name, storage)                          \
-  void Add ## name ## Var(const string& name, type value)     \
-  {                                                           \
-    storage[name] = value;                                    \
-  }                                                           \
-  type Get ## name ## Var(const string& name)                 \
-  {                                                           \
-    auto it = storage.find(name);                             \
-    assert(it != storage.end());                              \
-    return it->second;                                        \
-    }
 
-    ADD_VAR(float, Float, _floatVars);
-    ADD_VAR(int, Int, _intVars);
-    ADD_VAR(Vector2, Vec2, _vec2Vars);
-    ADD_VAR(Vector3, Vec3, _vec3Vars);
-    ADD_VAR(Vector4, Vec4, _vec4Vars);
+    void SetNamespace(const string& ns);
+    void ClearNamespace();
+
+    void AddIntVar(const string& name, int value);
+    void AddFloatVar(const string& name, float value);
+    void AddVec2Var(const string& name, const V2& value);
+    void AddVec3Var(const string& name, const V3& value);
+    void AddVec4Var(const string& name, const V4& value);
+
+    int GetIntVar(const string& name);
+    float GetFloatVar(const string& name);
+    V2 GetVec2Var(const string& name);
+    V3 GetVec3Var(const string& name);
+    V4 GetVec4Var(const string& name);
+
+    template<typename T>
+    T GetVar(const string& name, unordered_map<string, T>& vars);
 
     static bool Create(const char* filename);
     static void Destory();
@@ -32,16 +34,18 @@ namespace tano
 
   private:
     bool Init(const char* filename);
-    bool ParseBlackboard(InputBuffer& buf);
+    bool ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack);
     void Reset();
 
     static Blackboard* _instance;
 
-    unordered_map<string, float> _floatVars;
+    string _curNamespace;
+
     unordered_map<string, int> _intVars;
-    unordered_map<string, Vector2> _vec2Vars;
-    unordered_map<string, Vector3> _vec3Vars;
-    unordered_map<string, Vector4> _vec4Vars;
+    unordered_map<string, float> _floatVars;
+    unordered_map<string, V2> _vec2Vars;
+    unordered_map<string, V3> _vec3Vars;
+    unordered_map<string, V4> _vec4Vars;
   };
 
 #define BLACKBOARD Blackboard::Instance()

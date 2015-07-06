@@ -10,7 +10,7 @@ namespace tano
       BaseObject(const string& name, u32 id, u32 parentId) : name(name), id(id), parentId(parentId) {}
       Matrix mtxLocal = Matrix::Identity();
       Matrix mtxGlobal = Matrix::Identity();
-      BaseObject* parentPtr;
+      BaseObject* parentPtr = nullptr;
       string name;
       u32 id;
       u32 parentId;
