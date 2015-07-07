@@ -19,15 +19,48 @@ static DirectX::SimpleMath::Vector3 Cross(const DirectX::SimpleMath::Vector3& a,
 namespace tano
 {
   //------------------------------------------------------------------------------
+  void InitMatrix4x3(const float* m, Matrix* mtx)
+  {
+    *mtx = Matrix(
+      *(m + 0), *(m + 1),   *(m + 2),   0,
+      *(m + 3), *(m + 4),   *(m + 5),   0,
+      *(m + 6), *(m + 7),   *(m + 8),   0,
+      *(m + 9), *(m + 10),  *(m + 11),  1);
+  }
+
+  //------------------------------------------------------------------------------
   bool CreateScene(const MeshLoader& loader, bool createShaders, scene::Scene* scene)
   {
     BEGIN_INIT_SEQUENCE();
 
-     u32 numObjects = (u32)(loader.meshes.size() + loader.nullObjects.size() + loader.cameras.size() + loader.lights.size() + 1);
-     scene->baseObjects.resize(numObjects, nullptr);
+    u32 numObjects = (u32)(loader.meshes.size() + loader.nullObjects.size() + loader.cameras.size() + loader.lights.size() + 1);
+    scene->baseObjects.resize(numObjects, nullptr);
 
-    for (const protocol::MeshBlob* meshBlob : loader.meshes)
+    struct VtxInfo
     {
+      u32 vertexStart;
+      u32 indexStart;
+    };
+
+    // vertex info per vertex format
+    unordered_map<u32, vector<VtxInfo>> vtxInfo;
+    vtxInfo[MeshLoader::GetVertexFormat(*loader.meshes[0])].push_back(VtxInfo{0,0});
+
+    int totalVerts = 0;
+    int totalIndices = 0;
+    for (size_t i = 1; i < loader.meshes.size(); ++i)
+    {
+      const protocol::MeshBlob* meshBlob = loader.meshes[i];
+      const VtxInfo& prev = vtxInfo.back();
+      vtxInfo.push_back(VtxInfo{prev.vertexStart + meshBlob->numVerts, prev.indexStart + meshBlob->numIndices});
+      totalVerts += meshBlob->numVerts;
+      totalIndices += meshBlob->numIndices;
+    }
+
+    for (size_t m = 0; m < loader.meshes.size(); ++m)
+    {
+      const protocol::MeshBlob* meshBlob = loader.meshes[m];
+
       // mesh found, allocate the vertex/index buffer
       scene->meshes.push_back(new scene::Mesh(meshBlob->name, meshBlob->id, meshBlob->parentId));
       scene->baseObjects[meshBlob->id] = scene->meshes.back();
@@ -36,17 +69,8 @@ namespace tano
       u32 vertexFormat = MeshLoader::GetVertexFormat(*meshBlob);
       u32 vertexSize = VertexSizeFromFlags(vertexFormat);
       mesh->vertexFormat = vertexFormat;
-      mesh->mtxLocal = {
-        meshBlob->mtxLocal[0],   meshBlob->mtxLocal[1],   meshBlob->mtxLocal[2],   0,
-        meshBlob->mtxLocal[3],   meshBlob->mtxLocal[4],   meshBlob->mtxLocal[5],   0,
-        meshBlob->mtxLocal[6],   meshBlob->mtxLocal[7],   meshBlob->mtxLocal[8],   0,
-        meshBlob->mtxLocal[9],   meshBlob->mtxLocal[10],  meshBlob->mtxLocal[11],  1 };
-
-      mesh->mtxGlobal = {
-        meshBlob->mtxGlobal[0], meshBlob->mtxGlobal[1], meshBlob->mtxGlobal[2], 0,
-        meshBlob->mtxGlobal[3], meshBlob->mtxGlobal[4], meshBlob->mtxGlobal[5], 0,
-        meshBlob->mtxGlobal[6], meshBlob->mtxGlobal[7], meshBlob->mtxGlobal[8], 0,
-        meshBlob->mtxGlobal[9], meshBlob->mtxGlobal[10], meshBlob->mtxGlobal[11], 1 };
+      InitMatrix4x3(meshBlob->mtxLocal, &mesh->mtxLocal);
+      InitMatrix4x3(meshBlob->mtxGlobal, &mesh->mtxGlobal);
 
       // create a temp array to interleave the vertex data
       u32 numVerts = meshBlob->numVerts;
@@ -128,17 +152,8 @@ namespace tano
       cam->nearPlane = cameraBlob->nearPlane;
       cam->farPlane = cameraBlob->farPlane;
 
-      cam->mtxLocal = {
-        cameraBlob->mtxLocal[0], cameraBlob->mtxLocal[1], cameraBlob->mtxLocal[2], 0,
-        cameraBlob->mtxLocal[3], cameraBlob->mtxLocal[4], cameraBlob->mtxLocal[5], 0,
-        cameraBlob->mtxLocal[6], cameraBlob->mtxLocal[7], cameraBlob->mtxLocal[8], 0,
-        cameraBlob->mtxLocal[9], cameraBlob->mtxLocal[10], cameraBlob->mtxLocal[11], 1 };
-
-      cam->mtxGlobal = {
-        cameraBlob->mtxGlobal[0], cameraBlob->mtxGlobal[1], cameraBlob->mtxGlobal[2], 0,
-        cameraBlob->mtxGlobal[3], cameraBlob->mtxGlobal[4], cameraBlob->mtxGlobal[5], 0,
-        cameraBlob->mtxGlobal[6], cameraBlob->mtxGlobal[7], cameraBlob->mtxGlobal[8], 0,
-        cameraBlob->mtxGlobal[9], cameraBlob->mtxGlobal[10], cameraBlob->mtxGlobal[11], 1 };
+      InitMatrix4x3(cameraBlob->mtxLocal, &cam->mtxLocal);
+      InitMatrix4x3(cameraBlob->mtxGlobal, &cam->mtxGlobal);
     }
 
     for (const protocol::NullObjectBlob* nullBlob : loader.nullObjects)
@@ -147,18 +162,8 @@ namespace tano
       scene->baseObjects[nullBlob->id] = scene->nullObjects.back();
 
       scene::NullObject* obj = scene->nullObjects.back();
-
-      obj->mtxLocal = {
-        nullBlob->mtxLocal[0], nullBlob->mtxLocal[1], nullBlob->mtxLocal[2], 0,
-        nullBlob->mtxLocal[3], nullBlob->mtxLocal[4], nullBlob->mtxLocal[5], 0,
-        nullBlob->mtxLocal[6], nullBlob->mtxLocal[7], nullBlob->mtxLocal[8], 0,
-        nullBlob->mtxLocal[9], nullBlob->mtxLocal[10], nullBlob->mtxLocal[11], 1 };
-
-      obj->mtxGlobal = {
-        nullBlob->mtxGlobal[0], nullBlob->mtxGlobal[1], nullBlob->mtxGlobal[2], 0,
-        nullBlob->mtxGlobal[3], nullBlob->mtxGlobal[4], nullBlob->mtxGlobal[5], 0,
-        nullBlob->mtxGlobal[6], nullBlob->mtxGlobal[7], nullBlob->mtxGlobal[8], 0,
-        nullBlob->mtxGlobal[9], nullBlob->mtxGlobal[10], nullBlob->mtxGlobal[11], 1 };
+      InitMatrix4x3(nullBlob->mtxLocal, &obj->mtxLocal);
+      InitMatrix4x3(nullBlob->mtxGlobal, &obj->mtxGlobal);
     }
 
     END_INIT_SEQUENCE();

@@ -5,22 +5,29 @@ import subprocess
 import collections
 import platform
 import pickle
+import socket
 
 SETTINGS = { 
 	# Darwin is broken for now
 	'Darwin': { 'dir': '/Users/dooz/OneDrive/gfx', 'conv': None },
-	'Windows': { 
+	'mothership': { 
+		'input_dir': 'd:/onedrive/tano/c4d', 
+		# 'input_dir': 'c:/box sync/tano/c4d', 
+		'output_dir': 'c:/projects/tano/gfx',
+		'conv': 'c:/projects/melange_exporter/_win32/x64/Release/exporter.exe'
+	},
+	'doozblade': { 
 		'input_dir': 'c:/onedrive/tano/c4d', 
 		# 'input_dir': 'c:/box sync/tano/c4d', 
 		'output_dir': 'c:/projects/tano/gfx',
 		'conv': 'c:/projects/melange_exporter/_win32/x64/Release/exporter.exe'
-	}
+	},
 }
 
-system = platform.system()
-settings = SETTINGS.get(system, None)
+host = socket.gethostname()
+settings = SETTINGS.get(host, None)
 if dir is None:
-	print 'Unknown system: %s' % system
+	print 'Unknown system: %s' % host
 	exit(1)
 
 input_dir, output_dir = settings.get('input_dir', None), settings.get('output_dir', None)

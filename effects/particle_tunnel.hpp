@@ -122,6 +122,12 @@ namespace tano
     };
     ConstantBuffer<CBufferBasic> _cbBasic;
 
+    struct CBufferPerObject
+    {
+      Matrix world;
+    };
+    ConstantBuffer<CBufferPerObject> _cbPerObject;
+
     struct CBufferFracture
     {
       Matrix world;

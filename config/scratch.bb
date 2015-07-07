@@ -1,6 +1,6 @@
 namespace intro
 {
-    float explodeTime = 1.0;
+    float explodeTime = 22.0;
     float moveSpeed = 15.0;
     float rotSpeed = 3.0;
 

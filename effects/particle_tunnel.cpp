@@ -450,7 +450,6 @@ bool ParticleTunnel::Init(const char* configFile)
 
   // Generic setup
   INIT(_cbPerFrame.Create());
-  //UpdateCameraMatrix();
   _cbPerFrame.tint = _settings.tint;
   _cbPerFrame.inner = _settings.inner_color;
   _cbPerFrame.outer = _settings.outer_color;
@@ -461,6 +460,7 @@ bool ParticleTunnel::Init(const char* configFile)
   _cbPerFrame.dim.y = (float)h;
   INIT(_cbBasic.Create());
   INIT(_cbFracture.Create());
+  INIT(_cbPerObject.Create());
 
   MeshLoader meshLoader;
   INIT(meshLoader.Load("gfx/shatter_plane1.boba"));
@@ -762,6 +762,8 @@ bool ParticleTunnel::Render()
   float moveSpeed = BLACKBOARD.GetFloatVar("intro.moveSpeed");
   float rotSpeed = BLACKBOARD.GetFloatVar("intro.rotSpeed");
 
+  _ctx->SetConstantBuffer(_cbFracture, ShaderType::VertexShader, 0);
+
   for (FracturePiece& p : _pieces)
   {
     scene::Mesh* mesh = p.mesh;
@@ -772,8 +774,9 @@ bool ParticleTunnel::Render()
     Matrix mtxRotY = Matrix::CreateRotationX(explodeFactor * rotSpeed * p.rot.y);
     Matrix mtxRotZ = Matrix::CreateRotationX(explodeFactor * rotSpeed * p.rot.z);
 
-    _cbFracture.world = (mtxRotX * mtxRotY * mtxRotZ * mtx * mtxScale * mtxDir).Transpose();
-    _ctx->SetConstantBuffer(_cbFracture, cbFlags, 0);
+    _cbPerObject.world = (mtxRotX * mtxRotY * mtxRotZ * mtx * mtxScale * mtxDir).Transpose();
+    _ctx->SetConstantBuffer(_cbPerObject, ShaderType::VertexShader, 2);
+
     _ctx->SetVertexBuffer(mesh->gpuObjects._vb);
     _ctx->SetIndexBuffer(mesh->gpuObjects._ib);
     _ctx->DrawIndexed(mesh->gpuObjects._numIndices, 0, 0);

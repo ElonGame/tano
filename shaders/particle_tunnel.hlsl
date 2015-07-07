@@ -17,6 +17,11 @@ cbuffer PerFrame : register(b0)
   float3 cameraPos;
 };
 
+cbuffer PerObject : register(b2)
+{
+  matrix objWorld;
+};
+
 //------------------------------------------------------
 struct PsParticlesOut
 {
@@ -172,7 +177,7 @@ VsFractureOut VsFracture(VsFractureIn v)
 {
   VsFractureOut res;
 
-  matrix worldViewProj = mul(world, viewProj);
+  matrix worldViewProj = mul(objWorld, viewProj);
   res.pos = mul(float4(v.pos, 1), worldViewProj);
   res.uv = v.uv;
   return res;

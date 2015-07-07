@@ -27,8 +27,16 @@ namespace tano
         u32 indexCount;
       };
 
+      struct IndexData
+      {
+        u32 indexCount = 0;
+        u32 startIndexLocation = 0;
+        u32 baseVertexLocation = 0;
+      };
+
       GpuObjects gpuObjects;
       u32 vertexFormat;
+      IndexData indexData;
       vector<MaterialGroup> materialGroups;
     };
 
