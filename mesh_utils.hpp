@@ -18,4 +18,5 @@ namespace tano
     const Vector3& scale, 
     u32* vertexFlags, 
     GpuObjects* objects);
+
 }

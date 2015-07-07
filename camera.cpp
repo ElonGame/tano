@@ -145,6 +145,7 @@ void FreeFlyCamera::Update(const UpdateState& updateState)
 
   _target = _pos + _dir;
   _view = Matrix::CreateLookAt(_pos, _target, _up);
+  _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
 }
 
 //------------------------------------------------------------------------------

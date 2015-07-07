@@ -164,11 +164,21 @@ namespace tano
 
     AnimatedFloat _beatTrack;
 
+    struct FracturePiece
+    {
+      scene::Mesh* mesh;
+      V3 dir;
+      V3 rot;
+    };
+
+    vector<FracturePiece> _pieces;
+
     SimpleAppendBuffer<V3, 1024> _randomPoints;
     GpuBundle _plexusLineBundle;
 
     bool _drawText = false;
     float _lineFade = 1.0f;
+    float _curTime = 0;
 
     scene::Scene _scene;
     GpuBundle _fractureBundle;

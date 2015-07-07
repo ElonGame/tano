@@ -77,6 +77,7 @@ namespace tano
     float x, y, z;
   };
 
+  inline float Dot(const V3& a, const V3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
   float Distance(const V3& a, const V3& b);
   float DistanceSquared(const V3& a, const V3& b);
   float Length(const V3& a);
@@ -286,4 +287,7 @@ namespace tano
     return Vector4(v.x, v.y, v.z, x);
   }
 
+  //------------------------------------------------------------------------------
+  V3 PointOnHemisphere(const V3& axis);
+  V3 RandomVector(float scaleX = 1, float scaleY = 1, float scaleZ = 1);
 }

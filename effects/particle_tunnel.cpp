@@ -466,6 +466,15 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(meshLoader.Load("gfx/shatter_plane1.boba"));
   CreateScene(meshLoader, false, &_scene);
 
+  for (scene::Mesh* mesh : _scene.meshes)
+  {
+    FracturePiece p;
+    p.mesh = mesh;
+    p.dir = PointOnHemisphere(V3(0,0,-1));
+    p.rot = RandomVector();
+    _pieces.push_back(p);
+  }
+
   INIT(_fractureBundle.Create(BundleOptions()
     .RasterizerDesc(rasterizeDescCullNone)
     .VertexShader("shaders/out/particle_tunnel", "VsFracture")
@@ -485,8 +494,11 @@ void ParticleTunnel::UpdateCameraMatrix(const UpdateState& state)
   Vector3 dir = target - pos;
   dir.Normalize();
 
+  int w, h;
+  GRAPHICS.GetBackBufferSize(&w, &h);
+  float aspect = (float)w / h;
   Matrix view = Matrix::CreateLookAt(pos, Vector3(0, 0, 0), Vector3(0, 1, 0));
-  Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), 16/10.f, 0.1f, 3000.f);
+  Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), aspect, 0.1f, 3000.f);
   Matrix viewProj = view * proj;
 
   _cbPerFrame.world = Matrix::Identity();
@@ -503,11 +515,16 @@ void ParticleTunnel::UpdateCameraMatrix(const UpdateState& state)
   _cbBasic.viewProj = viewProj.Transpose();
   _cbBasic.cameraPos = _cbPerFrame.camPos;
 
+  float zz = -100;
+  _fixedCamera._pos.z = zz;
+  // tan fov = w / h
+  _fixedCamera._fov = atan(100.f / fabsf(zz));
+  _fixedCamera._target = Vector3(0,0,0);
   _fixedCamera.Update(state);
   view = _fixedCamera._view;
   proj = _fixedCamera._proj;
   viewProj = view * proj;
-  _cbFracture.world = Matrix::Identity();
+  _cbFracture.world = Matrix::CreateScale(aspect, 1, 1);
   _cbFracture.view = view.Transpose();
   _cbFracture.proj = proj.Transpose();
   _cbFracture.viewProj = viewProj.Transpose();
@@ -532,6 +549,8 @@ void ParticleTunnel::UpdateEmitter(const TaskData& data)
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
+  _curTime = state.localTime.TotalMilliseconds() / 1000.f;
+
   auto fnCalcFade = [](float ms, const char* s, const char* e, bool invert)
   {
     float ss = BLACKBOARD.GetFloatVar(s);
@@ -688,7 +707,6 @@ bool ParticleTunnel::Render()
 
   if (_drawText && _curText)
   {
-
     RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
     _cbBasic.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
     V3 params = BLACKBOARD.GetVec3Var("intro.lineParams");
@@ -734,25 +752,32 @@ bool ParticleTunnel::Render()
   _ctx->SetRenderTarget(GRAPHICS.GetBackBuffer(), GRAPHICS.GetDepthStencil(), &black);
 
   _ctx->SetBundle(_fractureBundle);
-  int jj = 0;
-  static float hax = 0;
-  hax++;
 
-  for (scene::Mesh* mesh : _scene.meshes)
+  int w, h;
+  GRAPHICS.GetBackBufferSize(&w, &h);
+  float aspect = (float)w / h;
+  Matrix mtxScale = Matrix::CreateScale(aspect, 1, 1);
+
+  float explodeFactor = max(0.f, _curTime - BLACKBOARD.GetFloatVar("intro.explodeTime"));
+  float moveSpeed = BLACKBOARD.GetFloatVar("intro.moveSpeed");
+  float rotSpeed = BLACKBOARD.GetFloatVar("intro.rotSpeed");
+
+  for (FracturePiece& p : _pieces)
   {
-    jj++;
+    scene::Mesh* mesh = p.mesh;
     Matrix mtx = mesh->mtxGlobal;
-    //Matrix mtxTrans = Matrix::CreateTranslation(0, 0, 10 * sin(0.1f * (hax + jj)));
-    //_cbFracture.world = (mtxTrans * mtx).Transpose();
-    _cbFracture.world = mtx.Transpose();
 
+    Matrix mtxDir = Matrix::CreateTranslation(explodeFactor * moveSpeed * ToVector3(p.dir));
+    Matrix mtxRotX = Matrix::CreateRotationX(explodeFactor * rotSpeed * p.rot.x);
+    Matrix mtxRotY = Matrix::CreateRotationX(explodeFactor * rotSpeed * p.rot.y);
+    Matrix mtxRotZ = Matrix::CreateRotationX(explodeFactor * rotSpeed * p.rot.z);
+
+    _cbFracture.world = (mtxRotX * mtxRotY * mtxRotZ * mtx * mtxScale * mtxDir).Transpose();
     _ctx->SetConstantBuffer(_cbFracture, cbFlags, 0);
     _ctx->SetVertexBuffer(mesh->gpuObjects._vb);
     _ctx->SetIndexBuffer(mesh->gpuObjects._ib);
     _ctx->DrawIndexed(mesh->gpuObjects._numIndices, 0, 0);
   }
-
-
 
   return true;
 }

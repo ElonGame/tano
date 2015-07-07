@@ -1,5 +1,7 @@
 #include "tano_math.hpp"
 
+using namespace bristol;
+
 namespace tano
 {
   //------------------------------------------------------------------------------
@@ -51,5 +53,28 @@ namespace tano
     return x < c ? ToneMapToe(k) : ToneMapShoulder(k);
   }
 
+  //------------------------------------------------------------------------------
+  V3 PointOnHemisphere(const V3& axis)
+  {
+    V3 tmp(randf(-1.f, +1.f), randf(-1.f, +1.f), randf(-1.f, +1.f));
+    tmp = Normalize(tmp);
+    if (Dot(axis, tmp) < 0)
+      tmp = -1.f * tmp;
+
+    return tmp;
+  }
+
+
+  //------------------------------------------------------------------------------
+  V3 RandomVector(float scaleX, float scaleY, float scaleZ)
+  {
+    return V3(
+      scaleX * randf(-1.f, +1.f),
+      scaleY * randf(-1.f, +1.f),
+      scaleZ * randf(-1.f, +1.f));
+  }
+
 }
+
+
 
