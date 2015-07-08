@@ -68,6 +68,11 @@ struct PsLinesOut
 struct VsParticleIn
 {
   float4 pos : Position;
+};
+
+struct GsParticleIn
+{
+  float4 pos : Position;
   float4 data : TexCoord0;
 };
 
@@ -86,13 +91,17 @@ static float2 uvsVtx[4] =
   float2(0, 1), float2(0, 0), float2(1, 1), float2(1, 0)
 };
 
-VsParticleIn VsParticle(VsParticleIn v)
+GsParticleIn VsParticle(VsParticleIn v)
 {
-  return v;
+  GsParticleIn res;
+  res.pos = v.pos; 
+  res.data.x = v.pos.w;
+  res.pos.w = 1;
+  return res;
 }
 
 [maxvertexcount(4)]
-void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
+void GsParticle(point GsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
 {
   // Note, the DirectX strip order differs from my usual order. It might be
   // a good idea to change my stuff..

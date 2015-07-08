@@ -8,6 +8,30 @@ using namespace bristol;
 
 extern "C" float stb_perlin_noise3(float x, float y, float z, int x_wrap=0, int y_wrap=0, int z_wrap=0);
 
+namespace
+{
+  // vertex info per vertex format
+  struct BufferInfo
+  {
+    BufferInfo() : vertexCount(0), indexCount(0) {}
+    int vertexCount;
+    int indexCount;
+
+    vector<float> verts;
+    vector<u32> indices;
+
+    struct VtxInfo
+    {
+      scene::Mesh* mesh;
+      u32 vertexStart;
+      u32 indexStart;
+    };
+
+    vector<VtxInfo> vtxInfo;
+  };
+}
+
+
 static DirectX::SimpleMath::Vector3 Cross(const DirectX::SimpleMath::Vector3& a, const DirectX::SimpleMath::Vector3& b)
 {
   return DirectX::SimpleMath::Vector3(
@@ -29,60 +53,72 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  bool CreateScene(const MeshLoader& loader, bool createShaders, scene::Scene* scene)
+  bool CreateScene(const MeshLoader& loader, bool createShaders, u32 userDataSize, scene::Scene* scene)
   {
     BEGIN_INIT_SEQUENCE();
 
     u32 numObjects = (u32)(loader.meshes.size() + loader.nullObjects.size() + loader.cameras.size() + loader.lights.size() + 1);
     scene->baseObjects.resize(numObjects, nullptr);
 
-    struct VtxInfo
-    {
-      u32 vertexStart;
-      u32 indexStart;
-    };
+    if (userDataSize > 0)
+      scene->userData = new u8[loader.meshes.size() * userDataSize];
 
     // vertex info per vertex format
-    unordered_map<u32, vector<VtxInfo>> vtxInfo;
-    vtxInfo[MeshLoader::GetVertexFormat(*loader.meshes[0])].push_back(VtxInfo{0,0});
+    unordered_map<u32, BufferInfo> bufferInfo;
 
-    int totalVerts = 0;
-    int totalIndices = 0;
-    for (size_t i = 1; i < loader.meshes.size(); ++i)
+    for (size_t i = 0; i < loader.meshes.size(); ++i)
     {
       const protocol::MeshBlob* meshBlob = loader.meshes[i];
-      const VtxInfo& prev = vtxInfo.back();
-      vtxInfo.push_back(VtxInfo{prev.vertexStart + meshBlob->numVerts, prev.indexStart + meshBlob->numIndices});
-      totalVerts += meshBlob->numVerts;
-      totalIndices += meshBlob->numIndices;
+      u32 fmt = MeshLoader::GetVertexFormat(*meshBlob);
+      BufferInfo& info = bufferInfo[fmt];
+      info.indexCount += meshBlob->numIndices;
+      info.vertexCount += meshBlob->numVerts;
     }
 
     for (size_t m = 0; m < loader.meshes.size(); ++m)
     {
       const protocol::MeshBlob* meshBlob = loader.meshes[m];
+      scene::Mesh* mesh = new scene::Mesh(meshBlob->name, meshBlob->id, meshBlob->parentId);
+      if (userDataSize)
+        mesh->userData = &scene->userData[m*userDataSize];
 
-      // mesh found, allocate the vertex/index buffer
-      scene->meshes.push_back(new scene::Mesh(meshBlob->name, meshBlob->id, meshBlob->parentId));
-      scene->baseObjects[meshBlob->id] = scene->meshes.back();
-
-      scene::Mesh* mesh = scene->meshes.back();
       u32 vertexFormat = MeshLoader::GetVertexFormat(*meshBlob);
       u32 vertexSize = VertexSizeFromFlags(vertexFormat);
+      u32 floatsPerElem = vertexSize / sizeof(float);
+      BufferInfo& info = bufferInfo[vertexFormat];
+
+      vector<BufferInfo::VtxInfo>& vtxInfo = info.vtxInfo;
+      u32 prevFloatCount = (u32)info.verts.size();
+      u32 prevVertexCount = prevFloatCount / floatsPerElem;
+      u32 prevIndexCount = (u32)info.indices.size();
+
+      vtxInfo.push_back(BufferInfo::VtxInfo{
+        mesh,
+        prevVertexCount,
+        prevIndexCount });
+
+      scene->meshes.push_back(mesh);
+      scene->baseObjects[meshBlob->id] = mesh;
+
       mesh->vertexFormat = vertexFormat;
       InitMatrix4x3(meshBlob->mtxLocal, &mesh->mtxLocal);
       InitMatrix4x3(meshBlob->mtxGlobal, &mesh->mtxGlobal);
 
-      // create a temp array to interleave the vertex data
       u32 numVerts = meshBlob->numVerts;
-      vector<float> buf(vertexSize * numVerts);
-      float* dst = buf.data();
+      u32 numIndices = meshBlob->numIndices;
+      info.verts.resize(prevFloatCount + floatsPerElem * numVerts);
+      info.indices.resize(prevIndexCount + numIndices); 
+      float* verts = &info.verts[prevFloatCount];
+      u32* indices = &info.indices[prevIndexCount];
+
+      // De-interleave the vertex data into a single array
       for (u32 i = 0; i < numVerts; ++i)
       {
-        const auto& fnCopy = [&dst, i, meshBlob](float* src, int n)
+        const auto& fnCopy = [&verts, i, meshBlob](float* src, int n)
         {
           for (int j = 0; j < n; ++j)
-            dst[j] = *(src + i*n + j);
-          dst += n;
+            verts[j] = *(src + i*n + j);
+          verts += n;
         };
 
         fnCopy(meshBlob->verts, 3);
@@ -94,20 +130,47 @@ namespace tano
           fnCopy(meshBlob->uv, 2);
       }
 
+      copy(meshBlob->indices, meshBlob->indices + meshBlob->numIndices, indices);
+
+      // TODO: these are ignored for now..
       for (u32 i = 0; i < meshBlob->numMaterialGroups; ++i)
       {
         protocol::MeshBlob::MaterialGroup* mg = &meshBlob->materialGroups[i];
         mesh->materialGroups.push_back({ mg->materialId, mg->startIndex, mg->numIndices });
+        mesh->indexCount += mg->numIndices;
       }
 
       if (createShaders)
       {
-        INIT(mesh->gpuObjects.LoadVertexShader("shaders/out/blob", "VsMesh", vertexFormat));
-        INIT(mesh->gpuObjects.LoadPixelShader("shaders/out/blob", "PsMesh"));
+        assert(false);
+        //INIT(mesh->gpuObjects.LoadVertexShader("shaders/out/blob", "VsMesh", vertexFormat));
+        //INIT(mesh->gpuObjects.LoadPixelShader("shaders/out/blob", "PsMesh"));
       }
+    }
 
-      INIT(mesh->gpuObjects.CreateVertexBuffer(meshBlob->numVerts * vertexSize, vertexSize, buf.data()));
-      INIT(mesh->gpuObjects.CreateIndexBuffer(meshBlob->numIndices * sizeof(u32), DXGI_FORMAT_R32_UINT, meshBlob->indices));
+    // Create the mesh buffers
+    for (const auto& kv : bufferInfo)
+    {
+      u32 fmt = kv.first;
+      const BufferInfo& info = kv.second;
+
+      u32 vertexSize = VertexSizeFromFlags(fmt);
+
+      scene::MeshBuffer* buf = new scene::MeshBuffer();
+      scene->meshBuffers.push_back(buf);
+      ObjectHandle vb = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, info.vertexCount * vertexSize, false, info.verts.data(), vertexSize);
+      ObjectHandle ib = GRAPHICS.CreateBuffer(D3D11_BIND_INDEX_BUFFER, info.indexCount * sizeof(u32), false, info.indices.data(), DXGI_FORMAT_R32_UINT);
+
+      buf->vb = vb;
+      buf->ib = ib;
+      for (const BufferInfo::VtxInfo& vtxInfo : info.vtxInfo)
+      {
+        buf->meshes.push_back(vtxInfo.mesh);
+        vtxInfo.mesh->vb = vb;
+        vtxInfo.mesh->ib = ib;
+        vtxInfo.mesh->startIndexLocation = vtxInfo.indexStart;
+        vtxInfo.mesh->baseVertexLocation = vtxInfo.vertexStart;
+      }
     }
 
     for (const protocol::MaterialBlob* materialBlob : loader.materials)

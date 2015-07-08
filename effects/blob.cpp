@@ -35,6 +35,7 @@ Blob::~Blob()
 //------------------------------------------------------------------------------
 bool Blob::Init(const char* configFile)
 {
+  return true;
   BEGIN_INIT_SEQUENCE();
 
   _configName = configFile;
@@ -50,7 +51,7 @@ bool Blob::Init(const char* configFile)
   // load the blob mesh
   MeshLoader loader;
   INIT(loader.Load("gfx/crystals_flat.boba"));
-  INIT(CreateScene(loader, true, &_scene));
+  //INIT(CreateScene(loader, true, &_scene));
 //   u32 blobVertexFlags = 0;
 //   INIT(CreateBuffersFromMesh(loader, nullptr, &blobVertexFlags, &_blobGpuObjects));
    //INIT(_blobGpuObjects.LoadShadersFromFile("shaders/out/blob", "VsMesh", nullptr, "PsMesh", _scene.meshes[0].vertexFormat));
@@ -221,24 +222,25 @@ bool Blob::Render()
 
   _ctx->SetGpuState(_blobState);
 
-  for (const scene::Mesh* mesh : _scene.meshes)
-  {
-    Matrix mtx = mesh->mtxGlobal;
-      
-    _cbPerFrame.world = mtx.Transpose();
-    _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
+  // NOTE(magnus): broken for now..
+  //for (const scene::Mesh* mesh : _scene.meshes)
+  //{
+  //  Matrix mtx = mesh->mtxGlobal;
+  //    
+  //  _cbPerFrame.world = mtx.Transpose();
+  //  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::VertexShader, 0);
 
-    _ctx->SetGpuObjects(mesh->gpuObjects);
-    for (const scene::Mesh::MaterialGroup& mg : mesh->materialGroups)
-    {
-      const scene::Material* mat = _scene.materials[mg.materialId];
+  //  _ctx->SetGpuObjects(mesh->gpuObjects);
+  //  for (const scene::Mesh::MaterialGroup& mg : mesh->materialGroups)
+  //  {
+  //    const scene::Material* mat = _scene.materials[mg.materialId];
 
-      _cbPerFrame.diffuse = mat->color.color;
-      _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
+  //    _cbPerFrame.diffuse = mat->color.color;
+  //    _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
-      _ctx->DrawIndexed(mg.indexCount, mg.startIndex, 0);
-    }
-  }
+  //    _ctx->DrawIndexed(mg.indexCount, mg.startIndex, 0);
+  //  }
+  //}
 
 
 

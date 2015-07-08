@@ -27,17 +27,22 @@ namespace tano
         u32 indexCount;
       };
 
-      struct IndexData
-      {
-        u32 indexCount = 0;
-        u32 startIndexLocation = 0;
-        u32 baseVertexLocation = 0;
-      };
+      void* userData = nullptr;
+      ObjectHandle vb;
+      ObjectHandle ib;
 
-      GpuObjects gpuObjects;
       u32 vertexFormat;
-      IndexData indexData;
+      u32 startIndexLocation = 0;
+      u32 baseVertexLocation = 0;
+      u32 indexCount = 0;
       vector<MaterialGroup> materialGroups;
+    };
+
+    struct MeshBuffer
+    {
+      ObjectHandle vb;
+      ObjectHandle ib;
+      vector<Mesh*> meshes;
     };
 
     struct Camera : BaseObject
@@ -83,9 +88,11 @@ namespace tano
       ~Scene();
       vector<BaseObject*> baseObjects;
       vector<Mesh*> meshes;
+      vector<MeshBuffer*> meshBuffers;
       vector<Camera*> cameras;
       vector<NullObject*> nullObjects;
       unordered_map<u32, Material*> materials;
+      u8* userData = nullptr;
     };
   }
 }

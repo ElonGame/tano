@@ -46,7 +46,6 @@ namespace tano
     struct ParticleType
     {
       V4 pos;
-      V4 data;
     };
 
     struct ParticleEmitter
@@ -57,23 +56,8 @@ namespace tano
       void CreateParticle(int idx, float s);
       void CopyToBuffer(ParticleType* vtx);
 
-      // TODO: test speed diff if these are double buffered, to avoid LHS
-      // NOTE: this is just trams.. let's make these guys XMVECTORs first
-      float* x = nullptr;
-      float* y = nullptr;
-      float* z = nullptr;
-      float* vx = nullptr;
-      float* vy = nullptr;
-      float* vz = nullptr;
-
-      float* scale = nullptr;
-
-      struct Lifetime
-      {
-        int total;
-        int left;
-      };
-      Lifetime* _lifetime = nullptr;
+      XMVECTOR* pos = nullptr;
+      XMVECTOR* vel = nullptr;
 
       int* _deadParticles = nullptr;
 
@@ -172,7 +156,7 @@ namespace tano
 
     struct FracturePiece
     {
-      scene::Mesh* mesh;
+      //scene::Mesh* mesh;
       V3 dir;
       V3 rot;
     };

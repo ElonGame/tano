@@ -9,6 +9,8 @@ Scene::~Scene()
   SeqDelete(&meshes);
   SeqDelete(&cameras);
   SeqDelete(&nullObjects);
+  SeqDelete(&meshBuffers);
 
+  SAFE_ADELETE(userData);
   AssocDelete(&materials);
 }

@@ -213,16 +213,8 @@ void ParticleTunnel::ParticleEmitter::Create(const V3& center, int numParticles)
 {
   _center = center;
   _numParticles = numParticles;
-  x = new float[_numParticles];
-  y = new float[_numParticles];
-  z = new float[_numParticles];
-
-  vx = new float[_numParticles];
-  vy = new float[_numParticles];
-  vz = new float[_numParticles];
-
-  _lifetime = new Lifetime[_numParticles];
-  scale = new float[_numParticles];
+  pos = new XMVECTOR[_numParticles];
+  vel = new XMVECTOR[_numParticles];
   _deadParticles = new int[_numParticles];
 
   float s = 100;
@@ -240,65 +232,61 @@ void ParticleTunnel::ParticleEmitter::Create(const V3& center, int numParticles)
 //------------------------------------------------------------------------------
 void ParticleTunnel::ParticleEmitter::CreateParticle(int idx, float s)
 {
-  x[idx] = _center.x + randf(-s, s);
-  y[idx] = _center.y + randf(-s, s);
-  z[idx] = _center.z + randf(1500.f, 2000.f);
+  // lifetime and lifetime decay is stored in the w-component
+  XMFLOAT4 p(
+    _center.x + randf(-s, s),
+    _center.y + randf(-s, s),
+    _center.z + randf(1500.f, 2000.f),
+    0.f);
 
-  vx[idx] = randf(-s, s);
-  vy[idx] = randf(-s, s);
-  vz[idx] = -randf(10.f, 200.f);
+  XMFLOAT4 v(
+    randf(-s, s),
+    randf(-s, s),
+    -randf(10.f, 200.f),
+    0);
 
-  int ll = randf(2000, 3000);
-  _lifetime[idx].left = ll;
-  _lifetime[idx].total = ll;
-  scale[idx] = randf(1.f, 5.f);
+  pos[idx] = XMLoadFloat4(&p);
+  vel[idx] = XMLoadFloat4(&v);
 }
 
 //------------------------------------------------------------------------------
 void ParticleTunnel::ParticleEmitter::Destroy()
 {
-  SAFE_ADELETE(x);  SAFE_ADELETE(y);  SAFE_ADELETE(z);
-  SAFE_ADELETE(vx); SAFE_ADELETE(vy); SAFE_ADELETE(vz);
-  SAFE_ADELETE(_lifetime);
-  SAFE_ADELETE(scale);
+  SAFE_ADELETE(pos);
+  SAFE_ADELETE(vel);
   SAFE_ADELETE(_deadParticles);
 }
 
 //------------------------------------------------------------------------------
 void ParticleTunnel::ParticleEmitter::Update(float dt)
 {
-  float* xx = x;
-  float* yy = y;
-  float* zz = z;
-
-  float *vvx = vx;
-  float *vvy = vy;
-  float *vvz = vz;
-
-  Lifetime* ll = _lifetime;
+  //Lifetime* ll = _lifetime;
 
   int numDead = 0;
   int* dead = _deadParticles;
 
-  float s = 100;
+  XMVECTOR zClip = XMVectorReplicate(-1500);
+
   for (int i = 0, e = _numParticles; i < e; ++i)
   {
-    *xx += dt * *vvx;
-    *yy += dt * *vvy;
-    *zz += dt * *vvz;
-    --ll->left;
+    XMVECTOR scaledVel = XMVectorScale(vel[i], dt);
+    pos[i] = XMVectorAdd(pos[i], scaledVel);
+    //--ll->left;
 
-    if (*zz < -1500)
+    XMVECTOR res = XMVectorLess(pos[i], zClip);
+    u32 rr[4];
+    // rr[2] is 0xffffffff if pos[i] < zClip
+    XMStoreInt4(rr, res);
+    if (rr[2])
     {
       *dead++ = i;
       numDead++;
     }
 
-    xx++; yy++; zz++;
-    vvx++; vvy++; vvz++;
-    ll++;
+    //ll++;
   }
 
+  float s = 100;
   for (int i = 0; i < numDead; ++i)
   {
     CreateParticle(_deadParticles[i], s);
@@ -308,22 +296,7 @@ void ParticleTunnel::ParticleEmitter::Update(float dt)
 //------------------------------------------------------------------------------
 void ParticleTunnel::ParticleEmitter::CopyToBuffer(ParticleType* vtx)
 {
-  float* xx = x;
-  float* yy = y;
-  float* zz = z;
-
-  float* ss = scale;
-  ParticleEmitter::Lifetime* ll = _lifetime;
-
-  for (int i = 0, e = _numParticles; i < e; ++i)
-  {
-    float s = 10.f * ss[i];
-
-    float lifetime = (float)ll[i].left / ll[i].total;
-    vtx->pos = V4{xx[i], yy[i], zz[i], 0};
-    vtx->data = V4{lifetime, 0, 0, 0};
-    vtx++;
-  }
+  memcpy(vtx, pos, _numParticles * sizeof(ParticleType));
 }
 
 //------------------------------------------------------------------------------
@@ -368,9 +341,13 @@ bool ParticleTunnel::Init(const char* configFile)
     .PixelShader("shaders/out/particle_tunnel", "PsBackground")));
 
   // Particle state setup
+  //vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
+  //  CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT),
+  //  CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32B32A32_FLOAT) };
+
   vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
-    CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT),
-    CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32B32_FLOAT) };
+    CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT)
+  };
 
   INIT(_particleBundle.Create(BundleOptions()
     .VertexShader("shaders/out/particle_tunnel", "VsParticle")
@@ -464,15 +441,13 @@ bool ParticleTunnel::Init(const char* configFile)
 
   MeshLoader meshLoader;
   INIT(meshLoader.Load("gfx/shatter_plane1.boba"));
-  CreateScene(meshLoader, false, &_scene);
+  CreateScene(meshLoader, false, sizeof(FracturePiece), &_scene);
 
   for (scene::Mesh* mesh : _scene.meshes)
   {
-    FracturePiece p;
-    p.mesh = mesh;
-    p.dir = PointOnHemisphere(V3(0,0,-1));
-    p.rot = RandomVector();
-    _pieces.push_back(p);
+    FracturePiece* p = (FracturePiece*)mesh->userData;
+    p->dir = PointOnHemisphere(V3(0,0,-1));
+    p->rot = RandomVector();
   }
 
   INIT(_fractureBundle.Create(BundleOptions()
@@ -764,22 +739,26 @@ bool ParticleTunnel::Render()
 
   _ctx->SetConstantBuffer(_cbFracture, ShaderType::VertexShader, 0);
 
-  for (FracturePiece& p : _pieces)
+  for (scene::MeshBuffer* buf : _scene.meshBuffers)
   {
-    scene::Mesh* mesh = p.mesh;
-    Matrix mtx = mesh->mtxGlobal;
+    _ctx->SetVertexBuffer(buf->vb);
+    _ctx->SetIndexBuffer(buf->ib);
 
-    Matrix mtxDir = Matrix::CreateTranslation(explodeFactor * moveSpeed * ToVector3(p.dir));
-    Matrix mtxRotX = Matrix::CreateRotationX(explodeFactor * rotSpeed * p.rot.x);
-    Matrix mtxRotY = Matrix::CreateRotationX(explodeFactor * rotSpeed * p.rot.y);
-    Matrix mtxRotZ = Matrix::CreateRotationX(explodeFactor * rotSpeed * p.rot.z);
+    for (scene::Mesh* mesh : buf->meshes)
+    {
+      FracturePiece* p = (FracturePiece*)mesh->userData;
+      Matrix mtx = mesh->mtxGlobal;
 
-    _cbPerObject.world = (mtxRotX * mtxRotY * mtxRotZ * mtx * mtxScale * mtxDir).Transpose();
-    _ctx->SetConstantBuffer(_cbPerObject, ShaderType::VertexShader, 2);
+      Matrix mtxDir = Matrix::CreateTranslation(explodeFactor * moveSpeed * ToVector3(p->dir));
+      Matrix mtxRotX = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.x);
+      Matrix mtxRotY = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.y);
+      Matrix mtxRotZ = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.z);
 
-    _ctx->SetVertexBuffer(mesh->gpuObjects._vb);
-    _ctx->SetIndexBuffer(mesh->gpuObjects._ib);
-    _ctx->DrawIndexed(mesh->gpuObjects._numIndices, 0, 0);
+      _cbPerObject.world = (mtxRotX * mtxRotY * mtxRotZ * mtx * mtxScale * mtxDir).Transpose();
+      _ctx->SetConstantBuffer(_cbPerObject, ShaderType::VertexShader, 2);
+
+      _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
+    }
   }
 
   return true;
