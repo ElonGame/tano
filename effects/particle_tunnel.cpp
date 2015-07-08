@@ -59,9 +59,6 @@ void BlurLine(const T* src, T* dst, int size, float r)
 //------------------------------------------------------------------------------
 int CalcLines(V3* vtx, const V3* points, int num, int* neighbours, const PlexusObject& config)
 {
-  static AvgStopWatch stopWatch;
-  stopWatch.Start();
-
   u8* connected = g_ScratchMemory.Alloc<u8>(num*num);
   memset(connected, 0, num*num);
 
@@ -131,11 +128,6 @@ int CalcLines(V3* vtx, const V3* points, int num, int* neighbours, const PlexusO
         break;
     }
   }
-
-  double avg = stopWatch.Stop();
-  TANO.AddPerfCallback([=]() {
-    ImGui::Text("Update time: %.3fms", 1000 * avg);
-  });
 
   return (int)(vtx - orgVtx);
 }
@@ -524,6 +516,9 @@ void ParticleTunnel::UpdateEmitter(const TaskData& data)
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
 {
+  static AvgStopWatch stopWatch;
+  stopWatch.Start();
+
   _curTime = state.localTime.TotalMilliseconds() / 1000.f;
 
   auto fnCalcFade = [](float ms, const char* s, const char* e, bool invert)
@@ -618,10 +613,6 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
   _cbPerFrame.time.x = ms;
   _cbPerFrame.time.w = _beatTrack;
-
-
-  static AvgStopWatch stopWatch;
-  stopWatch.Start();
 
   rmt_ScopedCPUSample(Particles_Update);
   float dt = 1.f / state.frequency;

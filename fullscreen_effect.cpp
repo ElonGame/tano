@@ -200,6 +200,7 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
     scratch1, scratch0, scratch0, scratch1, scratch1, scratch0,
   };
 
+  int numThreads = 256;
   // horizontal blur (ends up in scratch0)
   for (int i = 0; i < 3; ++i)
   {
@@ -207,7 +208,7 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
     _ctx->SetUnorderedAccessView(srcDst[i * 2 + 1], &black);
 
     _ctx->SetComputeShader(_csBlurX);
-    _ctx->Dispatch(h / 32 + 1, 1, 1);
+    _ctx->Dispatch(h / numThreads + 1, 1, 1);
 
     _ctx->UnsetUnorderedAccessViews(0, 1);
     _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
@@ -218,7 +219,7 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
   _ctx->SetUnorderedAccessView(scratch1, &black);
 
   _ctx->SetComputeShader(_csCopyTranspose);
-  _ctx->Dispatch(h / 32 + 1, 1, 1);
+  _ctx->Dispatch(h / numThreads + 1, 1, 1);
 
   _ctx->UnsetUnorderedAccessViews(0, 1);
   _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
@@ -235,7 +236,7 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
     _ctx->SetUnorderedAccessView(srcDst[6 + i * 2 + 1], &black);
 
     _ctx->SetComputeShader(_csBlurX);
-    _ctx->Dispatch(w / 32 + 1, 1, 1);
+    _ctx->Dispatch(w / numThreads + 1, 1, 1);
 
     _ctx->UnsetUnorderedAccessViews(0, 1);
     _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
@@ -246,7 +247,7 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
   _ctx->SetUnorderedAccessView(output, &black);
 
   _ctx->SetComputeShader(_csCopyTranspose);
-  _ctx->Dispatch(w / 32 + 1, 1, 1);
+  _ctx->Dispatch(w / numThreads + 1, 1, 1);
 
   _ctx->UnsetUnorderedAccessViews(0, 1);
   _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
