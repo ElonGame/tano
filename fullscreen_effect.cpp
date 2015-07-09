@@ -197,7 +197,7 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
     // horiz
     input, scratch0, scratch0, scratch1, scratch1, scratch0,
     // vert
-    scratch1, scratch0, scratch0, scratch1, scratch1, scratch0,
+    scratch0, scratch1, scratch1, scratch0, scratch0, output, 
   };
 
   int numThreads = 256;
@@ -205,9 +205,9 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
   for (int i = 0; i < 3; ++i)
   {
     _ctx->SetShaderResource(srcDst[i * 2 + 0], ShaderType::ComputeShader);
-    _ctx->SetUnorderedAccessView(srcDst[i * 2 + 1], &black);
+    _ctx->SetUnorderedAccessView(srcDst[i * 2 + 1], nullptr);
 
-    _ctx->SetComputeShader(_csBlurX);
+    _ctx->SetComputeShader(i < 2 ? _csBlurX : _csBlurTranspose);
     _ctx->Dispatch(h / numThreads + 1, 1, 1);
 
     _ctx->UnsetUnorderedAccessViews(0, 1);
@@ -215,14 +215,14 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
   }
 
   // copy/transpose from scratch0 -> scratch1
-  _ctx->SetShaderResources(&scratch0._rtHandle, 1, ShaderType::ComputeShader);
-  _ctx->SetUnorderedAccessView(scratch1, &black);
+  //_ctx->SetShaderResources(&scratch0._rtHandle, 1, ShaderType::ComputeShader);
+  //_ctx->SetUnorderedAccessView(scratch1, &black);
 
-  _ctx->SetComputeShader(_csCopyTranspose);
-  _ctx->Dispatch(h / numThreads + 1, 1, 1);
+  //_ctx->SetComputeShader(_csCopyTranspose);
+  //_ctx->Dispatch(h / numThreads + 1, 1, 1);
 
-  _ctx->UnsetUnorderedAccessViews(0, 1);
-  _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
+  //_ctx->UnsetUnorderedAccessViews(0, 1);
+  //_ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
 
   // "vertical" blur, ends up in scratch 0
 
@@ -233,22 +233,22 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
   for (int i = 0; i < 3; ++i)
   {
     _ctx->SetShaderResources(&srcDst[6 + i * 2 + 0], 1, ShaderType::ComputeShader);
-    _ctx->SetUnorderedAccessView(srcDst[6 + i * 2 + 1], &black);
+    _ctx->SetUnorderedAccessView(srcDst[6 + i * 2 + 1], nullptr);
 
-    _ctx->SetComputeShader(_csBlurX);
-    _ctx->Dispatch(w / numThreads + 1, 1, 1);
+    _ctx->SetComputeShader(i < 2 ? _csBlurX : _csBlurTranspose);
+    _ctx->Dispatch(h / numThreads + 1, 1, 1);
 
     _ctx->UnsetUnorderedAccessViews(0, 1);
     _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
   }
 
   // copy/transpose from scratch0 -> blur1
-  _ctx->SetShaderResources(&scratch0._rtHandle, 1, ShaderType::ComputeShader);
-  _ctx->SetUnorderedAccessView(output, &black);
+  //_ctx->SetShaderResources(&scratch0._rtHandle, 1, ShaderType::ComputeShader);
+  //_ctx->SetUnorderedAccessView(output, &black);
 
-  _ctx->SetComputeShader(_csCopyTranspose);
-  _ctx->Dispatch(w / numThreads + 1, 1, 1);
+  //_ctx->SetComputeShader(_csCopyTranspose);
+  //_ctx->Dispatch(w / numThreads + 1, 1, 1);
 
-  _ctx->UnsetUnorderedAccessViews(0, 1);
-  _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
+  //_ctx->UnsetUnorderedAccessViews(0, 1);
+  //_ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
 }

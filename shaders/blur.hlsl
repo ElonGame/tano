@@ -47,7 +47,7 @@ void BlurTranspose(uint3 globalThreadID : SV_DispatchThreadID)
   for (i = 0; i < inputSize.x; ++i)
   {
     // output the pixel
-    output[int2(i, y)] = sum * scale;
+    output[int2(y, i)] = sum * scale;
     sum += lerp(texture0.Load(int3(i+m+1, y, 0)), texture0.Load(int3(i+m+2, y, 0)), alpha);
     sum -= lerp(texture0.Load(int3(i-m, y, 0)), texture0.Load(int3(i-m-1, y, 0)), alpha);
   }
