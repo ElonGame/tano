@@ -47,7 +47,7 @@ namespace tano
       float scale, 
       float bias);
 
-    void Blur(ObjectHandle inputBuffer, ObjectHandle outputBuffer, float radius);
+    void Blur(ObjectHandle inputBuffer, ObjectHandle outputBuffer, float radius, int scale);
     void Copy(ObjectHandle inputBuffer, ObjectHandle outputBuffer, const RenderTargetDesc& outputDesc, bool releaseOutput = true);
     void Add(ObjectHandle input0, ObjectHandle input1, ObjectHandle outputBuffer, float scale0, float scale1);
 

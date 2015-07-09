@@ -173,17 +173,30 @@ void FullscreenEffect::ScaleBiasSecondary(
 }
 
 //------------------------------------------------------------------------------
-void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radius)
+void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radius, int scale)
 {
-  static Color black(0, 0, 0, 0);
-
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
-  int s = max(w, h);
+  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+
+  w /= scale;
+  h /= scale;
 
   BufferFlags f = BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav);
-  ScopedRenderTarget scratch0(s, s, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
-  ScopedRenderTarget scratch1(s, s, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+
+  ObjectHandle half;
+  if (scale > 1)
+  {
+    half = GRAPHICS.GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+    Copy(input, half, half._desc, true);
+  }
+  //ScopedRenderTarget half(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+
+  ScopedRenderTarget hscratch0(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+  ScopedRenderTarget hscratch1(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+
+  ScopedRenderTarget vscratch0(h, w, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+  ScopedRenderTarget vscratch1(h, w, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
 
   // set constant buffers
   _cbBlur.inputSize.x = (float)w;
@@ -195,12 +208,19 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
   ObjectHandle srcDst[] =
   {
     // horiz
-    input, scratch0, scratch0, scratch1, scratch1, scratch0,
+    input, hscratch0, hscratch0, hscratch1, hscratch1, vscratch0,
     // vert
-    scratch0, scratch1, scratch1, scratch0, scratch0, output, 
+    vscratch0, vscratch1, vscratch1, vscratch0, vscratch0, output, 
   };
 
+  if (scale > 1)
+  {
+    srcDst[0] = half;
+    srcDst[11] = half;
+  }
+
   int numThreads = 256;
+
   // horizontal blur (ends up in scratch0)
   for (int i = 0; i < 3; ++i)
   {
@@ -214,18 +234,7 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
     _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
   }
 
-  // copy/transpose from scratch0 -> scratch1
-  //_ctx->SetShaderResources(&scratch0._rtHandle, 1, ShaderType::ComputeShader);
-  //_ctx->SetUnorderedAccessView(scratch1, &black);
-
-  //_ctx->SetComputeShader(_csCopyTranspose);
-  //_ctx->Dispatch(h / numThreads + 1, 1, 1);
-
-  //_ctx->UnsetUnorderedAccessViews(0, 1);
-  //_ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
-
   // "vertical" blur, ends up in scratch 0
-
   _cbBlur.inputSize.x = (float)h;
   _cbBlur.inputSize.y = (float)w;
   _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
@@ -236,19 +245,16 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
     _ctx->SetUnorderedAccessView(srcDst[6 + i * 2 + 1], nullptr);
 
     _ctx->SetComputeShader(i < 2 ? _csBlurX : _csBlurTranspose);
-    _ctx->Dispatch(h / numThreads + 1, 1, 1);
+    _ctx->Dispatch(w / numThreads + 1, 1, 1);
 
     _ctx->UnsetUnorderedAccessViews(0, 1);
     _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
   }
 
-  // copy/transpose from scratch0 -> blur1
-  //_ctx->SetShaderResources(&scratch0._rtHandle, 1, ShaderType::ComputeShader);
-  //_ctx->SetUnorderedAccessView(output, &black);
+  if (scale > 1)
+  {
+    Copy(half, output, desc, true);
+    GRAPHICS.ReleaseTempRenderTarget(half);
+  }
 
-  //_ctx->SetComputeShader(_csCopyTranspose);
-  //_ctx->Dispatch(w / numThreads + 1, 1, 1);
-
-  //_ctx->UnsetUnorderedAccessViews(0, 1);
-  //_ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
 }
