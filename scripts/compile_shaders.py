@@ -41,7 +41,7 @@ ps = {
 }
 
 cs = {
-    'blur' : ['CopyTranspose', 'BlurTranspose', 'BoxBlurX'],
+    'blur' : ['BoxBlurX'],
 }
 
 gs = {

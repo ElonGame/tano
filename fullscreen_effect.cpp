@@ -45,8 +45,6 @@ bool FullscreenEffect::Init()
     .PixelShader("shaders/out/common", "PsAdd")));
 
   // blur setup
-  INIT_RESOURCE(_csBlurTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BlurTranspose"));
-  INIT_RESOURCE(_csCopyTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "CopyTranspose"));
   INIT_RESOURCE(_csBlurX, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BoxBlurX"));
 
   END_INIT_SEQUENCE();
@@ -182,8 +180,9 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
   int s = max(w, h);
 
   BufferFlags f = BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav);
-  ScopedRenderTarget scratch0(s, s, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
-  ScopedRenderTarget scratch1(s, s, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+  ScopedRenderTarget scratch0(s * 4, s, DXGI_FORMAT_R32_FLOAT, f);
+  ScopedRenderTarget scratch1(s * 4, s, DXGI_FORMAT_R32_FLOAT, f);
+  ScopedRenderTarget scratch2(s, s, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
 
   // set constant buffers
   _cbBlur.inputSize.x = (float)w;
@@ -191,64 +190,31 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
   _cbBlur.radius = radius;
   _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
 
-  // set constant buffers
-  ObjectHandle srcDst[] =
-  {
-    // horiz
-    input, scratch0, scratch0, scratch1, scratch1, scratch0,
-    // vert
-    scratch1, scratch0, scratch0, scratch1, scratch1, scratch0,
-  };
-
   int numThreads = 256;
-  // horizontal blur (ends up in scratch0)
-  for (int i = 0; i < 3; ++i)
-  {
-    _ctx->SetShaderResource(srcDst[i * 2 + 0], ShaderType::ComputeShader);
-    _ctx->SetUnorderedAccessView(srcDst[i * 2 + 1], &black);
 
-    _ctx->SetComputeShader(_csBlurX);
-    _ctx->Dispatch(h / numThreads + 1, 1, 1);
+  // horizontal
+  _ctx->SetShaderResource(input, ShaderType::ComputeShader);
+  ObjectHandle inputViews[] = { scratch0, scratch1, scratch2 };
+  _ctx->SetUnorderedAccessViews(inputViews, 3, nullptr);
 
-    _ctx->UnsetUnorderedAccessViews(0, 1);
-    _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
-  }
-
-  // copy/transpose from scratch0 -> scratch1
-  _ctx->SetShaderResources(&scratch0._rtHandle, 1, ShaderType::ComputeShader);
-  _ctx->SetUnorderedAccessView(scratch1, &black);
-
-  _ctx->SetComputeShader(_csCopyTranspose);
+  _ctx->SetComputeShader(_csBlurX);
   _ctx->Dispatch(h / numThreads + 1, 1, 1);
 
-  _ctx->UnsetUnorderedAccessViews(0, 1);
+  _ctx->UnsetUnorderedAccessViews(0, 3);
   _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
 
-  // "vertical" blur, ends up in scratch 0
-
+  // vertical
   _cbBlur.inputSize.x = (float)h;
   _cbBlur.inputSize.y = (float)w;
   _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
 
-  for (int i = 0; i < 3; ++i)
-  {
-    _ctx->SetShaderResources(&srcDst[6 + i * 2 + 0], 1, ShaderType::ComputeShader);
-    _ctx->SetUnorderedAccessView(srcDst[6 + i * 2 + 1], &black);
+  _ctx->SetShaderResource(scratch2._rtHandle, ShaderType::ComputeShader);
+  ObjectHandle inputViews2[] = { scratch0, scratch1, output };
+  _ctx->SetUnorderedAccessViews(inputViews2, 3, nullptr);
 
-    _ctx->SetComputeShader(_csBlurX);
-    _ctx->Dispatch(w / numThreads + 1, 1, 1);
-
-    _ctx->UnsetUnorderedAccessViews(0, 1);
-    _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
-  }
-
-  // copy/transpose from scratch0 -> blur1
-  _ctx->SetShaderResources(&scratch0._rtHandle, 1, ShaderType::ComputeShader);
-  _ctx->SetUnorderedAccessView(output, &black);
-
-  _ctx->SetComputeShader(_csCopyTranspose);
+  _ctx->SetComputeShader(_csBlurX);
   _ctx->Dispatch(w / numThreads + 1, 1, 1);
 
-  _ctx->UnsetUnorderedAccessViews(0, 1);
+  _ctx->UnsetUnorderedAccessViews(0, 3);
   _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
 }

@@ -75,8 +75,6 @@ namespace tano
 
     ConstantBuffer<CBufferBlur> _cbBlur;
     ObjectHandle _csBlurX;
-    ObjectHandle _csBlurTranspose;
-    ObjectHandle _csCopyTranspose;
 
     GpuBundle _addBundle;
     GpuBundle _copyBundle;

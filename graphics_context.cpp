@@ -420,10 +420,50 @@ void GraphicsContext::SetShaderResource(ObjectHandle h, ShaderType shaderType, i
 }
 
 //------------------------------------------------------------------------------
+void GraphicsContext::SetUnorderedAccessViews(const ObjectHandle* handles, int count, Color* clearColor)
+{
+  const int MAX_VIEWS = 8;
+  ID3D11UnorderedAccessView* views[MAX_VIEWS];
+  assert(count <= MAX_VIEWS);
+
+  for (int i = 0; i < count; ++i)
+  {
+    ID3D11UnorderedAccessView* view = nullptr;
+    ObjectHandle h = handles[i];
+    ObjectHandle::Type type = h.type();
+    if (type == ObjectHandle::kStructuredBuffer)
+    {
+      StructuredBuffer* buf = GRAPHICS._structuredBuffers.Get(h);
+      view = buf->uav.ptr;
+    }
+    else if (type == ObjectHandle::kRenderTarget)
+    {
+      RenderTargetResource* res = GRAPHICS._renderTargets.Get(h);
+      view = res->uav.ptr;
+
+      if (clearColor)
+      {
+        _ctx->ClearRenderTargetView(res->view.ptr, &clearColor->x);
+      }
+    }
+    else
+    {
+      LOG_WARN("Trying to set an unsupported UAV type!");
+      return;
+    }
+
+    views[i] = view;
+  }
+
+  u32 initialCount = 0;
+  _ctx->CSSetUnorderedAccessViews(0, count, views, &initialCount);
+
+}
+
+//------------------------------------------------------------------------------
 void GraphicsContext::SetUnorderedAccessView(ObjectHandle h, Color* clearColor)
 {
-  auto type = h.type();
-
+  ObjectHandle::Type type = h.type();
   ID3D11UnorderedAccessView* view = nullptr;
   if (type == ObjectHandle::kStructuredBuffer)
   {
