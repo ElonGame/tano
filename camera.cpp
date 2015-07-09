@@ -161,15 +161,11 @@ FollowCam::FollowCam()
 //------------------------------------------------------------------------------
 void FollowCam::Update(const UpdateState& state)
 {
-  _particle.Update(state);
+  _particle.Update(state, true);
   XMVECTOR* pos = _particle._bodies.pos;
   XMVECTOR* vel = _particle._bodies.vel;
 
-  //const DynParticles::Body& b = _particle._bodies[0];
-  //_pos = Vector3(b.pos.x, b.pos.y, b.pos.z);
   _pos = Vector3(pos[0]);
-//  _vel = Vector3(vel[0]);
-  //_pos = Vector3(pos[0].x, pos[0].y, pos[0].z);
   _target = _pos + Vector3(vel[0]);
   _view = Matrix::CreateLookAt(_pos, _target, _up);
 }

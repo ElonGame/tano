@@ -5,6 +5,7 @@
   First pass, converted to XMVECTOR: 35 ms
   Use smarter distmatrix thing: 23 ms
 */
+
 #include "dyn_particles.hpp"
 #include "update_state.hpp"
 #include "tano_math.hpp"
@@ -58,7 +59,7 @@ void DynParticles::SetDistCutOff(DistMeasureType type, float cutoff)
 }
 
 //------------------------------------------------------------------------------
-void DynParticles::Update(const UpdateState& updateState)
+void DynParticles::Update(const UpdateState& updateState, bool alwaysUpdate)
 {
   if (!_bodies.numBodies)
     return;
@@ -71,11 +72,10 @@ void DynParticles::Update(const UpdateState& updateState)
 
   _tickCount++;
   int step = _tickCount % 8;
-  bool updateForces = step == 0 || step == 2 || step == 4 || step == 6;
-  bool updateDistances = step == 1;
+  bool updateForces = alwaysUpdate || step == 0 || step == 2 || step == 4 || step == 6;
+  bool updateDistances = alwaysUpdate || step == 1;
 
   XMVECTOR center = XMVectorZero();
-  //V3 center(0,0,0);
   for (int i = 0; i < numBodies; ++i)
   {
     if (updateForces)
@@ -86,7 +86,6 @@ void DynParticles::Update(const UpdateState& updateState)
   }
 
   _center = XMVectorScale(center, 1.0f / numBodies);
-//  _center = 1.0f / numBodies * center;
 
   if (updateDistances)
   {

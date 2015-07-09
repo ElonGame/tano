@@ -22,7 +22,7 @@ namespace tano
     void Reset();
     void AddKinematics(ParticleKinematics* kinematics, float weight);
     void UpdateWeight(ParticleKinematics* kinematics, float weight);
-    void Update(const UpdateState& updateState);
+    void Update(const UpdateState& updateState, bool alwaysUpdate);
     void UpdateDistMatrix();
     void SetDistCutOff(DistMeasureType type, float cutoff);
 

@@ -383,7 +383,7 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
 //  flock->seek->target = spline.Interpolate();
   flock->seek->target = XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z));
   //XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z));
-  flock->boids.Update(flockData->updateState);
+  flock->boids.Update(flockData->updateState, false);
 }
 
 //------------------------------------------------------------------------------
