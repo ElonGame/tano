@@ -930,7 +930,7 @@ bool Landscape::Render()
   RenderTargetDesc halfSize(rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
   ScopedRenderTarget rtBloomBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
-  fullscreen->Blur(rtBloom, rtBloomBlurred, 10);
+  fullscreen->Blur(rtBloom, rtBloomBlurred, rtBloomBlurred._desc, 10, 1);
 
   ScopedRenderTarget rtScaleBias(halfSize);
 

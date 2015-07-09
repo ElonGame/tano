@@ -173,22 +173,22 @@ void FullscreenEffect::ScaleBiasSecondary(
 }
 
 //------------------------------------------------------------------------------
-void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radius, int scale)
+void FullscreenEffect::Blur(
+  ObjectHandle input,
+  ObjectHandle output,
+  const RenderTargetDesc& outputDesc,
+  float radius,
+  int scale)
 {
-  int w, h;
-  GRAPHICS.GetBackBufferSize(&w, &h);
-  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-
-  w /= scale;
-  h /= scale;
-
+  int w = outputDesc.width / scale;
+  int h = outputDesc.height / scale;
   BufferFlags f = BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav);
 
   ObjectHandle half;
   if (scale > 1)
   {
     half = GRAPHICS.GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
-    Copy(input, half, half._desc, true);
+    Copy(input, half, RenderTargetDesc(w, h,  DXGI_FORMAT_R16G16B16A16_FLOAT), true);
   }
   //ScopedRenderTarget half(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
 
@@ -253,7 +253,7 @@ void FullscreenEffect::Blur(ObjectHandle input, ObjectHandle output, float radiu
 
   if (scale > 1)
   {
-    Copy(half, output, desc, true);
+    Copy(half, output, outputDesc, true);
     GRAPHICS.ReleaseTempRenderTarget(half);
   }
 

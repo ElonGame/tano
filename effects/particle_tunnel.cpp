@@ -699,7 +699,7 @@ bool ParticleTunnel::Render()
   ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
 
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
-  fullscreen->Blur(rtLines._rtHandle, rtBlur._rtHandle, _settings.blur_radius);
+  fullscreen->Blur(rtLines._rtHandle, rtBlur._rtHandle, rtBlur._desc, _settings.blur_radius, 1);
 
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 

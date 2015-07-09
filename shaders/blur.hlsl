@@ -1,6 +1,7 @@
 // Gaussian blur, based on http://fgiesen.wordpress.com/2012/08/01/fast-blurs-2/
 
 // Baseline: 5130 us
+// Using BLurTranspose: 3800 us
 
 Texture2D texture0 : register(t0);
 RWTexture2D<float4> output : register(u0);
