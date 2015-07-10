@@ -41,6 +41,8 @@ void DynParticles::Init(int numBodies)
   {
     _bodies.distMeasures[i].values = new DistMeasureEntry[numBodies*numBodies];
   }
+
+  UpdateDistMatrix(0, numBodies);
 }
 
 //------------------------------------------------------------------------------
@@ -70,33 +72,39 @@ void DynParticles::Update(const UpdateState& updateState, bool alwaysUpdate)
   XMVECTOR* vel = _bodies.vel;
   XMVECTOR* force = _bodies.force;
 
-  _tickCount++;
-  int step = _tickCount % 8;
-  bool updateForces = alwaysUpdate || step == 0 || step == 2 || step == 4 || step == 6;
-  bool updateDistances = alwaysUpdate || step == 1;
-
   XMVECTOR center = XMVectorZero();
   for (int i = 0; i < numBodies; ++i)
   {
-    if (updateForces)
-    {
-      force[i] = { 0, 0, 0 };
-    }
     center += pos[i];
   }
 
   _center = XMVectorScale(center, 1.0f / numBodies);
 
-  if (updateDistances)
+  // update distances over N frames
   {
-    UpdateDistMatrix();
+    int DISTANCE_FRAMES = 50;
+    float f = (_tickCount % DISTANCE_FRAMES) / (float)DISTANCE_FRAMES;
+    int bodiesPerFrame = max(1, numBodies / DISTANCE_FRAMES);
+    int start = (int)(f * numBodies);
+    int end = min(numBodies, start + bodiesPerFrame);
+    UpdateDistMatrix(start, end);
   }
 
-  if (updateForces)
   {
+    int UPDATE_FRAMES = 10;
+    float f = (_tickCount % UPDATE_FRAMES) / (float)UPDATE_FRAMES;
+    int bodiesPerFrame = max(1, numBodies / UPDATE_FRAMES);
+    int start = (int)(f * numBodies);
+    int end = min(numBodies, start + bodiesPerFrame);
+
+    for (int i = start; i < end; ++i)
+    {
+      force[i] = { 0, 0, 0 };
+    }
+
     for (Kinematic& k : _kinematics)
     {
-      k.kinematic->Update(&_bodies, k.weight, updateState);
+      k.kinematic->Update(&_bodies, start, end, k.weight, updateState);
     }
   }
 
@@ -104,22 +112,26 @@ void DynParticles::Update(const UpdateState& updateState, bool alwaysUpdate)
   for (int i = 0; i < numBodies; ++i)
   {
     _bodies.acc[i] = _bodies.force[i];
-    _bodies.vel[i] = XMVector3ClampLengthMax(
+    _bodies.vel[i] = 
+      XMVector3ClampLengthMax(
         XMVectorAdd(_bodies.vel[i], XMVectorScale(_bodies.acc[i], dt)), 
         _maxSpeed);
     _bodies.pos[i] = XMVectorAdd(_bodies.pos[i], XMVectorScale(_bodies.vel[i], dt));
   }
+
+  _tickCount++;
+
 }
 
 //------------------------------------------------------------------------------
-void DynParticles::UpdateDistMatrix()
+void DynParticles::UpdateDistMatrix(int start, int end)
 {
   int numBodies = _bodies.numBodies;
   XMVECTOR* pos = _bodies.pos;
 
   for (int i = 0; i < DistCount; ++i)
   {
-    for (int j = 0; j < numBodies; ++j)
+    for (int j = start; j < end; ++j)
     {
       _bodies.distMeasures[i].values[j*numBodies].idx = -1;
     }
@@ -128,19 +140,21 @@ void DynParticles::UpdateDistMatrix()
   for (int k = 0; k < DistCount; ++k)
   {
     // precompute particle distance calculations
-    for (int i = 0; i < numBodies; ++i)
+    for (int i = start; i < end; ++i)
     {
       DistMeasureEntry* e = &_bodies.distMeasures[k].values[i*numBodies];
       float cutOff = _bodies.distMeasures[k].cutoff;
+      cutOff *= cutOff;
       for (int j = 0; j < numBodies; ++j)
       {
         if (i != j)
         {
-          XMVECTOR tmp = XMVector3LengthEst(XMVectorSubtract(pos[i], pos[j]));
+          XMVECTOR tmp = XMVector3LengthSq(XMVectorSubtract(pos[i], pos[j]));
           float dist;
           XMStoreFloat(&dist, tmp);
           if (dist < cutOff)
           {
+            dist = sqrtf(dist);
             float invDist = 1.0f / dist;
             e->idx = j;
             e->dist = dist;
@@ -176,14 +190,14 @@ void DynParticles::UpdateWeight(ParticleKinematics* kinematics, float weight)
 }
 
 //------------------------------------------------------------------------------
-void BehaviorSeek::Update(DynParticles::Bodies* bodies, float weight, const UpdateState& state)
+void BehaviorSeek::Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state)
 {
   XMVECTOR* pos = bodies->pos;
   XMVECTOR* vel = bodies->vel;
   XMVECTOR* force = bodies->force;
   int numBodies = bodies->numBodies;
 
-  for (int i = 0; i < numBodies; ++i)
+  for (int i = start; i < end; ++i)
   {
     XMVECTOR desiredVel = XMVectorScale(XMVector3Normalize(XMVectorSubtract(target, pos[i])), maxSpeed);
     force[i] = XMVectorAdd(
@@ -195,7 +209,7 @@ void BehaviorSeek::Update(DynParticles::Bodies* bodies, float weight, const Upda
 }
 
 //------------------------------------------------------------------------------
-void BehaviorSeparataion::Update(DynParticles::Bodies* bodies, float weight, const UpdateState& state)
+void BehaviorSeparataion::Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state)
 {
   XMVECTOR* pos = bodies->pos;
   XMVECTOR* acc = bodies->acc;
@@ -203,7 +217,7 @@ void BehaviorSeparataion::Update(DynParticles::Bodies* bodies, float weight, con
   XMVECTOR* force = bodies->force;
   int numBodies = bodies->numBodies;
 
-  for (int i = 0; i < numBodies; ++i)
+  for (int i = start; i < end; ++i)
   {
     // return a force away from any close boids
     XMVECTOR avg = XMVectorZero();
@@ -236,7 +250,7 @@ void BehaviorSeparataion::Update(DynParticles::Bodies* bodies, float weight, con
 }
 
 //------------------------------------------------------------------------------
-void BehaviorCohesion::Update(DynParticles::Bodies* bodies, float weight, const UpdateState& state)
+void BehaviorCohesion::Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state)
 {
   XMVECTOR* pos = bodies->pos;
   XMVECTOR* acc = bodies->acc;
@@ -244,7 +258,7 @@ void BehaviorCohesion::Update(DynParticles::Bodies* bodies, float weight, const 
   XMVECTOR* force = bodies->force;
   int numBodies = bodies->numBodies;
 
-  for (int i = 0; i < numBodies; ++i)
+  for (int i = start; i < end; ++i)
   {
     // Return a force towards the average boid position
     XMVECTOR avg = XMVectorZero();
@@ -268,12 +282,14 @@ void BehaviorCohesion::Update(DynParticles::Bodies* bodies, float weight, const 
     XMVECTOR desiredVel = XMVectorScale(XMVector3Normalize(XMVectorSubtract(avg, pos[i])), maxSpeed);
     force[i] = XMVectorAdd(
       force[i], 
-      XMVectorScale(XMVector3ClampLengthMax(XMVectorSubtract(desiredVel, vel[i]), maxForce), weight));
+      XMVectorScale(
+        XMVector3ClampLengthMax(XMVectorSubtract(desiredVel, vel[i]), maxForce),
+        weight));
   }
 }
 
 //------------------------------------------------------------------------------
-void BehaviorAlignment::Update(DynParticles::Bodies* bodies, float weight, const UpdateState& state)
+void BehaviorAlignment::Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state)
 {
   XMVECTOR* pos = bodies->pos;
   XMVECTOR* acc = bodies->acc;
@@ -281,7 +297,7 @@ void BehaviorAlignment::Update(DynParticles::Bodies* bodies, float weight, const
   XMVECTOR* force = bodies->force;
   int numBodies = bodies->numBodies;
 
-  for (int i = 0; i < numBodies; ++i)
+  for (int i = start; i < end; ++i)
   {
     // return a force to align the boids velocity with the average velocity
     XMVECTOR avg = XMVectorZero();
@@ -304,6 +320,8 @@ void BehaviorAlignment::Update(DynParticles::Bodies* bodies, float weight, const
     XMVECTOR desired = XMVectorScale(XMVector3Normalize(avg), maxSpeed);
     force[i] = XMVectorAdd(
       force[i],
-      XMVectorScale(XMVector3ClampLengthMax(XMVectorSubtract(desired, vel[i]), maxForce), weight));
+      XMVectorScale(
+        XMVector3ClampLengthMax(XMVectorSubtract(desired, vel[i]), maxForce), 
+        weight));
   }
 }

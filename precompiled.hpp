@@ -33,7 +33,7 @@
 
 #define WITH_MUSIC 1
 
-#define WITH_SCHEDULER_STATS 0 
+#define WITH_SCHEDULER_STATS 0
 
 #ifdef _PUBLIC
   #define WITH_UNPACKED_RESOUCES 0

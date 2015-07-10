@@ -1,22 +1,21 @@
 {
-  soundtrack: 'Distance.mp3';
-  silent: true;
+  soundtrack: 'AuX - Emotions (Original Mix).mp3';
+  silent: false;
   
   effects: [
   {
     name: 'intro';
     factory: 'particle_tunnel';
-    start_time: 1300000;
-    end_time: 1300000;
+    start_time: 0;
+    end_time: 22500;
     settings: 'config/particle_tunnel.gb';
   },
   {
     name: 'landscape';
     factory: 'landscape';
-    start_time: 1300000;
+    start_time: 22500;
     end_time: 1300000;
     settings: 'config/landscape.gb';
-    force: true;
   },
   {
     name: 'blob';

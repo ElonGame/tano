@@ -16,6 +16,7 @@
 #include "../arena_allocator.hpp"
 #include "../perlin2d.hpp"
 #include "../stop_watch.hpp"
+#include "../blackboard.hpp"
 
 using namespace tano;
 using namespace tano::scheduler;
@@ -28,93 +29,28 @@ static const float NOISE_HEIGHT = 50;
 static const float NOISE_SCALE_X = 0.01f;
 static const float NOISE_SCALE_Z = 0.01f;
 
+#define DEBUG_DRAW_PATH 0
+
 int Landscape::Chunk::nextId = 1;
-
-struct CardinalSpline
-{
-  void Create(const V3* pts, int numPoints)
-  {
-    int numSteps = 50;
-    float sInc = 1.0f / numSteps;
-    float a = 0.5f;
-
-    controlPoints.resize(numPoints);
-    copy(pts, pts + numPoints, controlPoints.begin());
-    spline.reserve(numPoints * numSteps);
-
-    for (int i = 0; i < numPoints - 1; ++i)
-    {
-      V3 p0 = controlPoints[max(0, i - 1)];
-      V3 p1 = controlPoints[i];
-      V3 p2 = controlPoints[i + 1];
-      V3 p3 = controlPoints[min(numPoints - 1, i + 2)];
-
-      V3 t1 = a*(p2 - p0);
-      V3 t2 = a*(p3 - p1);
-
-      float s = 0;
-      for (int j = 0; j < numSteps; ++j)
-      {
-        // P = h1 * P1 + h2 * P2 + h3 * T1 + h4 * T2;
-        float s2 = s*s;
-        float s3 = s2*s;
-        float h1 = +2 * s3 - 3 * s2 + 1;
-        float h2 = -2 * s3 + 3 * s2;
-        float h3 = s3 - 2 * s2 + s;
-        float h4 = s3 - s2;
-
-        spline.push_back(h1 * p1 + h2 * p2 + h3 * t1 + h4 * t2);
-        s += sInc;
-      }
-    }
-  }
-
-  V3 Interpolate()
-  {
-    int numPts = (int)controlPoints.size();
-    int intTime = (int)curTime;
-    float fracTime = curTime - intTime;
-    int idx = intTime % numPts;
-
-    V3 p0 = controlPoints[max(0, idx - 1)];
-    V3 p1 = controlPoints[idx];
-    V3 p2 = controlPoints[idx + 1];
-    V3 p3 = controlPoints[min(numPts - 1, idx + 2)];
-
-    return InterpolateInner(p0, p1, p2, p3, fracTime);
-  }
-
-  V3 InterpolateInner(const V3& p0, const V3& p1, const V3& p2, const V3& p3, float s)
-  {
-    float a = 0.5f;
-
-    V3 t1 = a*(p2 - p0);
-    V3 t2 = a*(p3 - p1);
-
-    // P = h1 * P1 + h2 * P2 + h3 * T1 + h4 * T2;
-    float s2 = s*s;
-    float s3 = s2*s;
-    float h1 = +2 * s3 - 3 * s2 + 1;
-    float h2 = -2 * s3 + 3 * s2;
-    float h3 = s3 - 2 * s2 + s;
-    float h4 = s3 - s2;
-
-    return h1 * p1 + h2 * p2 + h3 * t1 + h4 * t2;
-  }
-
-  void Update(float dt)
-  {
-    curTime += dt * speed;
-  }
-
-  float curTime = 0;
-  float speed = 1;
-  vector<V3> spline;
-  vector<V3> controlPoints;
-};
-
 CardinalSpline spline;
 
+struct BehaviorGravity : public ParticleKinematics
+{
+  BehaviorGravity(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
+  virtual void Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state) override
+  {
+    float gravity = BLACKBOARD.GetFloatVar("landscape.gravity");
+    XMVECTOR* force = bodies->force;
+    int numBodies = bodies->numBodies;
+
+    XMVECTOR g = XMVectorReplicate(gravity);
+
+    for (int i = 0; i < numBodies; ++i)
+    {
+      force[i] = XMVectorAdd(force[i], g);
+    }
+  }
+};
 
 //------------------------------------------------------------------------------
 float NoiseAtPoint(const V3& v)
@@ -234,6 +170,10 @@ bool Landscape::Init(const char* configFile)
 
   Reset();
 
+  const BoidSettings& b = _settings.boids;
+  _followCamera.AddKinematic(new BehaviorLandscapeFollow(b.max_force, b.max_speed));
+  _followCamera.AddKinematic(new BehaviorGravity(b.max_force, b.max_speed));
+
   INIT(_cbPerFrame.Create());
 
   END_INIT_SEQUENCE();
@@ -266,7 +206,7 @@ void Landscape::InitBoids()
     V3 pt;
     pt.x = radius * sin(angle);
     pt.z = radius * cos(angle);
-    pt.y = 5 + NoiseAtPoint(pt);
+    pt.y = 20 + NoiseAtPoint(pt);
     controlPoints.push_back(pt);
     angle += angleInc;
   }
@@ -287,30 +227,20 @@ void Landscape::InitBoids()
     flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
     flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
 
-    //float s = 200.f;
-    //V3 center(randf(-s, s), 0, randf(-s, s));
-
-    //// Create a waypoint for the flock
-    //float angle = randf(-XM_PI, XM_PI);
-    //float dist = randf(100.f, 200.f);
-    //flock->nextWaypoint = center + V3(dist * cos(angle), 0, dist * sin(angle));
-    //flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
-    //flock->wanderAngle = angle;
-
-    //flock->seek->target = flock->nextWaypoint;
+    int pointIdx = rand() % spline.controlPoints.size();
 
     XMVECTOR center = XMLoadFloat3(&XMFLOAT3(
-      spline.controlPoints[0].x,
-      spline.controlPoints[0].y,
-      spline.controlPoints[0].z));
+      spline.controlPoints[pointIdx].x,
+      spline.controlPoints[pointIdx].y,
+      spline.controlPoints[pointIdx].z));
+
     // Init the boids
     XMVECTOR* pos = flock->boids._bodies.pos;
     XMVECTOR* force = flock->boids._bodies.force;
     for (int i = 0; i < flock->boids._bodies.numBodies; ++i)
     {
-      //DynParticles::Body& b = flock->boids._bodies[i];
       V3 pp(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-      float h = 20 + NoiseAtPoint(pp);
+      float h = NoiseAtPoint(pp);
       XMVECTOR tmp = XMLoadFloat3(&XMFLOAT3(pp.x, h, pp.z));
       pos[i] = XMVectorAdd(center, tmp);
       //pos[i].y = 20 + NoiseAtPoint(pos[i]);
@@ -324,30 +254,33 @@ void Landscape::InitBoids()
 
 //------------------------------------------------------------------------------
 void BehaviorLandscapeFollow::Update(
-  DynParticles::Bodies* bodies, float weight, const UpdateState& state)
+  DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state)
 {
+  // NOTE! This is called from the schedular threads, so setting namespace
+  // on the blackboard will probably break :)
+  float clearance = BLACKBOARD.GetFloatVar("landscape.landscapeClearance");
   XMVECTOR* pos = bodies->pos;
   XMVECTOR* acc = bodies->acc;
   XMVECTOR* vel = bodies->vel;
   XMVECTOR* force = bodies->force;
   int numBodies = bodies->numBodies;
-/*
-  for (int i = 0; i < numBodies; ++i)
+
+  XMFLOAT3 vv(0, BLACKBOARD.GetFloatVar("landscape.pushForce"), 0);
+  XMVECTOR pushForce = XMLoadFloat3(&vv);
+  for (int i = start; i < end; ++i)
   {
-    // return a force to keep the boid above the ground
-
-    XMVECTOR probe = pos[i] + Normalize(vel[i]) * maxSpeed;
-    XMVECTOR d = probe;
-    d.y = 20 + NoiseAtPoint(probe);
-
-    // if the probe is above the terrain height, move towards the average
-    if (probe.y > d.y)
-      d = 0.5f * (probe + d);
-
-    V3 desiredVel = Normalize(d - probe) * maxSpeed;
-    force[i] += ClampVector(desiredVel - vel[i], maxForce);
+    V3 v;
+    XMStoreFloat3((XMFLOAT3*)&v, pos[i]);
+    float h = NoiseAtPoint(v);
+    float d = v.y - h;
+    if (d < clearance)
+    {
+      float f = 1 - Clamp(0.f, 1.f, d/clearance);
+      force[i] = XMVectorScale(
+        XMVectorAdd(force[i], XMVectorScale(pushForce, f)),
+        weight);
+    }
   }
-*/
 }
 
 //------------------------------------------------------------------------------
@@ -355,34 +288,9 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
 {
   FlockKernelData* flockData = (FlockKernelData*)data.kernelData.data;
   Flock* flock = flockData->flock;
-#if 0
-  float radius = flockData->waypointRadius;
 
-  V3* pos = flockData->flock->boids._bodies.pos;
-  int numBodies = flockData->flock->boids._bodies.numBodies;
-
-  // check if the flock has reached its waypoint
-  float closestDist = FLT_MAX;
-  Vector3 center(0, 0, 0);
-  for (int i = 0; i < numBodies; ++i)
-  {
-    if (Distance(pos[i], flock->nextWaypoint) < radius)
-    {
-      float angle = flock->wanderAngle + randf(-XM_PI / 2, XM_PI / 2);
-      float dist = randf(300.f, 400.f);
-      flock->nextWaypoint += V3(dist * cos(angle), 0, dist * sin(angle));
-      flock->nextWaypoint.y = 20 + NoiseAtPoint(flock->nextWaypoint);
-      flock->wanderAngle = angle;
-      break;
-    }
-  }
-
-  flock->seek->target = flock->nextWaypoint;
-#endif
   V3 pp = spline.Interpolate();
-//  flock->seek->target = spline.Interpolate();
   flock->seek->target = XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z));
-  //XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z));
   flock->boids.Update(flockData->updateState, false);
 }
 
@@ -499,9 +407,10 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   float f = _curCamera->_farPlane;
   _cbPerFrame.nearFar = Vector4(n, f, f*n, f-n);
 
+#if DEBUG_DRAW_PATH
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
   DEBUG_API.AddDebugSphere(ToVector3(spline.Interpolate()), 10, Color(1, 1, 1));
-
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -821,25 +730,20 @@ void Landscape::RasterizeLandscape()
 void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHandle)
 {
 
+#if DEBUG_DRAW_PATH
   for (int i = 0; i < spline.spline.size()-1; ++i)
   {
     Vector3 p0(spline.spline[i].x, spline.spline[i].y, spline.spline[i].z);
     Vector3 p1(spline.spline[i+1].x, spline.spline[i+1].y, spline.spline[i+1].z);
     DEBUG_API.AddDebugLine(p0, p1, Color(1, 1, 1));
   }
+#endif
 
   XMFLOAT3* boidPos = _ctx->MapWriteDiscard<XMFLOAT3>(_boidsBundle.objects._vb);
 
   int numBoids = 0;
   for (const Flock* flock : _flocks)
   {
-    //DEBUG_API.AddDebugLine(flock->boids._center, flock->nextWaypoint, Color(1, 1, 1));
-    //DEBUG_API.AddDebugSphere(flock->nextWaypoint, 10, Color(1, 1, 1));
-
-    //int curNum = flock->boids._bodies.numBodies;
-    //memcpy(boidPos, flock->boids._bodies.pos, curNum * sizeof(XMFLOAT3));
-    //boidPos += flock->boids._bodies.numBodies;
-    //numBoids += curNum;
     XMVECTOR* pos = flock->boids._bodies.pos;
     int numBodies = flock->boids._bodies.numBodies;
 
@@ -847,7 +751,6 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
     {
       XMStoreFloat3(boidPos, pos[i]);
       ++boidPos;
-      //*boidPos++ = pos[i];
       numBoids++;
     }
   }

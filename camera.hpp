@@ -9,12 +9,8 @@ namespace tano
   struct Camera
   {
     Camera();
+    virtual ~Camera() {}
     virtual void Update(const UpdateState& state) {}
-
-#if 0
-    void GetFrustumCorners(Vector3* pts);
-    void GetFrustumCenter(Vector3* pts);
-#endif
 
     Vector3 _pos = Vector3(0,0,0);
     Vector3 _target;
@@ -46,10 +42,13 @@ namespace tano
   struct FollowCam : public Camera
   {
     FollowCam();
+    ~FollowCam();
     virtual void Update(const UpdateState& state) override;
     void SetFollowTarget(const FXMVECTOR& followTarget);
+    void AddKinematic(ParticleKinematics* k, float weight = 1);
 
     DynParticles _particle;
     BehaviorSeek _seek;
+    vector<ParticleKinematics*> _kinematics;
   };
 }

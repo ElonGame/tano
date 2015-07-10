@@ -28,3 +28,10 @@ namespace intro
 
     float maxStrength = 5000;
 }
+
+namespace landscape
+{
+    float landscapeClearance = 30;
+    float gravity = -5;
+    float pushForce = 20;
+}

@@ -19,7 +19,7 @@ namespace tano
   struct BehaviorLandscapeFollow : public ParticleKinematics
   {
     BehaviorLandscapeFollow(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
-    virtual void Update(DynParticles::Bodies* bodies, float weight, const UpdateState& state) override;
+    virtual void Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state) override;
   };
 
   class Landscape : public BaseEffect
@@ -57,9 +57,6 @@ namespace tano
     void InitBoids();
     void UpdateBoids(const UpdateState& state);
     void RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHandle);
-
-    struct Boid;
-    Vector3 LandscapeFollow(const Boid& boid);
 
     struct Flock;
 
@@ -120,9 +117,7 @@ namespace tano
       Flock(const BoidSettings& settings);
       ~Flock();
       DynParticles boids;
-      V3 nextWaypoint;
       BehaviorSeek* seek = nullptr;
-      float wanderAngle = 0;
     };
 
     SimpleAppendBuffer<Flock*, 128> _flocks;
@@ -182,13 +177,11 @@ namespace tano
     u32 _numLowerIndices = 0;
     u32 _numParticles = 0;
 
-    //GpuObjects _boidsMesh;
     GpuBundle _boidsBundle;
     bool _renderLandscape = true;
     bool _renderBoids = true;
     bool _useFreeFlyCamera = false;
 
-    //BehaviorSeek* _behaviorSeek = nullptr;
     BehaviorSeparataion* _behaviorSeparataion = nullptr;
     BehaviorCohesion* _behaviorCohesion = nullptr;
     BehaviorAlignment* _behaviorAlignment = nullptr;
