@@ -228,6 +228,7 @@ bool App::Run()
     DEBUG_API.EndFrame();
 #endif
 
+#if WITH_IMGUI
     float times[200];
     size_t numSamples;
     avgFrameTime.CopySamples(times, &numSamples);
@@ -246,12 +247,12 @@ bool App::Run()
       ImGui::End();
     }
 
-#if WITH_IMGUI
     if (g_KeyUpTrigger.IsTriggered('H'))
       renderImgui = !renderImgui;
     if (renderImgui)
       ImGui::Render();
 #endif
+
     double frameTime = stopWatch.Stop();
     if (++numFrames > 10)
       avgFrameTime.AddSample((float)frameTime);

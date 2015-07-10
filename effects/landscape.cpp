@@ -320,10 +320,11 @@ void Landscape::UpdateBoids(const UpdateState& state)
     SCHEDULER.Wait(taskId);
 
   double avg = stopWatch.Stop();
+#if WITH_IMGUI
   TANO.AddPerfCallback([=]() {
     ImGui::Text("Update time: %.3fms", 1000 * avg);
   });
-
+#endif
   spline.Update(dt);
 }
 
@@ -717,10 +718,12 @@ void Landscape::RasterizeLandscape()
   }
   _numLowerIndices = numChunks * Chunk::LOWER_INDICES;
 
+#if WITH_IMGUI
   TANO.AddPerfCallback([=]() {
     ImGui::Text("# particles: %d", numParticles);
     ImGui::Text("# chunks: %d", numChunks);
   });
+#endif
 
   _ctx->Unmap(_particleBundle.objects._vb);
   _ctx->Unmap(_landscapeGpuObjects._vb);

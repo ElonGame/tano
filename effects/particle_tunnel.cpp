@@ -638,10 +638,11 @@ bool ParticleTunnel::Update(const UpdateState& state)
   _ctx->Unmap(vb);
 
   double avg = stopWatch.Stop();
+#if WITH_IMGUI
   TANO.AddPerfCallback([=]() {
     ImGui::Text("Update time: %.3fms", 1000 * avg);
   });
-
+#endif
   return true;
 }
 

@@ -141,6 +141,8 @@ void Plexus::UpdateNoise()
 {
   static bool opened = false;
   static bool firstTime = true;
+
+#if WITH_IMGUI
   if (!ImGui::Begin("Noise", &opened))
   {
     ImGui::End();
@@ -170,10 +172,10 @@ void Plexus::UpdateNoise()
   ImGui::Image((void*)&_perlinTexture, ImVec2((float)NOISE_WIDTH, (float)NOISE_HEIGHT));
 
   ImGui::End();
-
   firstTime = false;
   if (!recalc)
     return;
+#endif
 
   float scale = _settings.noise.max_scale;
   float opacity = 0;
@@ -546,9 +548,11 @@ int Plexus::CalcLines(V3* vtx)
   }
 
   double avg = stopWatch.Stop();
+#if WITH_IMGUI
   TANO.AddPerfCallback([=]() {
     ImGui::Text("Update time: %.3fms", 1000 * avg);
   });
+#endif
 
   return (int)(vtx - orgVtx);
 }
