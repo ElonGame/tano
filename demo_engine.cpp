@@ -69,10 +69,12 @@ DemoEngine::~DemoEngine()
   _inactiveEffects.clear();
   _expiredEffects.clear();
 
+#if WITH_ROCKET
 #if !WITH_ROCKET_PLAYER
   sync_save_tracks(_rocket);
 #endif
   sync_destroy_device(_rocket);
+#endif
 
 #if WITH_MUSIC
   BASS_StreamFree(_stream);
@@ -219,7 +221,7 @@ double DemoEngine::GetRow() const
 //------------------------------------------------------------------------------
 bool DemoEngine::Tick()
 {
-#if !WITH_ROCKET_PLAYER
+#if WITH_ROCKET && !WITH_ROCKET_PLAYER
   static struct sync_cb RocketCb =
   {
     RocketPauseCb,
@@ -456,7 +458,7 @@ LRESULT DemoEngine::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
   return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-#if !WITH_ROCKET_PLAYER
+#if WITH_ROCKET && !WITH_ROCKET_PLAYER
 //------------------------------------------------------------------------------
 void DemoEngine::RocketPauseCb(void* context, int flag)
 {

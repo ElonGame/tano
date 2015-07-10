@@ -3,6 +3,7 @@
 
 namespace tano
 {
+#if WITH_ROCKET
   struct AnimatedVar
   {
     AnimatedVar(const char* name);
@@ -47,5 +48,5 @@ namespace tano
 
     AnimatedVar r, g, b, a;
   };
-
+#endif
 }

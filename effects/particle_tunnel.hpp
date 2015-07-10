@@ -152,8 +152,6 @@ namespace tano
 
     float _particlesStart, _particlesEnd;
 
-    AnimatedFloat _beatTrack;
-
     struct FracturePiece
     {
       //scene::Mesh* mesh;

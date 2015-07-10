@@ -109,13 +109,11 @@ namespace tano
         bool srgb = false,
         D3DX11_IMAGE_INFO* info = nullptr);
 
-    ObjectHandle LoadTextureFromMemory(const char* buf, size_t len, const char* friendly_name, bool srgb, D3DX11_IMAGE_INFO* info);
+    ObjectHandle LoadTextureFromMemory(const char* buf, size_t len, bool srgb, D3DX11_IMAGE_INFO* info);
 
-    FileWatcher::WatchId AddFileWatch(
+    AddFileWatchResult AddFileWatch(
       const string& filename,
-      void* token,
       bool initial_callback,
-      bool* initial_result,
       const cbFileChanged& cb);
 
   private:

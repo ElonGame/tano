@@ -5,7 +5,7 @@
 
 #define WITH_REMOTERY 0
 #define WITH_DXGI_DEBUG 1
-#define WITH_DEBUG_SHADERS 1
+#define WITH_DEBUG_SHADERS 0
 #define WITH_ROCKET 1
 #define WITH_ROCKET_PLAYER 1
 #define WITH_DEBUG_API 1
@@ -35,6 +35,8 @@
 
 #define WITH_SCHEDULER_STATS 0
 
+#define _PUBLIC
+
 #ifdef _PUBLIC
   #define WITH_UNPACKED_RESOUCES 0
   #define WITH_DEBUG_SHADERS 0
@@ -42,8 +44,8 @@
   #define WITH_REMOTERY 0
   #define WITH_IMGUI 0
   #define WITH_CONFIG_DLG 1
-  #define WITH_ROCKET 1
-  #define WITH_ROCKET_PLAYER 1
+  #define WITH_ROCKET 0
+  #define WITH_ROCKET_PLAYER 0
 #elif _DEBUG
   #ifndef WITH_UNPACKED_RESOUCES 
     #define WITH_UNPACKED_RESOUCES 1

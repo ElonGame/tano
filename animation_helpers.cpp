@@ -3,6 +3,7 @@
 
 using namespace tano;
 
+#if WITH_ROCKET
 //------------------------------------------------------------------------------
 AnimatedVar::AnimatedVar(const char* name) 
   : track(sync_get_track(ROCKET, name)) 
@@ -58,3 +59,4 @@ AnimatedColor::operator Color()
     (float)sync_get_val(b.track, row),
     (float)sync_get_val(a.track, row));
 }
+#endif

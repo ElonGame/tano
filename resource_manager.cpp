@@ -437,32 +437,28 @@ ObjectHandle PackedResourceManager::LoadTexture(
   return GRAPHICS.LoadTextureFromMemory(
     tmp.data(), 
     (u32)tmp.size(), 
-    friendlyName ? friendlyName : filename, 
     srgb, 
     info);
 }
 
 //------------------------------------------------------------------------------
 ObjectHandle PackedResourceManager::LoadTextureFromMemory(
-  const char* buf, size_t len, const char* friendly_name, bool srgb, D3DX11_IMAGE_INFO* info)
+  const char* buf, size_t len, bool srgb, D3DX11_IMAGE_INFO* info)
 {
-  return GRAPHICS.LoadTextureFromMemory(buf, (u32)len, friendly_name, srgb, info);
+  return GRAPHICS.LoadTextureFromMemory(buf, (u32)len, srgb, info);
 }
 
 //------------------------------------------------------------------------------
-FileWatcher::WatchId PackedResourceManager::AddFileWatch(
+AddFileWatchResult PackedResourceManager::AddFileWatch(
     const string& filename,
-    void* token,
     bool initialCallback,
-    bool* initialResult,
     const cbFileChanged& cb)
 {
   // Invoke the callback directly
-  bool res = cb(filename, token);
-  if (initialResult)
-    *initialResult = res;
-
-  return 0;
+  AddFileWatchResult res;
+  res.watchId = 0;
+  res.initialResult = cb(filename, 0);
+  return res;
 }
 
 #endif

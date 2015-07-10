@@ -35,7 +35,9 @@ namespace tano
     bool Tick();
 
     void WndProc(UINT message, WPARAM wParam, LPARAM lParam);
+#if WITH_ROCKET
     sync_device* GetRocket() { return _rocket; }
+#endif
     double GetRow() const;
 
     static bool IsInitialized() { return _instance != nullptr; }

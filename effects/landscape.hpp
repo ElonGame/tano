@@ -164,8 +164,6 @@ namespace tano
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
 
-    AnimatedInt _blinkFace;
-
     enum DrawFlags {
       DrawUpper       = 0x1,
       DrawLower       = 0x2,

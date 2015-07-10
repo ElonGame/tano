@@ -74,7 +74,6 @@ Landscape::Flock::~Flock()
 //------------------------------------------------------------------------------
 Landscape::Landscape(const string &name, u32 id)
   : BaseEffect(name, id)
-  , _blinkFace("blinkface")
 {
 #if WITH_IMGUI
   PROPERTIES.Register(Name(),

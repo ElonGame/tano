@@ -294,7 +294,6 @@ void ParticleTunnel::ParticleEmitter::CopyToBuffer(ParticleType* vtx)
 //------------------------------------------------------------------------------
 ParticleTunnel::ParticleTunnel(const string &name, u32 id)
   : BaseEffect(name, id)
-  , _beatTrack("beat")
 {
 #if WITH_IMGUI
   PROPERTIES.Register("particle tunnel", 
@@ -610,9 +609,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
   BLACKBOARD.ClearNamespace();
 
-
   _cbPerFrame.time.x = ms;
-  _cbPerFrame.time.w = _beatTrack;
 
   rmt_ScopedCPUSample(Particles_Update);
   float dt = 1.f / state.frequency;

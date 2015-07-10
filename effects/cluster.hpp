@@ -49,7 +49,5 @@ namespace tano
     ClusterSettings _settings;
     string _configName;
     MeshLoader _meshLoader;
-
-    AnimatedInt _blinkFace;
   };
 }

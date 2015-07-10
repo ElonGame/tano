@@ -270,6 +270,7 @@ bool Cloth::InitParticles()
   }
   else
   {
+#if WITH_UNPACKED_RESOUCES
     GroupConstraints();
     FILE* f = RESOURCE_MANAGER.OpenWriteFile(filename);
 
@@ -291,6 +292,7 @@ bool Cloth::InitParticles()
       c.p0 = &_particles[c.idx0];
       c.p1 = &_particles[c.idx1];
     }
+#endif
   }
 
 
