@@ -45,6 +45,12 @@ bool BaseEffect::Update(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
+bool BaseEffect::Update100(const UpdateState& state)
+{
+  return true;
+}
+
+//------------------------------------------------------------------------------
 bool BaseEffect::Render()
 {
   return true; 

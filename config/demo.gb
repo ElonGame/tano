@@ -18,13 +18,6 @@
     settings: 'config/landscape.gb';
   },
   {
-    name: 'blob';
-    factory: 'blob';
-    start_time: 1300000;
-    end_time: 1300000;
-    settings: 'config/blob.gb';
-  },
-  {
     name: 'cloth';
     factory: 'cloth';
     start_time: 1300000;

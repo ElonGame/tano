@@ -14,7 +14,8 @@ using namespace bristol;
 namespace
 {
   // update frequeny in hz
-  u32 UPDATE_FREQUENCY = 100;
+  int UPDATE_FREQUENCY = 100;
+  double UPDATE_INTERVAL = 1.0 / UPDATE_FREQUENCY;
   TimeDuration UPDATE_DELTA = TimeDuration::Microseconds((s64)1e6 / UPDATE_FREQUENCY);
 
   // These values are kinda arbitrary, and should probably be set to match
@@ -28,9 +29,9 @@ namespace
 DemoEngine *DemoEngine::_instance = NULL;
 
 //------------------------------------------------------------------------------
-float TimeDurationToFloat(TimeDuration t)
+double TimeDurationToFloat(TimeDuration t)
 {
-  return t.TotalMicroseconds() / 1e6f;
+  return t.TotalMicroseconds() / 1e6;
 }
 
 //------------------------------------------------------------------------------
@@ -279,7 +280,9 @@ void DemoEngine::UpdateEffects()
   bool paused = !_timer.IsRunning();
 
   // calc the number of ticks to step
-  float numTicks = TimeDurationToFloat(delta) * UPDATE_FREQUENCY;
+  _updatedAcc += TimeDurationToFloat(delta);
+
+  double numTicks = TimeDurationToFloat(delta) * UPDATE_FREQUENCY;
   int intNumTicks = (int)numTicks;
 
   UpdateState curState;
@@ -288,7 +291,7 @@ void DemoEngine::UpdateEffects()
   curState.paused = paused;
   curState.frequency = UPDATE_FREQUENCY;
   curState.numTicks = intNumTicks;
-  curState.ticksFraction = numTicks - intNumTicks;
+  curState.ticksFraction = (float)(numTicks - intNumTicks);
 
   // If a force effect is set, just tick this guy
   if (_forceEffect)
@@ -296,6 +299,13 @@ void DemoEngine::UpdateEffects()
     curState.localTime = current;
     _forceEffect->Update(curState);
     _forceEffect->Render();
+
+    while (_updatedAcc >= UPDATE_INTERVAL)
+    {
+      _forceEffect->Update100(curState);
+      _updatedAcc -= UPDATE_INTERVAL;
+    }
+
     return;
   }
 
@@ -306,11 +316,17 @@ void DemoEngine::UpdateEffects()
     e->SetRunning(false);
   }
 
-  // tick the active effects
-  for (auto& effect : _activeEffects)
+  // Update all active effects
+  for (BaseEffect* effect : _activeEffects)
   {
     curState.localTime = current - effect->StartTime();
     effect->Update(curState);
+
+    while (_updatedAcc >= UPDATE_INTERVAL)
+    {
+      effect->Update100(curState);
+      _updatedAcc -= UPDATE_INTERVAL;
+    }
   }
 
   _initialState.globalTime = current;
@@ -323,9 +339,10 @@ void DemoEngine::UpdateEffects()
     e->SetRunning(true);
     e->InitAnimatedParameters();
     e->Update(_initialState);
+    e->Update100(_initialState);
   }
 
-  for (auto& effect : _activeEffects)
+  for (BaseEffect* effect : _activeEffects)
   {
     effect->Render();
   }

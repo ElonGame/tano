@@ -15,9 +15,7 @@
 #include "generated/input_buffer.hpp"
 #include "effects/particle_tunnel.hpp"
 #include "effects/raymarcher.hpp"
-#include "effects/cluster.hpp"
 #include "effects/landscape.hpp"
-#include "effects/blob.hpp"
 #include "effects/cloth.hpp"
 #include "effects/plexus.hpp"
 
@@ -172,9 +170,7 @@ bool App::Init(HINSTANCE hinstance)
 
   ParticleTunnel::Register();
   RayMarcher::Register();
-  Cluster::Register();
   Landscape::Register();
-  Blob::Register();
   Cloth::Register();
   Plexus::Register();
 

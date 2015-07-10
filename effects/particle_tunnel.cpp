@@ -252,8 +252,6 @@ void ParticleTunnel::ParticleEmitter::Destroy()
 //------------------------------------------------------------------------------
 void ParticleTunnel::ParticleEmitter::Update(float dt)
 {
-  //Lifetime* ll = _lifetime;
-
   int numDead = 0;
   int* dead = _deadParticles;
 
@@ -263,7 +261,6 @@ void ParticleTunnel::ParticleEmitter::Update(float dt)
   {
     XMVECTOR scaledVel = XMVectorScale(vel[i], dt);
     pos[i] = XMVectorAdd(pos[i], scaledVel);
-    //--ll->left;
 
     XMVECTOR res = XMVectorLess(pos[i], zClip);
     u32 rr[4];
@@ -498,18 +495,25 @@ void ParticleTunnel::UpdateCameraMatrix(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
+void ParticleTunnel::MemCpy(const scheduler::TaskData& data)
+{
+  MemCpyKernelData* memcpyData = (MemCpyKernelData*)data.kernelData.data;
+  memcpy(memcpyData->dst, memcpyData->src, memcpyData->size);
+}
+
+//------------------------------------------------------------------------------
 void ParticleTunnel::UpdateEmitter(const TaskData& data)
 {
   EmitterKernelData* emitterData = (EmitterKernelData*)data.kernelData.data;
   ParticleEmitter* emitter = emitterData->emitter;
 
-  for (int i = 0; i < emitterData->ticks; ++i)
-  {
-    emitter->Update(emitterData->dt);
-  }
+  emitter->Update(emitterData->dt);
 
   emitter->CopyToBuffer(emitterData->vtx);
 }
+
+//------------------------------------------------------------------------------
+void ParticleTunnel::CopyOutEmitter(const scheduler::TaskData& data);
 
 
 //------------------------------------------------------------------------------
@@ -518,7 +522,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
   static AvgStopWatch stopWatch;
   stopWatch.Start();
 
-  _curTime = state.localTime.TotalMilliseconds() / 1000.f;
+  _curTime = state.localTime.TotalMicroseconds() / (float)1e6;
 
   auto fnCalcFade = [](float ms, const char* s, const char* e, bool invert)
   {
@@ -544,7 +548,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
     _particleEmitters.Append(ParticleEmitter()).Create(center, _settings.num_particles);
   }
 
-  float ms = state.localTime.TotalMilliseconds() / 1000.f;
+  float ms = state.localTime.TotalMicroseconds() / (float)1e6;
   
   TextData* t = nullptr;
   float scale;
@@ -609,6 +613,47 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
   BLACKBOARD.ClearNamespace();
 
+  //_cbPerFrame.time.x = ms;
+
+  //rmt_ScopedCPUSample(Particles_Update);
+  //float dt = 1.f / state.frequency;
+
+  //ObjectHandle vb = _particleBundle.objects._vb;
+  //ParticleType* vtx = _ctx->MapWriteDiscard<ParticleType>(_particleBundle.objects._vb);
+
+  //SimpleAppendBuffer<TaskId, 32> tasks;
+
+  //for (int i = 0; i < _particleEmitters.Size(); ++i)
+  //{
+  //  EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
+  //  *data = EmitterKernelData{ &_particleEmitters[i], dt, state.numTicks, vtx + i * _settings.num_particles };
+  //  KernelData kd;
+  //  kd.data = data;
+  //  kd.size = sizeof(EmitterKernelData);
+  //  tasks.Append(SCHEDULER.AddTask(kd, UpdateEmitter));
+  //}
+
+  //for (const TaskId& taskId : tasks)
+  //  SCHEDULER.Wait(taskId);
+
+  //_ctx->Unmap(vb);
+
+  double avg = stopWatch.Stop();
+#if WITH_IMGUI
+  TANO.AddPerfCallback([=]() {
+    ImGui::Text("Update time: %.3fms", 1000 * avg);
+  });
+#endif
+  return true;
+}
+
+//------------------------------------------------------------------------------
+bool ParticleTunnel::Update100(const UpdateState& state)
+{
+  static AvgStopWatch stopWatch;
+  stopWatch.Start();
+
+  float ms = state.localTime.TotalMicroseconds() / (float)1e6;
   _cbPerFrame.time.x = ms;
 
   rmt_ScopedCPUSample(Particles_Update);
@@ -622,7 +667,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
   for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
     EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-    *data = EmitterKernelData{ &_particleEmitters[i], dt, state.numTicks, vtx + i * _settings.num_particles };
+    *data = EmitterKernelData{ &_particleEmitters[i], dt, vtx + i * _settings.num_particles };
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(EmitterKernelData);
@@ -637,9 +682,10 @@ bool ParticleTunnel::Update(const UpdateState& state)
   double avg = stopWatch.Stop();
 #if WITH_IMGUI
   TANO.AddPerfCallback([=]() {
-    ImGui::Text("Update time: %.3fms", 1000 * avg);
+    ImGui::Text("Update100 time: %.3fms", 1000 * avg);
   });
 #endif
+
   return true;
 }
 

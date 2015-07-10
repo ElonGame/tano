@@ -25,6 +25,7 @@ namespace tano
     ~ParticleTunnel();
     virtual bool Init(const char* configFile) override;
     virtual bool Update(const UpdateState& state) override;
+    virtual bool Update100(const UpdateState& state) override;
     virtual bool Render() override;
     virtual bool Close() override;
 
@@ -69,11 +70,19 @@ namespace tano
     {
       ParticleEmitter* emitter;
       float dt;
-      int ticks;
       ParticleType* vtx;
     };
 
+    struct MemCpyKernelData
+    {
+      void *dst;
+      const void* src;
+      int size;
+    };
+    static void MemCpy(const scheduler::TaskData& data);
+
     static void UpdateEmitter(const scheduler::TaskData& data);
+    static void CopyOutEmitter(const scheduler::TaskData& data);
 
     SimpleAppendBuffer<ParticleEmitter, 24> _particleEmitters;
 

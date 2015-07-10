@@ -98,6 +98,8 @@ namespace tano
 #endif
     UpdateState _initialState;
     BaseEffect* _forceEffect = nullptr;
+
+    double _updatedAcc = 0;
   };
 
 #define DEMO_ENGINE DemoEngine::Instance()
