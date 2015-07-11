@@ -5,8 +5,9 @@
 using namespace tano;
 
 //------------------------------------------------------------------------------
-BaseEffect::BaseEffect(const string& instanceName, u32 id)
+BaseEffect::BaseEffect(const string& instanceName, const string& config, u32 id)
   : _instanceName(instanceName)
+  , _configName(config)
   , _id(id)
   , _running(false)
   , _ctx(GRAPHICS.GetGraphicsContext())
@@ -33,7 +34,7 @@ bool BaseEffect::OnConfigChanged(const vector<char>& buf)
 }
 
 //------------------------------------------------------------------------------
-bool BaseEffect::Init(const char* configFile)
+bool BaseEffect::Init()
 {
   return true;
 }

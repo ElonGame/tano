@@ -49,8 +49,8 @@ void BlurLine(const T* src, T* dst, int size, float r)
 }
 
 //------------------------------------------------------------------------------
-Plexus::Plexus(const string &name, u32 id)
-  : BaseEffect(name, id)
+Plexus::Plexus(const string &name, const string& config, u32 id)
+  : BaseEffect(name, config, id)
 {
 #if WITH_IMGUI
   PROPERTIES.Register(Name(),
@@ -85,15 +85,16 @@ void GenRandomPoints(float kernelSize)
 }
 
 //------------------------------------------------------------------------------
-bool Plexus::Init(const char* configFile)
+bool Plexus::OnConfigChanged(const vector<char>& buf)
+{
+  return ParsePlexusSettings(InputBuffer(buf), &_settings);
+}
+
+//------------------------------------------------------------------------------
+bool Plexus::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  _configName = configFile;
-  vector<char> buf;
-  INIT_FATAL(RESOURCE_MANAGER.LoadFile(configFile, &buf));
-
-  INIT(ParsePlexusSettings(InputBuffer(buf), &_settings));
   _camera._pitch = _settings.camera.pitch;
   _camera._yaw = _settings.camera.yaw;
   _camera._roll = _settings.camera.roll;
@@ -692,17 +693,11 @@ void Plexus::RenderParameterSet()
 #if WITH_IMGUI
 void Plexus::SaveParameterSet()
 {
-  OutputBuffer buf;
   _settings.camera.pos = _camera._pos;
   _settings.camera.yaw = _camera._yaw;
   _settings.camera.pitch = _camera._pitch;
   _settings.camera.roll = _camera._roll;
-  Serialize(buf, _settings);
-  if (FILE* f = fopen(_configName.c_str(), "wt"))
-  {
-    fwrite(buf._buf.data(), 1, buf._ofs, f);
-    fclose(f);
-  }
+  SaveSettings(_settings);
 }
 #endif
 
@@ -720,9 +715,9 @@ bool Plexus::Close()
 }
 
 //------------------------------------------------------------------------------
-BaseEffect* Plexus::Create(const char* name, u32 id)
+BaseEffect* Plexus::Create(const char* name, const char* config, u32 id)
 {
-  return new Plexus(name, id);
+  return new Plexus(name, config, id);
 }
 
 //------------------------------------------------------------------------------

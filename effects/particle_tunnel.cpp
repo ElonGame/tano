@@ -289,8 +289,8 @@ void ParticleTunnel::ParticleEmitter::CopyToBuffer(ParticleType* vtx)
 }
 
 //------------------------------------------------------------------------------
-ParticleTunnel::ParticleTunnel(const string &name, u32 id)
-  : BaseEffect(name, id)
+ParticleTunnel::ParticleTunnel(const string &name, const string& config, u32 id)
+  : BaseEffect(name, config, id)
 {
 #if WITH_IMGUI
   PROPERTIES.Register("particle tunnel", 
@@ -316,19 +316,9 @@ bool ParticleTunnel::OnConfigChanged(const vector<char>& buf)
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTunnel::Init(const char* configFile)
+bool ParticleTunnel::Init()
 {
   BEGIN_INIT_SEQUENCE();
-
-  _configName = configFile;
-  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(configFile, true, [this](const string& filename)
-  {
-    vector<char> buf;
-    if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
-      return false;
-
-    return ParseParticleTunnelSettings(InputBuffer(buf), &_settings);
-  });
 
   // Background state setup
   INIT(_backgroundBundle.Create(BundleOptions()
@@ -826,13 +816,7 @@ void ParticleTunnel::RenderParameterSet()
 #if WITH_IMGUI
 void ParticleTunnel::SaveParameterSet()
 {
-  OutputBuffer buf;
-  Serialize(buf, _settings);
-  if (FILE* f = fopen(_configName.c_str(), "wt"))
-  {
-    fwrite(buf._buf.data(), 1, buf._ofs, f);
-    fclose(f);
-  }
+  SaveSettings(_settings);
 }
 #endif
 
@@ -848,9 +832,9 @@ bool ParticleTunnel::Close()
 }
 
 //------------------------------------------------------------------------------
-BaseEffect* ParticleTunnel::Create(const char* name, u32 id)
+BaseEffect* ParticleTunnel::Create(const char* name, const char* config, u32 id)
 {
-  return new ParticleTunnel(name, id);
+  return new ParticleTunnel(name, config, id);
 }
 
 //------------------------------------------------------------------------------

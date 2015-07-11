@@ -32,9 +32,10 @@ namespace tano
       HALF_CHUNK_SIZE = CHUNK_SIZE / 2,
     };
 
-    Landscape(const string &name, u32 id);
+    Landscape(const string &name, const string& config, u32 id);
     ~Landscape();
-    virtual bool Init(const char* configFile) override;
+    virtual bool OnConfigChanged(const vector<char>& buf) override;
+    virtual bool Init() override;
     virtual bool Update(const UpdateState& state) override;
     virtual bool FixedUpdate(const FixedUpdateState& state) override;
     virtual bool Render() override;
@@ -42,7 +43,7 @@ namespace tano
     virtual bool InitAnimatedParameters() override;
 
     static const char* Name();
-    static BaseEffect* Create(const char* name, u32 id);
+    static BaseEffect* Create(const char* name, const char* config, u32 id);
     static void Register();
 
   //private:
@@ -155,7 +156,6 @@ namespace tano
     GpuState _landscapeLowerState;
 
     LandscapeSettings _settings;
-    string _configName;
     MeshLoader _meshLoader;
 
     GpuBundle _skyBundle;

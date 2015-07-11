@@ -13,8 +13,8 @@ using namespace tano;
 using namespace bristol;
 
 //------------------------------------------------------------------------------
-RayMarcher::RayMarcher(const string &name, u32 id)
-  : BaseEffect(name, id)
+RayMarcher::RayMarcher(const string& name, const string& config, u32 id)
+  : BaseEffect(name, config, id)
 {
 #if WITH_IMGUI
   PROPERTIES.Register("ray marcher",
@@ -29,16 +29,15 @@ RayMarcher::~RayMarcher()
 }
 
 //------------------------------------------------------------------------------
-bool RayMarcher::Init(const char* configFile)
+bool RayMarcher::OnConfigChanged(const vector<char>& buf)
+{
+  return ParseRayMarcherSettings(InputBuffer(buf), &_settings);
+}
+
+//------------------------------------------------------------------------------
+bool RayMarcher::Init()
 {
   BEGIN_INIT_SEQUENCE();
-
-  _configName = configFile;
-  vector<char> buf;
-  if (!RESOURCE_MANAGER.LoadFile(configFile, &buf))
-    return false;
-
-  INIT(ParseRayMarcherSettings(InputBuffer(buf), &_settings));
 
   INIT(_raymarcherGpuObjects.LoadVertexShader("shaders/out/common", "VsQuad"));
   INIT(_raymarcherGpuObjects.LoadPixelShader("shaders/out/raymarcher", "PsRaymarcher"));
@@ -91,13 +90,7 @@ void RayMarcher::RenderParameterSet()
 #if WITH_IMGUI
 void RayMarcher::SaveParameterSet()
 {
-  OutputBuffer buf;
-  Serialize(buf, _settings);
-  if (FILE* f = fopen(_configName.c_str(), "wt"))
-  {
-    fwrite(buf._buf.data(), 1, buf._ofs, f);
-    fclose(f);
-  }
+  SaveSettings(_settings);
 }
 #endif
 
@@ -113,9 +106,9 @@ bool RayMarcher::Close()
 }
 
 //------------------------------------------------------------------------------
-BaseEffect* RayMarcher::Create(const char* name, u32 id)
+BaseEffect* RayMarcher::Create(const char* name, const char* config, u32 id)
 {
-  return new RayMarcher(name, id);
+  return new RayMarcher(name, config, id);
 }
 
 //------------------------------------------------------------------------------

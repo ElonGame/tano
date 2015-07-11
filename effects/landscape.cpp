@@ -73,8 +73,8 @@ Landscape::Flock::~Flock()
 }
 
 //------------------------------------------------------------------------------
-Landscape::Landscape(const string &name, u32 id)
-  : BaseEffect(name, id)
+Landscape::Landscape(const string &name, const string& config, u32 id)
+  : BaseEffect(name, config, id)
 {
 #if WITH_IMGUI
   PROPERTIES.Register(Name(),
@@ -91,15 +91,16 @@ Landscape::~Landscape()
 }
 
 //------------------------------------------------------------------------------
-bool Landscape::Init(const char* configFile)
+bool Landscape::OnConfigChanged(const vector<char>& buf)
+{
+  return ParseLandscapeSettings(InputBuffer(buf), &_settings);
+}
+
+//------------------------------------------------------------------------------
+bool Landscape::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  _configName = configFile;
-  vector<char> buf;
-  INIT_FATAL(RESOURCE_MANAGER.LoadFile(configFile, &buf));
-
-  INIT(ParseLandscapeSettings(InputBuffer(buf), &_settings));
   _freeflyCamera._pitch = _settings.camera.pitch;
   _freeflyCamera._yaw = _settings.camera.yaw;
   _freeflyCamera._roll = _settings.camera.roll;
@@ -966,17 +967,11 @@ void Landscape::RenderParameterSet()
 #if WITH_IMGUI
 void Landscape::SaveParameterSet()
 {
-  OutputBuffer buf;
   _settings.camera.pos = _freeflyCamera._pos;
   _settings.camera.yaw = _freeflyCamera._yaw;
   _settings.camera.pitch = _freeflyCamera._pitch;
   _settings.camera.roll = _freeflyCamera._roll;
-  Serialize(buf, _settings);
-  if (FILE* f = fopen(_configName.c_str(), "wt"))
-  {
-    fwrite(buf._buf.data(), 1, buf._ofs, f);
-    fclose(f);
-  }
+  SaveSettings(_settings);
 }
 #endif
 
@@ -999,9 +994,9 @@ bool Landscape::Close()
 }
 
 //------------------------------------------------------------------------------
-BaseEffect* Landscape::Create(const char* name, u32 id)
+BaseEffect* Landscape::Create(const char* name, const char* config, u32 id)
 {
-  return new Landscape(name, id);
+  return new Landscape(name, config, id);
 }
 
 //------------------------------------------------------------------------------

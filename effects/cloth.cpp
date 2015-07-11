@@ -37,8 +37,8 @@ namespace
 StopWatch g_stopWatch;
 
 //------------------------------------------------------------------------------
-Cloth::Cloth(const string &name, u32 id)
-  : BaseEffect(name, id)
+Cloth::Cloth(const string &name, const string& config, u32 id)
+  : BaseEffect(name, config, id)
   , _avgUpdate(100)
 {
 #if WITH_IMGUI
@@ -56,15 +56,16 @@ Cloth::~Cloth()
 }
 
 //------------------------------------------------------------------------------
-bool Cloth::Init(const char* configFile)
+bool Cloth::OnConfigChanged(const vector<char>& buf)
+{
+  return ParseClothSettings(InputBuffer(buf), &_settings);
+}
+
+//------------------------------------------------------------------------------
+bool Cloth::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  _configName = configFile;
-  vector<char> buf;
-  INIT_FATAL(RESOURCE_MANAGER.LoadFile(configFile, &buf));
-
-  INIT(ParseClothSettings(InputBuffer(buf), &_settings));
   _camera._pitch = _settings.camera.pitch;
   _camera._yaw = _settings.camera.yaw;
   _camera._roll = _settings.camera.roll;
@@ -537,17 +538,11 @@ void Cloth::RenderParameterSet()
 #if WITH_IMGUI
 void Cloth::SaveParameterSet()
 {
-  OutputBuffer buf;
   _settings.camera.pos = _camera._pos;
   _settings.camera.yaw = _camera._yaw;
   _settings.camera.pitch = _camera._pitch;
   _settings.camera.roll = _camera._roll;
-  Serialize(buf, _settings);
-  if (FILE* f = fopen(_configName.c_str(), "wt"))
-  {
-    fwrite(buf._buf.data(), 1, buf._ofs, f);
-    fclose(f);
-  }
+  SaveSettings(_settings);
 }
 #endif
 
@@ -565,9 +560,9 @@ bool Cloth::Close()
 }
 
 //------------------------------------------------------------------------------
-BaseEffect* Cloth::Create(const char* name, u32 id)
+BaseEffect* Cloth::Create(const char* name, const char* config, u32 id)
 {
-  return new Cloth(name, id);
+  return new Cloth(name, config, id);
 }
 
 //------------------------------------------------------------------------------

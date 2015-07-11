@@ -10,7 +10,7 @@ namespace tano
 {
 
   class BaseEffect;
-  typedef function<BaseEffect*(const char*, u32)> EffectFactory;
+  typedef function<BaseEffect*(const char*, const char*, u32)> EffectFactory;
 
   class DemoEngine
   {
@@ -42,7 +42,6 @@ namespace tano
 
     static bool IsInitialized() { return _instance != nullptr; }
 
-    FileWatcher& GetFileWatcher() { return _fileWatcher; }
 #if WITH_IMGUI
     PropertyManager& GetPropertyManager() { return _propertyManager; }
 #endif
@@ -77,7 +76,6 @@ namespace tano
     unordered_map<string, EffectFactory> _effectFactories;
     u32 _nextEffectId;
 
-    FileWatcher _fileWatcher;
 #if WITH_IMGUI
     PropertyManager _propertyManager;
 #endif

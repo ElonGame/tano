@@ -233,7 +233,6 @@ bool DemoEngine::Tick()
 
   rmt_ScopedCPUSample(DemoEngine_Tick);
 
-  _fileWatcher.Tick();
 #if WITH_IMGUI
   _propertyManager.Tick();
 #endif
@@ -401,13 +400,25 @@ bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
 
     // Create and init the effect
     EffectFactory factory = it->second;
-    BaseEffect* effect = factory(e.name.c_str(), _nextEffectId++);
+    const char* configFile = e.settings.c_str();
+    BaseEffect* effect = factory(e.name.c_str(), configFile, _nextEffectId++);
     _effects.push_back(effect);
 
     TimeDuration start = TimeDuration::Milliseconds(e.start_time);
     TimeDuration end = TimeDuration::Milliseconds(e.end_time);
     effect->SetDuration(start, end);
-    INIT(effect->Init(e.settings.c_str()));
+
+    AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(
+      configFile, true, [this, &effect](const string& filename)
+    {
+      vector<char> buf;
+      if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
+        return false;
+
+      return effect->OnConfigChanged(buf);
+    });
+
+    INIT(effect->Init());
 
     if (e.force)
     {
@@ -438,7 +449,6 @@ bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
 bool DemoEngine::Init(const char* config, HINSTANCE instance)
 {
   BEGIN_INIT_SEQUENCE();
-  bool res = true;
 
 #if WITH_ROCKET 
   INIT(_rocket = sync_create_device("config/sync/"));
@@ -448,7 +458,7 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
 #endif
 #endif
 
-  _fileWatcher.AddFileWatch(config, true, &res, [this](const string& filename)
+  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(config, true, [this](const string& filename)
   {
     vector<char> buf;
     if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
@@ -479,7 +489,7 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
 
   ReclassifyEffects();
 
-  INIT(res);
+  INIT(res.initialResult);
   END_INIT_SEQUENCE();
 }
 

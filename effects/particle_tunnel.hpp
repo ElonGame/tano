@@ -21,17 +21,17 @@ namespace tano
   {
   public:
 
-    ParticleTunnel(const string &name, u32 id);
+    ParticleTunnel(const string &name, const string& config, u32 id);
     ~ParticleTunnel();
     virtual bool OnConfigChanged(const vector<char>& buf) override;
-    virtual bool Init(const char* configFile) override;
+    virtual bool Init() override;
     virtual bool Update(const UpdateState& state) override;
     virtual bool FixedUpdate(const FixedUpdateState& state) override;
     virtual bool Render() override;
     virtual bool Close() override;
 
     static const char* Name();
-    static BaseEffect* Create(const char* name, u32 id);
+    static BaseEffect* Create(const char* name, const char* config, u32 id);
     static void Register();
 
   private:
