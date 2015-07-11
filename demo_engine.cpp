@@ -98,13 +98,25 @@ void DemoEngine::Create()
 //------------------------------------------------------------------------------
 bool DemoEngine::Start()
 {
-  _startTimer = true;
 #if WITH_MUSIC
   BASS_Start();
   BASS_ChannelPlay(_stream, false);
   if (_settings.silent)
     BASS_ChannelSetAttribute(_stream, BASS_ATTRIB_VOL, 0);
 #endif
+
+  // Tick a few zero frames to make sure everything is allocated up front etc
+  for (int i = 0; i < 3; ++i)
+  {
+    for (BaseEffect* effect : _effects)
+    {
+      effect->Update(_initialState);
+      effect->FixedUpdate(_initialFixedState);
+      effect->Render();
+    }
+  }
+
+  _timer.Start();
 
   return true;
 }
@@ -265,11 +277,6 @@ bool DemoEngine::Tick()
 #endif
 #endif
 
-  if (_startTimer)
-  {
-    _startTimer = false;
-    _timer.Start();
-  }
   UpdateEffects();
 
   return true;
@@ -458,6 +465,14 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
 #endif
 #endif
 
+  // Set up the initial effect state
+  _initialState.localTime = TimeDuration::Seconds(0);
+  _initialState.delta = TimeDuration::Seconds(0);
+
+  _initialFixedState.globalTime = TimeDuration::Seconds(0);
+  _initialFixedState.localTime = TimeDuration::Seconds(0);
+  _initialFixedState.delta = UPDATE_INTERVAL;
+
   FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(config, true, [this](const string& filename)
   {
     vector<char> buf;
@@ -478,14 +493,6 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
   INIT(BASS_Init(-1, 44100, 0, 0, 0));
   INIT(_stream = BASS_StreamCreateFile(false, _settings.soundtrack.c_str(), 0, 0, BASS_STREAM_PRESCAN));
 #endif
-
-  // Set up the initial effect state
-  _initialState.localTime = TimeDuration::Seconds(0);
-  _initialState.delta = TimeDuration::Seconds(0);
-  
-  _initialFixedState.globalTime = TimeDuration::Seconds(0);
-  _initialFixedState.localTime = TimeDuration::Seconds(0);
-  _initialFixedState.delta = UPDATE_INTERVAL;
 
   ReclassifyEffects();
 

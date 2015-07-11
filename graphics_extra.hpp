@@ -180,6 +180,7 @@ namespace tano
   //------------------------------------------------------------------------------
   struct ScopedRenderTarget
   {
+    ScopedRenderTarget() {}
     ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ScopedRenderTarget(const RenderTargetDesc& desc, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
@@ -194,6 +195,7 @@ namespace tano
   //------------------------------------------------------------------------------
   struct ScopedRenderTargetFull
   {
+    ScopedRenderTargetFull() {}
     ScopedRenderTargetFull(DXGI_FORMAT format, BufferFlags rtFlags, BufferFlags dsFlags);
     ~ScopedRenderTargetFull();
 

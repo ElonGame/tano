@@ -91,6 +91,7 @@ void ResourceManager::AddPath(const string& path)
 //------------------------------------------------------------------------------
 bool ResourceManager::LoadFile(const char* filename, vector<char>* buf)
 {
+//  LOG_INFO(filename);
   const string& fullPath = ResolveFilename(filename, true);
   if (fullPath.empty())
     return false;

@@ -82,7 +82,7 @@ void DynParticles::Update(const FixedUpdateState& updateState, bool alwaysUpdate
 
   // update distances over N frames
   {
-    int DISTANCE_FRAMES = 50;
+    int DISTANCE_FRAMES = 100;
     float f = (_tickCount % DISTANCE_FRAMES) / (float)DISTANCE_FRAMES;
     int bodiesPerFrame = max(1, numBodies / DISTANCE_FRAMES);
     int start = (int)(f * numBodies);
@@ -91,7 +91,7 @@ void DynParticles::Update(const FixedUpdateState& updateState, bool alwaysUpdate
   }
 
   {
-    int UPDATE_FRAMES = 20;
+    int UPDATE_FRAMES = 25;
     float f = (_tickCount % UPDATE_FRAMES) / (float)UPDATE_FRAMES;
     int bodiesPerFrame = max(1, numBodies / UPDATE_FRAMES);
     int start = (int)(f * numBodies);

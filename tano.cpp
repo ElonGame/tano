@@ -155,9 +155,6 @@ bool App::Init(HINSTANCE hinstance)
   width = (int)(0.75f * width);
   height = (int)(0.75f * height);
 
-  //width = 800;
-  //height = 600;
-
   GRAPHICS.CreateDefaultSwapChain(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, WndProc, hinstance);
 
 #if WITH_IMGUI
@@ -177,7 +174,6 @@ bool App::Init(HINSTANCE hinstance)
   Plexus::Register();
 
   INIT_FATAL(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
-
 
   END_INIT_SEQUENCE();
 }

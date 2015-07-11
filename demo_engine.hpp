@@ -22,6 +22,7 @@ namespace tano
     bool Init(const char* config, HINSTANCE instance);
     void RegisterFactory(const string& type, const EffectFactory& factory);
 
+
     bool Start();
     void SetPaused(bool pause);
     bool Paused() const;
@@ -99,7 +100,6 @@ namespace tano
     BaseEffect* _forceEffect = nullptr;
 
     double _updatedAcc = 0;
-    bool _startTimer = false;
     bool _initForceEffect = false;
   };
 

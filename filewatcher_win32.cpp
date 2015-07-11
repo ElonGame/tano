@@ -68,6 +68,8 @@ FileWatcherWin32::AddFileWatchResult FileWatcherWin32::AddFileWatch(
   if (initialCallback)
   {
     res.initialResult = cb(filename);
+    if (!res.initialResult)
+      int a = 10;
     res.watchId = _nextId;
   }
 

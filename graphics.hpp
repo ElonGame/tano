@@ -51,6 +51,7 @@ namespace tano
 
     bool GetTextureSize(ObjectHandle h, u32* x, u32* y);
 
+    ObjectHandle GetTempRenderTarget(const RenderTargetDesc& desc, const BufferFlags& bufferFlags);
     ObjectHandle GetTempRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags);
     ObjectHandle GetTempDepthStencil(int width, int height, const BufferFlags& bufferFlags);
     void ReleaseTempRenderTarget(ObjectHandle h);
@@ -169,7 +170,7 @@ namespace tano
 
     ObjectHandle _defaultRenderTarget;
 
-    bool _vsync = true;
+    bool _vsync = false;
     int _totalBytesAllocated = 0;
 
     ObjectHandle _defaultSwapChainHandle;

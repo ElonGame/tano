@@ -607,6 +607,9 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Plexus::Render()
 {
+  // TODO(magnus): this is broken
+  return true;
+
   rmt_ScopedCPUSample(Plexus_Render);
 
   static Color black(0, 0, 0, 0);

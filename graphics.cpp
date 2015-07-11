@@ -269,6 +269,12 @@ bool Graphics::GetTextureSize(ObjectHandle h, u32* x, u32* y)
 }
 
 //------------------------------------------------------------------------------
+ObjectHandle Graphics::GetTempRenderTarget(const RenderTargetDesc& desc, const BufferFlags& bufferFlags)
+{
+  return GetTempRenderTarget(desc.width, desc.height, desc.format, bufferFlags);
+}
+
+//------------------------------------------------------------------------------
 ObjectHandle Graphics::GetTempRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& flags)
 {
   // Look for a temp render target with the required format etc
@@ -282,6 +288,8 @@ ObjectHandle Graphics::GetTempRenderTarget(int width, int height, DXGI_FORMAT fo
       return MakeObjectHandle(ObjectHandle::kRenderTarget, t.idx);
     }
   }
+
+  LOG_INFO(ToString("Render target created: %d, %d, %d, %d", width, height, format, flags).c_str());
 
   // Render target not found, so create a new one
   RenderTargetResource* rt = CreateRenderTargetPtr(width, height, format, flags);
@@ -302,6 +310,8 @@ ObjectHandle Graphics::GetTempDepthStencil(int width, int height, const BufferFl
       return MakeObjectHandle(ObjectHandle::kDepthStencil, t.idx);
     }
   }
+
+  LOG_INFO(ToString("Depth stencil created: %d, %d, %d", width, height, flags).c_str());
 
   // Render target not found, so create a new one
   DepthStencilResource* ds = CreateDepthStencilPtr(width, height, flags);
