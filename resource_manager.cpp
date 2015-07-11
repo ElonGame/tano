@@ -216,14 +216,12 @@ string ResourceManager::ResolveFilename(const char* filename, bool fullPath)
 }
 
 //------------------------------------------------------------------------------
-AddFileWatchResult ResourceManager::AddFileWatch(
+FileWatcherWin32::AddFileWatchResult ResourceManager::AddFileWatch(
     const string& filename,
     bool initialCallback,
-    const cbFileChanged &cb)
+    const FileWatcherWin32::cbFileChanged &cb)
 {
-  AddFileWatchResult res;
-  res.watchId = _fileWatcher.AddFileWatch(filename, initialCallback, &res.initialResult, cb);
-  return res;
+  return _fileWatcher.AddFileWatch(filename, initialCallback, cb);
 }
 
 //------------------------------------------------------------------------------

@@ -18,7 +18,6 @@
 #include "effects/landscape.hpp"
 #include "effects/cloth.hpp"
 #include "effects/plexus.hpp"
-#include "path_utils.hpp"
 
 #if WITH_IMGUI
 #include "imgui_helpers.hpp"
@@ -56,160 +55,6 @@ App* App::_instance;
 
 //------------------------------------------------------------------------------
 static char g_ModuleName[MAX_PATH];
-
-struct FileWatcher2
-{
-  typedef int WatchId;
-
-  typedef function<bool(const string&)> cbFileChanged;
-
-  struct AddFileWatchResult
-  {
-    WatchId watchId = -1;
-    bool initialResult = true;
-  };
-  void Tick();
-
-  AddFileWatchResult AddFileWatch(const string& filename, bool initialCallback, const cbFileChanged& cb);
-  void RemoveFileWatch(WatchId id);
-
-private:
-
-  struct CallbackContext
-  {
-    string filename;
-    cbFileChanged cb;
-    WatchId id;
-  };
-
-  struct WatchedDir
-  {
-    HANDLE dirHandle;
-    OVERLAPPED overlapped;
-    unordered_map<string, CallbackContext*> callbackByFile;
-  };
-
-  unordered_map<string, WatchedDir*> _watchesByDir;
-
-  unordered_map<CallbackContext*, u32> _lastUpdate;
-
-  //TimeStamp _lastTickTime;
-  //std::vector<std::string> _paths;
-  //std::vector<std::shared_ptr<WatchedFile>> _watchedFiles;
-  //std::unordered_map<WatchId, std::shared_ptr<WatchedFile>> _idToFile;
-  uint32_t _nextId = 0;
-
-  enum { BUF_SIZE = 16 * 1024 };
-  char _buf[BUF_SIZE];
-};
-
-//------------------------------------------------------------------------------
-FileWatcher2::AddFileWatchResult FileWatcher2::AddFileWatch(
-  const string& filename, bool initialCallback, const cbFileChanged& cb)
-{
-  // split filename into dir/file
-  string head, tail;
-  string canonical = Path::MakeCanonical(filename);
-  Path::Split(canonical, &head, &tail);
-
-  // check if the directory is already open
-  WatchedDir* dir = nullptr;
-  auto it = _watchesByDir.find(head);
-  if (it == _watchesByDir.end())
-  {
-    dir = new WatchedDir();
-    dir->dirHandle = ::CreateFileA(
-      head.c_str(),
-      FILE_LIST_DIRECTORY,
-      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-      NULL,
-      OPEN_EXISTING,
-      FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-      NULL);
-
-    ZeroMemory(&dir->overlapped, sizeof(OVERLAPPED));
-    dir->overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-    DWORD notifyFlags = FILE_NOTIFY_CHANGE_LAST_WRITE;
-
-
-    BOOL res = ReadDirectoryChangesW(
-      dir->dirHandle, _buf, BUF_SIZE, FALSE, notifyFlags, NULL, &dir->overlapped, NULL);
-    if (!res)
-    {
-      delete dir;
-      return AddFileWatchResult();
-    }
-
-    _watchesByDir[head] = dir;
-  }
-  else
-  {
-    dir = it->second;
-  }
-
-  dir->callbackByFile[tail] = new CallbackContext{ canonical, cb, _nextId };
-
-  // Do the initial calback if requested
-  AddFileWatchResult res;
-  if (initialCallback)
-  {
-    res.initialResult = cb(filename);
-    res.watchId = _nextId;
-  }
-
-  _nextId++;
-  return res;
-}
-
-//------------------------------------------------------------------------------
-void FileWatcher2::Tick()
-{
-  // Check if any of the recently changed files have been idle for long enough to
-  // call their callbacks
-  DWORD now = timeGetTime();
-
-  DWORD TIMEOUT = 1000;
-
-  for (auto it = _lastUpdate.begin(); it != _lastUpdate.end(); )
-  {
-    CallbackContext* ctx = it->first;
-    DWORD lastUpdate = it->second;
-    if (now - lastUpdate > TIMEOUT)
-    {
-      ctx->cb(ctx->filename);
-      it = _lastUpdate.erase(it);
-    }
-    else
-    {
-      it++;
-    }
-  }
-
-  for (auto kv : _watchesByDir)
-  {
-    WatchedDir* dir = kv.second;
-    DWORD bytesTransferred = 0;
-    if (GetOverlappedResult(dir->dirHandle, &dir->overlapped, &bytesTransferred, FALSE))
-    {
-      char* ptr = _buf;
-      while (true)
-      {
-        FILE_NOTIFY_INFORMATION* fni = (FILE_NOTIFY_INFORMATION*)ptr;
-
-        string filename;
-        wide_char_to_utf8(fni->FileName, fni->FileNameLength / 2, &filename);
-        filename = Path::MakeCanonical(filename);
-
-        // Check if this file is being watched..
-
-
-        if (fni->NextEntryOffset == 0)
-          break;
-        ptr += fni->NextEntryOffset;
-      }
-    }
-  }
-}
 
 //------------------------------------------------------------------------------
 static bool GlobalInit()
@@ -348,12 +193,7 @@ bool App::Run()
   StopWatch stopWatch;
   u64 numFrames = 0;
   bool renderImgui = true;
-  FileWatcher2 fw2;
-  fw2.AddFileWatch("c:/temp/a.txt", false, [](const string& filename)
-  {
-    int a = 10;
-    return true;
-  });
+
   while (WM_QUIT != msg.message)
   {
     g_ScratchMemory.NewFrame();
@@ -376,8 +216,6 @@ bool App::Run()
 #if WITH_IMGUI
     UpdateImGui();
 #endif
-
-    fw2.Tick();
 
     DEMO_ENGINE.Tick();
 

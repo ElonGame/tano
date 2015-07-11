@@ -163,6 +163,7 @@
     <ClCompile Include="..\effects\landscape.cpp" />
     <ClCompile Include="..\effects\plexus.cpp" />
     <ClCompile Include="..\effects\raymarcher.cpp" />
+    <ClCompile Include="..\filewatcher_win32.cpp" />
     <ClCompile Include="..\free_list.cpp" />
     <ClCompile Include="..\lz4\lz4.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
@@ -491,6 +492,7 @@
     <ClInclude Include="..\effects\landscape.hpp" />
     <ClInclude Include="..\effects\plexus.hpp" />
     <ClInclude Include="..\effects\raymarcher.hpp" />
+    <ClInclude Include="..\filewatcher_win32.hpp" />
     <ClInclude Include="..\free_list.hpp" />
     <ClInclude Include="..\lz4\lz4.h" />
     <ClInclude Include="..\mesh_loader.hpp" />

@@ -1,15 +1,10 @@
 #pragma once
 
 #include "object_handle.hpp"
+#include "filewatcher_win32.hpp"
 
 namespace tano
 {
-  typedef function<bool(const string&)> cbFileChanged;
-  struct AddFileWatchResult {
-    FileWatcher::WatchId watchId;
-    bool initialResult;
-  };
-
 #if WITH_UNPACKED_RESOUCES
 
   class ResourceManager
@@ -50,10 +45,10 @@ namespace tano
 
     void AddPath(const string &path);
 
-    AddFileWatchResult AddFileWatch(
+    FileWatcherWin32::AddFileWatchResult AddFileWatch(
         const string& filename, 
         bool initial_callback,
-        const cbFileChanged& cb);
+        const FileWatcherWin32::cbFileChanged& cb);
 
     void RemoveFileWatch(FileWatcher::WatchId id);
 
@@ -62,7 +57,7 @@ namespace tano
   private:
     string ResolveFilename(const char* filename, bool fullPath);
 
-    FileWatcher _fileWatcher;
+    FileWatcherWin32 _fileWatcher;
 
     vector<string> _paths;
     unordered_map<string, string> _resolvedPaths;

@@ -214,6 +214,9 @@
     <ClCompile Include="..\path_utils.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\filewatcher_win32.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -439,6 +442,9 @@
       <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\path_utils.hpp">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\filewatcher_win32.hpp">
       <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>

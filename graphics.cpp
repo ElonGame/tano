@@ -994,7 +994,7 @@ ObjectHandle Graphics::LoadVertexShaderFromFile(
   if (elements)
     localElementDesc = *elements;
 
-  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename)
+  FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename)
   {
     BEGIN_INIT_SEQUENCE();
     vector<char> buf;
@@ -1026,7 +1026,7 @@ ObjectHandle Graphics::LoadPixelShaderFromFile(const string& filenameBase, const
   string filename = filenameBase + ToString("_%s.pso", entry);
 #endif
 
-  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename, true, [=](const string& filename)
+  FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename, true, [=](const string& filename)
   {
     BEGIN_INIT_SEQUENCE();
 
@@ -1054,7 +1054,7 @@ ObjectHandle Graphics::LoadGeometryShaderFromFile(const string& filenameBase, co
   string filename = filenameBase + ToString("_%s.gso", entry);
 #endif
 
-  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename)
+  FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename)
   {
     BEGIN_INIT_SEQUENCE();
 
@@ -1082,7 +1082,7 @@ ObjectHandle Graphics::LoadComputeShaderFromFile(const string& filenameBase, con
   string filename = filenameBase + ToString("_%s.cso", entry);
 #endif
 
-  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename)
+  FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename)
   {
     BEGIN_INIT_SEQUENCE();
 

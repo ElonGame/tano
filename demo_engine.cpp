@@ -304,23 +304,23 @@ void DemoEngine::UpdateEffects()
   {
     curState.localTime = current;
 
-    //if (_initForceEffect)
-    //{
-    //  _initForceEffect = false;
-    //  _forceEffect->Update(_initialState);
-    //  _forceEffect->FixedUpdate(_initialFixedState);
-    //}
-    //else
-    //{
-    //  _forceEffect->Update(curState);
+    if (_initForceEffect)
+    {
+      _initForceEffect = false;
+      _forceEffect->Update(_initialState);
+      _forceEffect->FixedUpdate(_initialFixedState);
+    }
+    else
+    {
+      _forceEffect->Update(curState);
 
-    //  for (int i = 0; i < numTicks; ++i)
-    //  {
-    //    _forceEffect->FixedUpdate(fixedState);
-    //  }
-    //}
+      for (int i = 0; i < numTicks; ++i)
+      {
+        _forceEffect->FixedUpdate(fixedState);
+      }
+    }
 
-    //_forceEffect->Render();
+    _forceEffect->Render();
 
     return;
   }
@@ -408,7 +408,7 @@ bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
     TimeDuration end = TimeDuration::Milliseconds(e.end_time);
     effect->SetDuration(start, end);
 
-    AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(
+    FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(
       configFile, true, [this, &effect](const string& filename)
     {
       vector<char> buf;
@@ -458,7 +458,7 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
 #endif
 #endif
 
-  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(config, true, [this](const string& filename)
+  FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(config, true, [this](const string& filename)
   {
     vector<char> buf;
     if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
