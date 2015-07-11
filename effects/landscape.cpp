@@ -37,7 +37,8 @@ CardinalSpline spline;
 struct BehaviorGravity : public ParticleKinematics
 {
   BehaviorGravity(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
-  virtual void Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state) override
+  virtual void Update(
+    DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state) override
   {
     float gravity = BLACKBOARD.GetFloatVar("landscape.gravity");
     XMVECTOR* force = bodies->force;
@@ -253,7 +254,7 @@ void Landscape::InitBoids()
 
 //------------------------------------------------------------------------------
 void BehaviorLandscapeFollow::Update(
-  DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state)
+  DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
   // NOTE! This is called from the schedular threads, so setting namespace
   // on the blackboard will probably break :)
@@ -294,14 +295,11 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
 }
 
 //------------------------------------------------------------------------------
-void Landscape::UpdateBoids(const UpdateState& state)
+void Landscape::UpdateBoids(const FixedUpdateState& state)
 {
   rmt_ScopedCPUSample(Boids_Update);
   
-  static AvgStopWatch stopWatch;
-  stopWatch.Start();
-
-  float dt = 1.0f / state.frequency;
+  float dt = state.delta;
 
   SimpleAppendBuffer<TaskId, 2048> chunkTasks;
 
@@ -318,12 +316,6 @@ void Landscape::UpdateBoids(const UpdateState& state)
   for (const TaskId& taskId : chunkTasks)
     SCHEDULER.Wait(taskId);
 
-  double avg = stopWatch.Stop();
-#if WITH_IMGUI
-  TANO.AddPerfCallback([=]() {
-    ImGui::Text("Update time: %.3fms", 1000 * avg);
-  });
-#endif
   spline.Update(dt);
 }
 
@@ -331,11 +323,15 @@ void Landscape::UpdateBoids(const UpdateState& state)
 bool Landscape::Update(const UpdateState& state)
 {
   _cbPerFrame.time.x = (float)(state.localTime.TotalMilliseconds() / 1e6);
-//  _cbPerFrame.time.y = _flocks[0]->boids._center.x;
-//  _cbPerFrame.time.z = _flocks[0]->boids._center.y;
-//  _cbPerFrame.time.w = _flocks[0]->boids._center.z;
-  UpdateBoids(state);
   UpdateCameraMatrix(state);
+  return true;
+}
+
+//------------------------------------------------------------------------------
+bool Landscape::FixedUpdate(const FixedUpdateState& state)
+{
+  _curCamera->Update(state);
+  UpdateBoids(state);
   return true;
 }
 
@@ -372,7 +368,6 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   else
     _curCamera = &_followCamera;
 
-  _curCamera->Update(state);
   Matrix view = _curCamera->_view;
   Matrix proj = _curCamera->_proj;
   Matrix viewProj = view * proj;

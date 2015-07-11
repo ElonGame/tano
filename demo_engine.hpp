@@ -97,9 +97,12 @@ namespace tano
 #endif
 #endif
     UpdateState _initialState;
+    FixedUpdateState _initialFixedState;
     BaseEffect* _forceEffect = nullptr;
 
     double _updatedAcc = 0;
+    bool _startTimer = false;
+    bool _initForceEffect = false;
   };
 
 #define DEMO_ENGINE DemoEngine::Instance()

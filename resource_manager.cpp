@@ -222,7 +222,7 @@ AddFileWatchResult ResourceManager::AddFileWatch(
     const cbFileChanged &cb)
 {
   AddFileWatchResult res;
-  res.watchId = _fileWatcher.AddFileWatch(filename, nullptr, initialCallback, &res.initialResult, cb);
+  res.watchId = _fileWatcher.AddFileWatch(filename, initialCallback, &res.initialResult, cb);
   return res;
 }
 

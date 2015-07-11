@@ -308,13 +308,20 @@ ParticleTunnel::~ParticleTunnel()
   }
 }
 
+
+//------------------------------------------------------------------------------
+bool ParticleTunnel::OnConfigChanged(const vector<char>& buf)
+{
+  return ParseParticleTunnelSettings(InputBuffer(buf), &_settings);
+}
+
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Init(const char* configFile)
 {
   BEGIN_INIT_SEQUENCE();
 
   _configName = configFile;
-  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(configFile, true, [this](const string& filename, void*)
+  AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(configFile, true, [this](const string& filename)
   {
     vector<char> buf;
     if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
@@ -327,11 +334,6 @@ bool ParticleTunnel::Init(const char* configFile)
   INIT(_backgroundBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/particle_tunnel", "PsBackground")));
-
-  // Particle state setup
-  //vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
-  //  CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT),
-  //  CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32B32A32_FLOAT) };
 
   vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
     CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT)
@@ -483,7 +485,7 @@ void ParticleTunnel::UpdateCameraMatrix(const UpdateState& state)
   // tan fov = w / h
   _fixedCamera._fov = atan(100.f / fabsf(zz));
   _fixedCamera._target = Vector3(0,0,0);
-  _fixedCamera.Update(state);
+  //_fixedCamera.Update(state);
   view = _fixedCamera._view;
   proj = _fixedCamera._proj;
   viewProj = view * proj;
@@ -506,15 +508,16 @@ void ParticleTunnel::UpdateEmitter(const TaskData& data)
 {
   EmitterKernelData* emitterData = (EmitterKernelData*)data.kernelData.data;
   ParticleEmitter* emitter = emitterData->emitter;
-
   emitter->Update(emitterData->dt);
-
-  emitter->CopyToBuffer(emitterData->vtx);
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::CopyOutEmitter(const scheduler::TaskData& data);
-
+void ParticleTunnel::CopyOutEmitter(const scheduler::TaskData& data)
+{
+  EmitterKernelData* emitterData = (EmitterKernelData*)data.kernelData.data;
+  ParticleEmitter* emitter = emitterData->emitter;
+  emitter->CopyToBuffer(emitterData->vtx);
+}
 
 //------------------------------------------------------------------------------
 bool ParticleTunnel::Update(const UpdateState& state)
@@ -613,30 +616,30 @@ bool ParticleTunnel::Update(const UpdateState& state)
 
   BLACKBOARD.ClearNamespace();
 
-  //_cbPerFrame.time.x = ms;
+  _cbPerFrame.time.x = ms;
 
-  //rmt_ScopedCPUSample(Particles_Update);
-  //float dt = 1.f / state.frequency;
+  rmt_ScopedCPUSample(Particles_Update);
+  //float dt = state.delta;
 
-  //ObjectHandle vb = _particleBundle.objects._vb;
-  //ParticleType* vtx = _ctx->MapWriteDiscard<ParticleType>(_particleBundle.objects._vb);
+  ObjectHandle vb = _particleBundle.objects._vb;
+  ParticleType* vtx = _ctx->MapWriteDiscard<ParticleType>(_particleBundle.objects._vb);
 
-  //SimpleAppendBuffer<TaskId, 32> tasks;
+  SimpleAppendBuffer<TaskId, 32> tasks;
 
-  //for (int i = 0; i < _particleEmitters.Size(); ++i)
-  //{
-  //  EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-  //  *data = EmitterKernelData{ &_particleEmitters[i], dt, state.numTicks, vtx + i * _settings.num_particles };
-  //  KernelData kd;
-  //  kd.data = data;
-  //  kd.size = sizeof(EmitterKernelData);
-  //  tasks.Append(SCHEDULER.AddTask(kd, UpdateEmitter));
-  //}
+  for (int i = 0; i < _particleEmitters.Size(); ++i)
+  {
+    EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
+    *data = EmitterKernelData{ &_particleEmitters[i], 0, vtx + i * _settings.num_particles };
+    KernelData kd;
+    kd.data = data;
+    kd.size = sizeof(EmitterKernelData);
+    tasks.Append(SCHEDULER.AddTask(kd, CopyOutEmitter));
+  }
 
-  //for (const TaskId& taskId : tasks)
-  //  SCHEDULER.Wait(taskId);
+  for (const TaskId& taskId : tasks)
+    SCHEDULER.Wait(taskId);
 
-  //_ctx->Unmap(vb);
+  _ctx->Unmap(vb);
 
   double avg = stopWatch.Stop();
 #if WITH_IMGUI
@@ -648,26 +651,22 @@ bool ParticleTunnel::Update(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTunnel::Update100(const UpdateState& state)
+bool ParticleTunnel::FixedUpdate(const FixedUpdateState& state)
 {
-  static AvgStopWatch stopWatch;
-  stopWatch.Start();
-
   float ms = state.localTime.TotalMicroseconds() / (float)1e6;
   _cbPerFrame.time.x = ms;
 
   rmt_ScopedCPUSample(Particles_Update);
-  float dt = 1.f / state.frequency;
+  float dt = state.delta;
 
   ObjectHandle vb = _particleBundle.objects._vb;
-  ParticleType* vtx = _ctx->MapWriteDiscard<ParticleType>(_particleBundle.objects._vb);
 
   SimpleAppendBuffer<TaskId, 32> tasks;
 
   for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
     EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-    *data = EmitterKernelData{ &_particleEmitters[i], dt, vtx + i * _settings.num_particles };
+    *data = EmitterKernelData{ &_particleEmitters[i], dt, nullptr };
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(EmitterKernelData);
@@ -677,14 +676,7 @@ bool ParticleTunnel::Update100(const UpdateState& state)
   for (const TaskId& taskId : tasks)
     SCHEDULER.Wait(taskId);
 
-  _ctx->Unmap(vb);
-
-  double avg = stopWatch.Stop();
-#if WITH_IMGUI
-  TANO.AddPerfCallback([=]() {
-    ImGui::Text("Update100 time: %.3fms", 1000 * avg);
-  });
-#endif
+  _fixedCamera.Update(state);
 
   return true;
 }

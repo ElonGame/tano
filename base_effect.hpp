@@ -14,11 +14,13 @@ namespace tano
 
     BaseEffect(const string& instanceName, u32 id);
     virtual ~BaseEffect() {}
+    // Called before init, and then whenever config changes on disk
+    virtual bool OnConfigChanged(const vector<char>& buf);
     virtual bool Init(const char* configFile);
     virtual bool Show();
     virtual bool Hide();
     virtual bool Update(const UpdateState& state);
-    virtual bool Update100(const UpdateState& state);
+    virtual bool FixedUpdate(const FixedUpdateState& state);
     virtual bool Render();
     virtual bool Close();
     virtual bool InitAnimatedParameters();

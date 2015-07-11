@@ -90,12 +90,12 @@ bool Cloth::Init(const char* configFile)
 }
 
 //------------------------------------------------------------------------------
-void Cloth::UpdateParticles(const UpdateState& state)
+void Cloth::UpdateParticles(const FixedUpdateState& state)
 {
   g_stopWatch.Start();
 
   size_t numParticles = _particles.size();
-  float dt = 1.f / state.frequency;
+  float dt = state.delta;
   float dt2 = dt * dt;
 
   const IoState& ioState = TANO.GetIoState();
@@ -460,7 +460,13 @@ void Cloth::ResetParticles()
 bool Cloth::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
+  return true;
+}
 
+//------------------------------------------------------------------------------
+bool Cloth::FixedUpdate(const FixedUpdateState& state)
+{
+  _camera.Update(state);
   UpdateParticles(state);
   return true;
 }
@@ -468,7 +474,6 @@ bool Cloth::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 void Cloth::UpdateCameraMatrix(const UpdateState& state)
 {
-  _camera.Update(state);
 
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);

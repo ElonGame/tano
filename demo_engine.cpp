@@ -15,7 +15,7 @@ namespace
 {
   // update frequeny in hz
   int UPDATE_FREQUENCY = 100;
-  double UPDATE_INTERVAL = 1.0 / UPDATE_FREQUENCY;
+  float UPDATE_INTERVAL = 1.0f / UPDATE_FREQUENCY;
   TimeDuration UPDATE_DELTA = TimeDuration::Microseconds((s64)1e6 / UPDATE_FREQUENCY);
 
   // These values are kinda arbitrary, and should probably be set to match
@@ -98,7 +98,7 @@ void DemoEngine::Create()
 //------------------------------------------------------------------------------
 bool DemoEngine::Start()
 {
-  _timer.Start();
+  _startTimer = true;
 #if WITH_MUSIC
   BASS_Start();
   BASS_ChannelPlay(_stream, false);
@@ -266,6 +266,11 @@ bool DemoEngine::Tick()
 #endif
 #endif
 
+  if (_startTimer)
+  {
+    _startTimer = false;
+    _timer.Start();
+  }
   UpdateEffects();
 
   return true;
@@ -281,30 +286,42 @@ void DemoEngine::UpdateEffects()
 
   // calc the number of ticks to step
   _updatedAcc += TimeDurationToFloat(delta);
-
-  double numTicks = TimeDurationToFloat(delta) * UPDATE_FREQUENCY;
-  int intNumTicks = (int)numTicks;
+  int numTicks = (int)(_updatedAcc / UPDATE_INTERVAL);
+  _updatedAcc -= numTicks * UPDATE_INTERVAL;
 
   UpdateState curState;
   curState.globalTime = current;
   curState.delta = delta;
   curState.paused = paused;
-  curState.frequency = UPDATE_FREQUENCY;
-  curState.numTicks = intNumTicks;
-  curState.ticksFraction = (float)(numTicks - intNumTicks);
+
+  FixedUpdateState fixedState;
+  fixedState.globalTime = current;
+  fixedState.localTime = current;
+  fixedState.delta = UPDATE_INTERVAL;
+  fixedState.paused = paused;
 
   // If a force effect is set, just tick this guy
   if (_forceEffect)
   {
     curState.localTime = current;
-    _forceEffect->Update(curState);
-    _forceEffect->Render();
 
-    while (_updatedAcc >= UPDATE_INTERVAL)
-    {
-      _forceEffect->Update100(curState);
-      _updatedAcc -= UPDATE_INTERVAL;
-    }
+    //if (_initForceEffect)
+    //{
+    //  _initForceEffect = false;
+    //  _forceEffect->Update(_initialState);
+    //  _forceEffect->FixedUpdate(_initialFixedState);
+    //}
+    //else
+    //{
+    //  _forceEffect->Update(curState);
+
+    //  for (int i = 0; i < numTicks; ++i)
+    //  {
+    //    _forceEffect->FixedUpdate(fixedState);
+    //  }
+    //}
+
+    //_forceEffect->Render();
 
     return;
   }
@@ -322,12 +339,13 @@ void DemoEngine::UpdateEffects()
     curState.localTime = current - effect->StartTime();
     effect->Update(curState);
 
-    while (_updatedAcc >= UPDATE_INTERVAL)
+    for (int i = 0; i < numTicks; ++i)
     {
-      effect->Update100(curState);
-      _updatedAcc -= UPDATE_INTERVAL;
+      effect->FixedUpdate(fixedState);
     }
   }
+
+  ImGui::Text("numTicks: %d", numTicks);
 
   _initialState.globalTime = current;
   _initialState.paused = paused;
@@ -339,7 +357,7 @@ void DemoEngine::UpdateEffects()
     e->SetRunning(true);
     e->InitAnimatedParameters();
     e->Update(_initialState);
-    e->Update100(_initialState);
+    e->FixedUpdate(_initialFixedState);
   }
 
   for (BaseEffect* effect : _activeEffects)
@@ -371,7 +389,7 @@ bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
 {
   BEGIN_INIT_SEQUENCE();
 
-  for (auto& e : settings.effects)
+  for (const EffectSettings& e : settings.effects)
   {
     // Look up the factory
     auto it = _effectFactories.find(e.factory);
@@ -399,6 +417,7 @@ bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
         continue;
       }
       _forceEffect = effect;
+      _initForceEffect = true;
     }
   }
 
@@ -429,7 +448,7 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
 #endif
 #endif
 
-  _fileWatcher.AddFileWatch(config, nullptr, true, &res, [this](const string& filename, void* token)
+  _fileWatcher.AddFileWatch(config, true, &res, [this](const string& filename)
   {
     vector<char> buf;
     if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
@@ -453,9 +472,10 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
   // Set up the initial effect state
   _initialState.localTime = TimeDuration::Seconds(0);
   _initialState.delta = TimeDuration::Seconds(0);
-  _initialState.frequency = UPDATE_FREQUENCY;
-  _initialState.numTicks = 1;
-  _initialState.ticksFraction = 0;
+  
+  _initialFixedState.globalTime = TimeDuration::Seconds(0);
+  _initialFixedState.localTime = TimeDuration::Seconds(0);
+  _initialFixedState.delta = UPDATE_INTERVAL;
 
   ReclassifyEffects();
 

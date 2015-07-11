@@ -61,7 +61,7 @@ void DynParticles::SetDistCutOff(DistMeasureType type, float cutoff)
 }
 
 //------------------------------------------------------------------------------
-void DynParticles::Update(const UpdateState& updateState, bool alwaysUpdate)
+void DynParticles::Update(const FixedUpdateState& updateState, bool alwaysUpdate)
 {
   if (!_bodies.numBodies)
     return;
@@ -91,7 +91,7 @@ void DynParticles::Update(const UpdateState& updateState, bool alwaysUpdate)
   }
 
   {
-    int UPDATE_FRAMES = 10;
+    int UPDATE_FRAMES = 20;
     float f = (_tickCount % UPDATE_FRAMES) / (float)UPDATE_FRAMES;
     int bodiesPerFrame = max(1, numBodies / UPDATE_FRAMES);
     int start = (int)(f * numBodies);
@@ -108,7 +108,7 @@ void DynParticles::Update(const UpdateState& updateState, bool alwaysUpdate)
     }
   }
 
-  float dt = 1.0f / updateState.frequency;
+  float dt = updateState.delta;
   for (int i = 0; i < numBodies; ++i)
   {
     _bodies.acc[i] = _bodies.force[i];
@@ -190,7 +190,8 @@ void DynParticles::UpdateWeight(ParticleKinematics* kinematics, float weight)
 }
 
 //------------------------------------------------------------------------------
-void BehaviorSeek::Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state)
+void BehaviorSeek::Update(
+  DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
   XMVECTOR* pos = bodies->pos;
   XMVECTOR* vel = bodies->vel;
@@ -209,7 +210,8 @@ void BehaviorSeek::Update(DynParticles::Bodies* bodies, int start, int end, floa
 }
 
 //------------------------------------------------------------------------------
-void BehaviorSeparataion::Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state)
+void BehaviorSeparataion::Update(
+  DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
   XMVECTOR* pos = bodies->pos;
   XMVECTOR* acc = bodies->acc;
@@ -250,7 +252,8 @@ void BehaviorSeparataion::Update(DynParticles::Bodies* bodies, int start, int en
 }
 
 //------------------------------------------------------------------------------
-void BehaviorCohesion::Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state)
+void BehaviorCohesion::Update(
+  DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
   XMVECTOR* pos = bodies->pos;
   XMVECTOR* acc = bodies->acc;
@@ -289,7 +292,8 @@ void BehaviorCohesion::Update(DynParticles::Bodies* bodies, int start, int end, 
 }
 
 //------------------------------------------------------------------------------
-void BehaviorAlignment::Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state)
+void BehaviorAlignment::Update(
+  DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
   XMVECTOR* pos = bodies->pos;
   XMVECTOR* acc = bodies->acc;

@@ -34,7 +34,7 @@ Blackboard& Blackboard::Instance()
 bool Blackboard::Init(const char* filename)
 {
   bool res;
-  RESOURCE_MANAGER.AddFileWatch(filename, true, [&](const string& filename, void*)
+  RESOURCE_MANAGER.AddFileWatch(filename, true, [&](const string& filename)
   {
     vector<char> buf;
     RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf);

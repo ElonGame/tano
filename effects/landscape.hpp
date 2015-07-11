@@ -19,7 +19,8 @@ namespace tano
   struct BehaviorLandscapeFollow : public ParticleKinematics
   {
     BehaviorLandscapeFollow(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
-    virtual void Update(DynParticles::Bodies* bodies, int start, int end, float weight, const UpdateState& state) override;
+    virtual void Update(
+      DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state) override;
   };
 
   class Landscape : public BaseEffect
@@ -35,6 +36,7 @@ namespace tano
     ~Landscape();
     virtual bool Init(const char* configFile) override;
     virtual bool Update(const UpdateState& state) override;
+    virtual bool FixedUpdate(const FixedUpdateState& state) override;
     virtual bool Render() override;
     virtual bool Close() override;
     virtual bool InitAnimatedParameters() override;
@@ -55,7 +57,7 @@ namespace tano
     void RasterizeLandscape();
 
     void InitBoids();
-    void UpdateBoids(const UpdateState& state);
+    void UpdateBoids(const FixedUpdateState& state);
     void RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHandle);
 
     struct Flock;
@@ -90,7 +92,7 @@ namespace tano
     {
       Flock* flock;
       float waypointRadius;
-      UpdateState updateState;
+      FixedUpdateState updateState;
     };
 
     struct ChunkKernelData

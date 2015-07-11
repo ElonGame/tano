@@ -15,12 +15,12 @@ Camera::Camera()
   GRAPHICS.GetBackBufferSize(&w, &h);
   _aspectRatio = (float)w / h;
   _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
-  UpdateState state;
+  FixedUpdateState state;
   Update(state);
 }
 
 //------------------------------------------------------------------------------
-void FreeFlyCamera::Update(const UpdateState& updateState)
+void FreeFlyCamera::Update(const FixedUpdateState& updateState)
 {
   const IoState& state = TANO.GetIoState();
 
@@ -85,7 +85,7 @@ FollowCam::~FollowCam()
 }
 
 //------------------------------------------------------------------------------
-void FollowCam::Update(const UpdateState& state)
+void FollowCam::Update(const FixedUpdateState& state)
 {
   _particle.Update(state, true);
   XMVECTOR* pos = _particle._bodies.pos;

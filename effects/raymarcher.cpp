@@ -60,9 +60,6 @@ bool RayMarcher::Update(const UpdateState& state)
 
   _cbPerFrame.time = state.localTime.TotalMilliseconds() / 1000.f;
 
-  if (state.numTicks == 0)
-    return true;
-
   return true;
 }
 

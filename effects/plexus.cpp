@@ -570,10 +570,15 @@ bool Plexus::Update(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-void Plexus::UpdateCameraMatrix(const UpdateState& state)
+bool Plexus::FixedUpdate(const FixedUpdateState& state)
 {
   _camera.Update(state);
+  return true;
+}
 
+//------------------------------------------------------------------------------
+void Plexus::UpdateCameraMatrix(const UpdateState& state)
+{
   Matrix view = _camera._view;
   Matrix proj = _camera._proj;
 

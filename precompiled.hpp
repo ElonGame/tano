@@ -35,6 +35,8 @@
 
 #define WITH_SCHEDULER_STATS 0
 
+#define WITH_FILE_WATCH 0
+
 #ifdef _PUBLIC
   #define WITH_UNPACKED_RESOUCES 0
   #define WITH_DEBUG_SHADERS 0

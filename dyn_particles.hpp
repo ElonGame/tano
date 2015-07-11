@@ -4,7 +4,7 @@
 
 namespace tano
 {
-  struct UpdateState;
+  struct FixedUpdateState;
   struct ParticleKinematics;
 
   //------------------------------------------------------------------------------
@@ -22,7 +22,7 @@ namespace tano
     void Reset();
     void AddKinematics(ParticleKinematics* kinematics, float weight);
     void UpdateWeight(ParticleKinematics* kinematics, float weight);
-    void Update(const UpdateState& updateState, bool alwaysUpdate);
+    void Update(const FixedUpdateState& FixedUpdateState, bool alwaysUpdate);
     void UpdateDistMatrix(int start, int end);
     void SetDistCutOff(DistMeasureType type, float cutoff);
 
@@ -84,7 +84,7 @@ namespace tano
       DynParticles::Bodies* bodies,
       int start, int end,
       float weight, 
-      const UpdateState& state) = 0;
+      const FixedUpdateState& state) = 0;
     float maxForce = 10.f;
     float maxSpeed = 10.f;
   };
@@ -97,7 +97,7 @@ namespace tano
       DynParticles::Bodies* bodies, 
       int start, int end,
       float weight, 
-      const UpdateState& state) override;
+      const FixedUpdateState& state) override;
     XMVECTOR target = XMVectorZero();
   };
 
@@ -110,7 +110,7 @@ namespace tano
       DynParticles::Bodies* bodies, 
       int start, int end,
       float weight, 
-      const UpdateState& state) override;
+      const FixedUpdateState& state) override;
     float separationDistance = 10;
   };
 
@@ -123,7 +123,7 @@ namespace tano
       DynParticles::Bodies* bodies, 
       int start, int end,
       float weight, 
-      const UpdateState& state) override;
+      const FixedUpdateState& state) override;
     float cohesionDistance = 10;
   };
 
@@ -136,7 +136,7 @@ namespace tano
       DynParticles::Bodies* bodies, 
       int start, int end,
       float weight, 
-      const UpdateState& state) override;
+      const FixedUpdateState& state) override;
     float cohesionDistance = 10;
   };
 }

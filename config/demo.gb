@@ -1,6 +1,6 @@
 {
   soundtrack: 'AuX - Emotions (Original Mix).mp3';
-  silent: false;
+  silent: true;
   
   effects: [
   {
@@ -16,6 +16,7 @@
     start_time: 22500;
     end_time: 1300000;
     settings: 'config/landscape.gb';
+    force: true;
   },
   {
     name: 'cloth';

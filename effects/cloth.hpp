@@ -20,6 +20,7 @@ namespace tano
     ~Cloth();
     virtual bool Init(const char* configFile) override;
     virtual bool Update(const UpdateState& state) override;
+    virtual bool FixedUpdate(const FixedUpdateState& state) override;
     virtual bool Render() override;
     virtual bool Close() override;
     virtual bool InitAnimatedParameters() override;
@@ -37,7 +38,7 @@ namespace tano
 #endif
 
     void UpdateCameraMatrix(const UpdateState& state);
-    void UpdateParticles(const UpdateState& state);
+    void UpdateParticles(const FixedUpdateState& state);
     bool InitParticles();
     void ResetParticles();
     void GroupConstraints();

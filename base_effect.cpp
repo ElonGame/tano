@@ -27,6 +27,12 @@ bool BaseEffect::Hide()
 }
 
 //------------------------------------------------------------------------------
+bool BaseEffect::OnConfigChanged(const vector<char>& buf)
+{
+  return true;
+}
+
+//------------------------------------------------------------------------------
 bool BaseEffect::Init(const char* configFile)
 {
   return true;
@@ -45,7 +51,7 @@ bool BaseEffect::Update(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-bool BaseEffect::Update100(const UpdateState& state)
+bool BaseEffect::FixedUpdate(const FixedUpdateState& state)
 {
   return true;
 }

@@ -4,7 +4,7 @@
 
 namespace tano
 {
-  typedef function<bool(const string&, void*)> cbFileChanged;
+  typedef function<bool(const string&)> cbFileChanged;
   struct AddFileWatchResult {
     FileWatcher::WatchId watchId;
     bool initialResult;

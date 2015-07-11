@@ -16,6 +16,7 @@ namespace tano
     ~Plexus();
     virtual bool Init(const char* configFile) override;
     virtual bool Update(const UpdateState& state) override;
+    virtual bool FixedUpdate(const FixedUpdateState& state) override;
     virtual bool Render() override;
     virtual bool Close() override;
 
