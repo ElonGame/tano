@@ -373,6 +373,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="..\mesh_utils.cpp" />
+    <ClCompile Include="..\path_utils.cpp" />
     <ClCompile Include="..\perlin2d.cpp" />
     <ClCompile Include="..\fullscreen_effect.cpp" />
     <ClCompile Include="..\precompiled.cpp">
@@ -528,6 +529,7 @@
     <ClInclude Include="..\init_sequence.hpp" />
     <ClInclude Include="..\mesh_utils.hpp" />
     <ClInclude Include="..\object_handle.hpp" />
+    <ClInclude Include="..\path_utils.hpp" />
     <ClInclude Include="..\perlin2d.hpp" />
     <ClInclude Include="..\fullscreen_effect.hpp" />
     <ClInclude Include="..\precompiled.hpp" />

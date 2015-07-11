@@ -211,6 +211,9 @@
     <ClCompile Include="..\blackboard.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\path_utils.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -433,6 +436,9 @@
       <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\blackboard.hpp">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\path_utils.hpp">
       <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
