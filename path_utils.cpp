@@ -145,6 +145,7 @@ void Path::Split(const string& path, string* head, string* tail)
   }
 
   *head = p._str.substr(0, p._finalSlashPos);
+  *tail = p._str.substr(p._finalSlashPos + 1, p._str.size());
 }
 
 namespace tano

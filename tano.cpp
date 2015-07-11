@@ -24,6 +24,8 @@
 #include "imgui_helpers.hpp"
 #endif
 
+#pragma comment(lib, "winmm.lib")
+
 //------------------------------------------------------------------------------
 using namespace tano;
 using namespace tano::scheduler;
@@ -75,26 +77,21 @@ private:
 
   struct CallbackContext
   {
+    string filename;
     cbFileChanged cb;
     WatchId id;
-  };
-
-  struct WatchedFile
-  {
-    std::string filename;
-    time_t lastModification;
-    WatchId id;
-    std::vector<CallbackContext> callbacks;
   };
 
   struct WatchedDir
   {
     HANDLE dirHandle;
     OVERLAPPED overlapped;
-    unordered_map<string, CallbackContext> callbackByFile;
+    unordered_map<string, CallbackContext*> callbackByFile;
   };
 
   unordered_map<string, WatchedDir*> _watchesByDir;
+
+  unordered_map<CallbackContext*, u32> _lastUpdate;
 
   //TimeStamp _lastTickTime;
   //std::vector<std::string> _paths;
@@ -112,7 +109,8 @@ FileWatcher2::AddFileWatchResult FileWatcher2::AddFileWatch(
 {
   // split filename into dir/file
   string head, tail;
-  Path::Split(Path::MakeCanonical(filename), &head, &tail);
+  string canonical = Path::MakeCanonical(filename);
+  Path::Split(canonical, &head, &tail);
 
   // check if the directory is already open
   WatchedDir* dir = nullptr;
@@ -120,12 +118,20 @@ FileWatcher2::AddFileWatchResult FileWatcher2::AddFileWatch(
   if (it == _watchesByDir.end())
   {
     dir = new WatchedDir();
-    dir->dirHandle = CreateFileA(
-      head.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+    dir->dirHandle = ::CreateFileA(
+      head.c_str(),
+      FILE_LIST_DIRECTORY,
+      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+      NULL,
+      OPEN_EXISTING,
+      FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+      NULL);
 
     ZeroMemory(&dir->overlapped, sizeof(OVERLAPPED));
-    dir->overlapped.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    dir->overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     DWORD notifyFlags = FILE_NOTIFY_CHANGE_LAST_WRITE;
+
+
     BOOL res = ReadDirectoryChangesW(
       dir->dirHandle, _buf, BUF_SIZE, FALSE, notifyFlags, NULL, &dir->overlapped, NULL);
     if (!res)
@@ -141,7 +147,7 @@ FileWatcher2::AddFileWatchResult FileWatcher2::AddFileWatch(
     dir = it->second;
   }
 
-  dir->callbackByFile[tail] = { cb, _nextId };
+  dir->callbackByFile[tail] = new CallbackContext{ canonical, cb, _nextId };
 
   // Do the initial calback if requested
   AddFileWatchResult res;
@@ -158,13 +164,49 @@ FileWatcher2::AddFileWatchResult FileWatcher2::AddFileWatch(
 //------------------------------------------------------------------------------
 void FileWatcher2::Tick()
 {
+  // Check if any of the recently changed files have been idle for long enough to
+  // call their callbacks
+  DWORD now = timeGetTime();
+
+  DWORD TIMEOUT = 1000;
+
+  for (auto it = _lastUpdate.begin(); it != _lastUpdate.end(); )
+  {
+    CallbackContext* ctx = it->first;
+    DWORD lastUpdate = it->second;
+    if (now - lastUpdate > TIMEOUT)
+    {
+      ctx->cb(ctx->filename);
+      it = _lastUpdate.erase(it);
+    }
+    else
+    {
+      it++;
+    }
+  }
+
   for (auto kv : _watchesByDir)
   {
     WatchedDir* dir = kv.second;
     DWORD bytesTransferred = 0;
     if (GetOverlappedResult(dir->dirHandle, &dir->overlapped, &bytesTransferred, FALSE))
     {
-      int a = 10;
+      char* ptr = _buf;
+      while (true)
+      {
+        FILE_NOTIFY_INFORMATION* fni = (FILE_NOTIFY_INFORMATION*)ptr;
+
+        string filename;
+        wide_char_to_utf8(fni->FileName, fni->FileNameLength / 2, &filename);
+        filename = Path::MakeCanonical(filename);
+
+        // Check if this file is being watched..
+
+
+        if (fni->NextEntryOffset == 0)
+          break;
+        ptr += fni->NextEntryOffset;
+      }
     }
   }
 }
