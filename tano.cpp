@@ -74,10 +74,9 @@ static bool GlobalClose()
 App::App()
 {
   memset(&_ioState, 0, sizeof(_ioState));
-  bristol::SetLogCallback([](const char* file, int line, const char* desc)
+  bristol::SetLogCallback([](const LogEntry& entry)
   {
-    // todo: be smarterer, ie conditional logging
-    //InitSequence::AddFailure(file, line, desc, false);
+    InitSequence::AddLog(entry.file, entry.line, entry.msg);
   });
 }
 

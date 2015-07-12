@@ -7,16 +7,20 @@ namespace tano
     static void Enter();
     static bool Exit();
     static void AddFailure(const char* file, int line, const char* str, bool fatal);
+    static void AddLog(const char* file, int line, const char* str);
 
-    struct InitFailure
+    struct InitMessage
     {
+      enum Flag { Failure = 0x1, Log = 0x2 };
       const char* file;
       int line;
       string str;
+      u32 flags;
     };
 
     vector<InitSequence> _children;
-    vector<InitFailure> _failures;
+    vector<InitMessage> _messages;
+    bool _success = true;
     bool _fatal = false;
     int _maxDepth = 0;
   };
