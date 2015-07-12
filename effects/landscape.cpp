@@ -776,7 +776,9 @@ bool Landscape::Render()
   ScopedRenderTargetFull rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
   ScopedRenderTarget rtBloom(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-  _cbPerFrame.toneMappingParams = Vector4(_settings.tonemap.shoulder, _settings.tonemap.max_white, 0, 0);
+  _cbPerFrame.toneMappingParams = Vector4(
+    _settings.tonemap.shoulder, _settings.tonemap.max_white,
+    _settings.tonemap2.exposure, _settings.tonemap2.min_white);
   _cbPerFrame.world = Matrix::Identity();
   _cbPerFrame.dim = Vector4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
   u32 flags = ShaderType::VertexShader | ShaderType::GeometryShader | ShaderType::PixelShader;
@@ -923,6 +925,10 @@ void Landscape::RenderParameterSet()
 
   ImGui::SliderFloat("Shoulder", &_settings.tonemap.shoulder, 0, 1);
   ImGui::SliderFloat("Max White", &_settings.tonemap.max_white, 0.5f, 10);
+
+  ImGui::SliderFloat("Exposure", &_settings.tonemap2.exposure, 0.1f, 20.0f);
+  ImGui::SliderFloat("Min White", &_settings.tonemap2.min_white, 0.1f, 20.0f);
+
   ImGui::Separator();
 
   ImGui::Checkbox("Render landscape", &_renderLandscape);

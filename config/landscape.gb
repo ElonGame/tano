@@ -13,8 +13,8 @@
     follow_scale: 30.000000;
     cohesion_distance: 500.000000;
     separation_distance: 500.000000;
-    max_speed: 80.000000;
-    max_force: 65.000000;
+    max_speed: 50.000000;
+    max_force: 50.000000;
     waypoint_radius: 10.000000;
     num_flocks: 25;
     boids_per_flock: 500;
@@ -23,6 +23,10 @@
   tonemap: {
     shoulder: 0.843000;
     max_white: 1.268000;
+  };
+  tonemap2: {
+    exposure: 1.000000;
+    min_white: 1.306000;
   };
   lens_flare: {
     scale_bias: {

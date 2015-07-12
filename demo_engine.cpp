@@ -351,8 +351,6 @@ void DemoEngine::UpdateEffects()
     }
   }
 
-  ImGui::Text("numTicks: %d", numTicks);
-
   _initialState.globalTime = current;
   _initialState.paused = paused;
 

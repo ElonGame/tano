@@ -89,6 +89,7 @@ namespace tano
 
     struct CBufferPerFrame
     {
+//      Vector4 tonemap;
       Matrix world;
       Matrix view;
       Matrix proj;

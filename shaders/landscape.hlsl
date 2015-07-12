@@ -12,7 +12,7 @@ cbuffer PerFrame : register(b0)
   float3 cameraLookAt;
   float3 cameraUp;
   float4 nearFar : NEAR_FAR;
-  float4 tonemap; // x = shoulder, y = max_white
+  float4 tonemap; // x = shoulder, y = max_white, z = exposure/lumAvg, w = min_white
 };
 
 cbuffer LensFlare : register(b1)
@@ -524,11 +524,13 @@ float4 PsHighPassFilter(VSQuadOut p) : SV_Target
 
 float4 ToneMap(float4 col)
 {
+  // This is some weird version based on the Insomniac paper
   float lum = Luminance(col.rgb);
   float shoulder = tonemap.x;
   float maxWhite = tonemap.y;
   return col * lum / ((1-shoulder) * maxWhite + shoulder * lum);
 }
+
 
 //------------------------------------------------------
 // composite
@@ -545,54 +547,11 @@ float4 PsComposite(VSQuadOut p) : SV_Target
     Texture0.Sample(PointSampler, uv) + 
     Texture1.Sample(PointSampler, uv) +
     Texture2.Sample(LinearSampler, uv);
-/*
-  // convert sun to screen space
-  float4 sunProjSpace = mul(float4(SUN_POS, 1), viewProj);
-  float2 sunScreenSpace = projToWindow(sunProjSpace);
 
-  float2 sunDir = p.pos.xy - sunScreenSpace;
-  int NUM_STEPS = 40;
-  float2 sunStep = sunDir / NUM_STEPS;
+  float exposure = tonemap.z;
+  float minWhite = tonemap.w;
 
-  //float4 res = Texture0.Sample(PointSampler, uv);
-  int i;
-  float2 curPos = p.pos.xy;
-  float curDecay = 1.0;
-  float decay = 0.5;
-  float weight = 0.5;
-  float4 res = 0;
-  for (i = 0; i < NUM_STEPS; ++i)
-  {
-    curPos -= sunStep;
-    float4 s = Texture0.Sample(PointSampler, curPos) * weight * curDecay;
-    res += s;
-    curDecay *= decay;
-  }
-  //return res;
-*/
-  /*
-  float4 dof = Texture1.Sample(PointSampler, uv);
-  float zBuf = Texture2.Load(int3(p.pos.x, p.pos.y, 0)).r;
-
-  // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))
-  float farClip = nearFar.y;
-  float f_mul_n = nearFar.z;
-  float f_sub_n = nearFar.w;
-  float z = f_mul_n / ( farClip - zBuf * f_sub_n);
-//  z /= farClip;
-
-  float nearStart = 0;
-  float nearEnd = 200;
-  float farStart = 1000;
-  float farEnd = 2000;
-  float t = min(smoothstep(nearStart, nearEnd, z), 1 - smoothstep(farStart, farEnd, z));
-
-  //col = lerp(col, dof, t);
-//  return t;
-//  return z;
-*/
-
-  col = ToneMap(col);
+//  col = ToneMapReinhard(col, exposure, minWhite);
   
    // gamma correction
   col = pow(abs(col), 1.0/2.2);

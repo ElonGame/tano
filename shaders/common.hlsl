@@ -21,6 +21,21 @@ float Luminance(float3 col)
 }
 
 //------------------------------------------------------
+float4 ToneMapReinhard(float4 col, float exposure, float minWhite)
+{
+  float lum = Luminance(col.rgb);
+
+  // scaled to middle gray (but using a hard coded value)
+  float ll = lum * exposure; // this is exposure / lumAvg
+  float w = minWhite * minWhite;
+
+  float lumTonemapped = ll * (1.0 + (ll / (w * w))) / (1.0 + ll);
+
+  float scale = lumTonemapped / lum;
+  return saturate(scale * col);
+}
+
+//------------------------------------------------------
 struct VSQuadOut
 {
   float4 pos : SV_Position;
@@ -73,3 +88,4 @@ float4 PsAdd(VSQuadOut p) : SV_Target
   float4 b = Texture1.Sample(PointSampler, uv);
   return a + b;
 }
+

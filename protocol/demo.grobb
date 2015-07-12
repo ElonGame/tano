@@ -23,6 +23,12 @@ struct tonemap_settings
   float max_white = 5.0;
 };
 
+struct tonemap_reinhard_settings
+{
+  float exposure = 1;
+  float min_white = 1;
+};
+
 struct full_tonemap_settings
 {
   bool enabled = false;
@@ -65,13 +71,9 @@ struct particle_tunnel_settings
   int num_particles;
   float text_min_dist;
   float text_max_dist;
-  float text_triangle_prob;
   float blur_radius = 15;
-  float text_start;
-  float text_length;
-  float fade_delay;
-  float fade_out;
   plexus_object plexus;
+  tonemap_reinhard_settings tonemap;
 };
 
 struct ray_marcher_settings
@@ -123,6 +125,7 @@ struct landscape_settings
   boid_settings boids;
   string particle_texture;
   tonemap_settings tonemap;
+  tonemap_reinhard_settings tonemap2;
   lens_flare_settings lens_flare;
 };
 

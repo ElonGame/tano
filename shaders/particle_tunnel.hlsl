@@ -2,6 +2,7 @@
 
 cbuffer PerFrame : register(b0)
 {
+//  float4 tonemap;
   matrix world;
   matrix view;
   matrix proj;
@@ -335,6 +336,10 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 tmp = (1 + time.w) * float4(tmpR.x, tmpG.y, tmpB.z, tmpR.w);
   float4 fadeTmp = (1 - smoothstep(0, 1, time.y)) * tmp;
   float4 col = backgroundCol + fadeTmp;
+
+  //float exposure = tonemap.x;
+  //float minWhite = tonemap.y;
+  //col = ToneMapReinhard(col, exposure, minWhite);
 
   // vignette
   float r = 0.5 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));

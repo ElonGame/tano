@@ -271,8 +271,6 @@ void ParticleTunnel::ParticleEmitter::Update(float dt)
       *dead++ = i;
       numDead++;
     }
-
-    //ll++;
   }
 
   float s = 100;
@@ -678,6 +676,11 @@ bool ParticleTunnel::Render()
 
   ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
+  Vector4 tonemap(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
+  //_cbBasic.tonemap = tonemap;
+  //_cbPerFrame.tonemap = tonemap;
+
+  _cbPerFrame.world = Matrix::Identity();
   u32 cbFlags = ShaderType::VertexShader | ShaderType::GeometryShader | ShaderType::PixelShader;
   _ctx->SetConstantBuffer(_cbPerFrame, cbFlags, 0);
 
@@ -685,9 +688,6 @@ bool ParticleTunnel::Render()
   _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), &black);
   _ctx->SetBundle(_backgroundBundle);
   _ctx->Draw(3, 0);
-
-  _cbPerFrame.world = Matrix::Identity();
-  _ctx->SetConstantBuffer(_cbPerFrame, cbFlags, 0);
 
   // Render particles
   _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
@@ -727,9 +727,7 @@ bool ParticleTunnel::Render()
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
   fullscreen->Blur(rtLines._rtHandle, rtBlur._rtHandle, rtBlur._desc, _settings.blur_radius, 1);
 
-  _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
-
-
+  _ctx->SetConstantBuffer(_cbPerFrame, cbFlags, 0);
   ScopedRenderTarget rtCompose(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv);
   ObjectHandle inputs[] = { rt, rtLines, rtBlur };
   fullscreen->Execute(
@@ -795,10 +793,6 @@ void ParticleTunnel::RenderParameterSet()
     ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
 
     ImGui::SliderFloat("blur", &_settings.blur_radius, 1, 100);
-
-    if (ImGui::SliderFloat("min dist", &_settings.text_min_dist, 1, 2000)) Reset();
-    if (ImGui::SliderFloat("max dist", &_settings.text_max_dist, 1, 2000)) Reset();
-    if (ImGui::SliderFloat("triangle prob", &_settings.text_triangle_prob, 0.f, 1.f)) Reset();
   }
   else
   {
@@ -806,6 +800,9 @@ void ParticleTunnel::RenderParameterSet()
     ImGui::SliderFloat("camera distance", &distance, 1, 2000);
     ImGui::SliderFloat("camera height", &height, -100, 100);
   }
+
+  ImGui::SliderFloat("Exposure", &_settings.tonemap.exposure, 0.1f, 20.0f);
+  ImGui::SliderFloat("Min White", &_settings.tonemap.min_white, 0.1f, 20.0f);
 
   if (ImGui::Button("Reset"))
     Reset();
