@@ -58,7 +58,7 @@ namespace tano
 
     void UpdateEffects();
     BaseEffect* FindEffectByName(const string &name);
-    bool ApplySettingsChange(const DemoSettings& settings);
+    bool ApplySettings(const DemoSettings& settings);
 
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 

@@ -389,7 +389,7 @@ void DemoEngine::WndProc(UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 //------------------------------------------------------------------------------
-bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
+bool DemoEngine::ApplySettings(const DemoSettings& settings)
 {
   BEGIN_INIT_SEQUENCE();
 
@@ -414,7 +414,7 @@ bool DemoEngine::ApplySettingsChange(const DemoSettings& settings)
     effect->SetDuration(start, end);
 
     FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(
-      configFile, true, [this, &effect](const string& filename)
+      configFile, true, [this, effect](const string& filename)
     {
       vector<char> buf;
       if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
@@ -471,21 +471,12 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
   _initialFixedState.localTime = TimeDuration::Seconds(0);
   _initialFixedState.delta = UPDATE_INTERVAL;
 
-  FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(config, true, [this](const string& filename)
-  {
-    vector<char> buf;
-    if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
-      return false;
+  vector<char> buf;
+  INIT_FATAL(RESOURCE_MANAGER.LoadFile(config, &buf));
 
-    DemoSettings settings;
-    if (!ParseDemoSettings(InputBuffer(buf), &settings))
-      return false;
-
-    if (!ApplySettingsChange(settings))
-      return false;
-
-    return true;
-  });
+  DemoSettings settings;
+  INIT_FATAL(ParseDemoSettings(InputBuffer(buf), &settings));
+  INIT_FATAL(ApplySettings(settings));
 
 #if WITH_MUSIC
   INIT(BASS_Init(-1, 44100, 0, 0, 0));
@@ -494,7 +485,6 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
 
   ReclassifyEffects();
 
-  INIT(res.initialResult);
   END_INIT_SEQUENCE();
 }
 
