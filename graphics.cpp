@@ -289,8 +289,6 @@ ObjectHandle Graphics::GetTempRenderTarget(int width, int height, DXGI_FORMAT fo
     }
   }
 
-  LOG_INFO(ToString("Render target created: %d, %d, %d, %d", width, height, format, flags).c_str());
-
   // Render target not found, so create a new one
   RenderTargetResource* rt = CreateRenderTargetPtr(width, height, format, flags);
   int rtIdx = _renderTargets.Append(rt);
@@ -310,8 +308,6 @@ ObjectHandle Graphics::GetTempDepthStencil(int width, int height, const BufferFl
       return MakeObjectHandle(ObjectHandle::kDepthStencil, t.idx);
     }
   }
-
-  LOG_INFO(ToString("Depth stencil created: %d, %d, %d", width, height, flags).c_str());
 
   // Render target not found, so create a new one
   DepthStencilResource* ds = CreateDepthStencilPtr(width, height, flags);

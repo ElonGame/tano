@@ -145,7 +145,7 @@ T Blackboard::GetVar(const string& name, unordered_map<string, T>& vars)
   auto it = vars.find(fullname);
   if (it == vars.end())
   {
-    LOG_ERROR(ToString("Unknown variable: %s", fullname.c_str()).c_str());
+    LOG_ERROR("Unknown variable: ", fullname);
     return T();
   }
 

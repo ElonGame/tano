@@ -74,8 +74,10 @@ static bool GlobalClose()
 App::App()
 {
   memset(&_ioState, 0, sizeof(_ioState));
-  bristol::SetLogCallback([](const char* file, int line, const char* desc) {
-    InitSequence::AddFailure(file, line, desc, false);
+  bristol::SetLogCallback([](const char* file, int line, const char* desc)
+  {
+    // todo: be smarterer, ie conditional logging
+    //InitSequence::AddFailure(file, line, desc, false);
   });
 }
 
@@ -137,6 +139,7 @@ bool App::Init(HINSTANCE hinstance)
 #else
   INIT_FATAL(RESOURCE_MANAGER_STATIC::Create("resources.dat"));
 #endif
+  bool b = LoadSettings();
   INIT_FATAL(LoadSettings());
 
   INIT_FATAL(Blackboard::Create("config/scratch.bb"));

@@ -2,7 +2,6 @@
 
 namespace tano
 {
-  // TODO: make a thread local stack of these guys, to make the output nicer on failures
   struct InitSequence
   {
     static void Enter();
