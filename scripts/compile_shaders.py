@@ -15,7 +15,7 @@ OUT_DIR = os.path.join(SHADER_DIR, 'out' )
 ## shaders and entry points
 vs = {
     'common' : ['VsQuad'],
-    'particle_tunnel' : ['VsParticle', 'VsText', 'VsLines', 'VsFracture'],
+    'intro' : ['VsParticle', 'VsText', 'VsLines', 'VsFracture'],
     'basic' : ['VsPos', 'VsPosNormal', 'VsPosColor'],
     'raymarcher' : [],
     'imgui' : ['VsMain'],
@@ -29,7 +29,7 @@ vs = {
 
 ps = {
     'common': ['PsScaleBias', 'PsCopy', 'PsAdd', 'PsScaleBiasSecondary'],
-    'particle_tunnel' : ['PsParticle', 'PsBackground', 'PsText', 'PsComposite', 'PsLines', 'PsFracture'],
+    'intro' : ['PsParticle', 'PsBackground', 'PsText', 'PsComposite', 'PsLines', 'PsFracture'],
     'basic' : ['PsPos', 'PsPosNormal', 'PsPosColor'],
     'raymarcher' : ['PsRaymarcher'],
     'imgui' : ['PsMain'],
@@ -45,7 +45,7 @@ cs = {
 }
 
 gs = {
-    'particle_tunnel' : ['GsParticle', 'GsLines'],
+    'intro' : ['GsParticle', 'GsLines'],
     'landscape' : ['GsParticle', 'GsLandscape'],
     'plexus': ['GsLines'],
 }

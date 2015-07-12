@@ -100,9 +100,6 @@
     <ClCompile Include="..\generated\app.parse.cpp">
       <Filter>generated</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\particle_tunnel.cpp">
-      <Filter>effects</Filter>
-    </ClCompile>
     <ClCompile Include="..\imgui\imgui.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
@@ -169,9 +166,6 @@
     <ClCompile Include="..\scene.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\cloth.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\tano_math.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -202,9 +196,6 @@
     <ClCompile Include="..\fullscreen_effect.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\plexus.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\base_effect.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -216,6 +207,15 @@
     </ClCompile>
     <ClCompile Include="..\filewatcher_win32.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\intro.cpp">
+      <Filter>effects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\cloth.cpp">
+      <Filter>effects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\plexus.cpp">
+      <Filter>effects</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -284,9 +284,6 @@
     </ClInclude>
     <ClInclude Include="..\generated\app.types.hpp">
       <Filter>generated</Filter>
-    </ClInclude>
-    <ClInclude Include="..\effects\particle_tunnel.hpp">
-      <Filter>effects</Filter>
     </ClInclude>
     <ClInclude Include="..\render_queue.hpp">
       <Filter>inc</Filter>
@@ -387,9 +384,6 @@
     <ClInclude Include="..\scene.hpp">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="..\effects\cloth.hpp">
-      <Filter>inc</Filter>
-    </ClInclude>
     <ClInclude Include="..\bristol\rolling_average.hpp">
       <Filter>bristol</Filter>
     </ClInclude>
@@ -429,9 +423,6 @@
     <ClInclude Include="..\fullscreen_effect.hpp">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="..\effects\plexus.hpp">
-      <Filter>inc</Filter>
-    </ClInclude>
     <ClInclude Include="..\base_effect.hpp">
       <Filter>inc</Filter>
     </ClInclude>
@@ -446,6 +437,15 @@
     </ClInclude>
     <ClInclude Include="..\filewatcher_win32.hpp">
       <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\intro.hpp">
+      <Filter>effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\cloth.hpp">
+      <Filter>effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\plexus.hpp">
+      <Filter>effects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

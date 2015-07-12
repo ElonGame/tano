@@ -13,7 +13,7 @@
 #include "blackboard.hpp"
 #include "generated/app.parse.hpp"
 #include "generated/input_buffer.hpp"
-#include "effects/particle_tunnel.hpp"
+#include "effects/intro.hpp"
 #include "effects/raymarcher.hpp"
 #include "effects/landscape.hpp"
 #include "effects/cloth.hpp"
@@ -169,7 +169,7 @@ bool App::Init(HINSTANCE hinstance)
 
   DemoEngine::Create();
 
-  ParticleTunnel::Register();
+  Intro::Register();
   RayMarcher::Register();
   Landscape::Register();
   Cloth::Register();

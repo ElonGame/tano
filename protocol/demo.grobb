@@ -62,7 +62,7 @@ struct plexus_object
   int num_nearest = 2;
 };
 
-struct particle_tunnel_settings
+struct intro_settings
 {
   string texture;
   color tint;

@@ -1,4 +1,4 @@
-#include "particle_tunnel.hpp"
+#include "intro.hpp"
 #include "../tano.hpp"
 #include "../graphics.hpp"
 #include "../graphics_extra.hpp"
@@ -185,7 +185,7 @@ static void CalcTextNeighbours(int num, const vector<int>& tris, int* neighbours
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::GenRandomPoints(float kernelSize)
+void Intro::GenRandomPoints(float kernelSize)
 {
   V3* tmp = g_ScratchMemory.Alloc<V3>(_randomPoints.Capacity());
   for (int i = 0; i < _randomPoints.Capacity(); ++i)
@@ -201,7 +201,7 @@ void ParticleTunnel::GenRandomPoints(float kernelSize)
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::ParticleEmitter::Create(const V3& center, int numParticles)
+void Intro::ParticleEmitter::Create(const V3& center, int numParticles)
 {
   _center = center;
   _numParticles = numParticles;
@@ -222,7 +222,7 @@ void ParticleTunnel::ParticleEmitter::Create(const V3& center, int numParticles)
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::ParticleEmitter::CreateParticle(int idx, float s)
+void Intro::ParticleEmitter::CreateParticle(int idx, float s)
 {
   // lifetime and lifetime decay is stored in the w-component
   XMFLOAT4 p(
@@ -242,7 +242,7 @@ void ParticleTunnel::ParticleEmitter::CreateParticle(int idx, float s)
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::ParticleEmitter::Destroy()
+void Intro::ParticleEmitter::Destroy()
 {
   SAFE_ADELETE(pos);
   SAFE_ADELETE(vel);
@@ -250,7 +250,7 @@ void ParticleTunnel::ParticleEmitter::Destroy()
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::ParticleEmitter::Update(float dt)
+void Intro::ParticleEmitter::Update(float dt)
 {
   int numDead = 0;
   int* dead = _deadParticles;
@@ -281,24 +281,24 @@ void ParticleTunnel::ParticleEmitter::Update(float dt)
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::ParticleEmitter::CopyToBuffer(ParticleType* vtx)
+void Intro::ParticleEmitter::CopyToBuffer(ParticleType* vtx)
 {
   memcpy(vtx, pos, _numParticles * sizeof(ParticleType));
 }
 
 //------------------------------------------------------------------------------
-ParticleTunnel::ParticleTunnel(const string &name, const string& config, u32 id)
+Intro::Intro(const string &name, const string& config, u32 id)
   : BaseEffect(name, config, id)
 {
 #if WITH_IMGUI
   PROPERTIES.Register("particle tunnel", 
-    bind(&ParticleTunnel::RenderParameterSet, this),
-    bind(&ParticleTunnel::SaveParameterSet, this));
+    bind(&Intro::RenderParameterSet, this),
+    bind(&Intro::SaveParameterSet, this));
 #endif
 }
 
 //------------------------------------------------------------------------------
-ParticleTunnel::~ParticleTunnel()
+Intro::~Intro()
 {
   for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
@@ -308,29 +308,29 @@ ParticleTunnel::~ParticleTunnel()
 
 
 //------------------------------------------------------------------------------
-bool ParticleTunnel::OnConfigChanged(const vector<char>& buf)
+bool Intro::OnConfigChanged(const vector<char>& buf)
 {
-  return ParseParticleTunnelSettings(InputBuffer(buf), &_settings);
+  return ParseIntroSettings(InputBuffer(buf), &_settings);
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTunnel::Init()
+bool Intro::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
   // Background state setup
   INIT(_backgroundBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/particle_tunnel", "PsBackground")));
+    .PixelShader("shaders/out/intro", "PsBackground")));
 
   vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
     CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT)
   };
 
   INIT(_particleBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/particle_tunnel", "VsParticle")
-    .GeometryShader("shaders/out/particle_tunnel", "GsParticle")
-    .PixelShader("shaders/out/particle_tunnel", "PsParticle")
+    .VertexShader("shaders/out/intro", "VsParticle")
+    .GeometryShader("shaders/out/intro", "GsParticle")
+    .PixelShader("shaders/out/intro", "PsParticle")
     .InputElements(inputs)
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DynamicVb(24 * _settings.num_particles, sizeof(ParticleType))
@@ -349,7 +349,7 @@ bool ParticleTunnel::Init()
   // Composite state setup
   INIT(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/particle_tunnel", "PsComposite")));
+    .PixelShader("shaders/out/intro", "PsComposite")));
 
   GenRandomPoints(_settings.plexus.blur_kernel);
 
@@ -397,10 +397,10 @@ bool ParticleTunnel::Init()
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescPreMultipliedAlpha)
     .DynamicVb((u32)maxVerts * 3 * 2, sizeof(Vector3))
-    .VertexShader("shaders/out/particle_tunnel", "VsLines")
+    .VertexShader("shaders/out/intro", "VsLines")
     .VertexFlags(VertexFlags::VF_POS)
-    .GeometryShader("shaders/out/particle_tunnel", "GsLines")
-    .PixelShader("shaders/out/particle_tunnel", "PsLines")
+    .GeometryShader("shaders/out/intro", "GsLines")
+    .PixelShader("shaders/out/intro", "PsLines")
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
   // Generic setup
@@ -430,15 +430,15 @@ bool ParticleTunnel::Init()
 
   INIT(_fractureBundle.Create(BundleOptions()
     .RasterizerDesc(rasterizeDescCullNone)
-    .VertexShader("shaders/out/particle_tunnel", "VsFracture")
+    .VertexShader("shaders/out/intro", "VsFracture")
     .VertexFlags(VertexFlags::VF_POS | VertexFlags::VF_NORMAL | VertexFlags::VF_TEX2_0)
-    .PixelShader("shaders/out/particle_tunnel", "PsFracture")));
+    .PixelShader("shaders/out/intro", "PsFracture")));
 
   END_INIT_SEQUENCE();
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::UpdateCameraMatrix(const UpdateState& state)
+void Intro::UpdateCameraMatrix(const UpdateState& state)
 {
   float x = distance * sin(angle);
   float z = -distance * cos(angle);
@@ -485,14 +485,14 @@ void ParticleTunnel::UpdateCameraMatrix(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::MemCpy(const scheduler::TaskData& data)
+void Intro::MemCpy(const scheduler::TaskData& data)
 {
   MemCpyKernelData* memcpyData = (MemCpyKernelData*)data.kernelData.data;
   memcpy(memcpyData->dst, memcpyData->src, memcpyData->size);
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::UpdateEmitter(const TaskData& data)
+void Intro::UpdateEmitter(const TaskData& data)
 {
   EmitterKernelData* emitterData = (EmitterKernelData*)data.kernelData.data;
   ParticleEmitter* emitter = emitterData->emitter;
@@ -500,7 +500,7 @@ void ParticleTunnel::UpdateEmitter(const TaskData& data)
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::CopyOutEmitter(const scheduler::TaskData& data)
+void Intro::CopyOutEmitter(const scheduler::TaskData& data)
 {
   EmitterKernelData* emitterData = (EmitterKernelData*)data.kernelData.data;
   ParticleEmitter* emitter = emitterData->emitter;
@@ -508,7 +508,7 @@ void ParticleTunnel::CopyOutEmitter(const scheduler::TaskData& data)
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTunnel::Update(const UpdateState& state)
+bool Intro::Update(const UpdateState& state)
 {
   static AvgStopWatch stopWatch;
   stopWatch.Start();
@@ -639,7 +639,7 @@ bool ParticleTunnel::Update(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTunnel::FixedUpdate(const FixedUpdateState& state)
+bool Intro::FixedUpdate(const FixedUpdateState& state)
 {
   float ms = state.localTime.TotalMicroseconds() / (float)1e6;
   _cbPerFrame.time.x = ms;
@@ -670,7 +670,7 @@ bool ParticleTunnel::FixedUpdate(const FixedUpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTunnel::Render()
+bool Intro::Render()
 {
   static Color black(0, 0, 0, 0);
 
@@ -781,7 +781,7 @@ bool ParticleTunnel::Render()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void ParticleTunnel::RenderParameterSet()
+void Intro::RenderParameterSet()
 {
   ImGui::Checkbox("extended", &extended);
   if (extended)
@@ -811,37 +811,37 @@ void ParticleTunnel::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void ParticleTunnel::SaveParameterSet()
+void Intro::SaveParameterSet()
 {
   SaveSettings(_settings);
 }
 #endif
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::Reset()
+void Intro::Reset()
 {
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTunnel::Close()
+bool Intro::Close()
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
-BaseEffect* ParticleTunnel::Create(const char* name, const char* config, u32 id)
+BaseEffect* Intro::Create(const char* name, const char* config, u32 id)
 {
-  return new ParticleTunnel(name, config, id);
+  return new Intro(name, config, id);
 }
 
 //------------------------------------------------------------------------------
-const char* ParticleTunnel::Name()
+const char* Intro::Name()
 {
-  return "particle_tunnel";
+  return "intro";
 }
 
 //------------------------------------------------------------------------------
-void ParticleTunnel::Register()
+void Intro::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), ParticleTunnel::Create);
+  DEMO_ENGINE.RegisterFactory(Name(), Intro::Create);
 }

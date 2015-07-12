@@ -17,12 +17,12 @@ namespace tano
     struct TaskData;
   }
 
-  class ParticleTunnel : public BaseEffect
+  class Intro : public BaseEffect
   {
   public:
 
-    ParticleTunnel(const string &name, const string& config, u32 id);
-    ~ParticleTunnel();
+    Intro(const string &name, const string& config, u32 id);
+    ~Intro();
     virtual bool OnConfigChanged(const vector<char>& buf) override;
     virtual bool Init() override;
     virtual bool Update(const UpdateState& state) override;
@@ -146,7 +146,7 @@ namespace tano
 
     GpuBundle _compositeBundle;
 
-    ParticleTunnelSettings _settings;
+    IntroSettings _settings;
 
     TextWriter _textWriter;
     struct TextData

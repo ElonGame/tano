@@ -5,10 +5,10 @@
   effects: [
   {
     name: 'intro';
-    factory: 'particle_tunnel';
+    factory: 'intro';
     start_time: 0;
     end_time: 22500;
-    settings: 'config/particle_tunnel.gb';
+    settings: 'config/intro.gb';
     force: true;
   },
   {

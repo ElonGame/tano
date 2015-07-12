@@ -269,7 +269,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\effects\particle_tunnel.cpp">
+    <ClCompile Include="..\effects\intro.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -510,7 +510,7 @@
     <ClInclude Include="..\graphics_context.hpp" />
     <ClInclude Include="..\demo_engine.hpp" />
     <ClInclude Include="..\base_effect.hpp" />
-    <ClInclude Include="..\effects\particle_tunnel.hpp" />
+    <ClInclude Include="..\effects\intro.hpp" />
     <ClInclude Include="..\generated\app.parse.hpp" />
     <ClInclude Include="..\generated\app.types.hpp" />
     <ClInclude Include="..\generated\demo.parse.hpp" />
