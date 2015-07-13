@@ -321,16 +321,16 @@ bool Intro::Init()
   // Background state setup
   INIT(_backgroundBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/intro", "PsBackground")));
+    .PixelShader("shaders/out/intro.background", "PsBackground")));
 
   vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
     CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT)
   };
 
   INIT(_particleBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/intro", "VsParticle")
-    .GeometryShader("shaders/out/intro", "GsParticle")
-    .PixelShader("shaders/out/intro", "PsParticle")
+    .VertexShader("shaders/out/intro.particle", "VsParticle")
+    .GeometryShader("shaders/out/intro.particle", "GsParticle")
+    .PixelShader("shaders/out/intro.particle", "PsParticle")
     .InputElements(inputs)
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DynamicVb(24 * _settings.num_particles, sizeof(ParticleType))
@@ -349,7 +349,7 @@ bool Intro::Init()
   // Composite state setup
   INIT(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/intro", "PsComposite")));
+    .PixelShader("shaders/out/intro.composite", "PsComposite")));
 
   GenRandomPoints(_settings.plexus.blur_kernel);
 
@@ -390,19 +390,6 @@ bool Intro::Init()
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
-  INIT_RESOURCE(_lineTexture, RESOURCE_MANAGER.LoadTexture("gfx/line.png"));
-
-  INIT(_lineBundle.Create(BundleOptions()
-    .RasterizerDesc(rasterizeDescCullNone)
-    .DepthStencilDesc(depthDescDepthDisabled)
-    .BlendDesc(blendDescPreMultipliedAlpha)
-    .DynamicVb((u32)maxVerts * 3 * 2, sizeof(Vector3))
-    .VertexShader("shaders/out/intro", "VsLines")
-    .VertexFlags(VertexFlags::VF_POS)
-    .GeometryShader("shaders/out/intro", "GsLines")
-    .PixelShader("shaders/out/intro", "PsLines")
-    .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
-
   // Generic setup
   INIT(_cbPerFrame.Create());
   _cbPerFrame.tint = _settings.tint;
@@ -430,9 +417,9 @@ bool Intro::Init()
 
   INIT(_fractureBundle.Create(BundleOptions()
     .RasterizerDesc(rasterizeDescCullNone)
-    .VertexShader("shaders/out/intro", "VsFracture")
+    .VertexShader("shaders/out/intro.fracture", "VsFracture")
     .VertexFlags(VertexFlags::VF_POS | VertexFlags::VF_NORMAL | VertexFlags::VF_TEX2_0)
-    .PixelShader("shaders/out/intro", "PsFracture")));
+    .PixelShader("shaders/out/intro.fracture", "PsFracture")));
 
   END_INIT_SEQUENCE();
 }

@@ -140,10 +140,6 @@ namespace tano
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
 
-    ObjectHandle _lineTexture;
-    GpuBundle _lineBundle;
-    u32 _numLinesPoints = 0;
-
     GpuBundle _compositeBundle;
 
     IntroSettings _settings;

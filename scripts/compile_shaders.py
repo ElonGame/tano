@@ -13,47 +13,78 @@ SHADER_DIR = os.path.join('..', 'shaders')
 OUT_DIR = os.path.join(SHADER_DIR, 'out' )
 
 ## shaders and entry points
-vs = {
-    'common' : ['VsQuad'],
-    'intro' : ['VsParticle', 'VsText', 'VsLines', 'VsFracture'],
-    'basic' : ['VsPos', 'VsPosNormal', 'VsPosColor'],
-    'raymarcher' : [],
-    'imgui' : ['VsMain'],
-    'quad' : ['VsMain'],
-    'cluster' : ['VsMesh'],
-    'blob' : ['VsMesh'],
-    'landscape' : ['VsLandscape', 'VsBoids', 'VsParticle'],
-    'lines': ['VsMain'],
-    'plexus': ['VsLines'],
+shaders = {
+    'intro.fracture' : {
+        'vs' : ['VsFracture'],
+        'ps' : ['PsFracture'],
+    },
+    'basic' : {
+        'vs' : ['VsPos', 'VsPosNormal', 'VsPosColor'],
+        'ps' : ['PsPos', 'PsPosNormal', 'PsPosColor'],
+    },
+    'blob' : {
+        'vs' : ['VsMesh'],
+        'ps' : ['PsMesh'],
+    },
+    'cluster' : {
+        'vs' : ['VsMesh'],
+        'ps' : ['PsMesh'],
+    },
+    'common' : {
+        'vs' : ['VsQuad'],
+        'ps' : ['PsScaleBias', 'PsCopy', 'PsAdd', 'PsScaleBiasSecondary'],
+    },
+    'imgui' : {
+        'vs' : ['VsMain'],
+        'ps' : ['PsMain'],
+    },
+    'intro.particle' : {
+        'vs' : ['VsParticle'],
+        'ps' : ['PsParticle'],
+        'gs' : ['GsParticle'],
+    },
+    'intro.background' : {
+        'ps' : ['PsBackground'],
+    },
+    'intro.composite' : {
+        'ps' : ['PsComposite'],
+    },
+    'landscape' : {
+        'vs' : ['VsLandscape', 'VsBoids', 'VsParticle'],
+        'ps' : ['PsLandscape', 'PsComposite', 'PsSky', 'PsBoids', 'PsParticle', 'PsHighPassFilter', 'PsLensFlare'],
+        'gs' : ['GsParticle', 'GsLandscape'],
+
+    },
+    'lines' : {
+        'vs' : ['VsMain'],
+        'ps' : ['PsMain'],
+    },
+    'plexus' : {
+        'vs' : ['VsLines'],
+        'ps' : ['PsLines'],
+        'gs' : ['GsLines'],
+    },
+    'quad' : {
+        'vs' : ['VsMain'],
+    },
+    'imgui' : {
+        'vs' : ['VsMain'],
+        'ps' : ['PsMain'],
+    },
+    'raymarcher' : {
+        'ps' : ['PsRaymarcher'],
+    },
+    'blur' : {
+        'cs' : ['CopyTranspose', 'BlurTranspose', 'BoxBlurX'],
+    }
 }
 
-ps = {
-    'common': ['PsScaleBias', 'PsCopy', 'PsAdd', 'PsScaleBiasSecondary'],
-    'intro' : ['PsParticle', 'PsBackground', 'PsText', 'PsComposite', 'PsLines', 'PsFracture'],
-    'basic' : ['PsPos', 'PsPosNormal', 'PsPosColor'],
-    'raymarcher' : ['PsRaymarcher'],
-    'imgui' : ['PsMain'],
-    'cluster' : ['PsMesh'],
-    'blob' : ['PsMesh'],
-    'landscape' : ['PsLandscape', 'PsComposite', 'PsSky', 'PsBoids', 'PsParticle', 'PsHighPassFilter', 'PsLensFlare'],
-    'lines': ['PsMain'],
-    'plexus': ['PsLines'],
+shader_data = {
+    'vs' : { 'profile': 'vs', 'obj_ext': 'vso', 'asm_ext': 'vsa' },
+    'gs' : { 'profile': 'gs', 'obj_ext': 'gso', 'asm_ext': 'gsa' },
+    'ps' : { 'profile': 'ps', 'obj_ext': 'pso', 'asm_ext': 'psa' },
+    'cs' : { 'profile': 'cs', 'obj_ext': 'cso', 'asm_ext': 'csa' },
 }
-
-cs = {
-    'blur' : ['CopyTranspose', 'BlurTranspose', 'BoxBlurX'],
-}
-
-gs = {
-    'intro' : ['GsParticle', 'GsLines'],
-    'landscape' : ['GsParticle', 'GsLandscape'],
-    'plexus': ['GsLines'],
-}
-
-vs_data = { 'shaders': vs, 'profile': 'vs', 'obj_ext': 'vso', 'asm_ext': 'vsa' }
-gs_data = { 'shaders': gs, 'profile': 'gs', 'obj_ext': 'gso', 'asm_ext': 'gsa' }
-ps_data = { 'shaders': ps, 'profile': 'ps', 'obj_ext': 'pso', 'asm_ext': 'psa' }
-cs_data = { 'shaders': cs, 'profile': 'cs', 'obj_ext': 'cso', 'asm_ext': 'csa' }
 
 last_fail_time = {}
 
@@ -80,60 +111,123 @@ def generate_files(base, entry_points, obj_ext, asm_ext):
         res.append((base + '_' + e + 'D.' + asm_ext, e, True))
     return res
 
-def compile(data):
-    profile = data['profile']
-    obj_ext = data['obj_ext']
-    asm_ext = data['asm_ext']
+# conversion between HLSL and my types
+known_types = { 
+    'float3' : 'Vector3',
+    'float4' : 'Vector4',
+    'float4x4' : 'Matrix',
+}
 
-    for basename, entry_points in data['shaders'].iteritems():
-        shader_file = os.path.join(SHADER_DIR, basename)
-        hlsl_file_time = os.path.getmtime(shader_file + '.hlsl')
+def dump_cbuffer(cbuffer_filename, cbuffers):
 
-        # if the compilation has failed, don't try again if the hlsl file hasn't updated
-        if shader_file in last_fail_time and last_fail_time[shader_file] == hlsl_file_time:
+    if len(cbuffers) == 0:
+        return
+
+    res = ''
+    for name, cbuffer in cbuffers:
+        res += 'struct CBuffer%s\n{\n' % name
+        for n, t in cbuffer.iteritems():
+            res += '  %s %s;\n' % (t, n)
+        res += '};\n'
+
+    with open(cbuffer_filename, 'wt') as f:
+        f.write(res)
+
+def parse_cbuffer(out_name, ext):
+
+    filename = out_name + '.' + ext
+    cbuffer_filename = out_name + '.cbuffers.hpp'
+
+    in_cbuffer = None
+    cbuffers = []
+    cbuffer = {}
+    for line in open(filename).readlines():
+        if not line.startswith('//'):
+            continue
+        line = line[3:]
+        line = line.strip()
+
+        if line.startswith('cbuffer'):
+            in_cbuffer = line[len('cbuffer '):]
+            continue
+        elif line.startswith('}'):
+            cbuffers.append((in_cbuffer, cbuffer))
+            in_cbuffer = None
+            cbuffer = {}
             continue
 
-        # check for old or missing files (each entry point gets its own file)
-        for output, entry_point, is_debug in generate_files(basename, entry_points, obj_ext, asm_ext):
-            if filetime_is_newer(hlsl_file_time, os.path.join(OUT_DIR, output)):
-                out_name = os.path.join(OUT_DIR, basename + '_' + entry_point)
+        if not in_cbuffer:
+            continue
 
-                if is_debug:
-                    # create debug shader
-                    # returns 0 on success, > 0 otherwise
-                    res = subprocess.call([
-                        'fxc',
-                        '/nologo',
-                        '/T%s_5_0' % profile,
-                        '/Od', 
-                        '/Zi', 
-                        '/E%s' % entry_point, 
-                        '/Fo%sD.%s' % (out_name, obj_ext),
-                        '/Fc%sD.%s' % (out_name, asm_ext),
-                        '%s.hlsl' % shader_file])
-                else:
-                    # create optimized shader
-                    res = subprocess.call([
-                        'fxc', 
-                        '/nologo',
-                        '/T%s_5_0' % profile,
-                        '/O3',
-                        '/E%s' % entry_point, 
-                        '/Fo%s.%s' % (out_name, obj_ext),
-                        '/Fc%s.%s' % (out_name, asm_ext),
-                        '%s.hlsl' % shader_file])
+        tmp, _, _ = line.partition(';')
+        tmp = tmp.strip()
+        if len(tmp) == 0:
+            continue
+        t, _, n = tmp.partition(' ')
+        if len(t) == 0 or len(n) == 0:
+            continue
+        if t not in known_types:
+            continue
+        cbuffer[n] = known_types[t]
 
-                if res:
-                    # if compilation failed, don't try again until the .hlsl file has been updated
-                    last_fail_time[shader_file] = hlsl_file_time
-                elif shader_file in last_fail_time: 
-                    del(last_fail_time[shader_file])
+    dump_cbuffer(cbuffer_filename, cbuffers)
+
+
+def compile():
+    for basename, data in shaders.iteritems():
+        for shader_type, entry_points in data.iteritems():
+            profile = shader_data[shader_type]['profile']
+            obj_ext = shader_data[shader_type]['obj_ext']
+            asm_ext = shader_data[shader_type]['asm_ext']
+
+            shader_file = os.path.join(SHADER_DIR, basename)
+            hlsl_file_time = os.path.getmtime(shader_file + '.hlsl')
+
+            # if the compilation has failed, don't try again if the hlsl file hasn't updated
+            if shader_file in last_fail_time and last_fail_time[shader_file] == hlsl_file_time:
+                continue
+
+            # check for old or missing files (each entry point gets its own file)
+            for output, entry_point, is_debug in generate_files(basename, entry_points, obj_ext, asm_ext):
+                if filetime_is_newer(hlsl_file_time, os.path.join(OUT_DIR, output)):
+                    out_name = os.path.join(OUT_DIR, basename + '_' + entry_point)
+
+                    if is_debug:
+                        # create debug shader
+                        # returns 0 on success, > 0 otherwise
+                        res = subprocess.call([
+                            'fxc',
+                            '/nologo',
+                            '/T%s_5_0' % profile,
+                            '/Od', 
+                            '/Zi', 
+                            '/E%s' % entry_point, 
+                            '/Fo%sD.%s' % (out_name, obj_ext),
+                            '/Fc%sD.%s' % (out_name, asm_ext),
+                            '%s.hlsl' % shader_file])
+                    else:
+                        # create optimized shader
+                        res = subprocess.call([
+                            'fxc', 
+                            '/nologo',
+                            '/T%s_5_0' % profile,
+                            '/O3',
+                            '/E%s' % entry_point, 
+                            '/Fo%s.%s' % (out_name, obj_ext),
+                            '/Fc%s.%s' % (out_name, asm_ext),
+                            '%s.hlsl' % shader_file])
+
+                    if res:
+                        # if compilation failed, don't try again until the .hlsl file has been updated
+                        print '** FAILURE: %s, %s' % (shader_file, entry_point)
+                        last_fail_time[shader_file] = hlsl_file_time
+                    else:
+                        parse_cbuffer(out_name, asm_ext)
+                        if shader_file in last_fail_time: 
+                            del(last_fail_time[shader_file])
 
 safe_mkdir(OUT_DIR)
 
 while True:
-    compile(vs_data)
-    compile(gs_data)
-    compile(ps_data)
-    compile(cs_data)
+    compile()
     time.sleep(1)

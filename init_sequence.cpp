@@ -42,7 +42,17 @@ bool InitSequence::Exit()
     {
       for (const InitMessage& f : seq->_messages)
       {
-        messages.push_back(ToString("%s%s(%d): %s", indent.c_str(), f.file, f.line, f.str.c_str()));
+        if (!seq->_success)
+        {
+          if (f.flags & InitMessage::Failure)
+          {
+            messages.push_back(ToString("%s%s(%d): [XX] %s", indent.c_str(), f.file, f.line, f.str.c_str()));
+          }
+          else
+          {
+            messages.push_back(ToString("%s%s(%d): %s", indent.c_str(), f.file, f.line, f.str.c_str()));
+          }
+        }
       }
       indent += "  ";
     }

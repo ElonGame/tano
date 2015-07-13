@@ -423,7 +423,7 @@ bool DemoEngine::ApplySettings(const DemoSettings& settings)
       return effect->OnConfigChanged(buf);
     });
 
-    INIT(effect->Init());
+    INIT_FATAL(effect->Init());
 
     if (e.force)
     {
