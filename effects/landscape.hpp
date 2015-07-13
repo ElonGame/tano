@@ -159,7 +159,6 @@ namespace tano
     MeshLoader _meshLoader;
 
     GpuBundle _skyBundle;
-    GpuBundle _luminanceBundle;
     GpuBundle _compositeBundle;
     GpuBundle _lensFlareBundle;
 

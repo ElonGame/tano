@@ -49,11 +49,24 @@ shaders = {
     'intro.composite' : {
         'ps' : ['PsComposite'],
     },
-    'landscape' : {
-        'vs' : ['VsLandscape', 'VsBoids', 'VsParticle'],
-        'ps' : ['PsLandscape', 'PsComposite', 'PsSky', 'PsBoids', 'PsParticle', 'PsHighPassFilter', 'PsLensFlare'],
-        'gs' : ['GsParticle', 'GsLandscape'],
-
+    'landscape.lensflare' : {
+        'ps' : ['PsLensFlare'],
+    },
+    'landscape.composite' : {
+        'ps' : ['PsComposite'],
+    },
+    'landscape.particle' : {
+        'vs' : ['VsParticle'],
+        'ps' : ['PsParticle'],
+        'gs' : ['GsParticle'],
+    },
+    'landscape.landscape' : {
+        'vs' : ['VsLandscape'],
+        'ps' : ['PsLandscape'],
+        'gs' : ['GsLandscape'],
+    },
+    'landscape.sky' : {
+        'ps' : ['PsSky'],
     },
     'lines' : {
         'vs' : ['VsMain'],
@@ -124,23 +137,32 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
         return
 
     res = ''
-    for name, cbuffer in cbuffers:
+    for name, cbuffer_vars in cbuffers:
         res += 'struct CBuffer%s\n{\n' % name
-        for n, t in cbuffer.iteritems():
-            res += '  %s %s;\n' % (t, n)
-        res += '};\n'
+
+        max_len = 0
+        for n, (t, comments) in cbuffer_vars.iteritems():
+            max_len = max(max_len, len(n) + len(t))
+
+        for n, (t, comments) in cbuffer_vars.iteritems():
+            cur_len = len(n) + len(t)
+            padding = (max_len - cur_len + 8) * ' '
+            res += '  %s %s;%s%s\n' % (t, n, padding, comments)
+        res += '};\n\n'
 
     with open(cbuffer_filename, 'wt') as f:
         f.write(res)
 
-def parse_cbuffer(out_name, ext):
+def parse_cbuffer(basename, entry_point, out_name, ext):
 
     filename = out_name + '.' + ext
-    cbuffer_filename = out_name + '.cbuffers.hpp'
+    cbuffer_filename = (out_name + '.cbuffers.hpp').lower()
 
-    in_cbuffer = None
+    cbuffer_prefix = basename.title().replace('.', '') + entry_point
+
+    cbuffer_name = None
+    cbuffer_vars = {}
     cbuffers = []
-    cbuffer = {}
     for line in open(filename).readlines():
         if not line.startswith('//'):
             continue
@@ -148,18 +170,19 @@ def parse_cbuffer(out_name, ext):
         line = line.strip()
 
         if line.startswith('cbuffer'):
-            in_cbuffer = line[len('cbuffer '):]
+            cbuffer_name = line[len('cbuffer '):]
             continue
         elif line.startswith('}'):
-            cbuffers.append((in_cbuffer, cbuffer))
-            in_cbuffer = None
-            cbuffer = {}
+            cbuffers.append((cbuffer_prefix + cbuffer_name, cbuffer_vars))
+            cbuffer_name = None
+            cbuffer_vars = {}
             continue
 
-        if not in_cbuffer:
+        if not cbuffer_name:
             continue
 
-        tmp, _, _ = line.partition(';')
+        tmp, _, comments = line.partition(';')
+        comments = comments.strip()
         tmp = tmp.strip()
         if len(tmp) == 0:
             continue
@@ -168,7 +191,7 @@ def parse_cbuffer(out_name, ext):
             continue
         if t not in known_types:
             continue
-        cbuffer[n] = known_types[t]
+        cbuffer_vars[n] = (known_types[t], comments)
 
     dump_cbuffer(cbuffer_filename, cbuffers)
 
@@ -222,7 +245,7 @@ def compile():
                         print '** FAILURE: %s, %s' % (shader_file, entry_point)
                         last_fail_time[shader_file] = hlsl_file_time
                     else:
-                        parse_cbuffer(out_name, asm_ext)
+                        parse_cbuffer(basename, entry_point, out_name, asm_ext)
                         if shader_file in last_fail_time: 
                             del(last_fail_time[shader_file])
 

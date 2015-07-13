@@ -134,10 +134,6 @@ bool Landscape::Init()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/landscape", "PsComposite")));
 
-  INIT(_luminanceBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/landscape", "PsHighPassFilter")));
-
   INIT(_lensFlareBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/landscape", "PsLensFlare")));
