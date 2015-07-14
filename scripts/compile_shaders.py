@@ -129,9 +129,9 @@ def generate_files(base, entry_points, obj_ext, asm_ext):
 
 # conversion between HLSL and my types
 known_types = { 
-    'float3' : 'Vector3',
-    'float4' : 'Vector4',
-    'float4x4' : 'Matrix',
+    'float3' : { 'type': 'Vector3', 'alignment': 1 },
+    'float4' : { 'type': 'Vector4' },
+    'float4x4' : { 'type': 'Matrix' },
 }
 
 def dump_cbuffer(cbuffer_filename, cbuffers):
@@ -143,14 +143,22 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
     for name, cbuffer_vars in cbuffers:
         cur =  '    struct %s\n    {\n' % name
 
+        # calc max line length, to align the comments
         max_len = 0
-        for n, (t, comments) in cbuffer_vars.iteritems():
+        for n, (tt, comments) in cbuffer_vars.iteritems():
+            t = tt['type']
             max_len = max(max_len, len(n) + len(t))
 
-        for n, (t, comments) in cbuffer_vars.iteritems():
+        padder = 0
+        for n, (tt, comments) in cbuffer_vars.iteritems():
+            t = tt['type']
+            alignment = tt.get('alignment', 0)
             cur_len = len(n) + len(t)
             padding = (max_len - cur_len + 8) * ' '
             cur += '      %s %s;%s%s\n' % (t, n, padding, comments)
+            if alignment:
+                cur += '      float padding%s[%s];\n' % (padder, alignment)
+                padder += 1
         cur += '    };\n'
 
         bufs.append(cur)

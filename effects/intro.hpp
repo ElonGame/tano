@@ -101,19 +101,7 @@ namespace tano
       cb::IntroFractureVsFractureO, void, void> _cbFracture;
     ConstantBufferBundle<void, void, cb::IntroParticleGsParticleF> _cbParticle;
 
-    ConstantBufferBundle<void, cb::PlexusPsLinesPerFrame, cb::PlexusGsLinesPerFrame> _cbPlexus;
-
-    //struct CBufferBasic
-    //{
-    //  Matrix world;
-    //  Matrix view;
-    //  Matrix proj;
-    //  Matrix viewProj;
-    //  Vector4 cameraPos;
-    //  Vector4 dim;
-    //  Vector4 params = Vector4(5.0, 0.25f, 250.f, 1);
-    //};
-    //ConstantBuffer<CBufferBasic> _cbBasic;
+    ConstantBufferBundle<void, cb::PlexusPsLinesPS, cb::PlexusGsLinesGS> _cbPlexus;
 
     string _configName;
 

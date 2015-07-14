@@ -1,15 +1,18 @@
 #include "common.hlsl"
 
-cbuffer PerFrame : register(b0)
+cbuffer PS : register(b0)
+{
+  float4 lineParams;
+};
+
+cbuffer GS : register(b0)
 {
   matrix world;
-  matrix view;
-  matrix proj;
   matrix viewProj;
   float3 cameraPos;
   float4 dim;
-  float4 lineParams;      // x = 
 };
+
 
 //------------------------------------------------------
 // lines

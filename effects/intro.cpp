@@ -458,20 +458,11 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
   Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), aspect, 0.1f, 3000.f);
   Matrix viewProj = view * proj;
 
-  _cbFracture.vs0.viewProj = viewProj.Transpose();
   _cbParticle.gs0.world = Matrix::Identity();
   _cbParticle.gs0.viewProj = viewProj.Transpose();
 
   _cbPlexus.gs0.viewProj = viewProj.Transpose();
   _cbPlexus.gs0.cameraPos = pos;
-
-  //_cbPlexus.gs0.world = mtx.Transpose();
-  //Matrix mtx = Matrix::Identity();
-  //_cbBasic.world = mtx.Transpose();
-  //_cbBasic.view = view.Transpose();
-  //_cbBasic.proj = proj.Transpose();
-  //_cbBasic.viewProj = viewProj.Transpose();
-  //_cbBasic.cameraPos = Vector4(pos.x, pos.y, pos.z, 1);
 
   float zz = -100;
   _fixedCamera._pos.z = zz;
