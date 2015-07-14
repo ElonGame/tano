@@ -404,13 +404,15 @@ bool Intro::Init()
   _cbBackground.ps0.outer = ToVector4(_settings.outer_color);
 
   INIT(_cbPlexus.Create());
-  _cbPlexus.ps0.lineParams = Vector4(5.0, 0.25f, 250.f, 1);
 
   //  Vector4 params = Vector4(5.0, 0.25f, 250.f, 1);
 
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
   Vector4 dim((float)w, (float)h, 0, 0);
+  _cbPlexus.gs0.dim = dim;
+  _cbPlexus.gs0.world = Matrix::Identity();
+
   //_cbFracture.ps0.dim = dim;
   //_cbParticle.ps0.dim = dim;
   //_cbPerFrame.dim.x = (float)w;
@@ -460,12 +462,16 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
   _cbParticle.gs0.world = Matrix::Identity();
   _cbParticle.gs0.viewProj = viewProj.Transpose();
 
-  Matrix mtx = Matrix::Identity();
-  _cbBasic.world = mtx.Transpose();
-  _cbBasic.view = view.Transpose();
-  _cbBasic.proj = proj.Transpose();
-  _cbBasic.viewProj = viewProj.Transpose();
-  _cbBasic.cameraPos = Vector4(pos.x, pos.y, pos.z, 1);
+  _cbPlexus.gs0.viewProj = viewProj.Transpose();
+  _cbPlexus.gs0.cameraPos = pos;
+
+  //_cbPlexus.gs0.world = mtx.Transpose();
+  //Matrix mtx = Matrix::Identity();
+  //_cbBasic.world = mtx.Transpose();
+  //_cbBasic.view = view.Transpose();
+  //_cbBasic.proj = proj.Transpose();
+  //_cbBasic.viewProj = viewProj.Transpose();
+  //_cbBasic.cameraPos = Vector4(pos.x, pos.y, pos.z, 1);
 
   float zz = -100;
   _fixedCamera._pos.z = zz;
@@ -692,10 +698,12 @@ bool Intro::Render()
   if (_drawText && _curText)
   {
     RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-    _cbBasic.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
+    //_cbBasic.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
     V3 params = BLACKBOARD.GetVec3Var("intro.lineParams");
-    _cbBasic.params = Vector4(params.x, params.y, params.z, _lineFade);
-    _ctx->SetConstantBuffer(_cbBasic, cbFlags, 0);
+    _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, _lineFade);
+    _cbPlexus.Set(_ctx, 0);
+    //_cbBasic.params = Vector4(params.x, params.y, params.z, _lineFade);
+    //_ctx->SetConstantBuffer(_cbBasic, cbFlags, 0);
 
     ObjectHandle vb = _plexusLineBundle.objects._vb;
     V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
