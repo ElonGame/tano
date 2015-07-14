@@ -53,7 +53,7 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  bool CreateScene(const MeshLoader& loader, bool createShaders, u32 userDataSize, scene::Scene* scene)
+  bool CreateScene(const MeshLoader& loader, u32 userDataSize, scene::Scene* scene)
   {
     BEGIN_INIT_SEQUENCE();
 
@@ -74,6 +74,9 @@ namespace tano
       info.indexCount += meshBlob->numIndices;
       info.vertexCount += meshBlob->numVerts;
     }
+
+    V3 minVerts(+FLT_MAX, +FLT_MAX, +FLT_MAX);
+    V3 maxVerts(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 
     for (size_t m = 0; m < loader.meshes.size(); ++m)
     {
@@ -123,6 +126,9 @@ namespace tano
 
         fnCopy(meshBlob->verts, 3);
 
+        minVerts = Min(minVerts, *(V3*)(verts - 3));
+        maxVerts = Max(maxVerts, *(V3*)(verts - 3));
+
         if (vertexFormat & VF_NORMAL)
           fnCopy(meshBlob->normals, 3);
 
@@ -138,13 +144,6 @@ namespace tano
         protocol::MeshBlob::MaterialGroup* mg = &meshBlob->materialGroups[i];
         mesh->materialGroups.push_back({ mg->materialId, mg->startIndex, mg->numIndices });
         mesh->indexCount += mg->numIndices;
-      }
-
-      if (createShaders)
-      {
-        assert(false);
-        //INIT(mesh->gpuObjects.LoadVertexShader("shaders/out/blob", "VsMesh", vertexFormat));
-        //INIT(mesh->gpuObjects.LoadPixelShader("shaders/out/blob", "PsMesh"));
       }
     }
 
@@ -229,6 +228,9 @@ namespace tano
       InitMatrix4x3(nullBlob->mtxGlobal, &obj->mtxGlobal);
     }
 
+    scene->minVerts = minVerts;
+    scene->maxVerts = maxVerts;
+
     END_INIT_SEQUENCE();
   }
 
@@ -298,8 +300,8 @@ namespace tano
     float e2y = v0y - v1y;
     float e2z = v0z - v1z;
 
-    Cross(e1x, e1y, e1z, e2x, e2y, e2z, nx, ny, nz);
-    Normalize(nx, ny, nz);
+//    Cross(e1x, e1y, e1z, e2x, e2y, e2z, nx, ny, nz);
+    //Normalize(nx, ny, nz);
   }
 
   //------------------------------------------------------------------------------

@@ -97,7 +97,8 @@ namespace tano
     ConstantBufferBundle<void, cb::IntroBackgroundPsBackgroundF> _cbBackground;
     ConstantBufferBundle<void, cb::IntroCompositePsCompositeF> _cbComposite;
     ConstantBufferBundle<
-      cb::IntroFractureVsFractureF, void, void,
+//      cb::IntroFractureVsFractureF, void, void,
+      void, void, void,
       cb::IntroFractureVsFractureO, void, void> _cbFracture;
     ConstantBufferBundle<void, void, cb::IntroParticleGsParticleF> _cbParticle;
 

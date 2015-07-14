@@ -29,6 +29,9 @@ VsFractureOut VsFracture(VsFractureIn v)
 
   matrix worldViewProj = mul(objWorld, viewProj);
   res.pos = mul(float4(v.pos, 1), worldViewProj);
+  res.pos = mul(float4(v.pos, 1), objWorld);
+  res.pos.xy /= 100;
+  res.pos.zw = float2(0, 1);
   res.uv = v.uv;
   return res;
 }

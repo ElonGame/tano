@@ -405,25 +405,15 @@ bool Intro::Init()
 
   INIT(_cbPlexus.Create());
 
-  //  Vector4 params = Vector4(5.0, 0.25f, 250.f, 1);
-
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
   Vector4 dim((float)w, (float)h, 0, 0);
   _cbPlexus.gs0.dim = dim;
   _cbPlexus.gs0.world = Matrix::Identity();
 
-  //_cbFracture.ps0.dim = dim;
-  //_cbParticle.ps0.dim = dim;
-  //_cbPerFrame.dim.x = (float)w;
-  //_cbPerFrame.dim.y = (float)h;
-  //INIT(_cbBasic.Create());
-  //INIT(_cbFracture.Create());
-  //INIT(_cbPerObject.Create());
-
   MeshLoader meshLoader;
   INIT(meshLoader.Load("gfx/shatter_plane1.boba"));
-  CreateScene(meshLoader, false, sizeof(FracturePiece), &_scene);
+  CreateScene(meshLoader, sizeof(FracturePiece), &_scene);
 
   for (scene::Mesh* mesh : _scene.meshes)
   {
@@ -471,7 +461,7 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
   view = _fixedCamera._view;
   proj = _fixedCamera._proj;
   viewProj = view * proj;
-  _cbFracture.vs0.viewProj = viewProj.Transpose();
+  //_cbFracture.vs0.viewProj = viewProj.Transpose();
 }
 
 //------------------------------------------------------------------------------
@@ -598,7 +588,6 @@ bool Intro::Update(const UpdateState& state)
   _cbComposite.ps0.tonemap = Vector4(1, 1, 0, 0);
 
   rmt_ScopedCPUSample(Particles_Update);
-  //float dt = state.delta;
 
   ObjectHandle vb = _particleBundle.objects._vb;
   ParticleType* vtx = _ctx->MapWriteDiscard<ParticleType>(_particleBundle.objects._vb);
@@ -633,7 +622,6 @@ bool Intro::Update(const UpdateState& state)
 bool Intro::FixedUpdate(const FixedUpdateState& state)
 {
   float ms = state.localTime.TotalMicroseconds() / (float)1e6;
-  //_cbPerFrame.time.x = ms;
 
   rmt_ScopedCPUSample(Particles_Update);
   float dt = state.delta;
@@ -665,36 +653,35 @@ bool Intro::Render()
 {
   static Color black(0, 0, 0, 0);
 
+  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+
   ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  {
+    // Render the background
+    _cbBackground.Set(_ctx, 0);
+    _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), &black);
+    _ctx->SetBundle(_backgroundBundle);
+    _ctx->Draw(3, 0);
+  }
 
-  Vector4 tonemap(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
-  _cbComposite.ps0.tonemap = tonemap;
-  u32 cbFlags = ShaderType::VertexShader | ShaderType::GeometryShader | ShaderType::PixelShader;
-
-  // Render the background
-  _cbBackground.Set(_ctx, 0);
-  _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), &black);
-  _ctx->SetBundle(_backgroundBundle);
-  _ctx->Draw(3, 0);
-
-  // Render particles
-  _cbParticle.Set(_ctx, 0);
-  _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
-  _ctx->SetShaderResource(_particleTexture);
-  _ctx->Draw(_settings.num_particles * _particleEmitters.Size(), 0);
+  {
+    // Render particles
+    _cbParticle.Set(_ctx, 0);
+    _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
+    _ctx->SetShaderResource(_particleTexture);
+    _ctx->Draw(_settings.num_particles * _particleEmitters.Size(), 0);
+  }
 
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  _ctx->SetRenderTarget(rtLines._rtHandle, GRAPHICS.GetDepthStencil(), &black);
-
   if (_drawText && _curText)
   {
+    // Render lines
+    _ctx->SetRenderTarget(rtLines, GRAPHICS.GetDepthStencil(), &black);
+
     RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-    //_cbBasic.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
     V3 params = BLACKBOARD.GetVec3Var("intro.lineParams");
     _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, _lineFade);
     _cbPlexus.Set(_ctx, 0);
-    //_cbBasic.params = Vector4(params.x, params.y, params.z, _lineFade);
-    //_ctx->SetConstantBuffer(_cbBasic, cbFlags, 0);
 
     ObjectHandle vb = _plexusLineBundle.objects._vb;
     V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
@@ -707,61 +694,67 @@ bool Intro::Render()
     _ctx->Unmap(vb);
     _ctx->SetBundle(_plexusLineBundle);
     _ctx->Draw(numLines, 0);
+    _ctx->UnsetRenderTargets(0, 1);
   }
 
-  // lines
-  _ctx->UnsetRenderTargets(0, 1);
-
   ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
-
-  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
-  fullscreen->Blur(rtLines._rtHandle, rtBlur._rtHandle, rtBlur._desc, _settings.blur_radius, 1);
-
-  _cbComposite.Set(_ctx, 0);
-  ScopedRenderTarget rtCompose(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv);
-  ObjectHandle inputs[] = { rt, rtLines, rtBlur };
-  fullscreen->Execute(
-    inputs, 3,
-    rtCompose, rtCompose._desc,
-    GRAPHICS.GetDepthStencil(),
-    _compositeBundle.objects._ps,
-    true,
-    &black);
-
-  _ctx->SetShaderResource(rtCompose._rtHandle);
-  _ctx->SetRenderTarget(GRAPHICS.GetBackBuffer(), GRAPHICS.GetDepthStencil(), &black);
-
-  _ctx->SetBundle(_fractureBundle);
-
-  int w, h;
-  GRAPHICS.GetBackBufferSize(&w, &h);
-  float aspect = (float)w / h;
-  Matrix mtxScale = Matrix::CreateScale(aspect, 1, 1);
-
-  float explodeFactor = max(0.f, _curTime - BLACKBOARD.GetFloatVar("intro.explodeTime"));
-  float moveSpeed = BLACKBOARD.GetFloatVar("intro.moveSpeed");
-  float rotSpeed = BLACKBOARD.GetFloatVar("intro.rotSpeed");
-
-  _cbFracture.Set(_ctx, 0);
-
-  for (scene::MeshBuffer* buf : _scene.meshBuffers)
   {
-    _ctx->SetVertexBuffer(buf->vb);
-    _ctx->SetIndexBuffer(buf->ib);
+    // blur
+    fullscreen->Blur(rtLines._rtHandle, rtBlur._rtHandle, rtBlur._desc, _settings.blur_radius, 1);
+  }
 
-    for (scene::Mesh* mesh : buf->meshes)
+  ScopedRenderTarget rtCompose(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv);
+  {
+    //composite
+    _cbComposite.ps0.tonemap = Vector4(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
+    _cbComposite.Set(_ctx, 0);
+    ObjectHandle inputs[] = { rt, rtLines, rtBlur };
+    fullscreen->Execute(
+      inputs, 3,
+      rtCompose, rtCompose._desc,
+      GRAPHICS.GetDepthStencil(),
+      _compositeBundle.objects._ps,
+      true,
+      &black);
+
+    _ctx->SetShaderResource(rtCompose._rtHandle);
+    _ctx->SetRenderTarget(GRAPHICS.GetBackBuffer(), GRAPHICS.GetDepthStencil(), &black);
+  }
+
+  {
+    // fracture
+    _ctx->SetBundle(_fractureBundle);
+
+    int w, h;
+    GRAPHICS.GetBackBufferSize(&w, &h);
+    float aspect = (float)w / h;
+    Matrix mtxScale = Matrix::CreateScale(aspect, 1, 1);
+
+    float explodeFactor = max(0.f, _curTime - BLACKBOARD.GetFloatVar("intro.explodeTime"));
+    float moveSpeed = BLACKBOARD.GetFloatVar("intro.moveSpeed");
+    float rotSpeed = BLACKBOARD.GetFloatVar("intro.rotSpeed");
+
+    _cbFracture.Set(_ctx, 0);
+
+    for (scene::MeshBuffer* buf : _scene.meshBuffers)
     {
-      FracturePiece* p = (FracturePiece*)mesh->userData;
-      Matrix mtx = mesh->mtxGlobal;
+      _ctx->SetVertexBuffer(buf->vb);
+      _ctx->SetIndexBuffer(buf->ib);
 
-      Matrix mtxDir = Matrix::CreateTranslation(explodeFactor * moveSpeed * ToVector3(p->dir));
-      Matrix mtxRotX = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.x);
-      Matrix mtxRotY = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.y);
-      Matrix mtxRotZ = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.z);
+      for (scene::Mesh* mesh : buf->meshes)
+      {
+        FracturePiece* p = (FracturePiece*)mesh->userData;
+        Matrix mtx = mesh->mtxGlobal;
 
-      _cbFracture.vs1.objWorld = (mtxRotX * mtxRotY * mtxRotZ * mtx * mtxScale * mtxDir).Transpose();
-      _cbFracture.Set(_ctx, 1);
-      _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
+        Matrix mtxDir = Matrix::CreateTranslation(explodeFactor * moveSpeed * ToVector3(p->dir));
+        Matrix mtxRotX = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.x);
+        Matrix mtxRotY = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.y);
+        Matrix mtxRotZ = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.z);
+
+        _cbFracture.vs1.objWorld = (mtxRotX * mtxRotY * mtxRotZ * mtx * mtxScale * mtxDir).Transpose();
+        _cbFracture.Set(_ctx, 1);
+        _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
+      }
     }
   }
 
