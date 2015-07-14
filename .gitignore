@@ -2,6 +2,7 @@ _win32/Debug/*
 _win32/x64/Debug/*
 _win32/Release/*
 _win32/x64/Release/*
+_win32/x64/Public/*
 *.sdf
 *.suo
 *.opensdf
@@ -24,3 +25,6 @@ _win32/Graphics*
 data/cloth_constraints*.dat
 _win32/tano*.vspx
 _win32/My*
+*.swp
+*.etl
+

@@ -117,9 +117,9 @@ bool Landscape::Init()
     u32* indices = GenerateQuadIndices(maxQuads, &ibSize);
     INIT(_landscapeGpuObjects.CreateIndexBuffer(ibSize, DXGI_FORMAT_R32_UINT, indices));
 
-    INIT(_landscapeGpuObjects.LoadVertexShader("shaders/out/landscape", "VsLandscape", vertexFlags));
-    INIT(_landscapeGpuObjects.LoadGeometryShader("shaders/out/landscape", "GsLandscape"));
-    INIT(_landscapeGpuObjects.LoadPixelShader("shaders/out/landscape", "PsLandscape"));
+    INIT(_landscapeGpuObjects.LoadVertexShader("shaders/out/landscape.landscape", "VsLandscape", vertexFlags));
+    INIT(_landscapeGpuObjects.LoadGeometryShader("shaders/out/landscape.landscape", "GsLandscape"));
+    INIT(_landscapeGpuObjects.LoadPixelShader("shaders/out/landscape.landscape", "PsLandscape"));
 
     INIT(_landscapeState.Create(nullptr, &blendDescBlendSrcAlpha, &rasterizeDescCullNone));
     INIT(_landscapeLowerState.Create());
@@ -128,15 +128,15 @@ bool Landscape::Init()
   INIT(_skyBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
     .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/landscape", "PsSky")));
+    .PixelShader("shaders/out/landscape.sky", "PsSky")));
 
   INIT(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/landscape", "PsComposite")));
+    .PixelShader("shaders/out/landscape.composite", "PsComposite")));
 
   INIT(_lensFlareBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/landscape", "PsLensFlare")));
+    .PixelShader("shaders/out/landscape.lensflare", "PsLensFlare")));
 
   INIT(_cbLensFlare.Create());
 
@@ -145,9 +145,9 @@ bool Landscape::Init()
 
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
-    .VertexShader("shaders/out/landscape", "VsParticle")
-    .GeometryShader("shaders/out/landscape", "GsParticle")
-    .PixelShader("shaders/out/landscape", "PsParticle")
+    .VertexShader("shaders/out/landscape.particle", "VsParticle")
+    .GeometryShader("shaders/out/landscape.particle", "GsParticle")
+    .PixelShader("shaders/out/landscape.particle", "PsParticle")
     .VertexFlags(VF_POS)
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
@@ -156,9 +156,9 @@ bool Landscape::Init()
 
   INIT(_boidsBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
-    .VertexShader("shaders/out/landscape", "VsParticle")
-    .GeometryShader("shaders/out/landscape", "GsParticle")
-    .PixelShader("shaders/out/landscape", "PsParticle")
+    .VertexShader("shaders/out/landscape.particle", "VsParticle")
+    .GeometryShader("shaders/out/landscape.particle", "GsParticle")
+    .PixelShader("shaders/out/landscape.particle", "PsParticle")
     .VertexFlags(VF_POS)
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)

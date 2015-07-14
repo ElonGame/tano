@@ -9,6 +9,13 @@
 #include "../tano_math.hpp"
 #include "../mesh_utils.hpp"
 #include "../camera.hpp"
+#include "../shaders/out/intro.background_psbackground.cbuffers.hpp"
+#include "../shaders/out/intro.composite_pscomposite.cbuffers.hpp"
+#include "../shaders/out/intro.fracture_vsfracture.cbuffers.hpp"
+#include "../shaders/out/intro.particle_gsparticle.cbuffers.hpp"
+#include "../shaders/out/intro.particle_psparticle.cbuffers.hpp"
+#include "../shaders/out/plexus_gslines.cbuffers.hpp"
+#include "../shaders/out/plexus_pslines.cbuffers.hpp"
 
 namespace tano
 {
@@ -87,51 +94,26 @@ namespace tano
 
     SimpleAppendBuffer<ParticleEmitter, 24> _particleEmitters;
 
-    struct CBufferPerFrame
-    {
-//      Vector4 tonemap;
-      Matrix world;
-      Matrix view;
-      Matrix proj;
-      Matrix viewProj;
-      Color tint;
-      Color inner;
-      Color outer;
-      Vector4 dim;
-      Vector4 viewDir;
-      Vector4 camPos;
-      Vector4 dofSettings;
-      Vector4 time;
-    };
-    ConstantBuffer<CBufferPerFrame> _cbPerFrame;
+    ConstantBufferBundle<void, cb::IntroBackgroundPsBackgroundF> _cbBackground;
+    ConstantBufferBundle<void, cb::IntroCompositePsCompositeF> _cbComposite;
+    ConstantBufferBundle<
+      cb::IntroFractureVsFractureF, void, void,
+      cb::IntroFractureVsFractureO, void, void> _cbFracture;
+    ConstantBufferBundle<void, void, cb::IntroParticleGsParticleF> _cbParticle;
 
-    struct CBufferBasic
-    {
-      Matrix world;
-      Matrix view;
-      Matrix proj;
-      Matrix viewProj;
-      Vector4 cameraPos;
-      Vector4 dim;
-      Vector4 params = Vector4(5.0, 0.25f, 250.f, 1);
-    };
-    ConstantBuffer<CBufferBasic> _cbBasic;
+    ConstantBufferBundle<void, cb::PlexusPsLinesPerFrame, cb::PlexusGsLinesPerFrame> _cbPlexus;
 
-    struct CBufferPerObject
-    {
-      Matrix world;
-    };
-    ConstantBuffer<CBufferPerObject> _cbPerObject;
-
-    struct CBufferFracture
-    {
-      Matrix world;
-      Matrix view;
-      Matrix proj;
-      Matrix viewProj;
-      Vector4 cameraPos;
-    };
-    ConstantBuffer<CBufferFracture> _cbFracture;
+    //struct CBufferBasic
+    //{
+    //  Matrix world;
+    //  Matrix view;
+    //  Matrix proj;
+    //  Matrix viewProj;
+    //  Vector4 cameraPos;
+    //  Vector4 dim;
+    //  Vector4 params = Vector4(5.0, 0.25f, 250.f, 1);
+    //};
+    //ConstantBuffer<CBufferBasic> _cbBasic;
 
     string _configName;
 

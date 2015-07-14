@@ -32,7 +32,10 @@ shaders = {
     },
     'common' : {
         'vs' : ['VsQuad'],
-        'ps' : ['PsScaleBias', 'PsCopy', 'PsAdd', 'PsScaleBiasSecondary'],
+        'ps' : ['PsCopy', 'PsAdd'],
+    },
+    'common.scale' : {
+        'ps' : ['PsScaleBias', 'PsScaleBiasSecondary'],
     },
     'imgui' : {
         'vs' : ['VsMain'],
@@ -136,9 +139,9 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
     if len(cbuffers) == 0:
         return
 
-    res = ''
+    bufs = []
     for name, cbuffer_vars in cbuffers:
-        res += 'struct CBuffer%s\n{\n' % name
+        cur =  '    struct %s\n    {\n' % name
 
         max_len = 0
         for n, (t, comments) in cbuffer_vars.iteritems():
@@ -147,8 +150,14 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
         for n, (t, comments) in cbuffer_vars.iteritems():
             cur_len = len(n) + len(t)
             padding = (max_len - cur_len + 8) * ' '
-            res += '  %s %s;%s%s\n' % (t, n, padding, comments)
-        res += '};\n\n'
+            cur += '      %s %s;%s%s\n' % (t, n, padding, comments)
+        cur += '    };\n'
+
+        bufs.append(cur)
+
+    res = 'namespace tano\n{\n  namespace cb\n  {\n'
+    res += '\n'.join(bufs)
+    res += '  }\n}'
 
     with open(cbuffer_filename, 'wt') as f:
         f.write(res)
@@ -161,7 +170,7 @@ def parse_cbuffer(basename, entry_point, out_name, ext):
     cbuffer_prefix = basename.title().replace('.', '') + entry_point
 
     cbuffer_name = None
-    cbuffer_vars = {}
+    cbuffer_vars = collections.OrderedDict()
     cbuffers = []
     for line in open(filename).readlines():
         if not line.startswith('//'):
@@ -175,7 +184,7 @@ def parse_cbuffer(basename, entry_point, out_name, ext):
         elif line.startswith('}'):
             cbuffers.append((cbuffer_prefix + cbuffer_name, cbuffer_vars))
             cbuffer_name = None
-            cbuffer_vars = {}
+            cbuffer_vars = collections.OrderedDict()
             continue
 
         if not cbuffer_name:

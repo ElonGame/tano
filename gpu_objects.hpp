@@ -159,4 +159,65 @@ namespace tano
 
     OptionFlags flags;
   };
+
+  //------------------------------------------------------------------------------
+  template<
+    typename Vs0 = void, typename Ps0 = void, typename Gs0 = void,
+    typename Vs1 = void, typename Ps1 = void, typename Gs1 = void
+  >
+  struct ConstantBufferBundle
+  {
+    struct DummyCb
+    {
+      bool Create() { return true; }
+    };
+
+    typedef typename conditional<is_void<Vs0>::value, DummyCb, ConstantBuffer<Vs0>>::type VsCBuffer0;
+    typedef typename conditional<is_void<Vs1>::value, DummyCb, ConstantBuffer<Vs1>>::type VsCBuffer1;
+    typedef typename conditional<is_void<Ps0>::value, DummyCb, ConstantBuffer<Ps0>>::type PsCBuffer0;
+    typedef typename conditional<is_void<Ps1>::value, DummyCb, ConstantBuffer<Ps1>>::type PsCBuffer1;
+    typedef typename conditional<is_void<Gs0>::value, DummyCb, ConstantBuffer<Gs0>>::type GsCBuffer0;
+    typedef typename conditional<is_void<Gs1>::value, DummyCb, ConstantBuffer<Gs1>>::type GsCBuffer1;
+
+    VsCBuffer0 vs0;
+    VsCBuffer1 vs1;
+    PsCBuffer0 ps0;
+    PsCBuffer1 ps1;
+    GsCBuffer0 gs0;
+    GsCBuffer1 gs1;
+
+    bool Create()
+    {
+      return 
+        vs0.Create() && ps0.Create() && gs0.Create() && vs1.Create() && ps1.Create() && gs1.Create();
+    }
+
+    void Set(GraphicsContext* ctx, const DummyCb& cb, u32 type, u32 slot)
+    {
+    }
+
+    template<typename T>
+    void Set(GraphicsContext* ctx, ConstantBuffer<T>& cb, u32 type, u32 slot)
+    {
+      ctx->SetConstantBuffer(cb, type, slot);
+    }
+
+    void Set(GraphicsContext* ctx, u32 slot)
+    {
+      switch (slot)
+      {
+      case 0:
+        Set(ctx, vs0, VertexShader, 0);
+        Set(ctx, ps0, PixelShader, 0);
+        Set(ctx, gs0, GeometryShader, 0);
+        break;
+
+      case 1:
+        Set(ctx, vs1, VertexShader, 1);
+        Set(ctx, ps1, PixelShader, 1);
+        Set(ctx, gs1, GeometryShader, 1);
+        break;
+      }
+    }
+  };
 }

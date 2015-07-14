@@ -183,6 +183,9 @@ namespace tano
   using std::make_unique;
   using std::thread;
 
+  using std::conditional;
+  using std::is_void;
+
   template<typename T>
   void hash_combine(size_t& seed, const T& key)
   {

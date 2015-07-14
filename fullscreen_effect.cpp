@@ -28,13 +28,13 @@ bool FullscreenEffect::Init()
     .DepthStencilDesc(depthDescDepthDisabled)
     .RasterizerDesc(rasterizeDescCullNone)
     .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/common", "PsScaleBias")));
+    .PixelShader("shaders/out/common.scale", "PsScaleBias")));
 
   INIT(_scaleBiasSecondaryBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
     .RasterizerDesc(rasterizeDescCullNone)
     .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/common", "PsScaleBiasSecondary")));
+    .PixelShader("shaders/out/common.scale", "PsScaleBiasSecondary")));
 
   INIT(_copyBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")

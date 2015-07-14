@@ -8,11 +8,6 @@ sampler LinearSampler : register(s1);
 sampler LinearWrap : register(s2);
 sampler LinearBorder : register(s3);
 
-// Ugh, I need to work out some c-buffer discipline :)
-cbuffer Common : register(b1)
-{
-  float4 scaleBias; // x = scale, y = bias
-};
 
 //------------------------------------------------------
 float Luminance(float3 col)
@@ -60,24 +55,6 @@ VSQuadOut VsQuad(uint vertexID : SV_VertexID)
 float4 PsCopy(VSQuadOut p) : SV_Target
 {
   return Texture0.Sample(LinearSampler, p.uv);
-}
-
-//------------------------------------------------------
-float4 PsScaleBias(VSQuadOut p) : SV_Target
-{
-  float2 uv = p.uv.xy;
-  float4 col = Texture0.Sample(LinearSampler, uv);
-  return max(float4(0,0,0,0), col - scaleBias.y) * scaleBias.x;
-}
-
-//------------------------------------------------------
-float4 PsScaleBiasSecondary(VSQuadOut p) : SV_Target
-{
-  
-  float2 uv = p.uv.xy;
-  float4 col = Texture0.Sample(LinearSampler, uv);
-  float v = Texture1.Sample(LinearSampler, uv).a;
-  return max(float4(0,0,0,0), v - scaleBias.y) * scaleBias.x * col;
 }
 
 //------------------------------------------------------

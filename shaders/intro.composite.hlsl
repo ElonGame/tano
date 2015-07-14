@@ -1,21 +1,9 @@
 #include "common.hlsl"
 
-cbuffer PerFrame : register(b0)
+cbuffer F : register(b0)
 {
-//  float4 tonemap;
-  matrix world;
-  matrix view;
-  matrix proj;
-  matrix viewProj;
-  float4 tint;
-  float4 inner;
-  float4 outer;
-  float4 dim;
-  float4 viewDir;
-  float4 camPos;
-  float4 dofSettings; // near-z-start, near-z-end, far-z-start, far-z-end
+  float4 tonemap;
   float4 time; // x = local-time, y = text fade
-  float3 cameraPos;
 };
 
 
@@ -53,9 +41,9 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 fadeTmp = (1 - smoothstep(0, 1, time.y)) * tmp;
   float4 col = backgroundCol + fadeTmp;
 
-  //float exposure = tonemap.x;
-  //float minWhite = tonemap.y;
-  //col = ToneMapReinhard(col, exposure, minWhite);
+  float exposure = tonemap.x;
+  float minWhite = tonemap.y;
+  col = ToneMapReinhard(col, exposure, minWhite);
 
   // vignette
   float r = 0.5 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));

@@ -313,6 +313,11 @@ bool Intro::OnConfigChanged(const vector<char>& buf)
   return ParseIntroSettings(InputBuffer(buf), &_settings);
 }
 
+Vector4 ToVector4(const Color& c)
+{
+  return Vector4(c.x, c.y, c.z, c.w);
+}
+
 //------------------------------------------------------------------------------
 bool Intro::Init()
 {
@@ -391,18 +396,28 @@ bool Intro::Init()
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
   // Generic setup
-  INIT(_cbPerFrame.Create());
-  _cbPerFrame.tint = _settings.tint;
-  _cbPerFrame.inner = _settings.inner_color;
-  _cbPerFrame.outer = _settings.outer_color;
+  INIT(_cbBackground.Create());
+  INIT(_cbComposite.Create());
+  INIT(_cbFracture.Create());
+  INIT(_cbParticle.Create());
+  _cbBackground.ps0.inner = ToVector4(_settings.inner_color);
+  _cbBackground.ps0.outer = ToVector4(_settings.outer_color);
+
+  INIT(_cbPlexus.Create());
+  _cbPlexus.ps0.lineParams = Vector4(5.0, 0.25f, 250.f, 1);
+
+  //  Vector4 params = Vector4(5.0, 0.25f, 250.f, 1);
 
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
-  _cbPerFrame.dim.x = (float)w;
-  _cbPerFrame.dim.y = (float)h;
-  INIT(_cbBasic.Create());
-  INIT(_cbFracture.Create());
-  INIT(_cbPerObject.Create());
+  Vector4 dim((float)w, (float)h, 0, 0);
+  //_cbFracture.ps0.dim = dim;
+  //_cbParticle.ps0.dim = dim;
+  //_cbPerFrame.dim.x = (float)w;
+  //_cbPerFrame.dim.y = (float)h;
+  //INIT(_cbBasic.Create());
+  //INIT(_cbFracture.Create());
+  //INIT(_cbPerObject.Create());
 
   MeshLoader meshLoader;
   INIT(meshLoader.Load("gfx/shatter_plane1.boba"));
@@ -441,34 +456,25 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
   Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), aspect, 0.1f, 3000.f);
   Matrix viewProj = view * proj;
 
-  _cbPerFrame.world = Matrix::Identity();
-  _cbPerFrame.view = view.Transpose();
-  _cbPerFrame.proj = proj.Transpose();
-  _cbPerFrame.viewProj = viewProj.Transpose();
-  _cbPerFrame.viewDir = Vector4(dir.x, dir.y, dir.z, 1);
-  _cbPerFrame.camPos = Vector4(pos.x, pos.y, pos.z, 1);
+  _cbFracture.vs0.viewProj = viewProj.Transpose();
+  _cbParticle.gs0.world = Matrix::Identity();
+  _cbParticle.gs0.viewProj = viewProj.Transpose();
 
   Matrix mtx = Matrix::Identity();
   _cbBasic.world = mtx.Transpose();
   _cbBasic.view = view.Transpose();
   _cbBasic.proj = proj.Transpose();
   _cbBasic.viewProj = viewProj.Transpose();
-  _cbBasic.cameraPos = _cbPerFrame.camPos;
+  _cbBasic.cameraPos = Vector4(pos.x, pos.y, pos.z, 1);
 
   float zz = -100;
   _fixedCamera._pos.z = zz;
-  // tan fov = w / h
   _fixedCamera._fov = atan(100.f / fabsf(zz));
   _fixedCamera._target = Vector3(0,0,0);
-  //_fixedCamera.Update(state);
   view = _fixedCamera._view;
   proj = _fixedCamera._proj;
   viewProj = view * proj;
-  _cbFracture.world = Matrix::CreateScale(aspect, 1, 1);
-  _cbFracture.view = view.Transpose();
-  _cbFracture.proj = proj.Transpose();
-  _cbFracture.viewProj = viewProj.Transpose();
-  _cbFracture.cameraPos = Expand(_fixedCamera._pos, 0);
+  _cbFracture.vs0.viewProj = viewProj.Transpose();
 }
 
 //------------------------------------------------------------------------------
@@ -591,7 +597,8 @@ bool Intro::Update(const UpdateState& state)
 
   BLACKBOARD.ClearNamespace();
 
-  _cbPerFrame.time.x = ms;
+  _cbComposite.ps0.time.x = ms;
+  _cbComposite.ps0.tonemap = Vector4(1, 1, 0, 0);
 
   rmt_ScopedCPUSample(Particles_Update);
   //float dt = state.delta;
@@ -629,7 +636,7 @@ bool Intro::Update(const UpdateState& state)
 bool Intro::FixedUpdate(const FixedUpdateState& state)
 {
   float ms = state.localTime.TotalMicroseconds() / (float)1e6;
-  _cbPerFrame.time.x = ms;
+  //_cbPerFrame.time.x = ms;
 
   rmt_ScopedCPUSample(Particles_Update);
   float dt = state.delta;
@@ -664,19 +671,17 @@ bool Intro::Render()
   ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
   Vector4 tonemap(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
-  //_cbBasic.tonemap = tonemap;
-  //_cbPerFrame.tonemap = tonemap;
-
-  _cbPerFrame.world = Matrix::Identity();
+  _cbComposite.ps0.tonemap = tonemap;
   u32 cbFlags = ShaderType::VertexShader | ShaderType::GeometryShader | ShaderType::PixelShader;
-  _ctx->SetConstantBuffer(_cbPerFrame, cbFlags, 0);
 
   // Render the background
+  _cbBackground.Set(_ctx, 0);
   _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), &black);
   _ctx->SetBundle(_backgroundBundle);
   _ctx->Draw(3, 0);
 
   // Render particles
+  _cbParticle.Set(_ctx, 0);
   _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
   _ctx->SetShaderResource(_particleTexture);
   _ctx->Draw(_settings.num_particles * _particleEmitters.Size(), 0);
@@ -706,7 +711,6 @@ bool Intro::Render()
   }
 
   // lines
-  _ctx->SetConstantBuffer(_cbPerFrame, cbFlags, 0);
   _ctx->UnsetRenderTargets(0, 1);
 
   ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
@@ -714,7 +718,7 @@ bool Intro::Render()
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
   fullscreen->Blur(rtLines._rtHandle, rtBlur._rtHandle, rtBlur._desc, _settings.blur_radius, 1);
 
-  _ctx->SetConstantBuffer(_cbPerFrame, cbFlags, 0);
+  _cbComposite.Set(_ctx, 0);
   ScopedRenderTarget rtCompose(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv);
   ObjectHandle inputs[] = { rt, rtLines, rtBlur };
   fullscreen->Execute(
@@ -739,7 +743,7 @@ bool Intro::Render()
   float moveSpeed = BLACKBOARD.GetFloatVar("intro.moveSpeed");
   float rotSpeed = BLACKBOARD.GetFloatVar("intro.rotSpeed");
 
-  _ctx->SetConstantBuffer(_cbFracture, ShaderType::VertexShader, 0);
+  _cbFracture.Set(_ctx, 0);
 
   for (scene::MeshBuffer* buf : _scene.meshBuffers)
   {
@@ -756,9 +760,8 @@ bool Intro::Render()
       Matrix mtxRotY = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.y);
       Matrix mtxRotZ = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.z);
 
-      _cbPerObject.world = (mtxRotX * mtxRotY * mtxRotZ * mtx * mtxScale * mtxDir).Transpose();
-      _ctx->SetConstantBuffer(_cbPerObject, ShaderType::VertexShader, 2);
-
+      _cbFracture.vs1.objWorld = (mtxRotX * mtxRotY * mtxRotZ * mtx * mtxScale * mtxDir).Transpose();
+      _cbFracture.Set(_ctx, 1);
       _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
     }
   }
@@ -773,9 +776,9 @@ void Intro::RenderParameterSet()
   ImGui::Checkbox("extended", &extended);
   if (extended)
   {
-    if (ImGui::ColorEdit4("Tint", &_settings.tint.x)) _cbPerFrame.tint = _settings.tint;
-    if (ImGui::ColorEdit4("Inner", &_settings.inner_color.x)) _cbPerFrame.inner = _settings.inner_color;
-    if (ImGui::ColorEdit4("Outer", &_settings.outer_color.x)) _cbPerFrame.outer = _settings.outer_color;
+    //if (ImGui::ColorEdit4("Tint", &_settings.tint.x)) _cbPerFrame.tint = _settings.tint;
+    //if (ImGui::ColorEdit4("Inner", &_settings.inner_color.x)) _cbPerFrame.inner = _settings.inner_color;
+    //if (ImGui::ColorEdit4("Outer", &_settings.outer_color.x)) _cbPerFrame.outer = _settings.outer_color;
     ImGui::Separator();
     ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
 

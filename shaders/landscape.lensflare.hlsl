@@ -1,3 +1,8 @@
+#include "common.hlsl"
+
+static float2 halfVec = float2(0.5, 0.5);
+static float halfVecLength = length(halfVec);
+
 cbuffer LensFlare : register(b1)
 {
   // x = dispersion
