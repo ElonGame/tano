@@ -1,23 +1,20 @@
 #include "landscape.hlsl"
 
-cbuffer PerFrame : register(b0)
+cbuffer P : register(b0)
+{
+  float4 nearFar : NEAR_FAR;
+};
+
+cbuffer G : register(b0)
 {
   matrix world;
-  matrix view;
-  matrix proj;
   matrix viewProj;
-  float4 time;
-  float4 dim;
   float3 cameraPos;
-  float3 cameraLookAt;
-  float3 cameraUp;
-  float4 nearFar : NEAR_FAR;
-  float4 tonemap; // x = shoulder, y = max_white, z = exposure/lumAvg, w = min_white
 };
 
 struct VsParticleIn
 {
-  float3 pos : Position;
+  float4 pos : Position;
 };
 
 struct VsParticleOut
@@ -54,7 +51,7 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
 
   matrix worldViewProj = mul(world, viewProj);
 
-  float3 pos = input[0].pos;
+  float3 pos = input[0].pos.xyz;
   float3 dir = normalize(cameraPos - pos);
   float3 right = cross(dir, float3(0,1,0));
   float3 up = cross(right, dir);

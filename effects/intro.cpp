@@ -422,11 +422,19 @@ bool Intro::Init()
     p->rot = RandomVector();
   }
 
-  INIT(_fractureBundle.Create(BundleOptions()
-    .RasterizerDesc(rasterizeDescCullNone)
-    .VertexShader("shaders/out/intro.fracture", "VsFracture")
-    .VertexFlags(VertexFlags::VF_POS | VertexFlags::VF_NORMAL | VertexFlags::VF_TEX2_0)
-    .PixelShader("shaders/out/intro.fracture", "PsFracture")));
+  {
+    vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
+      CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32_FLOAT),
+      CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT),
+      CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
+    };
+
+    INIT(_fractureBundle.Create(BundleOptions()
+      .RasterizerDesc(rasterizeDescCullNone)
+      .VertexShader("shaders/out/intro.fracture", "VsFracture")
+      .InputElements(inputs)
+      .PixelShader("shaders/out/intro.fracture", "PsFracture")));
+  }
 
   END_INIT_SEQUENCE();
 }
@@ -461,7 +469,7 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
   view = _fixedCamera._view;
   proj = _fixedCamera._proj;
   viewProj = view * proj;
-  //_cbFracture.vs0.viewProj = viewProj.Transpose();
+  _cbFracture.vs0.viewProj = viewProj.Transpose();
 }
 
 //------------------------------------------------------------------------------
@@ -751,7 +759,10 @@ bool Intro::Render()
         Matrix mtxRotY = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.y);
         Matrix mtxRotZ = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.z);
 
-        _cbFracture.vs1.objWorld = (mtxRotX * mtxRotY * mtxRotZ * mtx * mtxScale * mtxDir).Transpose();
+        _cbFracture.vs1.objWorld = (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ * mesh->mtxLocal * mtxScale * mtxDir).Transpose();
+        //_cbFracture.vs1.objWorld = (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ * mtxDir * mesh->mtxLocal ).Transpose();
+        //_cbFracture.vs1.objWorld = (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ * mesh->mtxLocal).Transpose();
+        //_cbFracture.vs1.objWorld = Matrix::Identity();
         _cbFracture.Set(_ctx, 1);
         _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
       }

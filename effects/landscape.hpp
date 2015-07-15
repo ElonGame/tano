@@ -8,6 +8,13 @@
 #include "../camera.hpp"
 #include "../dyn_particles.hpp"
 #include "../tano_math.hpp"
+#include "../shaders/out/landscape.lensflare_pslensflare.cbuffers.hpp"
+#include "../shaders/out/landscape.sky_pssky.cbuffers.hpp"
+#include "../shaders/out/landscape.composite_pscomposite.cbuffers.hpp"
+#include "../shaders/out/landscape.landscape_gslandscape.cbuffers.hpp"
+#include "../shaders/out/landscape.landscape_vslandscape.cbuffers.hpp"
+#include "../shaders/out/landscape.particle_gsparticle.cbuffers.hpp"
+#include "../shaders/out/landscape.particle_psparticle.cbuffers.hpp"
 
 namespace tano
 {
@@ -125,30 +132,11 @@ namespace tano
 
     SimpleAppendBuffer<Flock*, 128> _flocks;
 
-    struct CBufferPerFrame
-    {
-      Matrix world;
-      Matrix view;
-      Matrix proj;
-      Matrix viewProj;
-      Vector4 time;
-      Vector4 dim;
-      Vector3 cameraPos;
-      float pad1;
-      Vector3 cameraLookAt;
-      float pad2;
-      Vector3 cameraUp;
-      float pad3;
-      Vector4 nearFar;
-      Vector4 toneMappingParams = Vector4(0.5f, 2.f, 0, 0);
-    };
-    ConstantBuffer<CBufferPerFrame> _cbPerFrame;
-
-    struct CBufferLensFlare
-    {
-      Vector4 params = Vector4(0.1f, 5, 1.0, 0.1f);
-    };
-    ConstantBuffer<CBufferLensFlare> _cbLensFlare;
+    ConstantBufferBundle<void, cb::LandscapeLensflareP> _cbLensFlare;
+    ConstantBufferBundle<void, cb::LandscapeCompositeF> _cbComposite;
+    ConstantBufferBundle<void, cb::LandscapeSkyF> _cbSky;
+    ConstantBufferBundle<cb::LandscapeLandscapeV, void, cb::LandscapeLandscapeG> _cbLandscape;
+    ConstantBufferBundle<void, cb::LandscapeParticleP, cb::LandscapeParticleG> _cbParticle;
 
     GpuBundle _landscapeBundle;
     GpuState _landscapeState;

@@ -12,7 +12,7 @@ cbuffer O : register(b1)
 
 struct VsFractureIn
 {
-  float3 pos : Position;
+  float3 pos : SV_Position;
   float3 normal : Normal;
   float2 uv : TexCoord0;
 };
@@ -29,9 +29,16 @@ VsFractureOut VsFracture(VsFractureIn v)
 
   matrix worldViewProj = mul(objWorld, viewProj);
   res.pos = mul(float4(v.pos, 1), worldViewProj);
-  res.pos = mul(float4(v.pos, 1), objWorld);
-  res.pos.xy /= 100;
-  res.pos.zw = float2(0, 1);
+//  res.pos = mul(float4(v.pos, 1), objWorld);
+//  res.pos.xy /= 50;
+//  res.pos.zw = float2(0, 1);
+/*
+  float3 tmp = v.pos;
+  tmp.z = 0.5;
+  res.pos = mul(float4(tmp, 1), objWorld);
+  //res.pos = float4(v.pos, 1);
+  res.pos.xyz /= 50;
+*/
   res.uv = v.uv;
   return res;
 }

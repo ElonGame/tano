@@ -1,18 +1,10 @@
 #include "landscape.hlsl"
 
-cbuffer PerFrame : register(b0)
+cbuffer F : register(b0)
 {
-  matrix world;
-  matrix view;
-  matrix proj;
-  matrix viewProj;
-  float4 time;
   float4 dim;
   float3 cameraPos;
   float3 cameraLookAt;
-  float3 cameraUp;
-  float4 nearFar : NEAR_FAR;
-  float4 tonemap; // x = shoulder, y = max_white, z = exposure/lumAvg, w = min_white
 };
 
 PsColBrightnessOut PsSky(VSQuadOut p)

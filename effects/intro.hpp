@@ -13,7 +13,6 @@
 #include "../shaders/out/intro.composite_pscomposite.cbuffers.hpp"
 #include "../shaders/out/intro.fracture_vsfracture.cbuffers.hpp"
 #include "../shaders/out/intro.particle_gsparticle.cbuffers.hpp"
-#include "../shaders/out/intro.particle_psparticle.cbuffers.hpp"
 #include "../shaders/out/plexus_gslines.cbuffers.hpp"
 #include "../shaders/out/plexus_pslines.cbuffers.hpp"
 
@@ -94,15 +93,15 @@ namespace tano
 
     SimpleAppendBuffer<ParticleEmitter, 24> _particleEmitters;
 
-    ConstantBufferBundle<void, cb::IntroBackgroundPsBackgroundF> _cbBackground;
-    ConstantBufferBundle<void, cb::IntroCompositePsCompositeF> _cbComposite;
+    ConstantBufferBundle<void, cb::IntroBackgroundF> _cbBackground;
+    ConstantBufferBundle<void, cb::IntroCompositeF> _cbComposite;
     ConstantBufferBundle<
-//      cb::IntroFractureVsFractureF, void, void,
-      void, void, void,
-      cb::IntroFractureVsFractureO, void, void> _cbFracture;
-    ConstantBufferBundle<void, void, cb::IntroParticleGsParticleF> _cbParticle;
+      cb::IntroFractureF, void, void,
+      //void, void, void,
+      cb::IntroFractureO, void, void> _cbFracture;
+    ConstantBufferBundle<void, void, cb::IntroParticleF> _cbParticle;
 
-    ConstantBufferBundle<void, cb::PlexusPsLinesPS, cb::PlexusGsLinesGS> _cbPlexus;
+    ConstantBufferBundle<void, cb::PlexusPS, cb::PlexusGS> _cbPlexus;
 
     string _configName;
 

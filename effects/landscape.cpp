@@ -139,27 +139,35 @@ bool Landscape::Init()
     .PixelShader("shaders/out/landscape.lensflare", "PsLensFlare")));
 
   INIT(_cbLensFlare.Create());
+  INIT(_cbComposite.Create());
+  INIT(_cbSky.Create());
+  INIT(_cbLandscape.Create());
+  INIT(_cbParticle.Create());
 
   // Particles
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
 
+  vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
+    CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT)
+  };
+
   INIT(_particleBundle.Create(BundleOptions()
-    .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
+    .DynamicVb(1024 * 1024 * 6, sizeof(Vector4))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
     .GeometryShader("shaders/out/landscape.particle", "GsParticle")
     .PixelShader("shaders/out/landscape.particle", "PsParticle")
-    .VertexFlags(VF_POS)
+    .InputElements(inputs)
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
     .BlendDesc(blendDescBlendOneOne)
     .RasterizerDesc(rasterizeDescCullNone)));
 
   INIT(_boidsBundle.Create(BundleOptions()
-    .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
+    .DynamicVb(1024 * 1024 * 6, sizeof(Vector4))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
     .GeometryShader("shaders/out/landscape.particle", "GsParticle")
     .PixelShader("shaders/out/landscape.particle", "PsParticle")
-    .VertexFlags(VF_POS)
+    .InputElements(inputs)
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
     .BlendDesc(blendDescBlendOneOne)
@@ -170,8 +178,6 @@ bool Landscape::Init()
   const BoidSettings& b = _settings.boids;
   _followCamera.AddKinematic(new BehaviorLandscapeFollow(b.max_force, b.max_speed));
   _followCamera.AddKinematic(new BehaviorGravity(b.max_force, b.max_speed));
-
-  INIT(_cbPerFrame.Create());
 
   END_INIT_SEQUENCE();
 }
@@ -319,7 +325,6 @@ void Landscape::UpdateBoids(const FixedUpdateState& state)
 //------------------------------------------------------------------------------
 bool Landscape::Update(const UpdateState& state)
 {
-  _cbPerFrame.time.x = (float)(state.localTime.TotalMilliseconds() / 1e6);
   UpdateCameraMatrix(state);
   return true;
 }
@@ -369,27 +374,18 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   Matrix proj = _curCamera->_proj;
   Matrix viewProj = view * proj;
 
-  // compute size of frustum
-  float farW = _curCamera->_farPlane * tan(_curCamera->_fov);
-  Vector3 v0(-farW, 0, _curCamera->_farPlane);
-  Vector3 v1(+farW, 0, _curCamera->_farPlane);
+  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
 
-  float nearW = _curCamera->_nearPlane * tan(_curCamera->_fov);
-  Vector3 v2(-nearW, 0, _curCamera->_nearPlane);
-  Vector3 v3(+nearW, 0, _curCamera->_nearPlane);
+  Vector4 dim((float)desc.width, (float)desc.height, 0, 0);
 
-  v0 = Vector3::Transform(v0 + _curCamera->_pos, _curCamera->_mtx);
-  v1 = Vector3::Transform(v1 + _curCamera->_pos, _curCamera->_mtx);
-  v2 = Vector3::Transform(v2 + _curCamera->_pos, _curCamera->_mtx);
-  v3 = Vector3::Transform(v3 + _curCamera->_pos, _curCamera->_mtx);
+  _cbSky.ps0.dim = dim;
+  _cbSky.ps0.cameraPos = _curCamera->_pos;
+  _cbSky.ps0.cameraLookAt = _curCamera->_target;
 
-  _cbPerFrame.world = Matrix::Identity();
-  _cbPerFrame.view = view.Transpose();
-  _cbPerFrame.proj = proj.Transpose();
-  _cbPerFrame.viewProj = viewProj.Transpose();
-  _cbPerFrame.cameraPos = _curCamera->_pos;
-  _cbPerFrame.cameraLookAt = _curCamera->_target;
-  _cbPerFrame.cameraUp = _curCamera->_up;
+  _cbLandscape.vs0.world = Matrix::Identity();
+  _cbLandscape.vs0.viewProj = viewProj.Transpose();
+  _cbLandscape.vs0.cameraPos = _curCamera->_pos;
+  _cbLandscape.gs0.dim = dim;
 
   // The depth value written to the z-buffer is after the w-divide,
   // but the z-value we compare against is still in proj-space, so
@@ -397,7 +393,11 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))
   float n = _curCamera->_nearPlane;
   float f = _curCamera->_farPlane;
-  _cbPerFrame.nearFar = Vector4(n, f, f*n, f-n);
+
+  _cbParticle.ps0.nearFar = Vector4(n, f, f*n, f-n);
+  _cbParticle.gs0.world = Matrix::Identity();
+  _cbParticle.gs0.viewProj = viewProj.Transpose();
+  _cbParticle.gs0.cameraPos = _curCamera->_pos;
 
 #if DEBUG_DRAW_PATH
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
@@ -733,24 +733,20 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
   }
 #endif
 
-  XMFLOAT3* boidPos = _ctx->MapWriteDiscard<XMFLOAT3>(_boidsBundle.objects._vb);
+  XMVECTOR* boidPos = _ctx->MapWriteDiscard<XMVECTOR>(_boidsBundle.objects._vb);
 
   int numBoids = 0;
   for (const Flock* flock : _flocks)
   {
     XMVECTOR* pos = flock->boids._bodies.pos;
-    int numBodies = flock->boids._bodies.numBodies;
-
-    for (int i = 0; i < numBodies; ++i)
-    {
-      XMStoreFloat3(boidPos, pos[i]);
-      ++boidPos;
-      numBoids++;
-    }
+    memcpy(boidPos, pos, flock->boids._bodies.numBodies * sizeof(XMVECTOR));
+    boidPos += flock->boids._bodies.numBodies;
+    numBoids += flock->boids._bodies.numBodies;
   }
 
   _ctx->Unmap(_boidsBundle.objects._vb);
 
+  _cbParticle.Set(_ctx, 0);
   _ctx->SetBundleWithSamplers(_boidsBundle, ShaderType::PixelShader);
 
   // Unset the DSV, as we want to use it as a texture resource
@@ -772,27 +768,27 @@ bool Landscape::Render()
   ScopedRenderTargetFull rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
   ScopedRenderTarget rtBloom(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-  _cbPerFrame.toneMappingParams = Vector4(
+  _cbComposite.ps0.tonemap = Vector4(
     _settings.tonemap.shoulder, _settings.tonemap.max_white,
     _settings.tonemap2.exposure, _settings.tonemap2.min_white);
-  _cbPerFrame.world = Matrix::Identity();
-  _cbPerFrame.dim = Vector4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
-  u32 flags = ShaderType::VertexShader | ShaderType::GeometryShader | ShaderType::PixelShader;
-  _ctx->SetConstantBuffer(_cbPerFrame, flags, 0);
 
   // We're using 2 render targets here. One for color, and one for bloom/emissive
   ObjectHandle renderTargets[] = {rtColor, rtBloom};
   _ctx->SetRenderTargets(renderTargets, 2, rtColor._dsHandle, &clearColors[0]);
 
-  // Render the sky
-  _ctx->SetBundle(_skyBundle);
-  _ctx->Draw(3, 0);
+  {
+    // sky
+    _cbSky.Set(_ctx, 0);
+    _ctx->SetBundle(_skyBundle);
+    _ctx->Draw(3, 0);
+  }
 
   if (_renderLandscape)
   {
     RasterizeLandscape();
 
     _ctx->SetGpuObjects(_landscapeGpuObjects);
+    _cbLandscape.Set(_ctx, 0);
 
     if (_drawFlags & DrawLower)
     {
@@ -805,18 +801,19 @@ bool Landscape::Render()
       _ctx->SetGpuState(_landscapeState);
       _ctx->DrawIndexed(_numUpperIndices, 0, 0);
     }
+  }
 
-    if (_drawFlags & DrawParticles)
-    {
-      _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
+  if (_drawFlags & DrawParticles)
+  {
+    _cbParticle.Set(_ctx, 0);
+    _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
 
-      // Unset the DSV, as we want to use it as a texture resource
-      _ctx->SetRenderTargets(renderTargets, 2, ObjectHandle(), nullptr);
-      ObjectHandle srv[] = { _particleTexture, rtColor._dsHandle };
-      _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
-      _ctx->Draw(_numParticles, 0);
-      _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
-    }
+    // Unset the DSV, as we want to use it as a texture resource
+    _ctx->SetRenderTargets(renderTargets, 2, ObjectHandle(), nullptr);
+    ObjectHandle srv[] = { _particleTexture, rtColor._dsHandle };
+    _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
+    _ctx->Draw(_numParticles, 0);
+    _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
   }
 
   if (_renderBoids)
@@ -842,42 +839,49 @@ bool Landscape::Render()
     _settings.lens_flare.scale_bias.bias);
 
   ScopedRenderTarget rtLensFlare(halfSize);
-
-  const LensFlareSettings& s = _settings.lens_flare;
-  _cbLensFlare.params = Vector4(s.dispersion, (float)s.num_ghosts, s.halo_width, s.strength);
-  _ctx->SetConstantBuffer(_cbLensFlare, ShaderType::PixelShader, 1);
-
-  fullscreen->Execute(
-    rtScaleBias,
-    rtLensFlare,
-    rtLensFlare._desc,
-    ObjectHandle(),
-    _lensFlareBundle.objects._ps,
-    false);
-
-  static int showBuffer = 0;
-  if (g_KeyUpTrigger.IsTriggered('B'))
-    showBuffer = (showBuffer + 1) % 3;
-
-  if (showBuffer == 0)
   {
-    ObjectHandle inputs[] = { rtColor, rtBloomBlurred, rtLensFlare };
+    // lensflare 
+    const LensFlareSettings& s = _settings.lens_flare;
+    _cbLensFlare.ps0.params = Vector4(s.dispersion, (float)s.num_ghosts, s.halo_width, s.strength);
+    _cbLensFlare.Set(_ctx, 0);
+
     fullscreen->Execute(
-      inputs,
-      3,
-      GRAPHICS.GetBackBuffer(),
-      GRAPHICS.GetBackBufferDesc(),
-      GRAPHICS.GetDepthStencil(),
-      _compositeBundle.objects._ps,
+      rtScaleBias,
+      rtLensFlare,
+      rtLensFlare._desc,
+      ObjectHandle(),
+      _lensFlareBundle.objects._ps,
       false);
   }
-  else if (showBuffer == 1)
+
   {
-    fullscreen->Copy(rtScaleBias, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
-  }
-  else
-  {
-    fullscreen->Copy(rtLensFlare, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
+    // composite
+    static int showBuffer = 0;
+    if (g_KeyUpTrigger.IsTriggered('B'))
+      showBuffer = (showBuffer + 1) % 3;
+
+    if (showBuffer == 0)
+    {
+      _cbComposite.Set(_ctx, 0);
+
+      ObjectHandle inputs[] = { rtColor, rtBloomBlurred, rtLensFlare };
+      fullscreen->Execute(
+        inputs,
+        3,
+        GRAPHICS.GetBackBuffer(),
+        GRAPHICS.GetBackBufferDesc(),
+        GRAPHICS.GetDepthStencil(),
+        _compositeBundle.objects._ps,
+        false);
+    }
+    else if (showBuffer == 1)
+    {
+      fullscreen->Copy(rtScaleBias, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
+    }
+    else
+    {
+      fullscreen->Copy(rtLensFlare, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
+    }
   }
 
   return true;

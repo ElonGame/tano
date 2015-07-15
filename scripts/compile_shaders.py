@@ -175,7 +175,7 @@ def parse_cbuffer(basename, entry_point, out_name, ext):
     filename = out_name + '.' + ext
     cbuffer_filename = (out_name + '.cbuffers.hpp').lower()
 
-    cbuffer_prefix = basename.title().replace('.', '') + entry_point
+    cbuffer_prefix = basename.title().replace('.', '')
 
     cbuffer_name = None
     cbuffer_vars = collections.OrderedDict()

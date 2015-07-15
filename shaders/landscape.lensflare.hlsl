@@ -3,11 +3,11 @@
 static float2 halfVec = float2(0.5, 0.5);
 static float halfVecLength = length(halfVec);
 
-cbuffer LensFlare : register(b1)
+cbuffer P : register(b0)
 {
   // x = dispersion
   // y = num_ghosts
-  float4 lensFlareParams;
+  float4 params;
 };
 
 float4 PsLensFlare(VSQuadOut p) : SV_Target
@@ -18,10 +18,10 @@ float4 PsLensFlare(VSQuadOut p) : SV_Target
   float2 uv = -p.uv.xy + float2(1,1);
 
   // vector towards center of screen
-  float dispersal = lensFlareParams.x;
-  int numGhosts = (int)lensFlareParams.y;
-  float haloWidth = lensFlareParams.z;
-  float strength = lensFlareParams.w;
+  float dispersal = params.x;
+  int numGhosts = (int)params.y;
+  float haloWidth = params.z;
+  float strength = params.w;
   float2 dir = dispersal * (halfVec - uv);
   float2 haloVec = normalize(dir) * haloWidth;
 

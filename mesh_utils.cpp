@@ -57,6 +57,8 @@ namespace tano
   {
     BEGIN_INIT_SEQUENCE();
 
+    bool toWorldSpace = true;
+
     u32 numObjects = (u32)(loader.meshes.size() + loader.nullObjects.size() + loader.cameras.size() + loader.lights.size() + 1);
     scene->baseObjects.resize(numObjects, nullptr);
 
@@ -104,8 +106,27 @@ namespace tano
       scene->baseObjects[meshBlob->id] = mesh;
 
       mesh->vertexFormat = vertexFormat;
-      InitMatrix4x3(meshBlob->mtxLocal, &mesh->mtxLocal);
-      InitMatrix4x3(meshBlob->mtxGlobal, &mesh->mtxGlobal);
+
+      Matrix mtxLocal, mtxGlobal;
+      InitMatrix4x3(meshBlob->mtxLocal, &mtxLocal);
+      InitMatrix4x3(meshBlob->mtxGlobal, &mtxGlobal);
+
+      if (toWorldSpace)
+      {
+        //mesh->mtxLocal = Matrix::Identity();
+        //mesh->mtxGlobal = Matrix::Identity();
+
+        mesh->mtxLocal = mtxLocal;
+        mesh->mtxGlobal = mtxGlobal;
+
+        mesh->mtxInvLocal = mtxLocal.Invert();
+        mesh->mtxInvGlobal = mtxGlobal.Invert();
+      }
+      else
+      {
+        mesh->mtxLocal = mtxLocal;
+        mesh->mtxGlobal = mtxGlobal;
+      }
 
       u32 numVerts = meshBlob->numVerts;
       u32 numIndices = meshBlob->numIndices;
@@ -124,10 +145,22 @@ namespace tano
           verts += n;
         };
 
-        fnCopy(meshBlob->verts, 3);
+        if (toWorldSpace)
+        {
+          Vector3 vv(meshBlob->verts[i*3+0], meshBlob->verts[i*3+1], meshBlob->verts[i*3+2]);
+          Vector3::Transform(vv, mtxLocal, vv);
+          verts[0] = vv.x; verts[1] = vv.y; verts[2] = vv.z;
+          verts += 3;
+          //fnCopy(&vv.x, 3);
+        }
+        else
+        {
+          fnCopy(meshBlob->verts, 3);
+        }
 
-        minVerts = Min(minVerts, *(V3*)(verts - 3));
-        maxVerts = Max(maxVerts, *(V3*)(verts - 3));
+        V3 vv(verts[-3], verts[-2], verts[-1]);
+        minVerts = Min(minVerts, vv);
+        maxVerts = Max(maxVerts, vv);
 
         if (vertexFormat & VF_NORMAL)
           fnCopy(meshBlob->normals, 3);

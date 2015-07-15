@@ -9,7 +9,6 @@
     start_time: 0;
     end_time: 22500;
     settings: 'config/intro.gb';
-    force: true;
   },
   {
     name: 'landscape';
@@ -17,6 +16,7 @@
     start_time: 22500;
     end_time: 1300000;
     settings: 'config/landscape.gb';
+    force: true;
   },
   {
     name: 'cloth';
