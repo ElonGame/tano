@@ -88,7 +88,7 @@ static float SoftParticleContrast = 2.0;
 static float intensity = 1.0;
 static float zEpsilon = 0.0;
 
-PsColBrightnessOut PsParticle(VsParticleOut p)
+float4 PsParticle(VsParticleOut p) : SV_Target
 {
   // Texture0 = particle texture
   // Texture1 = zbuffer
@@ -108,9 +108,10 @@ PsColBrightnessOut PsParticle(VsParticleOut p)
   if( c * zdiff <= zEpsilon )
       discard;
 
+  return intensity * c * col;
   PsColBrightnessOut res;
   res.col = intensity * c * col;
   res.extra.rgb = intensity * c * col.rgb;
   res.extra.a = 0;
-  return res;
+  //return res;
 }

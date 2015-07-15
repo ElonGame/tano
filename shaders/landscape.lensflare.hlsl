@@ -17,6 +17,8 @@ float4 PsLensFlare(VSQuadOut p) : SV_Target
   // flip texcoords
   float2 uv = -p.uv.xy + float2(1,1);
 
+  //return Texture0.Sample(LinearWrap, uv);
+
   // vector towards center of screen
   float dispersal = params.x;
   int numGhosts = (int)params.y;
@@ -29,6 +31,7 @@ float4 PsLensFlare(VSQuadOut p) : SV_Target
   haloWeight = pow(max(0, 1.0 - haloWeight), 5.0);
   float4 halo = Texture0.Sample(LinearWrap, uv + haloVec) * haloWeight;
   float4 res = halo;
+
 
   for (int i = 0; i < numGhosts; ++i)
   {

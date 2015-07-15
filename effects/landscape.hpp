@@ -167,7 +167,7 @@ namespace tano
     GpuBundle _boidsBundle;
     bool _renderLandscape = true;
     bool _renderBoids = true;
-    bool _useFreeFlyCamera = false;
+    bool _useFreeFlyCamera = true;
 
     BehaviorSeparataion* _behaviorSeparataion = nullptr;
     BehaviorCohesion* _behaviorCohesion = nullptr;

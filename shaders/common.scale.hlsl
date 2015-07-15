@@ -16,7 +16,6 @@ float4 PsScaleBias(VSQuadOut p) : SV_Target
 //------------------------------------------------------
 float4 PsScaleBiasSecondary(VSQuadOut p) : SV_Target
 {
-  
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(LinearSampler, uv);
   float v = Texture1.Sample(LinearSampler, uv).a;

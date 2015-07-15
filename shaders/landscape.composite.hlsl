@@ -13,6 +13,8 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float2 uv = p.uv.xy;
   float2 xx = -1 + 2 * uv;
 
+  //return Texture2.Sample(LinearSampler, uv);
+
   float4 col = 
     Texture0.Sample(PointSampler, uv) + 
     Texture1.Sample(PointSampler, uv) +

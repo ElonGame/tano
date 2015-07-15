@@ -133,7 +133,7 @@ void FullscreenEffect::ScaleBias(
 
   _ctx->SetShaderResource(input, ShaderType::PixelShader);
   _cbScaleBias.scaleBias = Vector4(scale, bias, 0, 0);
-  _ctx->SetConstantBuffer(_cbScaleBias, ShaderType::PixelShader, 1);
+  _ctx->SetConstantBuffer(_cbScaleBias, ShaderType::PixelShader, 0);
 
   _ctx->SetViewports(1, ViewportFromDesc(outputDesc));
 
@@ -162,7 +162,7 @@ void FullscreenEffect::ScaleBiasSecondary(
   ObjectHandle inputs[] = { input0, input1 };
   _ctx->SetShaderResources(inputs, 2, ShaderType::PixelShader);
   _cbScaleBias.scaleBias = Vector4(scale, bias, 0, 0);
-  _ctx->SetConstantBuffer(_cbScaleBias, ShaderType::PixelShader, 1);
+  _ctx->SetConstantBuffer(_cbScaleBias, ShaderType::PixelShader, 0);
 
   _ctx->SetViewports(1, ViewportFromDesc(outputDesc));
 

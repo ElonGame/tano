@@ -823,24 +823,24 @@ bool Landscape::Render()
 
   _ctx->UnsetRenderTargets(0, 2);
 
-  RenderTargetDesc halfSize(rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
   ScopedRenderTarget rtBloomBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
   fullscreen->Blur(rtBloom, rtBloomBlurred, rtBloomBlurred._desc, 10, 1);
 
+  RenderTargetDesc halfSize(rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
   ScopedRenderTarget rtScaleBias(halfSize);
-
-  fullscreen->ScaleBiasSecondary(
-    rtColor,
-    rtBloom,
-    rtScaleBias,
-    rtScaleBias._desc,
-    _settings.lens_flare.scale_bias.scale,
-    _settings.lens_flare.scale_bias.bias);
-
   ScopedRenderTarget rtLensFlare(halfSize);
+
   {
-    // lensflare 
+    // lens flare
+    fullscreen->ScaleBiasSecondary(
+      rtColor,
+      rtBloom,
+      rtScaleBias,
+      rtScaleBias._desc,
+      _settings.lens_flare.scale_bias.scale,
+      _settings.lens_flare.scale_bias.bias);
+
     const LensFlareSettings& s = _settings.lens_flare;
     _cbLensFlare.ps0.params = Vector4(s.dispersion, (float)s.num_ghosts, s.halo_width, s.strength);
     _cbLensFlare.Set(_ctx, 0);
