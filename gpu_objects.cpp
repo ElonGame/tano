@@ -186,6 +186,12 @@ bool GpuBundle::Create(const BundleOptions& options)
 }
 
 //------------------------------------------------------------------------------
+BundleOptions::BundleOptions()
+{
+  blendDesc.IndependentBlendEnable = TRUE;
+}
+
+//------------------------------------------------------------------------------
 BundleOptions& BundleOptions::DepthStencilDesc(const CD3D11_DEPTH_STENCIL_DESC& desc)
 {
   depthStencilDesc = desc;

@@ -247,7 +247,6 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
     dist *= dist;
     float alpha = exp2(-2*dist);
 
-
     float3 amb = float3(0.05, 0.05, 0.05);
     float dff = saturate(dot(-SUN_DIR, p.normal));
     float3 col = amb + dff * float3(0.8, 0.1, 0.25);
@@ -262,7 +261,7 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
     col = lerp(col, fogColor, fogAmount);
     res.col = float4(col, 0.9);
     float lum = Luminance(col.rgb);
-    res.extra.rgb = smoothstep(0.7, 1, lum);
-    res.extra.a = 0;
+    res.emissive.rgb = 0;
+    res.emissive.a = 0; //smoothstep(0.7, 1, lum);
     return res;
 }

@@ -3,9 +3,9 @@
 struct PsColBrightnessOut
 {
   float4 col : SV_Target0;
-  // rgb = bloom
-  // a = emissive
-  float4 extra : SV_Target1;
+  // rgb = emissive
+  // a = bloom factor
+  float4 emissive : SV_Target1;
 };
 
 static float4 BOID_COLOR = float4(0.4, 0.2, 0.2, 1);

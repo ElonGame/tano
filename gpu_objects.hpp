@@ -97,6 +97,7 @@ namespace tano
 
   struct BundleOptions
   {
+    BundleOptions();
     struct OptionFlag {
       enum Enum {
         DepthStencilDesc  = 1 << 0,

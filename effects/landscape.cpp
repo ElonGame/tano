@@ -121,8 +121,17 @@ bool Landscape::Init()
     INIT(_landscapeGpuObjects.LoadGeometryShader("shaders/out/landscape.landscape", "GsLandscape"));
     INIT(_landscapeGpuObjects.LoadPixelShader("shaders/out/landscape.landscape", "PsLandscape"));
 
-    INIT(_landscapeState.Create(nullptr, &blendDescBlendSrcAlpha, &rasterizeDescCullNone));
-    INIT(_landscapeLowerState.Create());
+    // Blend desc that doesn't write to the emissive channel
+    CD3D11_BLEND_DESC blendDescAlphaNoEmissive = blendDescBlendSrcAlpha;
+    blendDescAlphaNoEmissive.IndependentBlendEnable = TRUE;
+    blendDescAlphaNoEmissive.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
+
+    CD3D11_BLEND_DESC blendDescNoEmissive = CD3D11_BLEND_DESC(CD3D11_DEFAULT());;
+    blendDescNoEmissive.IndependentBlendEnable = TRUE;
+    blendDescNoEmissive.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
+
+    INIT(_landscapeState.Create(nullptr, &blendDescAlphaNoEmissive, &rasterizeDescCullNone));
+    INIT(_landscapeLowerState.Create(nullptr, &blendDescNoEmissive, &rasterizeDescCullNone));
   }
 
   INIT(_skyBundle.Create(BundleOptions()
@@ -151,6 +160,9 @@ bool Landscape::Init()
     CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT)
   };
 
+  CD3D11_BLEND_DESC particleBlendDesc(blendDescBlendOneOne);
+  particleBlendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
+
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024 * 6, sizeof(Vector4))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
@@ -159,7 +171,7 @@ bool Landscape::Init()
     .InputElements(inputs)
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
-    .BlendDesc(blendDescBlendOneOne)
+    .BlendDesc(particleBlendDesc)
     .RasterizerDesc(rasterizeDescCullNone)));
 
   INIT(_boidsBundle.Create(BundleOptions()
@@ -170,7 +182,7 @@ bool Landscape::Init()
     .InputElements(inputs)
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
-    .BlendDesc(blendDescBlendOneOne)
+    .BlendDesc(particleBlendDesc)
     .RasterizerDesc(rasterizeDescCullNone)));
 
   Reset();
@@ -766,14 +778,14 @@ bool Landscape::Render()
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
 
   ScopedRenderTargetFull rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
-  ScopedRenderTarget rtBloom(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtBloomEmissive(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
   _cbComposite.ps0.tonemap = Vector4(
     _settings.tonemap.shoulder, _settings.tonemap.max_white,
     _settings.tonemap2.exposure, _settings.tonemap2.min_white);
 
   // We're using 2 render targets here. One for color, and one for bloom/emissive
-  ObjectHandle renderTargets[] = {rtColor, rtBloom};
+  ObjectHandle renderTargets[] = {rtColor, rtBloomEmissive};
   _ctx->SetRenderTargets(renderTargets, 2, rtColor._dsHandle, &clearColors[0]);
 
   {
@@ -824,24 +836,27 @@ bool Landscape::Render()
   _ctx->UnsetRenderTargets(0, 2);
 
 
-  ScopedRenderTarget rtBloomBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
-  fullscreen->Blur(rtBloom, rtBloomBlurred, rtBloomBlurred._desc, 10, 1);
+  ScopedRenderTarget rtColorBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
+  fullscreen->Blur(rtColor, rtColorBlurred, rtColorBlurred._desc, 10, 2);
+
+  ScopedRenderTarget rtEmissiveBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
+  fullscreen->Blur(rtBloomEmissive, rtEmissiveBlurred, rtEmissiveBlurred._desc, 20, 2);
 
   RenderTargetDesc halfSize(rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
   ScopedRenderTarget rtScaleBias(halfSize);
   ScopedRenderTarget rtLensFlare(halfSize);
 
   {
+    const LensFlareSettings& s = _settings.lens_flare;
+
     // lens flare
-    fullscreen->ScaleBiasSecondary(
-      rtColor,
-      rtBloom,
+    fullscreen->ScaleBias(
+      rtBloomEmissive,
       rtScaleBias,
       rtScaleBias._desc,
-      _settings.lens_flare.scale_bias.scale,
-      _settings.lens_flare.scale_bias.bias);
+      s.scale_bias.scale,
+      s.scale_bias.bias);
 
-    const LensFlareSettings& s = _settings.lens_flare;
     _cbLensFlare.ps0.params = Vector4(s.dispersion, (float)s.num_ghosts, s.halo_width, s.strength);
     _cbLensFlare.Set(_ctx, 0);
 
@@ -858,16 +873,16 @@ bool Landscape::Render()
     // composite
     static int showBuffer = 0;
     if (g_KeyUpTrigger.IsTriggered('B'))
-      showBuffer = (showBuffer + 1) % 3;
+      showBuffer = (showBuffer + 1) % 4;
 
     if (showBuffer == 0)
     {
       _cbComposite.Set(_ctx, 0);
 
-      ObjectHandle inputs[] = { rtColor, rtBloomBlurred, rtLensFlare };
+      ObjectHandle inputs[] = { rtColor, rtColorBlurred, rtEmissiveBlurred, rtLensFlare };
       fullscreen->Execute(
         inputs,
-        3,
+        4,
         GRAPHICS.GetBackBuffer(),
         GRAPHICS.GetBackBufferDesc(),
         GRAPHICS.GetDepthStencil(),
@@ -876,7 +891,11 @@ bool Landscape::Render()
     }
     else if (showBuffer == 1)
     {
-      fullscreen->Copy(rtScaleBias, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
+      fullscreen->Copy(rtColorBlurred, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
+    }
+    else if (showBuffer == 2)
+    {
+      fullscreen->Copy(rtEmissiveBlurred, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
     }
     else
     {

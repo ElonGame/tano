@@ -31,8 +31,9 @@ PsColBrightnessOut PsSky(VSQuadOut p)
   PsColBrightnessOut res;
   float3 tmp = FogColor(rayDir);
   res.col = float4(tmp, 1);
-  res.extra.rgb = pow(max(0, Luminance(tmp)), 5);
+
   float sunAmount = pow(max(0, dot(rayDir, -SUN_DIR)), SUN_POWER);
-  res.extra.a = sunAmount;
+  res.emissive.rgb = 50 * pow(max(0, Luminance(tmp)), 5);
+  res.emissive.a = sunAmount;
   return res;
 }

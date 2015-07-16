@@ -23,16 +23,19 @@ namespace tano
   void InitDefaultDescs()
   {
     blendDescBlendSrcAlpha = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+    blendDescBlendSrcAlpha.IndependentBlendEnable = TRUE;
     blendDescBlendSrcAlpha.RenderTarget[0].BlendEnable = TRUE;
     blendDescBlendSrcAlpha.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
     blendDescBlendSrcAlpha.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
 
     blendDescPreMultipliedAlpha = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+    blendDescBlendSrcAlpha.IndependentBlendEnable = TRUE;
     blendDescPreMultipliedAlpha.RenderTarget[0].BlendEnable = TRUE;
     blendDescPreMultipliedAlpha.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
     blendDescPreMultipliedAlpha.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
 
     blendDescBlendOneOne = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+    blendDescBlendSrcAlpha.IndependentBlendEnable = TRUE;
     blendDescBlendOneOne.RenderTarget[0].BlendEnable = TRUE;
     blendDescBlendOneOne.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
     blendDescBlendOneOne.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;

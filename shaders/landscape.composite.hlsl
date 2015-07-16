@@ -7,18 +7,23 @@ cbuffer F : register(b0)
 
 float4 PsComposite(VSQuadOut p) : SV_Target
 {
-  // Texture0 : color + bloom
-  // Texture1 : color + bloom blurred
-  // Texture2 : lensflare
+  // Texture0 : color
+  // Texture1 : color blurred
+  // Tetxure2 : emissive blurred
+  // Texture3 : lensflare
   float2 uv = p.uv.xy;
   float2 xx = -1 + 2 * uv;
 
-  //return Texture2.Sample(LinearSampler, uv);
+  //return float4(Texture1.Sample(LinearSampler, uv).rgb, 1);
+
+  float4 emm = Texture3.Sample(LinearSampler, uv);
+  return emm.a / 5;
+  return float4(emm.rgb, 1);
 
   float4 col = 
     Texture0.Sample(PointSampler, uv) + 
-    Texture1.Sample(PointSampler, uv) +
-    Texture2.Sample(LinearSampler, uv);
+    emm.a * Texture1.Sample(PointSampler, uv) +
+    Texture3.Sample(LinearSampler, uv);
 
   float exposure = tonemap.z;
   float minWhite = tonemap.w;
