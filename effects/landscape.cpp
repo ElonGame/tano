@@ -124,10 +124,12 @@ bool Landscape::Init()
     // Blend desc that doesn't write to the emissive channel
     CD3D11_BLEND_DESC blendDescAlphaNoEmissive = blendDescBlendSrcAlpha;
     blendDescAlphaNoEmissive.IndependentBlendEnable = TRUE;
+    //blendDescAlphaNoEmissive.RenderTarget[1].BlendEnable = TRUE;
     blendDescAlphaNoEmissive.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
     CD3D11_BLEND_DESC blendDescNoEmissive = CD3D11_BLEND_DESC(CD3D11_DEFAULT());;
     blendDescNoEmissive.IndependentBlendEnable = TRUE;
+    //blendDescNoEmissive.RenderTarget[1].BlendEnable = TRUE;
     blendDescNoEmissive.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
     INIT(_landscapeState.Create(nullptr, &blendDescAlphaNoEmissive, &rasterizeDescCullNone));
@@ -837,10 +839,10 @@ bool Landscape::Render()
 
 
   ScopedRenderTarget rtColorBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
-  fullscreen->Blur(rtColor, rtColorBlurred, rtColorBlurred._desc, 10, 2);
+  fullscreen->Blur(rtColor, rtColorBlurred, rtColorBlurred._desc, 10, 1);
 
   ScopedRenderTarget rtEmissiveBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
-  fullscreen->Blur(rtBloomEmissive, rtEmissiveBlurred, rtEmissiveBlurred._desc, 20, 2);
+  fullscreen->Blur(rtBloomEmissive, rtEmissiveBlurred, rtEmissiveBlurred._desc, 10, 1);
 
   RenderTargetDesc halfSize(rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
   ScopedRenderTarget rtScaleBias(halfSize);

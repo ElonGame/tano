@@ -16,7 +16,6 @@
     start_time: 22500;
     end_time: 1300000;
     settings: 'config/landscape.gb';
-    force: true;
   },
   {
     name: 'cloth';
@@ -38,7 +37,8 @@
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/plexus.gb';
-  },
+     force: true;
+ },
 
   ];
 }

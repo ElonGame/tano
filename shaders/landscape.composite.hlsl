@@ -16,13 +16,15 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 
   //return float4(Texture1.Sample(LinearSampler, uv).rgb, 1);
 
-  float4 emm = Texture3.Sample(LinearSampler, uv);
-  return emm.a / 5;
-  return float4(emm.rgb, 1);
+  float4 emm = Texture2.Sample(LinearSampler, uv);
+  //return 10 * emm.a * Texture1.Sample(PointSampler, uv);
+  //return emm;
+//  return emm.a / 5;
+//  return float4(emm.rgb, 1);
 
   float4 col = 
     Texture0.Sample(PointSampler, uv) + 
-    emm.a * Texture1.Sample(PointSampler, uv) +
+    10 * emm.a * Texture1.Sample(PointSampler, uv) +
     Texture3.Sample(LinearSampler, uv);
 
   float exposure = tonemap.z;

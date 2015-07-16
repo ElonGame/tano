@@ -262,6 +262,6 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
     res.col = float4(col, 0.9);
     float lum = Luminance(col.rgb);
     res.emissive.rgb = 0;
-    res.emissive.a = 0; //smoothstep(0.7, 1, lum);
+    res.emissive.a = smoothstep(0.7, 1, lum);
     return res;
 }
