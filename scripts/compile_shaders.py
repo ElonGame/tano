@@ -8,16 +8,13 @@ import time
 import glob
 import subprocess
 import collections
+from string import Template
 
 SHADER_DIR = os.path.join('..', 'shaders')
 OUT_DIR = os.path.join(SHADER_DIR, 'out' )
 
 ## shaders and entry points
 shaders = {
-    'intro.fracture' : {
-        'vs' : ['VsFracture'],
-        'ps' : ['PsFracture'],
-    },
     'basic' : {
         'vs' : ['VsPos', 'VsPosNormal', 'VsPosColor'],
         'ps' : ['PsPos', 'PsPosNormal', 'PsPosColor'],
@@ -41,16 +38,25 @@ shaders = {
         'vs' : ['VsMain'],
         'ps' : ['PsMain'],
     },
-    'intro.particle' : {
-        'vs' : ['VsParticle'],
-        'ps' : ['PsParticle'],
-        'gs' : ['GsParticle'],
-    },
     'intro.background' : {
         'ps' : ['PsBackground'],
     },
     'intro.composite' : {
         'ps' : ['PsComposite'],
+    },
+    'intro.fracture' : {
+        'vs' : ['VsFracture'],
+        'ps' : ['PsFracture'],
+    },
+    'intro.particle' : {
+        'vs' : ['VsParticle'],
+        'ps' : ['PsParticle'],
+        'gs' : ['GsParticle'],
+    },
+    'intro.plexus' : {
+        'vs' : ['VsLines'],
+        'ps' : ['PsLines'],
+        'gs' : ['GsLines'],
     },
     'landscape.lensflare' : {
         'ps' : ['PsLensFlare'],
@@ -134,6 +140,16 @@ known_types = {
     'float4x4' : { 'type': 'Matrix' },
 }
 
+buffer_template = Template("""#pragma once
+namespace tano
+{
+  namespace cb
+  {
+$cbuffers
+  }
+}
+""")
+
 def dump_cbuffer(cbuffer_filename, cbuffers):
 
     if len(cbuffers) == 0:
@@ -159,13 +175,11 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
             if alignment:
                 cur += '      float padding%s[%s];\n' % (padder, alignment)
                 padder += 1
-        cur += '    };\n'
+        cur += '    };'
 
         bufs.append(cur)
 
-    res = 'namespace tano\n{\n  namespace cb\n  {\n'
-    res += '\n'.join(bufs)
-    res += '  }\n}'
+    res = buffer_template.substitute({'cbuffers': '\n'.join(bufs)})
 
     with open(cbuffer_filename, 'wt') as f:
         f.write(res)

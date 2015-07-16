@@ -385,9 +385,9 @@ bool Intro::Init()
   }
 
   INIT(_plexusLineBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/plexus", "VsLines")
-    .GeometryShader("shaders/out/plexus", "GsLines")
-    .PixelShader("shaders/out/plexus", "PsLines")
+    .VertexShader("shaders/out/intro.plexus", "VsLines")
+    .GeometryShader("shaders/out/intro.plexus", "GsLines")
+    .PixelShader("shaders/out/intro.plexus", "PsLines")
     .VertexFlags(VF_POS)
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)

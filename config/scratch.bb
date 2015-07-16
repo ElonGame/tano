@@ -35,3 +35,8 @@ namespace landscape
     float gravity = -5;
     float pushForce = 20;
 }
+
+namespace plexus
+{
+    vec3 lineParams = { 5.0, 0.25, 150 };
+}

@@ -13,6 +13,7 @@
 #include "../arena_allocator.hpp"
 #include "../stop_watch.hpp"
 #include "../perlin2d.hpp"
+#include "../blackboard.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -21,8 +22,6 @@ extern "C" float stb_perlin_noise3(float x, float y, float z);
 
 static int NOISE_WIDTH = 512;
 static int NOISE_HEIGHT = 512;
-
-#define WITH_TEXT 1
 
 //------------------------------------------------------------------------------
 template <typename T>
@@ -102,8 +101,7 @@ bool Plexus::Init()
 
   GenRandomPoints(_settings.plexus.blur_kernel);
 
-  INIT(_cbPerFrame.Create());
-  INIT(_cbBasic.Create());
+  INIT(_cbPlexus.Create());
 
   INIT(_pointBundle.Create(BundleOptions()
     .VertexShader("shaders/out/basic", "VsPos")
@@ -123,14 +121,7 @@ bool Plexus::Init()
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
-  INIT(_textWriter.Init("gfx/text1.boba"));
-  _textWriter.GenerateIndexedTris("neurotica efs", TextWriter::TextOutline, &_textVerts, &_textIndices);
-
-#if WITH_TEXT
-  CalcText();
-#else
   CalcPoints(true);
-#endif
 
   _perlinTexture = GRAPHICS.CreateTexture(NOISE_WIDTH, NOISE_HEIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
 
@@ -240,74 +231,6 @@ void Plexus::UpdateNoise()
     }
   }
   _ctx->Unmap(_perlinTexture);
-}
-
-//------------------------------------------------------------------------------
-void CalcTextNeighbours(int num, const vector<int>& tris, int* neighbours)
-{
-  unordered_map<int, vector<int>> tmp;
-
-  int numTris = (int)tris.size() / 3;
-  for (int i = 0; i < numTris; ++i)
-  {
-    int a = tris[i * 3 + 0];
-    int b = tris[i * 3 + 1];
-    int c = tris[i * 3 + 2];
-
-    tmp[a].push_back(b);
-    tmp[a].push_back(c);
-
-    tmp[b].push_back(a);
-    tmp[b].push_back(c);
-
-    tmp[c].push_back(a);
-    tmp[c].push_back(b);
-  }
-
-  for (int i = 0; i < num; ++i)
-  {
-    const vector<int>& n = tmp[i];
-    int cnt = (u32)n.size();
-    for (int j = 0; j < cnt; ++j)
-    {
-      neighbours[i*num+j] = n[j];
-    }
-    // terminate
-    neighbours[i*num+cnt] = -1;
-  }
-
-}
-
-//------------------------------------------------------------------------------
-void Plexus::TextTest(const UpdateState& state)
-{
-  float perlinScale = _settings.plexus.perlin_scale;
-
-  _points.Clear();
-  int num = (u32)_textVerts.size();
-  for (int i = 0; i < num; ++i)
-  {
-    V3 pt(_textVerts[i]);
-    float s = fabs(1024 * stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale));
-    V3 v = g_randomPoints[IntMod((int)s, 1024)];
-    _points.Append(pt + _settings.plexus.noise_strength * v);
-  }
-}
-
-//------------------------------------------------------------------------------
-void Plexus::CalcText()
-{
-  _points.Clear();
-  int num = (u32)_textVerts.size();
-  for (int i = 0; i < num; ++i)
-  {
-    _points.Append(_textVerts[i]);
-  }
-
-  SAFE_ADELETE(_neighbours);
-  _neighbours = new int[num*num];
-  memset(_neighbours, 0xff, num*num*sizeof(int));
-  CalcTextNeighbours(num, _textIndices, _neighbours);
 }
 
 //------------------------------------------------------------------------------
@@ -562,11 +485,7 @@ int Plexus::CalcLines(V3* vtx)
 bool Plexus::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
-#if WITH_TEXT
-  TextTest(state);
-#else
   PointsTest(state);
-#endif
   return true;
 }
 
@@ -585,31 +504,18 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
 
   Matrix viewProj = view * proj;
 
-  _cbPerFrame.world = Matrix::Identity();
-  _cbPerFrame.view = view.Transpose();
-  _cbPerFrame.proj = proj.Transpose();
-  _cbPerFrame.viewProj = viewProj.Transpose();
-  _cbPerFrame.cameraPos = _camera._pos;
-  _cbPerFrame.cameraLookAt = _camera._target;
-  _cbPerFrame.cameraUp = _camera._up;
-
   //static float angle = 0;
   //angle += state.numTicks / 100.0f;
   //Matrix mtx = Matrix::CreateRotationY(angle);
   Matrix mtx = Matrix::Identity();
-  _cbBasic.world = mtx.Transpose();
-  _cbBasic.view = view.Transpose();
-  _cbBasic.proj = proj.Transpose();
-  _cbBasic.viewProj = viewProj.Transpose();
-  _cbBasic.cameraPos = Expand(_camera._pos, 0);
+  _cbPlexus.gs0.world = mtx.Transpose();
+  _cbPlexus.gs0.viewProj = viewProj.Transpose();
+  _cbPlexus.gs0.cameraPos = _camera._pos;
 }
 
 //------------------------------------------------------------------------------
 bool Plexus::Render()
 {
-  // TODO(magnus): this is broken
-  return true;
-
   rmt_ScopedCPUSample(Plexus_Render);
 
   static Color black(0, 0, 0, 0);
@@ -617,9 +523,10 @@ bool Plexus::Render()
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
 
   RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-  _cbBasic.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
-
-  _ctx->SetConstantBuffer(_cbBasic, VertexShader | GeometryShader | PixelShader, 0);
+  _cbPlexus.gs0.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
+  V3 params = BLACKBOARD.GetVec3Var("plexus.lineParams");
+  _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
+  _cbPlexus.Set(_ctx, 0);
 
   if (_renderPoints)
   {
@@ -680,11 +587,7 @@ void Plexus::RenderParameterSet()
 
   if (recalc)
   {
-#if WITH_TEXT
-    CalcText();
-#else
     CalcPoints(recalcEdges);
-#endif
   }
 
   if (ImGui::Button("Reset"))

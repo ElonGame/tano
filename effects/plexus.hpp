@@ -5,6 +5,8 @@
 #include "../generated/demo.types.hpp"
 #include "../camera.hpp"
 #include "../text_writer.hpp"
+#include "../shaders/out/plexus_gslines.cbuffers.hpp"
+#include "../shaders/out/plexus_pslines.cbuffers.hpp"
 
 namespace tano
 {
@@ -36,9 +38,6 @@ namespace tano
     void UpdateCameraMatrix(const UpdateState& state);
 
     void PointsTest(const UpdateState& state);
-
-    void CalcText();
-    void TextTest(const UpdateState& state);
     void CalcPoints(bool recalcEdges);
     int CalcLines(V3* vtx);
     enum { MAX_POINTS = 16 * 1024 };
@@ -53,38 +52,7 @@ namespace tano
     GpuBundle _pointBundle;
     GpuBundle _plexusLineBundle;
 
-    struct CBufferBasic
-    {
-      Matrix world;
-      Matrix view;
-      Matrix proj;
-      Matrix viewProj;
-      Vector4 cameraPos;
-      Vector4 dim;
-    };
-    ConstantBuffer<CBufferBasic> _cbBasic;
-
-    struct CBufferPerFrame
-    {
-      Matrix world;
-      Matrix view;
-      Matrix proj;
-      Matrix viewProj;
-      Vector4 dim;
-      Vector3 cameraPos;
-      float pad1;
-      Vector3 cameraLookAt;
-      float pad2;
-      Vector3 cameraUp;
-      float pad3;
-      Vector4 cook;
-      Color diffuse;
-    };
-    ConstantBuffer<CBufferPerFrame> _cbPerFrame;
-
-    TextWriter _textWriter;
-    vector<V3> _textVerts;
-    vector<int> _textIndices;
+    ConstantBufferBundle<void, cb::PlexusPS, cb::PlexusGS> _cbPlexus;
 
     PlexusSettings _settings;
 
