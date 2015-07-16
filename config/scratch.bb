@@ -39,4 +39,7 @@ namespace landscape
 namespace plexus
 {
     vec3 lineParams = { 5.0, 0.25, 150 };
+    float rotXDivisor = 2000;
+    float rotYDivisor = 300;
 }
+

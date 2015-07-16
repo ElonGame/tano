@@ -504,10 +504,14 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
 
   Matrix viewProj = view * proj;
 
-  //static float angle = 0;
-  //angle += state.numTicks / 100.0f;
-  //Matrix mtx = Matrix::CreateRotationY(angle);
-  Matrix mtx = Matrix::Identity();
+  float rotXDiv = BLACKBOARD.GetFloatVar("plexus.rotXDivisor");
+  float rotYDiv = BLACKBOARD.GetFloatVar("plexus.rotXDivisor");
+  static float angle = 0;
+  angle += state.delta.TotalMilliseconds();
+  Matrix mtx = 
+    Matrix::CreateRotationX(angle / rotXDiv) * 
+    Matrix::CreateRotationY(angle / rotYDiv);
+  //Matrix mtx = Matrix::Identity();
   _cbPlexus.gs0.world = mtx.Transpose();
   _cbPlexus.gs0.viewProj = viewProj.Transpose();
   _cbPlexus.gs0.cameraPos = _camera._pos;

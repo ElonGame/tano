@@ -153,9 +153,59 @@ T Blackboard::GetVar(const string& name, unordered_map<string, T>& vars)
 }
 
 //------------------------------------------------------------------------------
+bool FindScope(const InputBuffer& buf, const char* delim, InputBuffer* scope)
+{
+  // Note, the scope contains both the delimiters
+  char open = delim[0];
+  char close = delim[1];
+
+  const char* start = &buf._buf[buf._idx];
+  const char* end = &buf._buf[buf._idx + buf._len];
+  const char* cur = start;
+
+  // find opening delimiter
+  while (cur < end)
+  {
+    if (*cur++ == open)
+      break;
+  }
+
+  if (cur == end)
+    return false;
+
+  scope->_buf = cur - 1;
+  scope->_idx = 0;
+
+  // find closing
+  int cnt = 0;
+  while (cur < end)
+  {
+    char ch = *cur;
+    if (ch == close)
+    {
+      if (cnt == 0)
+      {
+        // found the scope
+        scope->_len = cur - scope->_buf + 1;
+        return true;
+      }
+      else
+      {
+        --cnt;
+      }
+    }
+    else if (ch == open)
+    {
+      ++cnt;
+    }
+    ++cur;
+  }
+  return false;
+}
+
+//------------------------------------------------------------------------------
 bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack)
 {
-  BEGIN_INIT_SEQUENCE();
   auto fnFullName = [&](const string& str) {
     string res;
     for (auto it = namespaceStack.rbegin(); it != namespaceStack.rend(); ++it)
@@ -173,40 +223,42 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
 
   while (!buf.Eof())
   {
-    string keyword;
     buf.SkipWhitespace();
-    char peek;
-    INIT_FATAL(buf.Peek(&peek));
-    if (peek == '}')
-      END_INIT_SEQUENCE();
 
-    INIT_FATAL(ParseIdentifier(buf, &keyword, false));
+    string keyword;
+    CHECKED_OP(ParseIdentifier(buf, &keyword, false));
     buf.SkipWhitespace();
 
     string id;
     if (keyword == "namespace")
     {
       // get namespace, and add to namespace stack
-      INIT_FATAL(ParseIdentifier(buf, &id, false));
+      CHECKED_OP(ParseIdentifier(buf, &id, false));
       namespaceStack.push_back(id);
 
       buf.SkipWhitespace();
-      INIT_FATAL(buf.Expect('{'));
 
-      INIT_FATAL(ParseBlackboard(buf, namespaceStack));
+      // grab the inner scope, and recurse into it
+      InputBuffer inner;
+      CHECKED_OP(FindScope(buf, "{}", &inner));
+      // create a tmp buffer, that doesn't include the delims
+      InputBuffer tmp = inner;
+      tmp._buf++;
+      tmp._len -= 2;
+      char cc = tmp._buf[tmp._len];
+      CHECKED_OP(ParseBlackboard(tmp, namespaceStack));
 
-      buf.SkipWhitespace();
-      INIT_FATAL(buf.Expect('}'));
+      // update the current buffer to skip the inner one
+      buf._idx += inner._len;
 
       namespaceStack.pop_back();
-
     }
     else if (keyword == "int")
     {
-      INIT_FATAL(ParseIdentifier(buf, &id, false));
+      CHECKED_OP(ParseIdentifier(buf, &id, false));
       buf.SkipWhitespace();
 
-      INIT_FATAL(buf.Expect('='));
+      CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
       int value;
@@ -214,14 +266,14 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
       AddIntVar(fnFullName(id), value);
 
       buf.SkipWhitespace();
-      INIT_FATAL(buf.Expect(';'));
+      CHECKED_OP(buf.Expect(';'));
     }
     else if (keyword == "float")
     {
-      INIT_FATAL(ParseIdentifier(buf, &id, false));
+      CHECKED_OP(ParseIdentifier(buf, &id, false));
       buf.SkipWhitespace();
 
-      INIT_FATAL(buf.Expect('='));
+      CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
       float value;
@@ -229,14 +281,14 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
       AddFloatVar(fnFullName(id), value);
 
       buf.SkipWhitespace();
-      INIT_FATAL(buf.Expect(';'));
+      CHECKED_OP(buf.Expect(';'));
     }
     else if (keyword == "vec2")
     {
-      INIT_FATAL(ParseIdentifier(buf, &id, false));
+      CHECKED_OP(ParseIdentifier(buf, &id, false));
       buf.SkipWhitespace();
 
-      INIT_FATAL(buf.Expect('='));
+      CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
       Vector2 tmp;
@@ -244,14 +296,14 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
       AddVec2Var(fnFullName(id), V2(tmp.x, tmp.y));
 
       buf.SkipWhitespace();
-      INIT_FATAL(buf.Expect(';'));
+      CHECKED_OP(buf.Expect(';'));
     }
     else if (keyword == "vec3")
     {
-      INIT_FATAL(ParseIdentifier(buf, &id, false));
+      CHECKED_OP(ParseIdentifier(buf, &id, false));
       buf.SkipWhitespace();
 
-      INIT_FATAL(buf.Expect('='));
+      CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
       Vector3 tmp;
@@ -259,14 +311,14 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
       AddVec3Var(fnFullName(id), V3(tmp.x, tmp.y, tmp.z));
 
       buf.SkipWhitespace();
-      INIT_FATAL(buf.Expect(';'));
+      CHECKED_OP(buf.Expect(';'));
     }
     else if (keyword == "vec4")
     {
-      INIT_FATAL(ParseIdentifier(buf, &id, false));
+      CHECKED_OP(ParseIdentifier(buf, &id, false));
       buf.SkipWhitespace();
 
-      INIT_FATAL(buf.Expect('='));
+      CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
       Vector4 tmp;
@@ -274,14 +326,16 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
       AddVec4Var(fnFullName(id), V4(tmp.x, tmp.y, tmp.z, tmp.w));
 
       buf.SkipWhitespace();
-      INIT_FATAL(buf.Expect(';'));
+      CHECKED_OP(buf.Expect(';'));
     }
     else
     {
-      INJECT_ERROR_FATAL("unknown keyword");
-      END_INIT_SEQUENCE();
+      LOG_ERROR("unknown keyword");
+      return false;
     }
+
+    buf.SkipWhitespace();
   }
 
-  END_INIT_SEQUENCE();
+  return true;
 }
