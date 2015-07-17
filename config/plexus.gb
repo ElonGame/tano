@@ -8,24 +8,24 @@
     cross_over: 0.933000;
   };
   plexus: {
-    radius: 680.303040;
-    blur_kernel: 190.894012;
-    noise_strength: -2497.999023;
+    radius: 1074.242065;
+    blur_kernel: 250.000015;
+    noise_strength: 2500.000000;
     perlin_scale: 1000.000061;
     eps: 0.010000;
     min_dist: 0.100000;
     max_dist: 123.838005;
     num_neighbours: 11;
     slices: 11;
-    stacks: 6;
+    stacks: 12;
     layers: 14;
-    num_nearest: 4;
+    num_nearest: 5;
   };
   camera: {
     yaw: 0.063662;
     pitch: 0.095493;
     roll: 0.000000;
-    pos: { -92.569687, 88.245689, -807.649414 };
+    pos: { -91.430313, 88.245689, -806.350586 };
   };
   noise: {
     layer_lock: -1;

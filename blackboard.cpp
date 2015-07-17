@@ -153,57 +153,6 @@ T Blackboard::GetVar(const string& name, unordered_map<string, T>& vars)
 }
 
 //------------------------------------------------------------------------------
-bool FindScope(const InputBuffer& buf, const char* delim, InputBuffer* scope)
-{
-  // Note, the scope contains both the delimiters
-  char open = delim[0];
-  char close = delim[1];
-
-  const char* start = &buf._buf[buf._idx];
-  const char* end = &buf._buf[buf._idx + buf._len];
-  const char* cur = start;
-
-  // find opening delimiter
-  while (cur < end)
-  {
-    if (*cur++ == open)
-      break;
-  }
-
-  if (cur == end)
-    return false;
-
-  scope->_buf = cur - 1;
-  scope->_idx = 0;
-
-  // find closing
-  int cnt = 0;
-  while (cur < end)
-  {
-    char ch = *cur;
-    if (ch == close)
-    {
-      if (cnt == 0)
-      {
-        // found the scope
-        scope->_len = cur - scope->_buf + 1;
-        return true;
-      }
-      else
-      {
-        --cnt;
-      }
-    }
-    else if (ch == open)
-    {
-      ++cnt;
-    }
-    ++cur;
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
 bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack)
 {
   auto fnFullName = [&](const string& str) {
@@ -240,7 +189,7 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
 
       // grab the inner scope, and recurse into it
       InputBuffer inner;
-      CHECKED_OP(FindScope(buf, "{}", &inner));
+      CHECKED_OP(buf.InnerScope("{}", &inner));
       // create a tmp buffer, that doesn't include the delims
       InputBuffer tmp = inner;
       tmp._buf++;
@@ -335,6 +284,7 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
     }
 
     buf.SkipWhitespace();
+
   }
 
   return true;
