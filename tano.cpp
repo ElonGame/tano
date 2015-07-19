@@ -225,6 +225,8 @@ bool App::Run()
     DEBUG_API.EndFrame();
 #endif
 
+    BLACKBOARD.Process();
+
 #if WITH_IMGUI
     float times[200];
     size_t numSamples;

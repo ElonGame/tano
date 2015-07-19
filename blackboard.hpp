@@ -32,10 +32,19 @@ namespace tano
 
     static Blackboard& Instance();
 
+#if WITH_BLACKBOARD_TCP
+    bool Connect(const char* host, const char* service);
+    void Disconnect();
+    void Process();
+    void SetBlockingIo(bool blocking);
+#endif
+
   private:
     bool Init(const char* filename);
     bool ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack);
     void Reset();
+
+    void ProcessAnimationBuffer(int bufSize, const char* buf);
 
     static Blackboard* _instance;
 
@@ -46,6 +55,61 @@ namespace tano
     unordered_map<string, V2> _vec2Vars;
     unordered_map<string, V3> _vec3Vars;
     unordered_map<string, V4> _vec4Vars;
+
+    template <typename T>
+    struct Keyframes
+    {
+      T firstValue;
+      T lastValue;
+      float firstTime;
+      float lastTime;
+      float sampleStep;
+      vector<T> values;
+    };
+
+    unordered_map<string, Keyframes<float>> _floatVarsAnimated;
+    unordered_map<string, Keyframes<V2>> _vec2VarsAnimated;
+    unordered_map<string, Keyframes<V3>> _vec3VarsAnimated;
+
+#if WITH_BLACKBOARD_TCP
+
+    struct Header
+    {
+      // total frame size, including header
+      int payloadSize = 0;
+    };
+
+    enum class ReadState
+    {
+      ReadHeader,
+      ReadPayload,
+      FullFrame,
+    };
+
+    struct Buffer
+    {
+      void Reset() { writeOfs = 0; readOfs = 0; }
+      bool BufferFull() { return readOfs == writeOfs; }
+      int readOfs = 0;
+      int writeOfs = 0;
+      enum { BUFFER_SIZE = 64 * 1024 };
+      char buf1[BUFFER_SIZE];
+      char buf2[BUFFER_SIZE];
+      char* buf = &buf1[0];
+      char* dbl = &buf1[1];
+    };
+
+    Header _header;
+    ReadState _readState = ReadState::ReadHeader;
+    SOCKET _sockfd = 0;
+    string _host;
+    string _serviceName;
+    bool _connected = false;
+    struct addrinfo* _addrinfo = nullptr;
+    Buffer _readBuffer;
+    WSADATA _wsaData;
+#endif
+
   };
 
 #define BLACKBOARD Blackboard::Instance()

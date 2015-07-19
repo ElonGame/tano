@@ -16,6 +16,8 @@
 #define BORDERLESS_WINDOW 0
 #endif
 
+#define WITH_BLACKBOARD_TCP 1
+
 #define WITH_TESTS 0
 
 #if WITH_ROCKET_PLAYER
@@ -86,6 +88,11 @@
 
 #if WITH_IMGUI
 #include "imgui/imgui.h"
+#endif
+
+#if WITH_BLACKBOARD_TCP
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #endif
 
 #include <sys/types.h>
