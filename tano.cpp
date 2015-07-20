@@ -99,6 +99,8 @@ bool App::Destroy()
   g_rmt = nullptr;
 #endif
 
+  Blackboard::Destory();
+
   INIT(RESOURCE_MANAGER_STATIC::Destroy());
   DemoEngine::Destroy();
   DebugApi::Destroy();
@@ -141,7 +143,7 @@ bool App::Init(HINSTANCE hinstance)
   bool b = LoadSettings();
   INIT_FATAL(LoadSettings());
 
-  INIT_FATAL(Blackboard::Create("config/scratch.bb"));
+  INIT_FATAL(Blackboard::Create("config/scratch.bb", "data/scratch.dat"));
 
   INIT_FATAL(Scheduler::Create());
 
@@ -225,7 +227,9 @@ bool App::Run()
     DEBUG_API.EndFrame();
 #endif
 
+#if WITH_BLACKBOARD_TCP
     BLACKBOARD.Process();
+#endif
 
 #if WITH_IMGUI
     float times[200];

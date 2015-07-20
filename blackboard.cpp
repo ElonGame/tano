@@ -10,16 +10,19 @@ using namespace bristol;
 Blackboard* Blackboard::_instance;
 
 //------------------------------------------------------------------------------
-bool Blackboard::Create(const char* filename)
+bool Blackboard::Create(const char* filename, const char* datafile)
 {
   assert(!_instance);
   _instance = new Blackboard();
-  return _instance->Init(filename);
+  return _instance->Init(filename, datafile);
 }
 
 //------------------------------------------------------------------------------
 void Blackboard::Destory()
 {
+#if WITH_BLACKBOARD_SAVE && WITH_BLACKBOARD_TCP
+  _instance->SaveData();
+#endif
   delete exch_null(_instance);
 }
 
@@ -31,8 +34,11 @@ Blackboard& Blackboard::Instance()
 }
 
 //------------------------------------------------------------------------------
-bool Blackboard::Init(const char* filename)
+bool Blackboard::Init(const char* filename, const char* datafile)
 {
+  _filename = filename;
+  _datafile = datafile;
+
   bool res;
   RESOURCE_MANAGER.AddFileWatch(filename, true, [&](const string& filename)
       {
@@ -52,8 +58,12 @@ bool Blackboard::Init(const char* filename)
         }
       });
 
+#if WITH_BLACKBOARD_TCP
   WSAStartup(MAKEWORD(2, 2), &_wsaData);
   Connect("127.0.0.1", "1337");
+#endif
+
+  LoadData();
 
   return res;
 }
@@ -66,6 +76,36 @@ void Blackboard::Reset()
   AssocDelete(&_vec2Vars);
   AssocDelete(&_vec3Vars);
   AssocDelete(&_vec4Vars);
+}
+
+//------------------------------------------------------------------------------
+#if WITH_BLACKBOARD_SAVE && WITH_BLACKBOARD_TCP
+void Blackboard::SaveData()
+{
+  FILE* f = RESOURCE_MANAGER.OpenWriteFile(_datafile.c_str());
+
+  int numKeysframes = (int)_rawKeyframes.size();
+  RESOURCE_MANAGER.WriteFile(f, (const char*)&numKeysframes, sizeof(int));
+
+  // save all the keyframe rawdata
+  for (auto kv : _rawKeyframes)
+  {
+    const vector<char>& buf = kv.second;
+    RESOURCE_MANAGER.WriteFile(f, buf.data(), (int)buf.size());
+  }
+
+  RESOURCE_MANAGER.CloseFile(f);
+}
+#endif
+
+//------------------------------------------------------------------------------
+void Blackboard::LoadData()
+{
+  vector<char> buf;
+  if (!RESOURCE_MANAGER.LoadFile(_datafile.c_str(), &buf))
+    return;
+
+  ProcessAnimationBuffer(buf.data(), (int)buf.size());
 }
 
 //------------------------------------------------------------------------------
@@ -295,55 +335,6 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
 }
 
 //------------------------------------------------------------------------------
-#if WITH_BLACKBOARD_TCP
-#pragma comment(lib, "ws2_32.lib")
-
-//------------------------------------------------------------------------------
-void Blackboard::SetBlockingIo(bool blocking)
-{
-  u_long v = !blocking;
-  ioctlsocket(_sockfd, FIONBIO, &v);
-}
-
-//------------------------------------------------------------------------------
-void Blackboard::Disconnect()
-{
-  _connected = false;
-}
-
-//------------------------------------------------------------------------------
-bool Blackboard::Connect(const char* host, const char* service)
-{
-  _host = host;
-  _serviceName = service;
-
-  if (_sockfd != 0)
-    closesocket(_sockfd);
-
-  addrinfo hints;
-  memset(&hints, 0, sizeof hints);
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-
-  // Connect to host
-  _addrinfo = nullptr;
-  int r1 = getaddrinfo(host, service, &hints, &_addrinfo);
-  if (r1 != 0)
-  {
-    LOG_WARN("getaddrinfo err: ", r1);
-    return false;
-  }
-
-  _sockfd = socket(_addrinfo->ai_family, _addrinfo->ai_socktype, _addrinfo->ai_protocol);
-
-  // Set up for non-blocking connect
-  SetBlockingIo(false);
-  _readState = ReadState::Connecting;
-
-  return true;
-}
-
-//------------------------------------------------------------------------------
 template <typename T>
 int CopyFromBuffer(const char* buf, T* out)
 {
@@ -425,6 +416,7 @@ void Blackboard::ProcessAnimationBuffer(const char* buf, int bufSize)
 
   for (int keyframeIdx = 0; keyframeIdx < numKeysframes; ++keyframeIdx)
   {
+    const char* bufStart = buf;
     int namelen;
     buf += CopyFromBuffer(buf, &namelen);
     string name;
@@ -437,11 +429,65 @@ void Blackboard::ProcessAnimationBuffer(const char* buf, int bufSize)
 
     switch (dims)
     {
-      case 1: buf += LoadKeyframes(buf, name, &_floatVars); break;
-      case 2: buf += LoadKeyframes(buf, name, &_vec2Vars); break;
-      case 3: buf += LoadKeyframes(buf, name, &_vec3Vars); break;
+    case 1: buf += LoadKeyframes(buf, name, &_floatVars); break;
+    case 2: buf += LoadKeyframes(buf, name, &_vec2Vars); break;
+    case 3: buf += LoadKeyframes(buf, name, &_vec3Vars); break;
     }
+
+    const char* bufEnd = buf;
+#if WITH_BLACKBOARD_SAVE
+    _rawKeyframes[name] = vector<char>(bufStart, bufEnd);
+#endif
   }
+}
+
+//------------------------------------------------------------------------------
+#if WITH_BLACKBOARD_TCP
+#pragma comment(lib, "ws2_32.lib")
+
+//------------------------------------------------------------------------------
+void Blackboard::SetBlockingIo(bool blocking)
+{
+  u_long v = !blocking;
+  ioctlsocket(_sockfd, FIONBIO, &v);
+}
+
+//------------------------------------------------------------------------------
+void Blackboard::Disconnect()
+{
+  _connected = false;
+}
+
+//------------------------------------------------------------------------------
+bool Blackboard::Connect(const char* host, const char* service)
+{
+  _host = host;
+  _serviceName = service;
+
+  if (_sockfd != 0)
+    closesocket(_sockfd);
+
+  addrinfo hints;
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+
+  // Connect to host
+  _addrinfo = nullptr;
+  int r1 = getaddrinfo(host, service, &hints, &_addrinfo);
+  if (r1 != 0)
+  {
+    LOG_WARN("getaddrinfo err: ", r1);
+    return false;
+  }
+
+  _sockfd = socket(_addrinfo->ai_family, _addrinfo->ai_socktype, _addrinfo->ai_protocol);
+
+  // Set up for non-blocking connect
+  SetBlockingIo(false);
+  _readState = ReadState::Connecting;
+
+  return true;
 }
 
 //------------------------------------------------------------------------------

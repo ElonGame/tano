@@ -32,7 +32,7 @@ namespace tano
     template <typename T>
     T GetVar(const string& name, float t, unordered_map<string, Keyframes<T>*>& vars);
 
-    static bool Create(const char* filename);
+    static bool Create(const char* filename, const char* datafile);
     static void Destory();
 
     static Blackboard& Instance();
@@ -45,9 +45,14 @@ namespace tano
 #endif
 
   private:
-    bool Init(const char* filename);
+    bool Init(const char* filename, const char* datafile);
     bool ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack);
     void Reset();
+
+#if WITH_BLACKBOARD_SAVE && WITH_BLACKBOARD_TCP
+    void SaveData();
+#endif
+    void LoadData();
 
     void ProcessAnimationBuffer(const char* buf, int bufSize);
 
@@ -79,6 +84,13 @@ namespace tano
     unordered_map<string, Keyframes<V2>*> _vec2Vars;
     unordered_map<string, Keyframes<V3>*> _vec3Vars;
     unordered_map<string, Keyframes<V4>*> _vec4Vars;
+
+    string _filename;
+    string _datafile;
+
+#if WITH_BLACKBOARD_SAVE
+    unordered_map<string, vector<char>> _rawKeyframes;
+#endif
 
 #if WITH_BLACKBOARD_TCP
 

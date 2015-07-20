@@ -17,6 +17,7 @@
 #endif
 
 #define WITH_BLACKBOARD_TCP 1
+#define WITH_BLACKBOARD_SAVE 1
 
 #define WITH_TESTS 0
 
@@ -48,6 +49,8 @@
   #define WITH_CONFIG_DLG 1
   #define WITH_ROCKET 0
   #define WITH_ROCKET_PLAYER 0
+  #define WITH_BLACKBOARD_TCP 0
+  #define WITH_BLACKBOARD_SAVE 0
 #elif _DEBUG
   #ifndef WITH_UNPACKED_RESOUCES 
     #define WITH_UNPACKED_RESOUCES 1
