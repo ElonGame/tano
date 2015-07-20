@@ -61,11 +61,11 @@ bool Blackboard::Init(const char* filename)
 //------------------------------------------------------------------------------
 void Blackboard::Reset()
 {
-  _floatVars.clear();
-  _intVars.clear();
-  _vec2Vars.clear();
-  _vec3Vars.clear();
-  _vec4Vars.clear();
+  AssocDelete(&_floatVars);
+  AssocDelete(&_intVars);
+  AssocDelete(&_vec2Vars);
+  AssocDelete(&_vec3Vars);
+  AssocDelete(&_vec4Vars);
 }
 
 //------------------------------------------------------------------------------
@@ -83,68 +83,69 @@ void Blackboard::ClearNamespace()
 //------------------------------------------------------------------------------
 void Blackboard::AddIntVar(const string& name, int value)
 {
-  _intVars[name] = value;
+  _intVars[name] = new Keyframes<int>(value);
 }
 
 //------------------------------------------------------------------------------
 void Blackboard::AddFloatVar(const string& name, float value)
 {
-  _floatVars[name] = value;
+  _floatVars[name] = new Keyframes<float>(value);
 }
 
 //------------------------------------------------------------------------------
 void Blackboard::AddVec2Var(const string& name, const V2& value)
 {
-  _vec2Vars[name] = value;
+  _vec2Vars[name] = new Keyframes<V2>(value);
 }
 
 //------------------------------------------------------------------------------
 void Blackboard::AddVec3Var(const string& name, const V3& value)
 {
-  _vec3Vars[name] = value;
+  _vec3Vars[name] = new Keyframes<V3>(value);
 }
 
 //------------------------------------------------------------------------------
 void Blackboard::AddVec4Var(const string& name, const V4& value)
 {
-  _vec4Vars[name] = value;
+  _vec4Vars[name] = new Keyframes<V4>(value);
 }
 
 //------------------------------------------------------------------------------
 int Blackboard::GetIntVar(const string& name)
 {
-  return GetVar(name, _intVars);
+  return GetVar(name, 0, _intVars);
 }
 
 //------------------------------------------------------------------------------
 float Blackboard::GetFloatVar(const string& name)
 {
-  return GetVar(name, _floatVars);
+  return GetVar(name, 0, _floatVars);
 }
 
 //------------------------------------------------------------------------------
 V2 Blackboard::GetVec2Var(const string& name)
 {
-  return GetVar(name, _vec2Vars);
+  return GetVar(name, 0, _vec2Vars);
 }
 
 //------------------------------------------------------------------------------
 V3 Blackboard::GetVec3Var(const string& name)
 {
-  return GetVar(name, _vec3Vars);
+  return GetVar(name, 0, _vec3Vars);
 }
 
 //------------------------------------------------------------------------------
 V4 Blackboard::GetVec4Var(const string& name)
 {
-  return GetVar(name, _vec4Vars);
+  return GetVar(name, 0, _vec4Vars);
 }
 
 //------------------------------------------------------------------------------
 template <typename T>
-T Blackboard::GetVar(const string& name, unordered_map<string, T>& vars)
+T Blackboard::GetVar(const string& name, float t, unordered_map<string, Keyframes<T>*>& vars)
 {
   string fullname = _curNamespace.empty() ? name : _curNamespace + "." + name;
+
   auto it = vars.find(fullname);
   if (it == vars.end())
   {
@@ -152,7 +153,7 @@ T Blackboard::GetVar(const string& name, unordered_map<string, T>& vars)
     return T();
   }
 
-  return it->second;
+  return GetValueAtTime(t, it->second);
 }
 
 //------------------------------------------------------------------------------
@@ -314,6 +315,7 @@ void Blackboard::Disconnect()
 bool Blackboard::Connect(const char* host, const char* service)
 {
   _host = host;
+  _serviceName = service;
 
   if (_sockfd != 0)
     closesocket(_sockfd);
@@ -334,25 +336,14 @@ bool Blackboard::Connect(const char* host, const char* service)
 
   _sockfd = socket(_addrinfo->ai_family, _addrinfo->ai_socktype, _addrinfo->ai_protocol);
 
-  if (connect(_sockfd, _addrinfo->ai_addr, (int)_addrinfo->ai_addrlen) < 0)
-  {
-    LOG_INFO(to_string("connect err: %d", errno).c_str());
-    _connected = false;
-    return false;
-  }
-
-  _connected = true;
-
+  // Set up for non-blocking connect
   SetBlockingIo(false);
-
-  // if (_cbConnected)
-  //  _cbConnected();
-
-  _readState = ReadState::ReadHeader;
+  _readState = ReadState::Connecting;
 
   return true;
 }
 
+//------------------------------------------------------------------------------
 template <typename T>
 int CopyFromBuffer(const char* buf, T* out)
 {
@@ -361,7 +352,73 @@ int CopyFromBuffer(const char* buf, T* out)
 }
 
 //------------------------------------------------------------------------------
-void Blackboard::ProcessAnimationBuffer(int bufSize, const char* buf)
+template <typename T>
+int Blackboard::LoadKeyframes(const char* buf, const string& name, unordered_map<string, Keyframes<T>*>* res)
+{
+  const char* org = buf;
+
+  Keyframes<T>* k = new Keyframes<T>();
+
+  buf += CopyFromBuffer(buf, &k->firstValue);
+  buf += CopyFromBuffer(buf, &k->lastValue);
+
+  buf += CopyFromBuffer(buf, &k->firstTime);
+  buf += CopyFromBuffer(buf, &k->lastTime);
+
+  buf += CopyFromBuffer(buf, &k->sampleStep);
+
+  int numValues;
+  buf += CopyFromBuffer(buf, &numValues);
+  k->values.resize(numValues);
+  memcpy(k->values.data(), buf, numValues * sizeof(T));
+  buf += numValues * sizeof(T);
+
+  (*res)[name] = k;
+
+  return (int)(buf - org);
+}
+
+//------------------------------------------------------------------------------
+float Blackboard::GetFloatVar(const string& name, float t)
+{
+  return GetVar(name, t, _floatVars);
+}
+
+//------------------------------------------------------------------------------
+V2 Blackboard::GetVec2Var(const string& name, float t)
+{
+  return GetVar(name, t, _vec2Vars);
+}
+
+//------------------------------------------------------------------------------
+V3 Blackboard::GetVec3Var(const string& name, float t)
+{
+  return GetVar(name, t, _vec3Vars);
+}
+
+//------------------------------------------------------------------------------
+template <typename T>
+T Blackboard::GetValueAtTime(float t, const Keyframes<T>* keyframes)
+{
+  if (t <= keyframes->firstTime)
+    return keyframes->firstValue;
+
+  if (t >= keyframes->lastTime)
+    return keyframes->lastValue;
+
+  float relT = t - keyframes->firstTime;
+
+  float step = keyframes->sampleStep;
+  int idx0 = (int)(relT / step);
+  int idx1 = min(idx0 + 1, (int)keyframes->values.size() - 1);
+
+  // calc lerp term
+  float frac = (relT - idx0 * step) / step;
+  return lerp(keyframes->values[idx0], keyframes->values[idx1], frac);
+}
+
+//------------------------------------------------------------------------------
+void Blackboard::ProcessAnimationBuffer(const char* buf, int bufSize)
 {
   int numKeysframes;
   buf += CopyFromBuffer(buf, &numKeysframes);
@@ -378,41 +435,59 @@ void Blackboard::ProcessAnimationBuffer(int bufSize, const char* buf)
     int dims;
     buf += CopyFromBuffer(buf, &dims);
 
-    V3 initialValue, lastValue;
-    buf += CopyFromBuffer(buf, &initialValue);
-    buf += CopyFromBuffer(buf, &lastValue);
-
-    float firstTimestamp, lastTimestamp;
-    buf += CopyFromBuffer(buf, &firstTimestamp);
-    buf += CopyFromBuffer(buf, &lastTimestamp);
-
-    float sampleStep;
-    buf += CopyFromBuffer(buf, &sampleStep);
-
-    int numValues;
-    buf += CopyFromBuffer(buf, &numValues);
-    vector<float> values;
-    values.resize(numValues);
-    for (int i = 0; i < numValues; ++i)
+    switch (dims)
     {
-      buf += CopyFromBuffer(buf, &values[i]);
+      case 1: buf += LoadKeyframes(buf, name, &_floatVars); break;
+      case 2: buf += LoadKeyframes(buf, name, &_vec2Vars); break;
+      case 3: buf += LoadKeyframes(buf, name, &_vec3Vars); break;
     }
-    int a = 10;
   }
-
 }
 
 //------------------------------------------------------------------------------
 void Blackboard::Process()
 {
+  // Handle non-blocking connect
+  if (_readState == Blackboard::ReadState::Connecting)
+  {
+    int res = connect(_sockfd, _addrinfo->ai_addr, (int)_addrinfo->ai_addrlen);
+    if (res == 0)
+    {
+      // done connecting
+      _connected = true;
+      _readState = Blackboard::ReadState::ReadHeader;
+    }
+    else
+    {
+      int lastError = WSAGetLastError();
+      if (lastError == WSAEWOULDBLOCK || lastError == WSAEALREADY)
+      {
+        // still connecting
+        _connected = false;
+        return;
+      }
+      else if (lastError == WSAEISCONN)
+      {
+        // done connecting
+        _connected = true;
+        _readState = Blackboard::ReadState::ReadHeader;
+      }
+      else
+      {
+        _connected = false;
+        return;
+      }
+    }
+  }
+
   if (!_connected)
     return;
 
-  // Note, once a frame is processed, any remaining data is copied to the start of the buffer
   int res =
       recv(_sockfd, _readBuffer.buf + _readBuffer.writeOfs, Buffer::BUFFER_SIZE - _readBuffer.writeOfs, 0);
   if (res <= 0)
   {
+    // TODO, we're in async mode, so is -1 really an error?
     if (res == 0)
     {
       // 0 indicates orderly shutdown, -1 indicates an error
@@ -423,53 +498,48 @@ void Blackboard::Process()
 
   _readBuffer.writeOfs += res;
 
+  // keep processing until we don't have a full frame
   while (true)
   {
-    switch (_readState)
+    if (_readState == Blackboard::ReadState::ReadHeader)
     {
-      case Blackboard::ReadState::ReadHeader:
+      if (_readBuffer.writeOfs >= sizeof(Header))
       {
-        if (_readBuffer.writeOfs >= sizeof(Header))
-        {
-          memcpy((void*)&_header, _readBuffer.buf, sizeof(Header));
-          _readState = Blackboard::ReadState::ReadPayload;
-        }
-        else
-        {
-          goto DONE;
-        }
-        break;
+        memcpy((void*)&_header, _readBuffer.buf, sizeof(Header));
+        _readState = Blackboard::ReadState::ReadPayload;
       }
-
-      case Blackboard::ReadState::ReadPayload:
+      else
       {
-        if (_readBuffer.writeOfs >= _header.payloadSize)
-        {
-          // got a full frame!
+        return;
+      }
+    }
 
-          // copy the rest of the buffer to the second buffer, reset pointers, 
-          // and ping pong
-          memcpy(_readBuffer.dbl, _readBuffer.buf + _header.payloadSize,
-              _readBuffer.writeOfs - _header.payloadSize);
+    if (_readState == Blackboard::ReadState::ReadPayload)
+    {
+      if (_readBuffer.writeOfs >= _header.payloadSize)
+      {
+        // got a full frame, so process it
+        char* buf = _readBuffer.buf;
+        int headerSize = sizeof(Header);
+        int bufSize = *(int*)buf - headerSize;
+        ProcessAnimationBuffer(buf + headerSize, bufSize);
 
-          char* buf = _readBuffer.buf;
-          int bufSize = *(int*)buf;
-          ProcessAnimationBuffer(bufSize, buf + 4);
+        // copy the rest of the buffer to the second buffer, reset pointers,
+        // and ping pong
+        memcpy(_readBuffer.dbl, _readBuffer.buf + _header.payloadSize,
+            _readBuffer.writeOfs - _header.payloadSize);
 
-          _readBuffer.readOfs = 0;
-          _readBuffer.writeOfs = _header.payloadSize;
-          _readState = Blackboard::ReadState::ReadHeader;
-          swap(_readBuffer.buf, _readBuffer.dbl);
-        }
-        else
-        {
-          goto DONE;
-        }
+        _readBuffer.readOfs = 0;
+        _readBuffer.writeOfs = _readBuffer.writeOfs - _header.payloadSize;
+        _readState = Blackboard::ReadState::ReadHeader;
+        swap(_readBuffer.buf, _readBuffer.dbl);
+      }
+      else
+      {
+        return;
       }
     }
   }
-
-DONE:;
 }
 
 #endif

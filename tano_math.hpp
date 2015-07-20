@@ -246,8 +246,19 @@ namespace tano
   {
     V4() {}
     V4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+
     float x, y, z, w;
   };
+
+  inline V4 operator*(float s, const V4& v)
+  {
+    return V4(s * v.x, s * v.y, s * v.z, s * v.w);
+  }
+
+  inline V4 operator+(const V4& a, const V4& b)
+  {
+    return V4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
+  }
 
   //------------------------------------------------------------------------------
   struct Spherical

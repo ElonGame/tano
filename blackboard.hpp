@@ -8,7 +8,6 @@ namespace tano
   class Blackboard
   {
   public:
-
     void SetNamespace(const string& ns);
     void ClearNamespace();
 
@@ -24,8 +23,14 @@ namespace tano
     V3 GetVec3Var(const string& name);
     V4 GetVec4Var(const string& name);
 
-    template<typename T>
-    T GetVar(const string& name, unordered_map<string, T>& vars);
+    float GetFloatVar(const string& name, float t);
+    V2 GetVec2Var(const string& name, float t);
+    V3 GetVec3Var(const string& name, float t);
+
+    template <typename T>
+    struct Keyframes;
+    template <typename T>
+    T GetVar(const string& name, float t, unordered_map<string, Keyframes<T>*>& vars);
 
     static bool Create(const char* filename);
     static void Destory();
@@ -44,32 +49,36 @@ namespace tano
     bool ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack);
     void Reset();
 
-    void ProcessAnimationBuffer(int bufSize, const char* buf);
+    void ProcessAnimationBuffer(const char* buf, int bufSize);
 
     static Blackboard* _instance;
 
     string _curNamespace;
 
-    unordered_map<string, int> _intVars;
-    unordered_map<string, float> _floatVars;
-    unordered_map<string, V2> _vec2Vars;
-    unordered_map<string, V3> _vec3Vars;
-    unordered_map<string, V4> _vec4Vars;
-
-    template <typename T>
+     template <typename T>
     struct Keyframes
     {
+      Keyframes() {}
+      Keyframes(const T& v) : firstValue(v), lastValue(v) {}
       T firstValue;
       T lastValue;
-      float firstTime;
-      float lastTime;
-      float sampleStep;
+      float firstTime = 0;
+      float lastTime = 0;
+      float sampleStep = 1;
       vector<T> values;
     };
 
-    unordered_map<string, Keyframes<float>> _floatVarsAnimated;
-    unordered_map<string, Keyframes<V2>> _vec2VarsAnimated;
-    unordered_map<string, Keyframes<V3>> _vec3VarsAnimated;
+    template <typename T>
+    int LoadKeyframes(const char* buf, const string& name, unordered_map<string, Keyframes<T>*>* res);
+
+    template <typename T>
+    T GetValueAtTime(float t, const Keyframes<T>* keyframes);
+
+    unordered_map<string, Keyframes<int>*> _intVars;
+    unordered_map<string, Keyframes<float>*> _floatVars;
+    unordered_map<string, Keyframes<V2>*> _vec2Vars;
+    unordered_map<string, Keyframes<V3>*> _vec3Vars;
+    unordered_map<string, Keyframes<V4>*> _vec4Vars;
 
 #if WITH_BLACKBOARD_TCP
 
@@ -81,18 +90,25 @@ namespace tano
 
     enum class ReadState
     {
+      Connecting,
       ReadHeader,
       ReadPayload,
-      FullFrame,
     };
 
     struct Buffer
     {
-      void Reset() { writeOfs = 0; readOfs = 0; }
+      void Reset()
+      {
+        writeOfs = 0;
+        readOfs = 0;
+      }
       bool BufferFull() { return readOfs == writeOfs; }
       int readOfs = 0;
       int writeOfs = 0;
-      enum { BUFFER_SIZE = 64 * 1024 };
+      enum
+      {
+        BUFFER_SIZE = 64 * 1024
+      };
       char buf1[BUFFER_SIZE];
       char buf2[BUFFER_SIZE];
       char* buf = &buf1[0];
@@ -109,9 +125,7 @@ namespace tano
     Buffer _readBuffer;
     WSADATA _wsaData;
 #endif
-
   };
 
 #define BLACKBOARD Blackboard::Instance()
-
 }

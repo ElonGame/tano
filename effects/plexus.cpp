@@ -504,6 +504,11 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
 
   Matrix viewProj = view * proj;
 
+  _settings.plexus.noise_strength =
+      BLACKBOARD.GetFloatVar("plexus.strength", state.localTime.TotalMilliseconds() / 1000.f);
+  CalcPoints(false);
+
+
   float rotXDiv = BLACKBOARD.GetFloatVar("plexus.rotXDivisor");
   float rotYDiv = BLACKBOARD.GetFloatVar("plexus.rotXDivisor");
   static float angle = 0;
