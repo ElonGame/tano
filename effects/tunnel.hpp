@@ -1,20 +1,20 @@
 #pragma once
-
 #include "../base_effect.hpp"
-#include "../gpu_objects.hpp"
-#include "../generated/demo.types.hpp"
 #include "../camera.hpp"
+#include "../generated/demo.types.hpp"
+#include "../tano_math.hpp"
+#include "../gpu_objects.hpp"
 #include "../shaders/out/plexus_gslines.cbuffers.hpp"
 #include "../shaders/out/plexus_pslines.cbuffers.hpp"
 
 namespace tano
 {
-  class Plexus : public BaseEffect
+  class Tunnel : public BaseEffect
   {
   public:
 
-    Plexus(const string& name, const string& config, u32 id);
-    ~Plexus();
+    Tunnel(const string& name, const string& config, u32 id);
+    ~Tunnel();
     virtual bool OnConfigChanged(const vector<char>& buf) override;
     virtual bool Init() override;
     virtual bool Update(const UpdateState& state) override;
@@ -36,27 +36,16 @@ namespace tano
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
 
-    void PointsTest(const UpdateState& state);
-    void CalcPoints(bool recalcEdges);
-    int CalcLines(V3* vtx);
-    enum { MAX_POINTS = 16 * 1024 };
+    GpuBundle _tunnelBundle;
 
-    SimpleAppendBuffer<V3, MAX_POINTS> _points;
-    SimpleAppendBuffer<V3, MAX_POINTS> _tris;
-    int* _neighbours = nullptr;
+    ConstantBufferBundle<void, cb::PlexusPS, cb::PlexusGS> _cbTunnel;
 
-    void UpdateNoise();
+    SimpleAppendBuffer<V3, 64 * 1024> _tunnelVerts;
 
-    bool _renderPoints = false;
-    GpuBundle _pointBundle;
-    GpuBundle _plexusLineBundle;
-
-    ConstantBufferBundle<void, cb::PlexusPS, cb::PlexusGS> _cbPlexus;
-
-    PlexusSettings _settings;
-
-    ObjectHandle _perlinTexture;
-
-    FreeFlyCamera _camera;
+    float _dist = 0;
+    CardinalSpline2 _spline;
+    TunnelSettings _settings;
+    Camera _camera;
   };
+
 }

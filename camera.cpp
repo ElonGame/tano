@@ -15,8 +15,14 @@ Camera::Camera()
   GRAPHICS.GetBackBufferSize(&w, &h);
   _aspectRatio = (float)w / h;
   _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
-  FixedUpdateState state;
-  Update(state);
+}
+
+//------------------------------------------------------------------------------
+void Camera::Update(const FixedUpdateState& state)
+{
+  _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
+  Vector3 target = _pos + _dir;
+  _view = Matrix::CreateLookAt(_pos, target, _up);
 }
 
 //------------------------------------------------------------------------------
@@ -63,8 +69,8 @@ void FreeFlyCamera::Update(const FixedUpdateState& updateState)
   if (state.keysPressed['S'])
     _pos -= s * _dir;
 
-  _target = _pos + _dir;
-  _view = Matrix::CreateLookAt(_pos, _target, _up);
+  Vector3 target = _pos + _dir;
+  _view = Matrix::CreateLookAt(_pos, target, _up);
   _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
 }
 
@@ -92,8 +98,8 @@ void FollowCam::Update(const FixedUpdateState& state)
   XMVECTOR* vel = _particle._bodies.vel;
 
   _pos = Vector3(pos[0]);
-  _target = _pos + Vector3(vel[0]);
-  _view = Matrix::CreateLookAt(_pos, _target, _up);
+  Vector3 target = _pos + Vector3(vel[0]);
+  _view = Matrix::CreateLookAt(_pos, target, _up);
 }
 
 //------------------------------------------------------------------------------

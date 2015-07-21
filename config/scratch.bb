@@ -38,9 +38,16 @@ namespace landscape
 
 namespace plexus
 {
-    vec3 lineParams = { 5.0, 0.25,  150 };
+    vec3 lineParams = { 5.0, 0.25, 150 };
     float rotXDivisor = 2000;
     float rotYDivisor = 300;
     float strength = 1000;
 }
 
+namespace tunnel
+{
+    vec3 lineParams = { 5.0, 0.25, 150 };
+    float radius = 100;
+    float speed = 10;
+    int segments = 50;
+}

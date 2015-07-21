@@ -417,9 +417,7 @@ bool DemoEngine::ApplySettings(const DemoSettings& settings)
       configFile, true, [this, effect](const string& filename)
     {
       vector<char> buf;
-      if (!RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf))
-        return false;
-
+      INIT_FATAL_LOG(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf), "Error loading config file: ", filename);
       return effect->OnConfigChanged(buf);
     });
 
@@ -491,6 +489,11 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
 //------------------------------------------------------------------------------
 void DemoEngine::RegisterFactory(const string& type, const EffectFactory& factory)
 {
+  if (_effectFactories.count(type) > 0)
+  {
+    LOG_ERROR("Duplicate factory registration: ", type);
+    return;
+  }
   _effectFactories[type] = factory;
 }
 

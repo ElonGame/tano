@@ -394,7 +394,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 
   _cbSky.ps0.dim = dim;
   _cbSky.ps0.cameraPos = _curCamera->_pos;
-  _cbSky.ps0.cameraLookAt = _curCamera->_target;
+  _cbSky.ps0.cameraLookAt = _curCamera->_pos + _curCamera->_dir;
 
   _cbLandscape.vs0.world = Matrix::Identity();
   _cbLandscape.vs0.viewProj = viewProj.Transpose();

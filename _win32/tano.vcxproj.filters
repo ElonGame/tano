@@ -217,6 +217,12 @@
     <ClCompile Include="..\effects\plexus.cpp">
       <Filter>effects</Filter>
     </ClCompile>
+    <ClCompile Include="..\effects\tunnel.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\sample.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -446,6 +452,12 @@
     </ClInclude>
     <ClInclude Include="..\effects\plexus.hpp">
       <Filter>effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\tunnel.hpp">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\sample.hpp">
+      <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

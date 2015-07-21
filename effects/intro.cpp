@@ -465,7 +465,6 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
   float zz = -100;
   _fixedCamera._pos.z = zz;
   _fixedCamera._fov = atan(100.f / fabsf(zz));
-  _fixedCamera._target = Vector3(0,0,0);
   view = _fixedCamera._view;
   proj = _fixedCamera._proj;
   viewProj = view * proj;

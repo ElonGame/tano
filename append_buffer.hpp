@@ -5,17 +5,14 @@
 namespace tano
 {
   //------------------------------------------------------------------------------
-  template<typename T>
+  template <typename T>
   struct DeleteMixin
   {
-    void destroy(T t)
-    {
-      delete t;
-    }
+    void destroy(T t) { delete t; }
   };
 
   //------------------------------------------------------------------------------
-  template<typename T>
+  template <typename T>
   struct ReleaseMixin
   {
     void destroy(T t)
@@ -26,18 +23,17 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
-  template<typename T>
+  template <typename T>
   struct NoOpMixin
   {
     void destroy(T) {}
   };
 
   //------------------------------------------------------------------------------
-  template <typename T, int Capacity, template<typename> class DestroyMixin>
+  template <typename T, int Capacity, template <typename> class DestroyMixin>
   class AppendBuffer : DestroyMixin<T>
   {
   public:
-
     //------------------------------------------------------------------------------
     ~AppendBuffer()
     {
@@ -57,10 +53,7 @@ namespace tano
     }
 
     //------------------------------------------------------------------------------
-    void Update(ObjectHandle h, T res)
-    {
-      _elems[h.id()] = res;
-    }
+    void Update(ObjectHandle h, T res) { _elems[h.id()] = res; }
 
     //------------------------------------------------------------------------------
     u32 Append(T res)
@@ -71,7 +64,6 @@ namespace tano
     }
 
   private:
-
     //------------------------------------------------------------------------------
     int _size = 0;
     T _elems[Capacity];
@@ -88,20 +80,11 @@ namespace tano
       _capacity = (int)((T*)end - _mem);
     }
 
-    int Size() const
-    {
-      return _size;
-    }
+    int Size() const { return _size; }
 
-    int Capacity() const
-    {
-      return _capacity;
-    }
+    int Capacity() const { return _capacity; }
 
-    bool Empty() const
-    {
-      return _size == 0;
-    }
+    bool Empty() const { return _size == 0; }
 
     T& Append(const T& t)
     {
@@ -110,26 +93,17 @@ namespace tano
       return _mem[_size++];
     }
 
-    void Clear()
-    {
-      _size = 0;
-    }
+    void Clear() { _size = 0; }
 
-    void  Resize(int s)
+    void Resize(int s)
     {
       assert(s <= _capacity);
       _size = s;
     }
 
-    T* Data()
-    {
-      return &_mem[0];
-    }
+    T* Data() { return &_mem[0]; }
 
-    int DataSize()
-    {
-      return _size * sizeof(T);
-    }
+    int DataSize() { return _size * sizeof(T); }
 
     const T& operator[](int idx) const
     {
@@ -143,15 +117,9 @@ namespace tano
       return _mem[idx];
     }
 
-    T* begin()
-    {
-      return &_mem[0];
-    }
+    T* begin() { return &_mem[0]; }
 
-    T* end()
-    {
-      return &_mem[_size];
-    }
+    T* end() { return &_mem[_size]; }
 
   protected:
     int _capacity = 0;

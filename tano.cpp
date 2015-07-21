@@ -18,6 +18,8 @@
 #include "effects/landscape.hpp"
 #include "effects/cloth.hpp"
 #include "effects/plexus.hpp"
+#include "effects/tunnel.hpp"
+#include "effects/sample.hpp"
 
 #if WITH_IMGUI
 #include "imgui_helpers.hpp"
@@ -176,6 +178,8 @@ bool App::Init(HINSTANCE hinstance)
   Landscape::Register();
   Cloth::Register();
   Plexus::Register();
+  Tunnel::Register();
+  Sample::Register();
 
   INIT_FATAL(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
 

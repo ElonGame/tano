@@ -10,10 +10,9 @@ namespace tano
   {
     Camera();
     virtual ~Camera() {}
-    virtual void Update(const FixedUpdateState& state) {}
+    virtual void Update(const FixedUpdateState& state);
 
     Vector3 _pos = Vector3(0,0,0);
-    Vector3 _target;
     Vector3 _dir = Vector3(0, 0, 1);
     Vector3 _right = Vector3(1, 0, 0);
     Vector3 _up = Vector3(0,1,0);

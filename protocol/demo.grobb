@@ -160,3 +160,13 @@ struct plexus_settings
   camera_settings camera;
   noise_settings noise;
 };
+
+struct sample_settings
+{
+  tonemap_reinhard_settings tonemap;  
+};
+
+struct tunnel_settings
+{
+  tonemap_reinhard_settings tonemap;  
+};
