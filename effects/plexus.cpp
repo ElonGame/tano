@@ -48,13 +48,10 @@ void BlurLine(const T* src, T* dst, int size, float r)
 }
 
 //------------------------------------------------------------------------------
-Plexus::Plexus(const string &name, const string& config, u32 id)
-  : BaseEffect(name, config, id)
+Plexus::Plexus(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
 #if WITH_IMGUI
-  PROPERTIES.Register(Name(),
-    bind(&Plexus::RenderParameterSet, this),
-    bind(&Plexus::SaveParameterSet, this));
+  PROPERTIES.Register(Name(), bind(&Plexus::RenderParameterSet, this), bind(&Plexus::SaveParameterSet, this));
 
   PROPERTIES.SetActive(Name());
 #endif
@@ -99,10 +96,11 @@ bool Plexus::Init()
   _camera._roll = _settings.camera.roll;
   _camera._pos = _settings.camera.pos;
 
-  GenRandomPoints(_settings.plexus.blur_kernel);
+  GenRandomPoints(_settings.deform.blur_kernel);
 
   INIT(_cbPlexus.Create());
 
+  // clang-format off
   INIT(_pointBundle.Create(BundleOptions()
     .VertexShader("shaders/out/basic", "VsPos")
     .VertexFlags(VF_POS)
@@ -120,6 +118,7 @@ bool Plexus::Init()
     .DepthStencilDesc(depthDescDepthWriteDisabled)
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
+  // clang-format on
 
   CalcPoints(true);
 
@@ -195,7 +194,7 @@ void Plexus::UpdateNoise()
       {
         float f = 0.5f + 0.5f * Perlin2D::Value(scale * j / NOISE_WIDTH, scale * i / NOISE_HEIGHT);
         float v = layerOpacity * f;
-        pixels[i*NOISE_WIDTH+j] += v;
+        pixels[i * NOISE_WIDTH + j] += v;
       }
     }
 
@@ -212,22 +211,22 @@ void Plexus::UpdateNoise()
       float f;
       if (_settings.tonemap.enabled)
       {
-        f = 255 * Clamp(0.f, 1.f,
-          ToneMap(pixels[i*NOISE_WIDTH + j], t.cross_over, t.black_point, t.white_point, t.toe, t.shoulder));
+        f = 255 * Clamp(0.f, 1.f, ToneMap(pixels[i * NOISE_WIDTH + j], t.cross_over, t.black_point,
+                                      t.white_point, t.toe, t.shoulder));
       }
       else
       {
-        f = pixels[i*NOISE_WIDTH + j];
+        f = pixels[i * NOISE_WIDTH + j];
         float angle = 2 * XM_PI * f;
         float s = _settings.noise.turbulence;
         int xx = (int)(j + s * cos(angle));
         int yy = (int)(i + s * sin(angle));
         int x = IntMod(xx, NOISE_WIDTH);
         int y = IntMod(yy, NOISE_HEIGHT);
-        f = 255 * Clamp(0.f, 1.f, pixels[y*NOISE_WIDTH + x]);
+        f = 255 * Clamp(0.f, 1.f, pixels[y * NOISE_WIDTH + x]);
       }
       u32 val = (u32)f;
-      p[i*NOISE_WIDTH+j] = (0xff000000) | (val << 16) | (val << 8) | (val << 0);
+      p[i * NOISE_WIDTH + j] = (0xff000000) | (val << 16) | (val << 8) | (val << 0);
     }
   }
   _ctx->Unmap(_perlinTexture);
@@ -238,16 +237,16 @@ void Plexus::PointsTest(const UpdateState& state)
 {
   _points.Clear();
 
-  float radiusInc = _settings.plexus.radius / _settings.plexus.layers;
-  float phiInc = 2 * XM_PI / _settings.plexus.slices;
-  float thetaInc = XM_PI / (_settings.plexus.stacks > 1 ? _settings.plexus.stacks - 1 : 1);
+  float radiusInc = _settings.sphere.radius / _settings.sphere.layers;
+  float phiInc = 2 * XM_PI / _settings.sphere.slices;
+  float thetaInc = XM_PI / (_settings.sphere.stacks > 1 ? _settings.sphere.stacks - 1 : 1);
 
-  float r = _settings.plexus.radius;
-  float perlinScale = _settings.plexus.perlin_scale;
+  float r = _settings.sphere.radius;
+  float perlinScale = _settings.deform.perlin_scale;
 
-  int layers = _settings.plexus.layers;
-  int slices = _settings.plexus.slices;
-  int stacks = _settings.plexus.stacks;
+  int layers = _settings.sphere.layers;
+  int slices = _settings.sphere.slices;
+  int stacks = _settings.sphere.stacks;
 
   int num = layers * slices * stacks;
 
@@ -271,7 +270,7 @@ void Plexus::PointsTest(const UpdateState& state)
 
         float s = fabs(1024 * stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale));
         V3 v = g_randomPoints[IntMod((int)s, 1024)];
-        pt = pt + _settings.plexus.noise_strength * v;
+        pt = pt + _settings.deform.noise_strength * v;
 
         _points.Append(pt);
 
@@ -295,21 +294,21 @@ void Plexus::CalcPoints(bool recalcEdges)
 
   _points.Clear();
 
-  float radiusInc = _settings.plexus.radius / _settings.plexus.layers;
-  float phiInc = 2 * XM_PI / _settings.plexus.slices;
-  float thetaInc = XM_PI / (_settings.plexus.stacks > 1 ? _settings.plexus.stacks - 1 : 1);
+  float radiusInc = _settings.sphere.radius / _settings.sphere.layers;
+  float phiInc = 2 * XM_PI / _settings.sphere.slices;
+  float thetaInc = XM_PI / (_settings.sphere.stacks > 1 ? _settings.sphere.stacks - 1 : 1);
 
-  float r = _settings.plexus.radius;
+  float r = _settings.sphere.radius;
 
-  int layers = _settings.plexus.layers;
-  int slices = _settings.plexus.slices;
-  int stacks = _settings.plexus.stacks;
+  int layers = _settings.sphere.layers;
+  int slices = _settings.sphere.slices;
+  int stacks = _settings.sphere.stacks;
 
   int num = layers * slices * stacks;
 
   int nodeIdx = 0;
 
-  for (int i = 0 ; i < layers; ++i)
+  for (int i = 0; i < layers; ++i)
   {
     bool edgeOut = i > 0;
     bool edgeIn = i < layers - 1;
@@ -324,7 +323,7 @@ void Plexus::CalcPoints(bool recalcEdges)
         bool edgeDown = k < stacks - 1;
 
         V3 pt = FromSpherical(r, phi, theta);
-        float s = _settings.plexus.noise_strength * stb_perlin_noise3(pt.x, pt.y, pt.z);
+        float s = _settings.deform.noise_strength * stb_perlin_noise3(pt.x, pt.y, pt.z);
         pt = pt + s * pt;
 
         _points.Append(pt);
@@ -338,11 +337,15 @@ void Plexus::CalcPoints(bool recalcEdges)
           e[0] = IntMod(nodeIdx - stacks, num);
           e[1] = IntMod(nodeIdx - stacks, num);
 
-          if (edgeUp) e[edgeIdx++] = IntMod(nodeIdx - 1, num);
-          if (edgeDown) e[edgeIdx++] = IntMod(nodeIdx + 1, num);
+          if (edgeUp)
+            e[edgeIdx++] = IntMod(nodeIdx - 1, num);
+          if (edgeDown)
+            e[edgeIdx++] = IntMod(nodeIdx + 1, num);
 
-          if (edgeOut) e[edgeIdx++] = IntMod(nodeIdx - (slices * stacks), num);
-          if (edgeIn) e[edgeIdx++] = IntMod(nodeIdx - (slices * stacks), num);
+          if (edgeOut)
+            e[edgeIdx++] = IntMod(nodeIdx - (slices * stacks), num);
+          if (edgeIn)
+            e[edgeIdx++] = IntMod(nodeIdx - (slices * stacks), num);
 
           // set a sentinal if needed
           if (edgeIdx != 6)
@@ -361,7 +364,7 @@ void Plexus::CalcPoints(bool recalcEdges)
   {
     // order the neighbours in depth-first edge order
     SAFE_ADELETE(_neighbours);
-    _neighbours = new int[num*num];
+    _neighbours = new int[num * num];
 
     u8* visited = g_ScratchMemory.Alloc<u8>(num);
     for (int i = 0; i < num; ++i)
@@ -373,7 +376,7 @@ void Plexus::CalcPoints(bool recalcEdges)
       while (!frontier.empty())
       {
         int cur = frontier.front();
-        _neighbours[i*num + idx] = cur;
+        _neighbours[i * num + idx] = cur;
         idx++;
         frontier.pop_front();
         visited[cur] = 1;
@@ -392,93 +395,6 @@ void Plexus::CalcPoints(bool recalcEdges)
       }
     }
   }
-}
-
-//------------------------------------------------------------------------------
-int Plexus::CalcLines(V3* vtx)
-{
-  static AvgStopWatch stopWatch;
-  stopWatch.Start();
-
-  int num = _points.Size();
-  u8* connected = g_ScratchMemory.Alloc<u8>(num*num);
-  memset(connected, 0, num*num);
-
-  struct DistEntry { float dist; int idx; };
-  DistEntry* dist = g_ScratchMemory.Alloc<DistEntry>(num);
-  int* idx = g_ScratchMemory.Alloc<int>(num);
-  u8* degree = g_ScratchMemory.Alloc<u8>(num);
-  memset(degree, 0, num);
-
-  V3* orgVtx = vtx;
-
-  float minDist = _settings.plexus.min_dist;
-  float maxDist = _settings.plexus.max_dist;
-  int numNeighbours = _settings.plexus.num_neighbours;
-
-  float eps = _settings.plexus.eps;
-
-  auto fnSort = [&](int a, int b) { 
-    float da = dist[a].dist;
-    float db = dist[b].dist;
-    float d = da - db;
-    if (d < 0) d *= -1;
-    if (d < eps)
-       return degree[a] < degree[b];
-    return da < db;
-  };
-
-  for (int i = 0; i < num; ++i)
-    idx[i] = i;
-
-  for (int i = 0; i < num; ++i)
-  {
-    int numValid = 0;
-    for (int j = 0; j < numNeighbours; ++j)
-    {
-      int curIdx = _neighbours[i*num+j];
-      if (curIdx == -1)
-        break;
-
-      float d = Distance(_points[i], _points[curIdx]);
-
-      if (curIdx == i || d < minDist || d > maxDist || connected[i*num + curIdx] || connected[curIdx*num + i])
-        continue;
-
-      idx[numValid] = numValid;
-      dist[numValid].dist = d;
-      dist[numValid].idx = curIdx;
-      numValid++;
-    }
-
-    sort(idx, idx+numValid, fnSort);
-
-    int left = _settings.plexus.num_nearest;
-    for (int j = 0; j < numValid; ++j)
-    {
-      int curIdx = dist[idx[j]].idx;
-
-      vtx[0] = _points[i];
-      vtx[1] = _points[curIdx];
-      vtx += 2;
-
-      connected[i*num+curIdx] = 1;
-      degree[i]++;
-      degree[curIdx]++;
-
-      if (--left == 0)
-        break;
-    }
-  }
-
-  double avg = stopWatch.Stop();
-#if WITH_IMGUI
-  TANO.AddPerfCallback([=]() {
-    ImGui::Text("Update time: %.3fms", 1000 * avg);
-  });
-#endif
-
-  return (int)(vtx - orgVtx);
 }
 
 //------------------------------------------------------------------------------
@@ -504,19 +420,16 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
 
   Matrix viewProj = view * proj;
 
-  _settings.plexus.noise_strength =
+  _settings.deform.noise_strength =
       BLACKBOARD.GetFloatVar("plexus.strength", state.localTime.TotalMilliseconds() / 1000.f);
   CalcPoints(false);
-
 
   float rotXDiv = BLACKBOARD.GetFloatVar("plexus.rotXDivisor");
   float rotYDiv = BLACKBOARD.GetFloatVar("plexus.rotXDivisor");
   static float angle = 0;
   angle += state.delta.TotalMilliseconds();
-  Matrix mtx = 
-    Matrix::CreateRotationX(angle / rotXDiv) * 
-    Matrix::CreateRotationY(angle / rotYDiv);
-  //Matrix mtx = Matrix::Identity();
+  Matrix mtx = Matrix::CreateRotationX(angle / rotXDiv) * Matrix::CreateRotationY(angle / rotYDiv);
+  // Matrix mtx = Matrix::Identity();
   _cbPlexus.gs0.world = mtx.Transpose();
   _cbPlexus.gs0.viewProj = viewProj.Transpose();
   _cbPlexus.gs0.cameraPos = _camera._pos;
@@ -550,7 +463,7 @@ bool Plexus::Render()
   {
     ObjectHandle vb = _plexusLineBundle.objects._vb;
     V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
-    int numLines = CalcLines(vtx);
+    int numLines = CalcPlexusGrouping(vtx, _points.Data(), _points.Size(), _neighbours, _settings.plexus);
     _ctx->Unmap(vb);
     _ctx->SetBundle(_plexusLineBundle);
     _ctx->Draw(numLines, 0);
@@ -568,31 +481,31 @@ void Plexus::RenderParameterSet()
 
   bool recalc = false;
   bool recalcEdges = true;
-  if (ImGui::SliderFloat("radius", &_settings.plexus.radius, 50, 2000))
+  if (ImGui::SliderFloat("radius", &_settings.sphere.radius, 50, 2000))
   {
     recalc = true;
     recalcEdges = false;
   }
 
-  if (ImGui::SliderFloat("noise-strength", &_settings.plexus.noise_strength, -2500, 2500))
+  if (ImGui::SliderFloat("noise-strength", &_settings.deform.noise_strength, -2500, 2500))
   {
     recalc = true;
     recalcEdges = false;
   }
 
-  ImGui::SliderFloat("perlin-scale", &_settings.plexus.perlin_scale, 0, 1000);
+  ImGui::SliderFloat("perlin-scale", &_settings.deform.perlin_scale, 0, 1000);
 
   recalc |= ImGui::SliderFloat("eps", &_settings.plexus.eps, 0.1f, 25.0f);
   recalc |= ImGui::SliderFloat("min-dist", &_settings.plexus.min_dist, 0.1f, 25.0f);
   recalc |= ImGui::SliderFloat("max-dist", &_settings.plexus.max_dist, 10.0, 150.0f);
-  recalc |= ImGui::SliderInt("slices", &_settings.plexus.slices, 1, 50);
-  recalc |= ImGui::SliderInt("stacks", &_settings.plexus.stacks, 1, 50);
-  recalc |= ImGui::SliderInt("layers", &_settings.plexus.layers, 1, 50);
+  recalc |= ImGui::SliderInt("slices", &_settings.sphere.slices, 1, 50);
+  recalc |= ImGui::SliderInt("stacks", &_settings.sphere.stacks, 1, 50);
+  recalc |= ImGui::SliderInt("layers", &_settings.sphere.layers, 1, 50);
   recalc |= ImGui::SliderInt("num-nearest", &_settings.plexus.num_nearest, 1, 20);
   recalc |= ImGui::SliderInt("num-neighbours", &_settings.plexus.num_neighbours, 1, 100);
 
-  if (ImGui::SliderFloat("blur-kernel", &_settings.plexus.blur_kernel, 1, 250))
-    GenRandomPoints(_settings.plexus.blur_kernel);
+  if (ImGui::SliderFloat("blur-kernel", &_settings.deform.blur_kernel, 1, 250))
+    GenRandomPoints(_settings.deform.blur_kernel);
 
   if (recalc)
   {

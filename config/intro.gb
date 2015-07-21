@@ -12,18 +12,22 @@
   text_length: 5.000000;
   fade_delay: 1.000000;
   fade_out: 2.000000;
-  plexus: {
+    sphere: {
     radius: 600.000000;
+    slices: 13;
+    stacks: 6;
+    layers: 14;
+  };
+  deform: {
     blur_kernel: 10.000000;
     noise_strength: 0.000000;
     perlin_scale: 10.000000;
+  };
+  plexus: {
     eps: 0.010000;
     min_dist: 0.100000;
     max_dist: 200.000000;
     num_neighbours: 10;
-    slices: 13;
-    stacks: 6;
-    layers: 14;
     num_nearest: 2;
   };
 };

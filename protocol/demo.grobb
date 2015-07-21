@@ -45,21 +45,28 @@ struct scale_bias
   float bias = 0.5;
 };
 
-
-struct plexus_object
+struct plexus_grouping
 {
-  float radius = 600;
-  float blur_kernel = 10;
-  float noise_strength = 0;
-  float perlin_scale = 10;
   float eps = 0.01;
   float min_dist = 0.1;
   float max_dist = 200;
   int num_neighbours = 10;
+  int num_nearest = 2;
+};
+
+struct plexus_deform
+{
+  float blur_kernel = 10;
+  float noise_strength = 0;
+  float perlin_scale = 10;
+};
+
+struct plexus_sphere
+{
+  float radius = 600;
   int slices = 13;
   int stacks = 6;
   int layers = 14;
-  int num_nearest = 2;
 };
 
 struct intro_settings
@@ -72,7 +79,9 @@ struct intro_settings
   float text_min_dist;
   float text_max_dist;
   float blur_radius = 15;
-  plexus_object plexus;
+  plexus_grouping plexus;
+  plexus_sphere sphere;
+  plexus_deform deform;
   tonemap_reinhard_settings tonemap;
 };
 
@@ -156,7 +165,9 @@ struct noise_settings
 struct plexus_settings
 {
   full_tonemap_settings tonemap;
-  plexus_object plexus;
+  plexus_grouping plexus;
+  plexus_sphere sphere;
+  plexus_deform deform;
   camera_settings camera;
   noise_settings noise;
 };

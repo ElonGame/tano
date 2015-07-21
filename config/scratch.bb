@@ -50,4 +50,6 @@ namespace tunnel
     float radius = 100;
     float speed = 10;
     int segments = 50;
+
+    vec2 cameraParams = { 100, 100 };
 }

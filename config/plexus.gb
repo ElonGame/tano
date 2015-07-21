@@ -7,18 +7,22 @@
     black_point: 0.087000;
     cross_over: 0.933000;
   };
-  plexus: {
+  sphere: {
     radius: 1074.242065;
+    slices: 11;
+    stacks: 12;
+    layers: 14;
+  };
+  deform: {
     blur_kernel: 250.000015;
     noise_strength: 2500.000000;
     perlin_scale: 1000.000061;
+  };
+  plexus: {
     eps: 0.010000;
     min_dist: 0.100000;
     max_dist: 123.838005;
     num_neighbours: 11;
-    slices: 11;
-    stacks: 12;
-    layers: 14;
     num_nearest: 5;
   };
   camera: {

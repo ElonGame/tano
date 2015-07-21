@@ -86,6 +86,11 @@ shaders = {
         'ps' : ['PsLines'],
         'gs' : ['GsLines'],
     },
+    'tunnel' : {
+        'vs' : ['VsTunnelLines'],
+        'ps' : ['PsTunnelLines'],
+        'gs' : ['GsTunnelLines'],
+    },
     'quad' : {
         'vs' : ['VsMain'],
     },

@@ -19,13 +19,10 @@ using namespace bristol;
 static float Z_SPACING = 50;
 
 //------------------------------------------------------------------------------
-Tunnel::Tunnel(const string &name, const string& config, u32 id)
-  : BaseEffect(name, config, id)
+Tunnel::Tunnel(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
 #if WITH_IMGUI
-  PROPERTIES.Register(Name(),
-    bind(&Tunnel::RenderParameterSet, this),
-    bind(&Tunnel::SaveParameterSet, this));
+  PROPERTIES.Register(Name(), bind(&Tunnel::RenderParameterSet, this), bind(&Tunnel::SaveParameterSet, this));
 
   PROPERTIES.SetActive(Name());
 #endif
@@ -67,16 +64,18 @@ bool Tunnel::Init()
     _spline.Create(controlPoints.data(), (int)controlPoints.size());
   }
 
+  // clang-format off
   INIT(_tunnelBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/plexus", "VsLines")
-    .GeometryShader("shaders/out/plexus", "GsLines")
-    .PixelShader("shaders/out/plexus", "PsLines")
+    .VertexShader("shaders/out/tunnel", "VsTunnelLines")
+    .GeometryShader("shaders/out/tunnel", "GsTunnelLines")
+    .PixelShader("shaders/out/tunnel", "PsTunnelLines")
     .VertexFlags(VF_POS)
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
+  // clang-format on
 
   INIT(_cbTunnel.Create());
 
@@ -88,18 +87,21 @@ bool Tunnel::Update(const UpdateState& state)
 {
   V3 pos(V3(_camera._pos));
 
+  V2 cameraParams = BLACKBOARD.GetVec2Var("tunnel.cameraParams");
+  _camera.SetMaxSpeedAndForce(cameraParams.x, cameraParams.y);
+
   // create spline segment
   float radius = BLACKBOARD.GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
-  //radius *= (1 + 0.2f * sinf(state.localTime.TotalSecondsAsFloat()));
+  // radius *= (1 + 0.2f * sinf(state.localTime.TotalSecondsAsFloat()));
   int numSegments = BLACKBOARD.GetIntVar("tunnel.segments");
 
   _tunnelVerts.Clear();
 
   SimpleAppendBuffer<V3, 512> ring1, ring2;
 
-  SimpleAppendBuffer<V3, 512>* rings[] = { &ring1, &ring2 };
+  SimpleAppendBuffer<V3, 512>* rings[] = {&ring1, &ring2};
 
-  float START_OFS = - 2;
+  float START_OFS = -2;
   int tmp = (int)((_camera._pos.z / Z_SPACING) / Z_SPACING * Z_SPACING);
   float distClamped = (float)tmp;
   // create the first 2 rings
@@ -126,12 +128,12 @@ bool Tunnel::Update(const UpdateState& state)
 
     auto& ring0 = *rings[0];
     auto& ring1 = *rings[1];
-    for (int i = 0; i < numSegments*2; ++i)
+    for (int i = 0; i < numSegments * 2; ++i)
     {
       _tunnelVerts.Append(ring0[i]);
     }
 
-    for (int i = 0; i < numSegments*2; i += 2)
+    for (int i = 0; i < numSegments * 2; i += 2)
     {
       _tunnelVerts.Append(ring0[i]);
       _tunnelVerts.Append(ring1[i]);
@@ -154,7 +156,7 @@ bool Tunnel::Update(const UpdateState& state)
 
     swap(rings[0], rings[1]);
   }
-  
+
   UpdateCameraMatrix(state);
   return true;
 }

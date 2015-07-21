@@ -57,82 +57,6 @@ void BlurLine(const T* src, T* dst, int size, float r)
 }
 
 //------------------------------------------------------------------------------
-int CalcLines(V3* vtx, const V3* points, int num, int* neighbours, const PlexusObject& config)
-{
-  u8* connected = g_ScratchMemory.Alloc<u8>(num*num);
-  memset(connected, 0, num*num);
-
-  struct DistEntry { float dist; int idx; };
-  DistEntry* dist = g_ScratchMemory.Alloc<DistEntry>(num);
-  int* idx = g_ScratchMemory.Alloc<int>(num);
-  u8* degree = g_ScratchMemory.Alloc<u8>(num);
-  memset(degree, 0, num);
-
-  V3* orgVtx = vtx;
-
-  float minDist = config.min_dist;
-  float maxDist = config.max_dist;
-  int numNeighbours = config.num_neighbours;
-
-  float eps = config.eps;
-
-  auto fnSort = [&](int a, int b) {
-    float da = dist[a].dist;
-    float db = dist[b].dist;
-    float d = da - db;
-    if (d < 0) d *= -1;
-    if (d < eps)
-      return degree[a] < degree[b];
-    return da < db;
-  };
-
-  for (int i = 0; i < num; ++i)
-    idx[i] = i;
-
-  for (int i = 0; i < num; ++i)
-  {
-    int numValid = 0;
-    for (int j = 0; j < numNeighbours; ++j)
-    {
-      int curIdx = neighbours[i*num + j];
-      if (curIdx == -1)
-        break;
-
-      float d = Distance(points[i], points[curIdx]);
-
-      if (curIdx == i || d < minDist || d > maxDist || connected[i*num + curIdx] || connected[curIdx*num + i])
-        continue;
-
-      idx[numValid] = numValid;
-      dist[numValid].dist = d;
-      dist[numValid].idx = curIdx;
-      numValid++;
-    }
-
-    sort(idx, idx + numValid, fnSort);
-
-    int left = config.num_nearest;
-    for (int j = 0; j < numValid; ++j)
-    {
-      int curIdx = dist[idx[j]].idx;
-
-      vtx[0] = points[i];
-      vtx[1] = points[curIdx];
-      vtx += 2;
-
-      connected[i*num + curIdx] = 1;
-      degree[i]++;
-      degree[curIdx]++;
-
-      if (--left == 0)
-        break;
-    }
-  }
-
-  return (int)(vtx - orgVtx);
-}
-
-//------------------------------------------------------------------------------
 void DistortVerts(
   V3* dst, const V3* src, int num, 
   const V3* randomPoints, float scale, float strength,
@@ -356,7 +280,7 @@ bool Intro::Init()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/intro.composite", "PsComposite")));
 
-  GenRandomPoints(_settings.plexus.blur_kernel);
+  GenRandomPoints(_settings.deform.blur_kernel);
 
   // Text setup
   INIT(_textWriter.Init("gfx/text1.boba"));
@@ -583,7 +507,7 @@ bool Intro::Update(const UpdateState& state)
       t->verts.data(),
       (int)t->verts.size(),
       _randomPoints.Data(),
-      _settings.plexus.perlin_scale,
+      _settings.deform.perlin_scale,
       scale,
       ptOfs,
       ptScale);
@@ -692,7 +616,7 @@ bool Intro::Render()
 
     ObjectHandle vb = _plexusLineBundle.objects._vb;
     V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
-    int numLines = CalcLines(
+    int numLines = CalcPlexusGrouping(
       vtx,
       _curText->transformedVerts.data(),
       (int)_curText->transformedVerts.size(),

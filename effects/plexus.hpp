@@ -38,7 +38,6 @@ namespace tano
 
     void PointsTest(const UpdateState& state);
     void CalcPoints(bool recalcEdges);
-    int CalcLines(V3* vtx);
     enum { MAX_POINTS = 16 * 1024 };
 
     SimpleAppendBuffer<V3, MAX_POINTS> _points;
