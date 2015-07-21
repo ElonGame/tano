@@ -23,7 +23,7 @@ using namespace tano::scheduler;
 using namespace bristol;
 using namespace DirectX;
 
-static const Vector3 ZERO3(0,0,0);
+static const Vector3 ZERO3(0, 0, 0);
 static const float GRID_SIZE = 10;
 static const float NOISE_HEIGHT = 50;
 static const float NOISE_SCALE_X = 0.01f;
@@ -38,7 +38,7 @@ struct BehaviorGravity : public ParticleKinematics
 {
   BehaviorGravity(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
   virtual void Update(
-    DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state) override
+      DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state) override
   {
     float gravity = BLACKBOARD.GetFloatVar("landscape.gravity");
     XMVECTOR* force = bodies->force;
@@ -73,13 +73,11 @@ Landscape::Flock::~Flock()
 }
 
 //------------------------------------------------------------------------------
-Landscape::Landscape(const string &name, const string& config, u32 id)
-  : BaseEffect(name, config, id)
+Landscape::Landscape(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
 #if WITH_IMGUI
-  PROPERTIES.Register(Name(),
-    bind(&Landscape::RenderParameterSet, this),
-    bind(&Landscape::SaveParameterSet, this));
+  PROPERTIES.Register(
+      Name(), bind(&Landscape::RenderParameterSet, this), bind(&Landscape::SaveParameterSet, this));
 
   PROPERTIES.SetActive(Name());
 #endif
@@ -117,25 +115,28 @@ bool Landscape::Init()
     u32* indices = GenerateQuadIndices(maxQuads, &ibSize);
     INIT(_landscapeGpuObjects.CreateIndexBuffer(ibSize, DXGI_FORMAT_R32_UINT, indices));
 
-    INIT(_landscapeGpuObjects.LoadVertexShader("shaders/out/landscape.landscape", "VsLandscape", vertexFlags));
+    INIT(
+        _landscapeGpuObjects.LoadVertexShader("shaders/out/landscape.landscape", "VsLandscape", vertexFlags));
     INIT(_landscapeGpuObjects.LoadGeometryShader("shaders/out/landscape.landscape", "GsLandscape"));
     INIT(_landscapeGpuObjects.LoadPixelShader("shaders/out/landscape.landscape", "PsLandscape"));
 
     // Blend desc that doesn't write to the emissive channel
     CD3D11_BLEND_DESC blendDescAlphaNoEmissive = blendDescBlendSrcAlpha;
     blendDescAlphaNoEmissive.IndependentBlendEnable = TRUE;
-    //blendDescAlphaNoEmissive.RenderTarget[1].BlendEnable = TRUE;
+    // blendDescAlphaNoEmissive.RenderTarget[1].BlendEnable = TRUE;
     blendDescAlphaNoEmissive.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
-    CD3D11_BLEND_DESC blendDescNoEmissive = CD3D11_BLEND_DESC(CD3D11_DEFAULT());;
+    CD3D11_BLEND_DESC blendDescNoEmissive = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+    ;
     blendDescNoEmissive.IndependentBlendEnable = TRUE;
-    //blendDescNoEmissive.RenderTarget[1].BlendEnable = TRUE;
+    // blendDescNoEmissive.RenderTarget[1].BlendEnable = TRUE;
     blendDescNoEmissive.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
     INIT(_landscapeState.Create(nullptr, &blendDescAlphaNoEmissive, &rasterizeDescCullNone));
     INIT(_landscapeLowerState.Create(nullptr, &blendDescNoEmissive, &rasterizeDescCullNone));
   }
 
+  // clang-format off
   INIT(_skyBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
     .VertexShader("shaders/out/common", "VsQuad")
@@ -148,6 +149,7 @@ bool Landscape::Init()
   INIT(_lensFlareBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/landscape.lensflare", "PsLensFlare")));
+  // clang-format on
 
   INIT(_cbLensFlare.Create());
   INIT(_cbComposite.Create());
@@ -159,12 +161,12 @@ bool Landscape::Init()
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
 
   vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
-    CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT)
-  };
+      CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT)};
 
   CD3D11_BLEND_DESC particleBlendDesc(blendDescBlendOneOne);
   particleBlendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
+  // clang-format off
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024 * 6, sizeof(Vector4))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
@@ -186,6 +188,7 @@ bool Landscape::Init()
     .DepthStencilDesc(depthDescDepthWriteDisabled)
     .BlendDesc(particleBlendDesc)
     .RasterizerDesc(rasterizeDescCullNone)));
+  // clang-format on
 
   Reset();
 
@@ -235,8 +238,7 @@ void Landscape::InitBoids()
     Flock* flock = new Flock(_settings.boids);
     flock->boids._maxSpeed = b.max_speed;
 
-    float sum = 
-      b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
+    float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
     // Each flock gets its own seek behavior, because they need per flock information
     flock->boids.AddKinematics(flock->seek, _settings.boids.wander_scale / sum);
     flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
@@ -246,10 +248,9 @@ void Landscape::InitBoids()
 
     int pointIdx = rand() % spline.controlPoints.size();
 
-    XMVECTOR center = XMLoadFloat3(&XMFLOAT3(
-      spline.controlPoints[pointIdx].x,
-      spline.controlPoints[pointIdx].y,
-      spline.controlPoints[pointIdx].z));
+    XMVECTOR center = XMLoadFloat3(&XMFLOAT3(spline.controlPoints[pointIdx].x,
+                                       spline.controlPoints[pointIdx].y,
+                                       spline.controlPoints[pointIdx].z));
 
     // Init the boids
     XMVECTOR* pos = flock->boids._bodies.pos;
@@ -260,9 +261,9 @@ void Landscape::InitBoids()
       float h = NoiseAtPoint(pp);
       XMVECTOR tmp = XMLoadFloat3(&XMFLOAT3(pp.x, h, pp.z));
       pos[i] = XMVectorAdd(center, tmp);
-      //pos[i].y = 20 + NoiseAtPoint(pos[i]);
+      // pos[i].y = 20 + NoiseAtPoint(pos[i]);
       tmp = XMLoadFloat3(&XMFLOAT3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f)));
-      force[i] = XMVectorScale(tmp, 10); //V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      force[i] = XMVectorScale(tmp, 10); // V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
     }
 
     _flocks.Append(flock);
@@ -271,7 +272,7 @@ void Landscape::InitBoids()
 
 //------------------------------------------------------------------------------
 void BehaviorLandscapeFollow::Update(
-  DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
+    DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
   // NOTE! This is called from the schedular threads, so setting namespace
   // on the blackboard will probably break :)
@@ -292,10 +293,8 @@ void BehaviorLandscapeFollow::Update(
     float d = v.y - h;
     if (d < clearance)
     {
-      float f = 1 - Clamp(0.f, 1.f, d/clearance);
-      force[i] = XMVectorScale(
-        XMVectorAdd(force[i], XMVectorScale(pushForce, f)),
-        weight);
+      float f = 1 - Clamp(0.f, 1.f, d / clearance);
+      force[i] = XMVectorScale(XMVectorAdd(force[i], XMVectorScale(pushForce, f)), weight);
     }
   }
 }
@@ -315,7 +314,7 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
 void Landscape::UpdateBoids(const FixedUpdateState& state)
 {
   rmt_ScopedCPUSample(Boids_Update);
-  
+
   float dt = state.delta;
 
   SimpleAppendBuffer<TaskId, 2048> chunkTasks;
@@ -323,7 +322,7 @@ void Landscape::UpdateBoids(const FixedUpdateState& state)
   for (Flock* flock : _flocks)
   {
     FlockKernelData* data = (FlockKernelData*)g_ScratchMemory.Alloc(sizeof(FlockKernelData));
-    *data = FlockKernelData{ flock, _settings.boids.waypoint_radius, state };
+    *data = FlockKernelData{flock, _settings.boids.waypoint_radius, state};
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(FlockKernelData);
@@ -408,7 +407,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   float n = _curCamera->_nearPlane;
   float f = _curCamera->_farPlane;
 
-  _cbParticle.ps0.nearFar = Vector4(n, f, f*n, f-n);
+  _cbParticle.ps0.nearFar = Vector4(n, f, f * n, f - n);
   _cbParticle.gs0.world = Matrix::Identity();
   _cbParticle.gs0.viewProj = viewProj.Transpose();
   _cbParticle.gs0.cameraPos = _curCamera->_pos;
@@ -440,14 +439,14 @@ inline void CopyPosNormal(float* buf, const V3& v, const V3& n)
 
 //------------------------------------------------------------------------------
 inline float SnapUp(float v, float snapSize)
-{ 
-  return snapSize * ceilf(v / snapSize); 
+{
+  return snapSize * ceilf(v / snapSize);
 };
 
 //------------------------------------------------------------------------------
 inline float SnapDown(float v, float snapSize)
-{ 
-  return snapSize * floorf(v / snapSize); 
+{
+  return snapSize * floorf(v / snapSize);
 };
 
 //------------------------------------------------------------------------------
@@ -527,9 +526,9 @@ void Landscape::FillChunk(const TaskData& data)
     }
   }
 
-  int layerIncr[] = { 1, 2 };
-  float* layerDest[] = { chunk->lowerData, chunk->upperData };
-  float layerScale[] = { 0.5f, 1.0f };
+  int layerIncr[] = {1, 2};
+  float* layerDest[] = {chunk->lowerData, chunk->upperData};
+  float layerScale[] = {0.5f, 1.0f};
   for (int layer = 0; layer < 2; ++layer)
   {
     int incr = layerIncr[layer];
@@ -544,10 +543,10 @@ void Landscape::FillChunk(const TaskData& data)
         // |  |
         // 0--3
 
-        v0 = chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + 0)];
-        v1 = chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + 0)];
-        v2 = chunk->noiseValues[(i + incr)  * (CHUNK_SIZE + 1) + (j + incr)];
-        v3 = chunk->noiseValues[(i + 0)     * (CHUNK_SIZE + 1) + (j + incr)];
+        v0 = chunk->noiseValues[(i + 0) * (CHUNK_SIZE + 1) + (j + 0)];
+        v1 = chunk->noiseValues[(i + incr) * (CHUNK_SIZE + 1) + (j + 0)];
+        v2 = chunk->noiseValues[(i + incr) * (CHUNK_SIZE + 1) + (j + incr)];
+        v3 = chunk->noiseValues[(i + 0) * (CHUNK_SIZE + 1) + (j + incr)];
 
         v0.y *= scale;
         v1.y *= scale;
@@ -588,12 +587,8 @@ void Landscape::RasterizeLandscape()
   float ofs = 2 * _curCamera->_farPlane;
   Vector3 c = _curCamera->_pos;
   c.y = NOISE_HEIGHT;
-  Vector3 buf0[16] ={
-    c + Vector3(-ofs, 0, +ofs),
-    c + Vector3(+ofs, 0, +ofs),
-    c + Vector3(+ofs, 0, -ofs),
-    c + Vector3(-ofs, 0, -ofs)
-  };
+  Vector3 buf0[16] = {c + Vector3(-ofs, 0, +ofs), c + Vector3(+ofs, 0, +ofs), c + Vector3(+ofs, 0, -ofs),
+      c + Vector3(-ofs, 0, -ofs)};
   Vector3 buf1[16];
 
   int numVerts = 4;
@@ -647,7 +642,7 @@ void Landscape::RasterizeLandscape()
         ++chunkMisses;
         chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
         ChunkKernelData* data = (ChunkKernelData*)g_ScratchMemory.Alloc(sizeof(ChunkKernelData));
-        *data = ChunkKernelData{ chunk, x, z };
+        *data = ChunkKernelData{chunk, x, z};
         KernelData kd;
         kd.data = data;
         kd.size = sizeof(ChunkKernelData);
@@ -666,9 +661,10 @@ void Landscape::RasterizeLandscape()
   for (Chunk* chunk : chunks)
     chunk->dist = Vector3::DistanceSquared(camPos, chunk->center);
 
-  sort(chunks.begin(), chunks.end(), [&](const Chunk* a, const Chunk* b) {
-    return a->dist > b->dist;
-  });
+  sort(chunks.begin(), chunks.end(), [&](const Chunk* a, const Chunk* b)
+      {
+        return a->dist > b->dist;
+      });
 
   // copy all the chunk data into the vertex buffer
   float* landscapeBuf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
@@ -705,7 +701,7 @@ void Landscape::RasterizeLandscape()
     {
       for (int j = 0; j < CHUNK_SIZE; j += 2)
       {
-        *particleBuf++ = chunk->noiseValues[i*(CHUNK_SIZE+1)+j];
+        *particleBuf++ = chunk->noiseValues[i * (CHUNK_SIZE + 1) + j];
         numParticles++;
       }
     }
@@ -724,10 +720,11 @@ void Landscape::RasterizeLandscape()
   _numLowerIndices = numChunks * Chunk::LOWER_INDICES;
 
 #if WITH_IMGUI
-  TANO.AddPerfCallback([=]() {
-    ImGui::Text("# particles: %d", numParticles);
-    ImGui::Text("# chunks: %d", numChunks);
-  });
+  TANO.AddPerfCallback([=]()
+      {
+        ImGui::Text("# particles: %d", numParticles);
+        ImGui::Text("# chunks: %d", numChunks);
+      });
 #endif
 
   _ctx->Unmap(_particleBundle.objects._vb);
@@ -739,10 +736,10 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
 {
 
 #if DEBUG_DRAW_PATH
-  for (int i = 0; i < spline.spline.size()-1; ++i)
+  for (int i = 0; i < spline.spline.size() - 1; ++i)
   {
     Vector3 p0(spline.spline[i].x, spline.spline[i].y, spline.spline[i].z);
-    Vector3 p1(spline.spline[i+1].x, spline.spline[i+1].y, spline.spline[i+1].z);
+    Vector3 p1(spline.spline[i + 1].x, spline.spline[i + 1].y, spline.spline[i + 1].z);
     DEBUG_API.AddDebugLine(p0, p1, Color(1, 1, 1));
   }
 #endif
@@ -765,7 +762,7 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
 
   // Unset the DSV, as we want to use it as a texture resource
   _ctx->SetRenderTargets(renderTargets, 2, ObjectHandle(), nullptr);
-  ObjectHandle srv[] = { _particleTexture, dsHandle };
+  ObjectHandle srv[] = {_particleTexture, dsHandle};
   _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
   _ctx->Draw(numBoids, 0);
   _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
@@ -776,15 +773,15 @@ bool Landscape::Render()
 {
   rmt_ScopedCPUSample(Landscape_Render);
   static Color clearColor(0, 0, 0, 0);
-  static const Color* clearColors[] = { &clearColor, &clearColor};
+  static const Color* clearColors[] = {&clearColor, &clearColor};
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
 
-  ScopedRenderTargetFull rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
+  ScopedRenderTargetFull rtColor(
+      DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
   ScopedRenderTarget rtBloomEmissive(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-  _cbComposite.ps0.tonemap = Vector4(
-    _settings.tonemap.shoulder, _settings.tonemap.max_white,
-    _settings.tonemap2.exposure, _settings.tonemap2.min_white);
+  _cbComposite.ps0.tonemap = Vector4(_settings.tonemap.shoulder, _settings.tonemap.max_white,
+      _settings.tonemap2.exposure, _settings.tonemap2.min_white);
 
   // We're using 2 render targets here. One for color, and one for bloom/emissive
   ObjectHandle renderTargets[] = {rtColor, rtBloomEmissive};
@@ -824,7 +821,7 @@ bool Landscape::Render()
 
     // Unset the DSV, as we want to use it as a texture resource
     _ctx->SetRenderTargets(renderTargets, 2, ObjectHandle(), nullptr);
-    ObjectHandle srv[] = { _particleTexture, rtColor._dsHandle };
+    ObjectHandle srv[] = {_particleTexture, rtColor._dsHandle};
     _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
     _ctx->Draw(_numParticles, 0);
     _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
@@ -837,14 +834,14 @@ bool Landscape::Render()
 
   _ctx->UnsetRenderTargets(0, 2);
 
-
   ScopedRenderTarget rtColorBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
   fullscreen->Blur(rtColor, rtColorBlurred, rtColorBlurred._desc, 10, 1);
 
   ScopedRenderTarget rtEmissiveBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
   fullscreen->Blur(rtBloomEmissive, rtEmissiveBlurred, rtEmissiveBlurred._desc, 10, 1);
 
-  RenderTargetDesc halfSize(rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
+  RenderTargetDesc halfSize(
+      rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
   ScopedRenderTarget rtScaleBias(halfSize);
   ScopedRenderTarget rtLensFlare(halfSize);
 
@@ -853,22 +850,13 @@ bool Landscape::Render()
 
     // lens flare
     fullscreen->ScaleBias(
-      rtBloomEmissive,
-      rtScaleBias,
-      rtScaleBias._desc,
-      s.scale_bias.scale,
-      s.scale_bias.bias);
+        rtBloomEmissive, rtScaleBias, rtScaleBias._desc, s.scale_bias.scale, s.scale_bias.bias);
 
     _cbLensFlare.ps0.params = Vector4(s.dispersion, (float)s.num_ghosts, s.halo_width, s.strength);
     _cbLensFlare.Set(_ctx, 0);
 
     fullscreen->Execute(
-      rtScaleBias,
-      rtLensFlare,
-      rtLensFlare._desc,
-      ObjectHandle(),
-      _lensFlareBundle.objects._ps,
-      false);
+        rtScaleBias, rtLensFlare, rtLensFlare._desc, ObjectHandle(), _lensFlareBundle.objects._ps, false);
   }
 
   {
@@ -881,15 +869,14 @@ bool Landscape::Render()
     {
       _cbComposite.Set(_ctx, 0);
 
-      ObjectHandle inputs[] = { rtColor, rtColorBlurred, rtEmissiveBlurred, rtLensFlare };
-      fullscreen->Execute(
-        inputs,
-        4,
-        GRAPHICS.GetBackBuffer(),
-        GRAPHICS.GetBackBufferDesc(),
-        GRAPHICS.GetDepthStencil(),
-        _compositeBundle.objects._ps,
-        false);
+      ObjectHandle inputs[] = {rtColor, rtColorBlurred, rtEmissiveBlurred, rtLensFlare};
+      fullscreen->Execute(inputs,
+          4,
+          GRAPHICS.GetBackBuffer(),
+          GRAPHICS.GetBackBufferDesc(),
+          GRAPHICS.GetDepthStencil(),
+          _compositeBundle.objects._ps,
+          false);
     }
     else if (showBuffer == 1)
     {
@@ -918,7 +905,8 @@ bool Landscape::InitAnimatedParameters()
 #if WITH_IMGUI
 void Landscape::RenderParameterSet()
 {
-  auto UpdateWeight = [this](ParticleKinematics* k, float w) {
+  auto UpdateWeight = [this](ParticleKinematics* k, float w)
+  {
     for (Flock* f : _flocks)
     {
       f->boids.UpdateWeight(k, w);

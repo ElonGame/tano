@@ -46,10 +46,12 @@ namespace plexus
 
 namespace tunnel
 {
-    vec3 lineParams = { 15.0, 0.25, 1500 };
-    float radius = 100;
-    float speed = 10;
-    int segments = 50;
+    vec3 lineParams = { 5.0, 1.25, 1500 };
+    float radius = 150;
+    float speed = 5;
+    int segments = 20;
 
     vec2 cameraParams = { 100, 100 };
+
+    float dirScale = 0.1; 
 }

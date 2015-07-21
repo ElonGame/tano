@@ -12,11 +12,13 @@
 #include "../generated/demo.parse.hpp"
 #include "../generated/input_buffer.hpp"
 #include "../generated/output_buffer.hpp"
+#include "../fullscreen_effect.hpp"
 
 using namespace tano;
 using namespace bristol;
 
 static float Z_SPACING = 50;
+int CAMERA_STEP = 5;
 
 //------------------------------------------------------------------------------
 Tunnel::Tunnel(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
@@ -51,6 +53,7 @@ bool Tunnel::Init()
 
     V3 cur(0, 0, 0);
     vector<V3> controlPoints;
+    vector<V3> cameraControlPoints;
 
     for (int i = 0; i < numPoints; ++i)
     {
@@ -59,25 +62,34 @@ bool Tunnel::Init()
 
       controlPoints.push_back(cur);
       cur += V3(xOfs, yOfs, Z_SPACING);
+
+      if ((i % CAMERA_STEP) == 0)
+        cameraControlPoints.push_back(cur);
     }
 
     _spline.Create(controlPoints.data(), (int)controlPoints.size());
+    _cameraSpline.Create(cameraControlPoints.data(), (int)cameraControlPoints.size());
   }
 
   // clang-format off
-  INIT(_tunnelBundle.Create(BundleOptions()
+  INIT(_linesBundle.Create(BundleOptions()
     .VertexShader("shaders/out/tunnel", "VsTunnelLines")
     .GeometryShader("shaders/out/tunnel", "GsTunnelLines")
     .PixelShader("shaders/out/tunnel", "PsTunnelLines")
     .VertexFlags(VF_POS)
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
-    .DepthStencilDesc(depthDescDepthWriteDisabled)
+    .DepthStencilDesc(depthDescDepthDisabled)
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
+
+  INIT(_compositeBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/tunnel.composite", "PsComposite")));
   // clang-format on
 
-  INIT(_cbTunnel.Create());
+  INIT(_cbLines.Create());
+  INIT(_cbComposite.Create());
 
   END_INIT_SEQUENCE();
 }
@@ -88,7 +100,7 @@ bool Tunnel::Update(const UpdateState& state)
   V3 pos(V3(_camera._pos));
 
   V2 cameraParams = BLACKBOARD.GetVec2Var("tunnel.cameraParams");
-  _camera.SetMaxSpeedAndForce(cameraParams.x, cameraParams.y);
+  //_camera.SetMaxSpeedAndForce(cameraParams.x, cameraParams.y);
 
   // create spline segment
   float radius = BLACKBOARD.GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
@@ -167,11 +179,21 @@ bool Tunnel::FixedUpdate(const FixedUpdateState& state)
   // Update how far along the spline we've travelled
   float t = state.localTime.TotalSecondsAsFloat();
   float speed = BLACKBOARD.GetFloatVar("tunnel.speed", t);
+  float dirScale = BLACKBOARD.GetFloatVar("tunnel.dirScale");
   _dist += state.delta * speed;
 
-  V3 pos = _spline.Interpolate(_dist);
-  //_camera._pos = ToVector3(pos);
-  _camera.SetFollowTarget(ToVector3(pos));
+  V3 pos = _cameraSpline.Interpolate(_dist / CAMERA_STEP);
+  _camera._pos = ToVector3(pos) + Vector3(
+    5 * sinf(state.localTime.TotalSecondsAsFloat()),
+    5 * cosf(state.localTime.TotalSecondsAsFloat()),
+    0);
+
+  _camera._dir = Vector3(
+    sinf(state.localTime.TotalSecondsAsFloat()) * dirScale,
+    cosf(state.localTime.TotalSecondsAsFloat()) * dirScale,
+    1);
+
+  //_camera.SetFollowTarget(ToVector3(pos));
   _camera.Update(state);
   return true;
 }
@@ -183,9 +205,9 @@ void Tunnel::UpdateCameraMatrix(const UpdateState& state)
   Matrix proj = _camera._proj;
 
   Matrix viewProj = view * proj;
-  _cbTunnel.gs0.world = Matrix::Identity();
-  _cbTunnel.gs0.viewProj = viewProj.Transpose();
-  _cbTunnel.gs0.cameraPos = _camera._pos;
+  _cbLines.gs0.world = Matrix::Identity();
+  _cbLines.gs0.viewProj = viewProj.Transpose();
+  _cbLines.gs0.cameraPos = _camera._pos;
 }
 
 //------------------------------------------------------------------------------
@@ -197,22 +219,39 @@ bool Tunnel::Render()
 
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
 
-  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-  _cbTunnel.gs0.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
-  V3 params = BLACKBOARD.GetVec3Var("tunnel.lineParams");
-  _cbTunnel.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
-  _cbTunnel.Set(_ctx, 0);
+  ScopedRenderTargetFull rtColor(
+      DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
+  _ctx->SetRenderTarget(rtColor._rtHandle, rtColor._dsHandle, &black);
 
-  ObjectHandle h = _tunnelBundle.objects._vb;
+  _cbLines.gs0.dim = Vector4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
+  V3 params = BLACKBOARD.GetVec3Var("tunnel.lineParams");
+  _cbLines.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
+  _cbLines.Set(_ctx, 0);
+
+  ObjectHandle h = _linesBundle.objects._vb;
   V3* verts = _ctx->MapWriteDiscard<V3>(h);
   memcpy(verts, _tunnelVerts.Data(), _tunnelVerts.DataSize());
   _ctx->Unmap(h);
 
   int numVerts = _tunnelVerts.Size();
-  _ctx->SetBundle(_tunnelBundle);
+  _ctx->SetBundle(_linesBundle);
   _ctx->Draw(numVerts, 0);
 
-  _ctx->SetBundle(_tunnelBundle);
+  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+
+  {
+    _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);
+    _cbComposite.Set(_ctx, 0);
+
+    ObjectHandle inputs[] = {rtColor, rtColor._dsHandle};
+    fullscreen->Execute(inputs,
+        2,
+        GRAPHICS.GetBackBuffer(),
+        GRAPHICS.GetBackBufferDesc(),
+        GRAPHICS.GetDepthStencil(),
+        _compositeBundle.objects._ps,
+        false);
+  }
 
   return true;
 }
@@ -221,6 +260,9 @@ bool Tunnel::Render()
 #if WITH_IMGUI
 void Tunnel::RenderParameterSet()
 {
+  ImGui::SliderFloat("Exposure", &_settings.tonemap.exposure, 0.1f, 20.0f);
+  ImGui::SliderFloat("Min White", &_settings.tonemap.min_white, 0.1f, 20.0f);
+
   if (ImGui::Button("Reset"))
     Reset();
 }

@@ -86,10 +86,13 @@ shaders = {
         'ps' : ['PsLines'],
         'gs' : ['GsLines'],
     },
-    'tunnel' : {
+    'tunnel.lines' : {
         'vs' : ['VsTunnelLines'],
         'ps' : ['PsTunnelLines'],
         'gs' : ['GsTunnelLines'],
+    },
+    'tunnel.composite' : {
+        'ps' : ['PsComposite'],
     },
     'quad' : {
         'vs' : ['VsMain'],
@@ -140,6 +143,7 @@ def generate_files(base, entry_points, obj_ext, asm_ext):
 
 # conversion between HLSL and my types
 known_types = { 
+    'float2' : { 'type': 'Vector2', 'alignment': 2 },
     'float3' : { 'type': 'Vector3', 'alignment': 1 },
     'float4' : { 'type': 'Vector4' },
     'float4x4' : { 'type': 'Matrix' },

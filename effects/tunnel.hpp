@@ -4,8 +4,9 @@
 #include "../generated/demo.types.hpp"
 #include "../tano_math.hpp"
 #include "../gpu_objects.hpp"
-#include "../shaders/out/plexus_gslines.cbuffers.hpp"
-#include "../shaders/out/plexus_pslines.cbuffers.hpp"
+#include "../shaders/out/tunnel.lines_gstunnellines.cbuffers.hpp"
+#include "../shaders/out/tunnel.lines_pstunnellines.cbuffers.hpp"
+#include "../shaders/out/tunnel.composite_pscomposite.cbuffers.hpp"
 
 namespace tano
 {
@@ -36,17 +37,20 @@ namespace tano
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
 
-    GpuBundle _tunnelBundle;
+    GpuBundle _linesBundle;
+    GpuBundle _compositeBundle;
 
-    ConstantBufferBundle<void, cb::PlexusPS, cb::PlexusGS> _cbTunnel;
+    ConstantBufferBundle<void, cb::TunnelLinesPS, cb::TunnelLinesGS> _cbLines;
+    ConstantBufferBundle<void, cb::TunnelCompositeF> _cbComposite;
 
     SimpleAppendBuffer<V3, 64 * 1024> _tunnelVerts;
 
     float _dist = 0;
     CardinalSpline2 _spline;
+    CardinalSpline2 _cameraSpline;
     TunnelSettings _settings;
-    //Camera _camera;
-    FollowCam _camera;
+    Camera _camera;
+    //FollowCam _camera;
   };
 
 }

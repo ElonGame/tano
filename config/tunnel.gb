@@ -1,2 +1,6 @@
 {
+  tonemap: {
+    exposure: 0.502000;
+    min_white: 3.517000;
+  };
 };
