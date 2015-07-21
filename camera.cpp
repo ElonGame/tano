@@ -103,6 +103,14 @@ void FollowCam::Update(const FixedUpdateState& state)
 }
 
 //------------------------------------------------------------------------------
+void FollowCam::SetMaxSpeedAndForce(float maxSpeed, float maxForce)
+{
+  _seek.maxSpeed = maxSpeed;
+  _seek.maxForce = maxForce;
+  _particle._maxSpeed;
+}
+
+//------------------------------------------------------------------------------
 void FollowCam::SetFollowTarget(const FXMVECTOR& followTarget)
 {
   _seek.target = followTarget;

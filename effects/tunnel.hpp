@@ -45,7 +45,8 @@ namespace tano
     float _dist = 0;
     CardinalSpline2 _spline;
     TunnelSettings _settings;
-    Camera _camera;
+    //Camera _camera;
+    FollowCam _camera;
   };
 
 }

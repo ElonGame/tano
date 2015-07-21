@@ -16,6 +16,8 @@
 using namespace tano;
 using namespace bristol;
 
+static float Z_SPACING = 50;
+
 //------------------------------------------------------------------------------
 Tunnel::Tunnel(const string &name, const string& config, u32 id)
   : BaseEffect(name, config, id)
@@ -48,7 +50,6 @@ bool Tunnel::Init()
   {
     // create spline
     int numPoints = 10000;
-    float zSpacing = 50;
     float s = 20;
 
     V3 cur(0, 0, 0);
@@ -60,7 +61,7 @@ bool Tunnel::Init()
       float yOfs = randf(-s, +s);
 
       controlPoints.push_back(cur);
-      cur += V3(xOfs, yOfs, zSpacing);
+      cur += V3(xOfs, yOfs, Z_SPACING);
     }
 
     _spline.Create(controlPoints.data(), (int)controlPoints.size());
@@ -89,13 +90,55 @@ bool Tunnel::Update(const UpdateState& state)
 
   // create spline segment
   float radius = BLACKBOARD.GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
+  //radius *= (1 + 0.2f * sinf(state.localTime.TotalSecondsAsFloat()));
   int numSegments = BLACKBOARD.GetIntVar("tunnel.segments");
 
   _tunnelVerts.Clear();
 
-  for (int j = 0; j < 50; ++j)
+  SimpleAppendBuffer<V3, 512> ring1, ring2;
+
+  SimpleAppendBuffer<V3, 512>* rings[] = { &ring1, &ring2 };
+
+  float START_OFS = - 2;
+  int tmp = (int)((_camera._pos.z / Z_SPACING) / Z_SPACING * Z_SPACING);
+  float distClamped = (float)tmp;
+  // create the first 2 rings
+  for (int j = 0; j < 2; ++j)
   {
-    V3 pos = _spline.Interpolate(_dist + (float)j);
+    V3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
+    float angle = 0;
+    float angleInc = 2 * XM_PI / numSegments;
+    V3 prev = pos + radius * V3(cosf(angle), sinf(angle), 0);
+    for (int i = 0; i < numSegments; ++i)
+    {
+      angle += angleInc;
+      V3 p = pos + radius * V3(cosf(angle), sinf(angle), 0);
+      rings[j]->Append(prev);
+      rings[j]->Append(p);
+      prev = p;
+    }
+  }
+
+  for (int j = 2; j < 50; ++j)
+  {
+    // copy out the first ring, add lines to the second, fill the first, and
+    // flip the buffers
+
+    auto& ring0 = *rings[0];
+    auto& ring1 = *rings[1];
+    for (int i = 0; i < numSegments*2; ++i)
+    {
+      _tunnelVerts.Append(ring0[i]);
+    }
+
+    for (int i = 0; i < numSegments*2; i += 2)
+    {
+      _tunnelVerts.Append(ring0[i]);
+      _tunnelVerts.Append(ring1[i]);
+    }
+
+    ring0.Clear();
+    V3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
 
     float angle = 0;
     float angleInc = 2 * XM_PI / numSegments;
@@ -104,11 +147,12 @@ bool Tunnel::Update(const UpdateState& state)
     {
       angle += angleInc;
       V3 p = pos + radius * V3(cosf(angle), sinf(angle), 0);
-      _tunnelVerts.Append(prev);
-      _tunnelVerts.Append(p);
-
+      ring0.Append(prev);
+      ring0.Append(p);
       prev = p;
     }
+
+    swap(rings[0], rings[1]);
   }
   
   UpdateCameraMatrix(state);
@@ -124,7 +168,8 @@ bool Tunnel::FixedUpdate(const FixedUpdateState& state)
   _dist += state.delta * speed;
 
   V3 pos = _spline.Interpolate(_dist);
-  _camera._pos = ToVector3(pos);
+  //_camera._pos = ToVector3(pos);
+  _camera.SetFollowTarget(ToVector3(pos));
   _camera.Update(state);
   return true;
 }

@@ -45,6 +45,7 @@ namespace tano
     virtual void Update(const FixedUpdateState& state) override;
     void SetFollowTarget(const FXMVECTOR& followTarget);
     void AddKinematic(ParticleKinematics* k, float weight = 1);
+    void SetMaxSpeedAndForce(float maxSpeed, float maxForce);
 
     DynParticles _particle;
     BehaviorSeek _seek;

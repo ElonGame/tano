@@ -168,9 +168,9 @@ namespace tano
 
     int m = numPoints - 1;
     V3 p0 = controlPoints[min(m, max(0, i - 1))];
-    V3 p1 = controlPoints[min(m, i)];
-    V3 p2 = controlPoints[min(m, i + 1)];
-    V3 p3 = controlPoints[min(m, i + 2)];
+    V3 p1 = controlPoints[min(m, max(0, i + 0))];
+    V3 p2 = controlPoints[min(m, max(0, i + 1))];
+    V3 p3 = controlPoints[min(m, max(0, i + 2))];
 
     float s = t - (float)i;
     return CardinalSplineBlend(p0, p1, p2, p3, s);
