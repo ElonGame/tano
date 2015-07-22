@@ -35,5 +35,4 @@ namespace tano
   };
 
   extern ArenaAllocator g_ScratchMemory;
-  extern ArenaAllocator g_GlobalMemory;
 }

@@ -621,6 +621,7 @@ bool Intro::Render()
       _curText->transformedVerts.data(),
       (int)_curText->transformedVerts.size(),
       _curText->neighbours,
+      (int)_curText->transformedVerts.size(),
       _settings.plexus);
     _ctx->Unmap(vb);
     _ctx->SetBundle(_plexusLineBundle);

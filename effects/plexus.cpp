@@ -463,7 +463,8 @@ bool Plexus::Render()
   {
     ObjectHandle vb = _plexusLineBundle.objects._vb;
     V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
-    int numLines = CalcPlexusGrouping(vtx, _points.Data(), _points.Size(), _neighbours, _settings.plexus);
+    int numLines = CalcPlexusGrouping(
+        vtx, _points.Data(), _points.Size(), _neighbours, _points.Size(), _settings.plexus);
     _ctx->Unmap(vb);
     _ctx->SetBundle(_plexusLineBundle);
     _ctx->Draw(numLines, 0);

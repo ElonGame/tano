@@ -37,14 +37,12 @@ static const int WM_APP_CLOSE = WM_APP + 2;
 const TCHAR* g_AppWindowClass = _T("TanoClass");
 const TCHAR* g_AppWindowTitle = _T("tano - neurotica e.f.s");
 
-const int ARENA_MEMORY_SIZE = 128 * 1024 * 1024;
+const int ARENA_MEMORY_SIZE = 256 * 1024 * 1024;
 static u8 scratchMemory[ARENA_MEMORY_SIZE];
-static u8 globalMemory[ARENA_MEMORY_SIZE];
 
 namespace tano
 {
   ArenaAllocator g_ScratchMemory;
-  ArenaAllocator g_GlobalMemory;
 }
 
 KeyUpTrigger tano::g_KeyUpTrigger;
@@ -152,7 +150,6 @@ bool App::Init(HINSTANCE hinstance)
   INIT_FATAL(Graphics::Create(hinstance));
   INIT_FATAL(DebugApi::Create(GRAPHICS.GetGraphicsContext()));
 
-  INIT_FATAL(g_GlobalMemory.Init(globalMemory, globalMemory + ARENA_MEMORY_SIZE));
   INIT_FATAL(g_ScratchMemory.Init(scratchMemory, scratchMemory + ARENA_MEMORY_SIZE));
   Perlin2D::Init();
 

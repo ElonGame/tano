@@ -554,7 +554,7 @@ bool tano::CreateBuffersFromBitmapFaceted(
 
 //------------------------------------------------------------------------------
 int tano::CalcPlexusGrouping(
-    V3* vtx, const V3* points, int num, int* neighbours, const PlexusGrouping& config)
+    V3* vtx, const V3* points, int num, int* neighbours, int maxNeighbours, const PlexusGrouping& config)
 {
   u8* connected = g_ScratchMemory.Alloc<u8>(num * num);
   memset(connected, 0, num * num);
@@ -598,7 +598,7 @@ int tano::CalcPlexusGrouping(
     int numValid = 0;
     for (int j = 0; j < numNeighbours; ++j)
     {
-      int curIdx = neighbours[i * num + j];
+      int curIdx = neighbours[i * maxNeighbours + j];
       if (curIdx == -1)
         break;
 

@@ -19,7 +19,7 @@ using namespace tano;
 using namespace bristol;
 
 static float Z_SPACING = 50;
-int CAMERA_STEP = 5;
+int CAMERA_STEP = 10;
 
 //------------------------------------------------------------------------------
 Tunnel::Tunnel(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
@@ -122,7 +122,8 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
   int numSegments = BLACKBOARD.GetIntVar("tunnel.segments");
 
   V3* points = g_ScratchMemory.Alloc<V3>(16 * 1024);
-  int* neighbours = g_ScratchMemory.Alloc<int>(16 * 1024 * 16);
+  int MAX_N = 16;
+  int* neighbours = g_ScratchMemory.Alloc<int>(16 * 1024 * MAX_N);
 
   float START_OFS = -2;
   int tmp = (int)((_camera._pos.z / Z_SPACING) / Z_SPACING * Z_SPACING);
@@ -145,34 +146,40 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
       // add neighbours
       int n = 0;
 
-      int idxDown = i == 0 ? numSegments - 1 : i - 1;
-      int idxUp = (i + 1) % numSegments;
+      auto dn = [=](int n) { int tmp = i - n; return tmp < 0 ? tmp + numSegments : tmp; };
+      auto up = [=](int n) { int tmp = i + n; return tmp % numSegments; };
+      int dn1 = dn(1), dn2 = dn(2);
+      int up1 = up(1), up2 = up(2);
 
-      neighbours[idx * num + n++] = (j * numSegments) + idxDown;
-      neighbours[idx * num + n++] = (j * numSegments) + idxUp;
+      neighbours[idx * MAX_N + n++] = (j * numSegments) + dn1;
+      neighbours[idx * MAX_N + n++] = (j * numSegments) + up1;
 
       if (j > 0)
       {
-        neighbours[idx * num + n++] = ((j - 1) * numSegments) + i;
-        neighbours[idx * num + n++] = ((j - 1) * numSegments) + idxDown;
-        neighbours[idx * num + n++] = ((j - 1) * numSegments) + idxUp;
+        neighbours[idx * MAX_N + n++] = ((j - 1) * numSegments) + i;
+        neighbours[idx * MAX_N + n++] = ((j - 1) * numSegments) + dn1;
+        //neighbours[idx * MAX_N + n++] = ((j - 1) * numSegments) + dn2;
+        neighbours[idx * MAX_N + n++] = ((j - 1) * numSegments) + up1;
+        //neighbours[idx * MAX_N + n++] = ((j - 1) * numSegments) + up2;
       }
 
       if (j < depth - 1)
       {
-        neighbours[idx * num + n++] = ((j + 1) * numSegments) + i;
-        neighbours[idx * num + n++] = ((j + 1) * numSegments) + idxDown;
-        neighbours[idx * num + n++] = ((j + 1) * numSegments) + idxUp;
+        neighbours[idx * MAX_N + n++] = ((j + 1) * numSegments) + i;
+        neighbours[idx * MAX_N + n++] = ((j + 1) * numSegments) + dn1;
+        //neighbours[idx * MAX_N + n++] = ((j + 1) * numSegments) + dn2;
+        neighbours[idx * MAX_N + n++] = ((j + 1) * numSegments) + up1;
+        //neighbours[idx * MAX_N + n++] = ((j + 1) * numSegments) + up2;
       }
 
-      neighbours[idx * num + n] = -1;
+      neighbours[idx * MAX_N + n] = -1;
 
       idx++;
       angle += angleInc;
     }
   }
 
-  int numVerts = CalcPlexusGrouping(_tunnelVerts.Data(), points, idx, neighbours, _settings.plexus);
+  int numVerts = CalcPlexusGrouping(_tunnelVerts.Data(), points, idx, neighbours, MAX_N, _settings.plexus);
   _tunnelVerts.Resize(numVerts);
 }
 

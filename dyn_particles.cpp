@@ -26,10 +26,10 @@ void DynParticles::Init(int numBodies)
 {
   Reset();
   _bodies.numBodies = numBodies;
-  _bodies.pos = g_GlobalMemory.Alloc<XMVECTOR>(numBodies);
-  _bodies.vel = g_GlobalMemory.Alloc<XMVECTOR>(numBodies);
-  _bodies.acc = g_GlobalMemory.Alloc<XMVECTOR>(numBodies);
-  _bodies.force = g_GlobalMemory.Alloc<XMVECTOR>(numBodies);
+  _bodies.pos = new XMVECTOR[numBodies];
+  _bodies.vel = new XMVECTOR[numBodies];
+  _bodies.acc = new XMVECTOR[numBodies];
+  _bodies.force = new XMVECTOR[numBodies];
 
   V3 zero(0,0,0);
   for (int i = 0; i < numBodies; ++i)
@@ -48,6 +48,11 @@ void DynParticles::Init(int numBodies)
 //------------------------------------------------------------------------------
 void DynParticles::Reset()
 {
+  SAFE_ADELETE(_bodies.pos);
+  SAFE_ADELETE(_bodies.vel);
+  SAFE_ADELETE(_bodies.acc);
+  SAFE_ADELETE(_bodies.force);
+
   for (int i = 0; i < DistCount; ++i)
   {
     SAFE_ADELETE(_bodies.distMeasures[i].values);
