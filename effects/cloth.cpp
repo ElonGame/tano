@@ -93,6 +93,9 @@ bool Cloth::Init()
 //------------------------------------------------------------------------------
 void Cloth::UpdateParticles(const FixedUpdateState& state)
 {
+  if (_particles.empty())
+    return;
+
   g_stopWatch.Start();
 
   size_t numParticles = _particles.size();
@@ -204,6 +207,9 @@ void Cloth::UpdateParticles(const FixedUpdateState& state)
 //------------------------------------------------------------------------------
 bool Cloth::InitParticles()
 {
+  // TODO(magnus): broken for now
+  return true;
+
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
 

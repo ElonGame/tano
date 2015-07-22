@@ -14,6 +14,7 @@
 #include "../generated/output_buffer.hpp"
 #include "../fullscreen_effect.hpp"
 #include "../mesh_utils.hpp"
+#include "../mesh_loader.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -90,10 +91,26 @@ bool Tunnel::Init()
   INIT(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/tunnel.composite", "PsComposite")));
+
+  vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
+    CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32_FLOAT),
+    CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT),
+    CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
+  };
+
+  INIT(_meshBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/tunnel.mesh", "VsMesh")
+    .InputElements(inputs)
+    .PixelShader("shaders/out/tunnel.mesh", "PsMesh")));
   // clang-format on
 
   INIT(_cbLines.Create());
   INIT(_cbComposite.Create());
+  INIT(_cbMesh.Create());
+
+  MeshLoader loader;
+  INIT(loader.Load("gfx/newblob1.boba"));
+  INIT(CreateScene(loader, 0, &_scene));
 
   END_INIT_SEQUENCE();
 }
@@ -104,8 +121,6 @@ bool Tunnel::Update(const UpdateState& state)
   V3 pos(V3(_camera._pos));
 
   V2 cameraParams = BLACKBOARD.GetVec2Var("tunnel.cameraParams");
-  //_camera.SetMaxSpeedAndForce(cameraParams.x, cameraParams.y);
-
   _tunnelVerts.Clear();
 
   // NormalUpdate(state);
@@ -259,13 +274,21 @@ bool Tunnel::FixedUpdate(const FixedUpdateState& state)
   _dist += state.delta * speed;
 
   V3 pos = _cameraSpline.Interpolate(_dist / CAMERA_STEP);
-  _camera._pos = ToVector3(pos) + Vector3(5 * sinf(state.localTime.TotalSecondsAsFloat()),
-                                      5 * cosf(state.localTime.TotalSecondsAsFloat()),
-                                      0);
 
-  _camera._dir = Vector3(sinf(state.localTime.TotalSecondsAsFloat()) * dirScale,
+  static bool useFreeFly = true;
+  if (!useFreeFly)
+  {
+    _camera._pos = ToVector3(pos) + Vector3(5 * sinf(state.localTime.TotalSecondsAsFloat()),
+      5 * cosf(state.localTime.TotalSecondsAsFloat()),
+      0);
+
+    _camera._dir = Vector3(sinf(state.localTime.TotalSecondsAsFloat()) * dirScale,
       cosf(state.localTime.TotalSecondsAsFloat()) * dirScale,
       1);
+  }
+
+  if (g_KeyUpTrigger.IsTriggered('1'))
+    useFreeFly = !useFreeFly;
 
   //_camera.SetFollowTarget(ToVector3(pos));
   _camera.Update(state);
@@ -282,6 +305,8 @@ void Tunnel::UpdateCameraMatrix(const UpdateState& state)
   _cbLines.gs0.world = Matrix::Identity();
   _cbLines.gs0.viewProj = viewProj.Transpose();
   _cbLines.gs0.cameraPos = _camera._pos;
+
+  _cbMesh.vs0.viewProj = viewProj.Transpose();
 }
 
 //------------------------------------------------------------------------------
@@ -290,6 +315,7 @@ bool Tunnel::Render()
   rmt_ScopedCPUSample(Tunnel_Render);
 
   static Color black(0, 0, 0, 0);
+  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
 
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
 
@@ -297,23 +323,44 @@ bool Tunnel::Render()
       DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
   _ctx->SetRenderTarget(rtColor._rtHandle, rtColor._dsHandle, &black);
 
-  _cbLines.gs0.dim = Vector4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
-  V3 params = BLACKBOARD.GetVec3Var("tunnel.lineParams");
-  _cbLines.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
-  _cbLines.Set(_ctx, 0);
+  {
+    // tunnel
+    _cbLines.gs0.dim = Vector4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
+    V3 params = BLACKBOARD.GetVec3Var("tunnel.lineParams");
+    _cbLines.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
+    _cbLines.Set(_ctx, 0);
 
-  ObjectHandle h = _linesBundle.objects._vb;
-  V3* verts = _ctx->MapWriteDiscard<V3>(h);
-  memcpy(verts, _tunnelVerts.Data(), _tunnelVerts.DataSize());
-  _ctx->Unmap(h);
+    ObjectHandle h = _linesBundle.objects._vb;
+    V3* verts = _ctx->MapWriteDiscard<V3>(h);
+    memcpy(verts, _tunnelVerts.Data(), _tunnelVerts.DataSize());
+    _ctx->Unmap(h);
 
-  int numVerts = _tunnelVerts.Size();
-  _ctx->SetBundle(_linesBundle);
-  _ctx->Draw(numVerts, 0);
-
-  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+    int numVerts = _tunnelVerts.Size();
+    _ctx->SetBundle(_linesBundle);
+    _ctx->Draw(numVerts, 0);
+  }
 
   {
+    // mesh
+    _cbMesh.Set(_ctx, 0);
+    _ctx->SetBundle(_meshBundle);
+
+    for (scene::MeshBuffer* buf : _scene.meshBuffers)
+    {
+      _ctx->SetVertexBuffer(buf->vb);
+      _ctx->SetIndexBuffer(buf->ib);
+
+      for (scene::Mesh* mesh : buf->meshes)
+      {
+        _cbMesh.vs1.objWorld = mesh->mtxGlobal.Transpose();
+        _cbMesh.Set(_ctx, 1);
+        _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
+      }
+    }
+  }
+
+  {
+    // composite
     _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 

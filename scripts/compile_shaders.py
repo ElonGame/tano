@@ -94,6 +94,10 @@ shaders = {
     'tunnel.composite' : {
         'ps' : ['PsComposite'],
     },
+    'tunnel.mesh' : {
+        'vs' : ['VsMesh'],
+        'ps' : ['PsMesh'],
+    },
     'quad' : {
         'vs' : ['VsMain'],
     },

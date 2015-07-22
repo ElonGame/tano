@@ -7,6 +7,8 @@
 #include "../shaders/out/tunnel.lines_gstunnellines.cbuffers.hpp"
 #include "../shaders/out/tunnel.lines_pstunnellines.cbuffers.hpp"
 #include "../shaders/out/tunnel.composite_pscomposite.cbuffers.hpp"
+#include "../shaders/out/tunnel.mesh_vsmesh.cbuffers.hpp"
+#include "../scene.hpp"
 
 namespace tano
 {
@@ -46,16 +48,22 @@ namespace tano
     ConstantBufferBundle<void, cb::TunnelLinesPS, cb::TunnelLinesGS> _cbLines;
     ConstantBufferBundle<void, cb::TunnelCompositeF> _cbComposite;
 
+    ConstantBufferBundle<
+      cb::TunnelMeshF, void, void,
+      cb::TunnelMeshO, void, void> _cbMesh;
+
     SimpleAppendBuffer<V3, 64 * 1024> _tunnelVerts;
 
     float _dist = 0;
     CardinalSpline2 _spline;
     CardinalSpline2 _cameraSpline;
     TunnelSettings _settings;
-    Camera _camera;
-    //FollowCam _camera;
+    //Camera _camera;
+    FreeFlyCamera _camera;
 
-    //int* _neighbours = nullptr;
+    GpuBundle _meshBundle;
+    scene::Scene _scene;
+
   };
 
 }
