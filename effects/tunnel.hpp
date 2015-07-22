@@ -37,6 +37,9 @@ namespace tano
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
 
+    void PlexusUpdate(const UpdateState& state);
+    void NormalUpdate(const UpdateState& state);
+
     GpuBundle _linesBundle;
     GpuBundle _compositeBundle;
 
@@ -51,6 +54,8 @@ namespace tano
     TunnelSettings _settings;
     Camera _camera;
     //FollowCam _camera;
+
+    //int* _neighbours = nullptr;
   };
 
 }

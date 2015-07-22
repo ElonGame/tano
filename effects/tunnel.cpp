@@ -13,6 +13,7 @@
 #include "../generated/input_buffer.hpp"
 #include "../generated/output_buffer.hpp"
 #include "../fullscreen_effect.hpp"
+#include "../mesh_utils.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -28,11 +29,14 @@ Tunnel::Tunnel(const string& name, const string& config, u32 id) : BaseEffect(na
 
   PROPERTIES.SetActive(Name());
 #endif
+
+  //_neighbours = new int[16*1024*16];
 }
 
 //------------------------------------------------------------------------------
 Tunnel::~Tunnel()
 {
+  // SAFE_ADELETE(_neighbours);
 }
 
 //------------------------------------------------------------------------------
@@ -102,15 +106,83 @@ bool Tunnel::Update(const UpdateState& state)
   V2 cameraParams = BLACKBOARD.GetVec2Var("tunnel.cameraParams");
   //_camera.SetMaxSpeedAndForce(cameraParams.x, cameraParams.y);
 
-  // create spline segment
-  float radius = BLACKBOARD.GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
-  // radius *= (1 + 0.2f * sinf(state.localTime.TotalSecondsAsFloat()));
-  int numSegments = BLACKBOARD.GetIntVar("tunnel.segments");
-
   _tunnelVerts.Clear();
 
-  SimpleAppendBuffer<V3, 512> ring1, ring2;
+  // NormalUpdate(state);
+  PlexusUpdate(state);
 
+  UpdateCameraMatrix(state);
+  return true;
+}
+
+//------------------------------------------------------------------------------
+void Tunnel::PlexusUpdate(const UpdateState& state)
+{
+  float radius = BLACKBOARD.GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
+  int numSegments = BLACKBOARD.GetIntVar("tunnel.segments");
+
+  V3* points = g_ScratchMemory.Alloc<V3>(16 * 1024);
+  int* neighbours = g_ScratchMemory.Alloc<int>(16 * 1024 * 16);
+
+  float START_OFS = -2;
+  int tmp = (int)((_camera._pos.z / Z_SPACING) / Z_SPACING * Z_SPACING);
+  float distClamped = (float)tmp;
+  int depth = 50;
+
+  int num = depth * numSegments;
+
+  int idx = 0;
+  for (int j = 0; j < depth; ++j)
+  {
+    V3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
+
+    float angle = 0;
+    float angleInc = 2 * XM_PI / numSegments;
+    for (int i = 0; i < numSegments; ++i)
+    {
+      V3 p = pos + radius * V3(cosf(angle), sinf(angle), 0);
+      points[idx] = p;
+      // add neighbours
+      int n = 0;
+
+      int idxDown = i == 0 ? numSegments - 1 : i - 1;
+      int idxUp = (i + 1) % numSegments;
+
+      neighbours[idx * num + n++] = (j * numSegments) + idxDown;
+      neighbours[idx * num + n++] = (j * numSegments) + idxUp;
+
+      if (j > 0)
+      {
+        neighbours[idx * num + n++] = ((j - 1) * numSegments) + i;
+        neighbours[idx * num + n++] = ((j - 1) * numSegments) + idxDown;
+        neighbours[idx * num + n++] = ((j - 1) * numSegments) + idxUp;
+      }
+
+      if (j < depth - 1)
+      {
+        neighbours[idx * num + n++] = ((j + 1) * numSegments) + i;
+        neighbours[idx * num + n++] = ((j + 1) * numSegments) + idxDown;
+        neighbours[idx * num + n++] = ((j + 1) * numSegments) + idxUp;
+      }
+
+      neighbours[idx * num + n] = -1;
+
+      idx++;
+      angle += angleInc;
+    }
+  }
+
+  int numVerts = CalcPlexusGrouping(_tunnelVerts.Data(), points, idx, neighbours, _settings.plexus);
+  _tunnelVerts.Resize(numVerts);
+}
+
+//------------------------------------------------------------------------------
+void Tunnel::NormalUpdate(const UpdateState& state)
+{
+  float radius = BLACKBOARD.GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
+  int numSegments = BLACKBOARD.GetIntVar("tunnel.segments");
+
+  SimpleAppendBuffer<V3, 512> ring1, ring2;
   SimpleAppendBuffer<V3, 512>* rings[] = {&ring1, &ring2};
 
   float START_OFS = -2;
@@ -133,7 +205,7 @@ bool Tunnel::Update(const UpdateState& state)
     }
   }
 
-  for (int j = 2; j < 50; ++j)
+  for (int j = 0; j < 50; ++j)
   {
     // copy out the first ring, add lines to the second, fill the first, and
     // flip the buffers
@@ -168,9 +240,6 @@ bool Tunnel::Update(const UpdateState& state)
 
     swap(rings[0], rings[1]);
   }
-
-  UpdateCameraMatrix(state);
-  return true;
 }
 
 //------------------------------------------------------------------------------
@@ -183,15 +252,13 @@ bool Tunnel::FixedUpdate(const FixedUpdateState& state)
   _dist += state.delta * speed;
 
   V3 pos = _cameraSpline.Interpolate(_dist / CAMERA_STEP);
-  _camera._pos = ToVector3(pos) + Vector3(
-    5 * sinf(state.localTime.TotalSecondsAsFloat()),
-    5 * cosf(state.localTime.TotalSecondsAsFloat()),
-    0);
+  _camera._pos = ToVector3(pos) + Vector3(5 * sinf(state.localTime.TotalSecondsAsFloat()),
+                                      5 * cosf(state.localTime.TotalSecondsAsFloat()),
+                                      0);
 
-  _camera._dir = Vector3(
-    sinf(state.localTime.TotalSecondsAsFloat()) * dirScale,
-    cosf(state.localTime.TotalSecondsAsFloat()) * dirScale,
-    1);
+  _camera._dir = Vector3(sinf(state.localTime.TotalSecondsAsFloat()) * dirScale,
+      cosf(state.localTime.TotalSecondsAsFloat()) * dirScale,
+      1);
 
   //_camera.SetFollowTarget(ToVector3(pos));
   _camera.Update(state);
@@ -262,6 +329,12 @@ void Tunnel::RenderParameterSet()
 {
   ImGui::SliderFloat("Exposure", &_settings.tonemap.exposure, 0.1f, 20.0f);
   ImGui::SliderFloat("Min White", &_settings.tonemap.min_white, 0.1f, 20.0f);
+
+  ImGui::SliderFloat("eps", &_settings.plexus.eps, 0.1f, 25.0f);
+  ImGui::SliderFloat("min-dist", &_settings.plexus.min_dist, 0.1f, 25.0f);
+  ImGui::SliderFloat("max-dist", &_settings.plexus.max_dist, 10.0, 150.0f);
+  ImGui::SliderInt("num-nearest", &_settings.plexus.num_nearest, 1, 20);
+  ImGui::SliderInt("num-neighbours", &_settings.plexus.num_neighbours, 1, 100);
 
   if (ImGui::Button("Reset"))
     Reset();

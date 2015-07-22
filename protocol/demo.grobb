@@ -179,5 +179,6 @@ struct sample_settings
 
 struct tunnel_settings
 {
-  tonemap_reinhard_settings tonemap;  
+  tonemap_reinhard_settings tonemap;
+  plexus_grouping plexus;
 };

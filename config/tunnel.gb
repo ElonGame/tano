@@ -3,4 +3,11 @@
     exposure: 0.502000;
     min_white: 3.517000;
   };
+  plexus: {
+    eps: 4.879000;
+    min_dist: 0.100000;
+    max_dist: 67.273003;
+    num_neighbours: 5;
+    num_nearest: 8;
+  };
 };
