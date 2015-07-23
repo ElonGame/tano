@@ -110,7 +110,7 @@ bool Tunnel::Init()
 
   MeshLoader loader;
   INIT(loader.Load("gfx/newblob1.boba"));
-  INIT(CreateScene(loader, 0, &_scene));
+  INIT(CreateScene(loader, SceneOptions(), &_scene));
 
   END_INIT_SEQUENCE();
 }
@@ -352,7 +352,13 @@ bool Tunnel::Render()
 
       for (scene::Mesh* mesh : buf->meshes)
       {
-        _cbMesh.vs1.objWorld = mesh->mtxGlobal.Transpose();
+        Matrix mtx = mesh->mtxLocal;
+        if (mesh->parentPtr)
+        {
+          mtx = mtx * mesh->parentPtr->mtxLocal;
+        }
+
+        _cbMesh.vs1.objWorld = mtx.Transpose();
         _cbMesh.Set(_ctx, 1);
         _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
       }

@@ -17,6 +17,7 @@ namespace tano
       string name;
       u32 id;
       u32 parentId;
+      void* userData = nullptr;
     };
 
     struct Mesh : BaseObject
@@ -30,7 +31,6 @@ namespace tano
         u32 indexCount;
       };
 
-      void* userData = nullptr;
       ObjectHandle vb;
       ObjectHandle ib;
 
