@@ -55,3 +55,11 @@ namespace tunnel
 
     float dirScale = 0.1; 
 }
+
+namespace fluid
+{
+    int blobSize = 20;
+    float blobStrength = 1000;
+    float diff = 1;
+    float visc = 10;
+}

@@ -90,30 +90,72 @@ bool Fluid::Render()
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::Update(const FixedUpdateState& state)
-{
-  DensityStep(state);
-  VelocityStep(state);
-}
-
-//------------------------------------------------------------------------------
-void Fluid::FluidSim::AddForces(const FixedUpdateState& state)
+Fluid::FluidSim::FluidSim()
 {
   for (int i = 0; i < FLUID_SIZE_PADDED_SQ; ++i)
   {
-    d[i] = state.delta * forces[i];
+    dForce[i] = 0.f;
+    uForce[i] = 0.f;
+    vForce[i] = 0.f;
+
+    density0[i] = 0.f;
+    density1[i] = 0.f;
+
+    u0[i] = 0.f;
+    u1[i] = 0.f;
+
+    v0[i] = 0.f;
+    v1[i] = 0.f;
   }
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::Diffuse(const FixedUpdateState& state)
+void Fluid::FluidSim::Update(const FixedUpdateState& state)
 {
-  float diffRate = 0.5f;
-  float a = state.delta * diffRate * FLUID_SIZE_SQ;
+  static int count = 0;
+  if ((count % 4) == 0)
+  {
+    DensityStep(state);
+    VelocityStep(state);
+  }
+
+  int size = BLACKBOARD.GetIntVar("fluid.blobSize");
+  float strength = BLACKBOARD.GetFloatVar("fluid.blobStrength");
+
+  if ((count % 10) == 0)
+  {
+    for (int i = 0; i < size; ++i)
+    {
+      for (int j = 0; j < size; ++j)
+      {
+        dForce[IX((FLUID_SIZE - i) / 2, (FLUID_SIZE - j) / 2)] = strength;
+        vForce[IX((FLUID_SIZE - i) / 2, (FLUID_SIZE - j) / 2)] = strength;
+      }
+    }
+  }
+
+  ++count;
+}
+
+//------------------------------------------------------------------------------
+void Fluid::FluidSim::AddForce(const FixedUpdateState& state, float* out, float* force)
+{
+  for (int i = 0; i < FLUID_SIZE_PADDED_SQ; ++i)
+  {
+    out[i] = state.delta * force[i];
+  }
+}
+
+//------------------------------------------------------------------------------
+void Fluid::FluidSim::Diffuse(int b, const FixedUpdateState& state, float diff, float* out, float* old)
+{
+  float a = state.delta * diff * FLUID_SIZE_SQ;
 
   // Implicit technique for calcuating D(n+1).
   // Instead of D(t+1) = D(t) + dt * D(t, stuff), do
   // D(t) = D(t+1) - dt * D(t+1, stuff) 
+
+  float r = 1.0f / (1 + 4 * a);
 
   // Gauss-Seidel solver
   for (int k = 0; k < 20; ++k)
@@ -122,18 +164,17 @@ void Fluid::FluidSim::Diffuse(const FixedUpdateState& state)
     {
       for (int x = 1; x <= FLUID_SIZE; ++x)
       {
-        d[IX(x, y)] =
-            (d0[IX(x, y)] + a * (d[IX(x - 1, y)] + d[IX(x + 1, y)] + d[IX(x, y - 1)] + d[IX(x, y + 1)])) /
-            (1 + 4 * a);
+        out[IX(x, y)] =
+            r * (old[IX(x, y)] + a * (out[IX(x - 1, y)] + out[IX(x + 1, y)] + out[IX(x, y - 1)] + out[IX(x, y + 1)]));
       }
     }
 
-    BoundaryConditions();
+    BoundaryConditions(b, out);
   }
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::Advect(const FixedUpdateState& state)
+void Fluid::FluidSim::Advect(int b, const FixedUpdateState& state, float* out, float* old, float* u, float *v)
 {
 
   float dt = state.delta * FLUID_SIZE;
@@ -147,7 +188,7 @@ void Fluid::FluidSim::Advect(const FixedUpdateState& state)
     {
       // for each element, travel backwards along the velocity vector, and bilerp
       // between the 4 cells we end up in
-      V2 p = V2(fx, fy) - dt * v[IX(x, y)];
+      V2 p = V2(fx, fy) - dt * V2(u[IX(x, y)], v[IX(x, y)]);
       p.x = Clamp(0.5f, size + 0.5f, p.x);
       p.y = Clamp(0.5f, size + 0.5f, p.y);
 
@@ -161,35 +202,104 @@ void Fluid::FluidSim::Advect(const FixedUpdateState& state)
       float t0 = p.y - (float)y0;
       float t1 = 1 - t0;
 
-      d[IX(x, y)] = lerp(
-        lerp(d0[IX(x0, y0)], d0[IX(x1, y0)], s0),
-        lerp(d0[IX(x0, y1)], d0[IX(x1, y1)], s1),
+      dCur[IX(x, y)] = lerp(
+        lerp(dOld[IX(x0, y0)], dOld[IX(x1, y0)], s0),
+        lerp(dOld[IX(x0, y1)], dOld[IX(x1, y1)], s1),
         t0);
 
       fx += 1;
     }
     fy += 1;
   }
+
+  BoundaryConditions(b, out);
 }
 
 //------------------------------------------------------------------------------
 void Fluid::FluidSim::DensityStep(const FixedUpdateState& state)
 {
-  AddForces(state);
-  swap(d0, d);
-  Diffuse(state);
-  swap(d0, d);
-  Advect(state);
+  float diff = BLACKBOARD.GetFloatVar("fluid.diff");
+  AddForce(state, dCur, dForce);
+  swap(dCur, dOld);
+  Diffuse(0, state, diff, dCur, dOld);
+  swap(dCur, dOld);
+  Advect(0, state, dCur, dOld, uCur, vCur);
 }
 
 //------------------------------------------------------------------------------
 void Fluid::FluidSim::VelocityStep(const FixedUpdateState& state)
 {
+  float visc = BLACKBOARD.GetFloatVar("fluid.visc");
+  AddForce(state, vCur, vForce);
+  swap(uCur, uOld);
+  swap(vCur, vOld);
+  Diffuse(1, state, visc, uCur, uOld);
+  Diffuse(2, state, visc, vCur, vOld);
+  Project(uCur, vCur, uOld, vOld);
+
+  swap(uCur, uOld);
+  swap(vCur, vOld);
+  Advect(1, state, uCur, uOld, uOld, vOld);
+  Advect(2, state, vCur, vOld, uOld, vOld);
+  Project(uCur, vCur, uOld, vOld);
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::BoundaryConditions()
+void Fluid::FluidSim::Project(float* u, float* v, float* p, float* div)
 {
+  float h = 1.0 / FLUID_SIZE;
+  for (int i = 1; i <= FLUID_SIZE; i++)
+  {
+    for (int j = 1; j <= FLUID_SIZE; j++)
+    {
+      div[IX(i, j)] = -0.5f * h * (u[IX(i + 1, j)] - u[IX(i - 1, j)] + v[IX(i, j + 1)] - v[IX(i, j - 1)]);
+      p[IX(i, j)] = 0;
+    }
+  }
+
+  BoundaryConditions(0, div);
+  BoundaryConditions(0, p);
+
+  for (int k = 0; k < 20; k++)
+  {
+    for (int i = 1; i <= FLUID_SIZE; i++)
+    {
+      for (int j = 1; j <= FLUID_SIZE; j++)
+      {
+        p[IX(i, j)] =
+            (div[IX(i, j)] + p[IX(i - 1, j)] + p[IX(i + 1, j)] + p[IX(i, j - 1)] + p[IX(i, j + 1)]) / 4;
+      }
+    }
+    BoundaryConditions(0, p);
+  }
+
+  for (int i = 1; i <= FLUID_SIZE; i++)
+  {
+    for (int j = 1; j <= FLUID_SIZE; j++)
+    {
+      u[IX(i, j)] -= 0.5f * (p[IX(i + 1, j)] - p[IX(i - 1, j)]) / h;
+      v[IX(i, j)] -= 0.5f * (p[IX(i, j + 1)] - p[IX(i, j - 1)]) / h;
+    }
+  }
+
+  BoundaryConditions(1, u);
+  BoundaryConditions(2, v);
+}
+//------------------------------------------------------------------------------
+void Fluid::FluidSim::BoundaryConditions(int b, float* x)
+{
+  for (int i = 1; i <= FLUID_SIZE; i++)
+  {
+    x[IX(0, i)] = b == 1 ? -x[IX(1, i)] : x[IX(1, i)];
+    x[IX(FLUID_SIZE + 1, i)] = b == 1 ? -x[IX(FLUID_SIZE, i)] : x[IX(FLUID_SIZE, i)];
+    x[IX(i, 0)] = b == 2 ? -x[IX(i, 1)] : x[IX(i, 1)];
+    x[IX(i, FLUID_SIZE + 1)] = b == 2 ? -x[IX(i, FLUID_SIZE)] : x[IX(i, FLUID_SIZE)];
+  }
+  x[IX(0, 0)] = 0.5f * (x[IX(1, 0)] + x[IX(0, 1)]);
+  x[IX(0, FLUID_SIZE + 1)] = 0.5f * (x[IX(1, FLUID_SIZE + 1)] + x[IX(0, FLUID_SIZE)]);
+  x[IX(FLUID_SIZE + 1, 0)] = 0.5f * (x[IX(FLUID_SIZE, 0)] + x[IX(FLUID_SIZE + 1, 1)]);
+  x[IX(FLUID_SIZE + 1, FLUID_SIZE + 1)] =
+      0.5f * (x[IX(FLUID_SIZE, FLUID_SIZE + 1)] + x[IX(FLUID_SIZE + 1, FLUID_SIZE)]);
 }
 
 //------------------------------------------------------------------------------
@@ -200,7 +310,8 @@ void Fluid::UpdateFluidTexture()
   {
     for (int j = 0; j < FluidSim::FLUID_SIZE; ++j)
     {
-      u32 r = 0xff;
+      float f = Clamp(0.f, 1.f, _sim.dCur[FluidSim::IX(j, i)]);
+      u32 r = (u32)(255 * f);
       u32 g = 0x00;
       u32 b = 0x00;
       p[i * FluidSim::FLUID_SIZE + j] = (0xff000000) | (b << 16) | (g << 8) | (r << 0);
@@ -213,7 +324,8 @@ void Fluid::UpdateFluidTexture()
 #if WITH_IMGUI
 void Fluid::RenderParameterSet()
 {
-  ImGui::Image((void*)&_fluidTexture, ImVec2((float)FluidSim::FLUID_SIZE, (float)FluidSim::FLUID_SIZE));
+  ImGui::Image((void*)&_fluidTexture, 
+    ImVec2(4 * (float)FluidSim::FLUID_SIZE, 4 * (float)FluidSim::FLUID_SIZE));
 
   if (ImGui::Button("Reset"))
     Reset();

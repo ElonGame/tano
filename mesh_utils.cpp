@@ -339,57 +339,6 @@ bool tano::CreateScene(const MeshLoader& loader, const SceneOptions& options, sc
 }
 
 //------------------------------------------------------------------------------
-bool CreateBuffersFromMesh(const MeshLoader& loader, const char* name, u32* vertexFlags, GpuObjects* objects)
-{
-  for (const protocol::MeshBlob* mesh : loader.meshes)
-  {
-    // if a name is given, check against this
-    if (name && strcmp(name, mesh->name) != 0)
-      continue;
-
-    // mesh found, allocate the vertex/index buffer
-    u32 vertexFormat = MeshLoader::GetVertexFormat(*mesh);
-    if (vertexFlags)
-      *vertexFlags = vertexFormat;
-
-    u32 vertexSize = VertexSizeFromFlags(vertexFormat);
-
-    // create a temp array to interleave the vertex data
-    u32 numVerts = mesh->numVerts;
-    vector<float> buf(vertexSize * numVerts);
-    float* dst = buf.data();
-    for (u32 i = 0; i < numVerts; ++i)
-    {
-      // Copy a vertex at a time (dst[0], dst[1], dst[2] etc refers to x, y, z)
-      dst[0] = mesh->verts[i * 3 + 0];
-      dst[1] = mesh->verts[i * 3 + 1];
-      dst[2] = mesh->verts[i * 3 + 2];
-      dst += 3;
-
-      if (vertexFormat & VF_NORMAL)
-      {
-        dst[0] = mesh->normals[i * 3 + 0];
-        dst[1] = mesh->normals[i * 3 + 1];
-        dst[2] = mesh->normals[i * 3 + 2];
-        dst += 3;
-      }
-
-      if (vertexFormat & VF_TEX2_0)
-      {
-        dst[0] = mesh->uv[i * 2 + 0];
-        dst[1] = mesh->uv[i * 2 + 1];
-        dst += 2;
-      }
-    }
-
-    objects->CreateVertexBuffer(mesh->numVerts * vertexSize, vertexSize, buf.data());
-    objects->CreateIndexBuffer(mesh->numIndices * sizeof(u32), DXGI_FORMAT_R32_UINT, mesh->indices);
-    return true;
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
 SceneOptions::SceneOptions()
 {
   for (int i = 0; i < NUM_OBJECT_TYPES; ++i)
