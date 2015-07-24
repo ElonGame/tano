@@ -160,6 +160,7 @@
     <ClCompile Include="..\debug_api.cpp" />
     <ClCompile Include="..\dyn_particles.cpp" />
     <ClCompile Include="..\effects\cloth.cpp" />
+    <ClCompile Include="..\effects\fluid.cpp" />
     <ClCompile Include="..\effects\landscape.cpp" />
     <ClCompile Include="..\effects\plexus.cpp" />
     <ClCompile Include="..\effects\raymarcher.cpp" />
@@ -491,6 +492,7 @@
     <ClInclude Include="..\debug_api.hpp" />
     <ClInclude Include="..\dyn_particles.hpp" />
     <ClInclude Include="..\effects\cloth.hpp" />
+    <ClInclude Include="..\effects\fluid.hpp" />
     <ClInclude Include="..\effects\landscape.hpp" />
     <ClInclude Include="..\effects\plexus.hpp" />
     <ClInclude Include="..\effects\raymarcher.hpp" />

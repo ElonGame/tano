@@ -38,15 +38,20 @@
     end_time: 1300000;
     settings: 'config/plexus.gb';
   },
-
   {
     name: 'tunnel';
     factory: 'tunnel';
     start_time: 1300000;
     end_time: 1300000;
     settings: 'config/tunnel.gb';
+  },
+  {
+    name: 'fluid';
+    factory: 'fluid';
+    start_time: 1300000;
+    end_time: 1300000;
+    settings: 'config/fluid.gb';
     force: true;
   },
-
   ];
 }

@@ -110,9 +110,12 @@ bool DemoEngine::Start()
   {
     for (BaseEffect* effect : _effects)
     {
-      effect->Update(_initialState);
-      effect->FixedUpdate(_initialFixedState);
-      effect->Render();
+      if (!_forceEffect || effect == _forceEffect)
+      {
+        effect->Update(_initialState);
+        effect->FixedUpdate(_initialFixedState);
+        effect->Render();
+      }
     }
   }
 
@@ -393,6 +396,20 @@ bool DemoEngine::ApplySettings(const DemoSettings& settings)
 {
   BEGIN_INIT_SEQUENCE();
 
+  bool hasForceEffect = false;
+  for (const EffectSettings& e : settings.effects)
+  {
+    if (e.force)
+    {
+      if (hasForceEffect)
+      {
+        INJECT_ERROR("Only a single effect can be marked as force!");
+        continue;
+      }
+      hasForceEffect = true;
+    }
+  }
+
   for (const EffectSettings& e : settings.effects)
   {
     // Look up the factory
@@ -421,15 +438,14 @@ bool DemoEngine::ApplySettings(const DemoSettings& settings)
       return effect->OnConfigChanged(buf);
     });
 
-    INIT_FATAL(effect->Init());
+    // if using a force effect, only init that one
+    if (!hasForceEffect || (hasForceEffect && e.force))
+    {
+      INIT_FATAL(effect->Init());
+    }
 
     if (e.force)
     {
-      if (_forceEffect)
-      {
-        INJECT_ERROR("Only a single effect can be marked as force!");
-        continue;
-      }
       _forceEffect = effect;
       _initForceEffect = true;
     }

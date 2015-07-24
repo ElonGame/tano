@@ -223,6 +223,9 @@
     <ClCompile Include="..\effects\sample.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\effects\fluid.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -457,6 +460,9 @@
       <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\effects\sample.hpp">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\fluid.hpp">
       <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>

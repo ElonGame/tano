@@ -182,3 +182,8 @@ struct tunnel_settings
   tonemap_reinhard_settings tonemap;
   plexus_grouping plexus;
 };
+
+struct fluid_settings
+{
+  tonemap_reinhard_settings tonemap;
+};
