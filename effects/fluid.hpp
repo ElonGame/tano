@@ -59,6 +59,8 @@ namespace tano
 
       void BoundaryConditions(int b, float* x);
 
+      void Verify();
+
       float density0[FLUID_SIZE_PADDED_SQ];
       float density1[FLUID_SIZE_PADDED_SQ];
       float* dCur = density0;

@@ -34,6 +34,8 @@ namespace tano
   inline V2 Normalize(const V2& v)
   {
     float len = Length(v);
+    if (len == 0)
+      return V2(0,0);
     return 1 / len * v;
   }
 

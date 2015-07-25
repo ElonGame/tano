@@ -133,9 +133,14 @@ void Fluid::FluidSim::Update(const UpdateState& state)
       int x = FLUID_SIZE / 2 - size / 2 + j;
       int y = FLUID_SIZE / 2 - size / 2 + i;
 
+      V2 aa((float)(i - size /2), (float)(j - size / 2));
+      aa = Normalize(aa);
+      V2 bb = V2(cosf(angle), sinf(angle));
+      float d = Dot(aa, bb);
+
       dOld[IX(x, y)] += diffuseStrength; // / 2 + (diffuseStrength / 2) * sinf(2 * angle);
-      uOld[IX(x, y)] += velocityStrength * sinf(angle);
-      vOld[IX(x, y)] += velocityStrength * cosf(angle);
+      uOld[IX(x, y)] += d * velocityStrength * aa.x;
+      vOld[IX(x, y)] += d * velocityStrength * aa.y;
     }
   }
 
@@ -323,6 +328,17 @@ void Fluid::FluidSim::Project(float* u, float* v, float* p, float* div)
   BoundaryConditions(1, u);
   BoundaryConditions(2, v);
 }
+
+//------------------------------------------------------------------------------
+void Fluid::FluidSim::Verify()
+{
+  for (int i = 0; i < FLUID_SIZE_PADDED_SQ; ++i)
+  {
+    assert(!isnan(uCur[i]));
+    assert(!isnan(uOld[i]));
+  }
+}
+
 //------------------------------------------------------------------------------
 void Fluid::FluidSim::BoundaryConditions(int b, float* x)
 {
@@ -343,7 +359,7 @@ void Fluid::FluidSim::BoundaryConditions(int b, float* x)
 //------------------------------------------------------------------------------
 void Fluid::UpdateFluidTexture()
 {
-  static int texture = 0;
+  static int texture = 2;
   if (g_KeyUpTrigger.IsTriggered('B'))
     texture = (texture + 1) % 3;
 
@@ -353,8 +369,8 @@ void Fluid::UpdateFluidTexture()
   {
     for (int j = 0; j < FluidSim::FLUID_SIZE; ++j)
     {
-      float u = Clamp(0.f, 1.f, s * _sim.uCur[FluidSim::IX(j+1, i+1)]);
-      float v = Clamp(0.f, 1.f, s * _sim.vCur[FluidSim::IX(j+1, i+1)]);
+      float u = Clamp(0.f, 1.f, s * (0.5f + _sim.uCur[FluidSim::IX(j+1, i+1)]));
+      float v = Clamp(0.f, 1.f, s * (0.5f + _sim.vCur[FluidSim::IX(j+1, i+1)]));
       float d = Clamp(0.f, 1.f, s * _sim.dCur[FluidSim::IX(j+1, i+1)]);
 
       float vals[] = {u, v, d };
