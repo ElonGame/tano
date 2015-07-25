@@ -37,7 +37,7 @@ namespace tano
     {
       enum
       {
-        FLUID_SIZE = 64,
+        FLUID_SIZE = 128,
         FLUID_SIZE_PADDED = FLUID_SIZE + 2,
         FLUID_SIZE_SQ = FLUID_SIZE * FLUID_SIZE,
         FLUID_SIZE_PADDED_SQ = FLUID_SIZE_PADDED * FLUID_SIZE_PADDED,
@@ -58,10 +58,6 @@ namespace tano
       void VelocityStep(float dt);
 
       void BoundaryConditions(int b, float* x);
-
-      //float dForce[FLUID_SIZE_PADDED_SQ];
-      //float uForce[FLUID_SIZE_PADDED_SQ];
-      //float vForce[FLUID_SIZE_PADDED_SQ];
 
       float density0[FLUID_SIZE_PADDED_SQ];
       float density1[FLUID_SIZE_PADDED_SQ];

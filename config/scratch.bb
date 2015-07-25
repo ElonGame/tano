@@ -58,11 +58,11 @@ namespace tunnel
 
 namespace fluid
 {
-    int blobSize = 10;
-    float timeScale = 1;
-    float diffuseScale = 0.15;
+    int blobSize = 11;
+    float timeScale = 10;
+    float diffuseScale = 1.25;
     float diffuseStrength = 5;
-    float velocityStrength = 1;
+    float velocityStrength = 10;
     float diff = 0.001;
-    float visc = 0.001;
+    float visc = 2;
 }

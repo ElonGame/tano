@@ -133,7 +133,7 @@ void Fluid::FluidSim::Update(const UpdateState& state)
       int x = FLUID_SIZE / 2 - size / 2 + j;
       int y = FLUID_SIZE / 2 - size / 2 + i;
 
-      dOld[IX(x, y)] += randf(0.f, diffuseStrength);
+      dOld[IX(x, y)] += diffuseStrength; // / 2 + (diffuseStrength / 2) * sinf(2 * angle);
       uOld[IX(x, y)] += velocityStrength * sinf(angle);
       vOld[IX(x, y)] += velocityStrength * cosf(angle);
     }
@@ -222,9 +222,9 @@ void Fluid::FluidSim::Advect(int b, float dt, float* out, float* old, float* u, 
   int i, j, i0, j0, i1, j1;
   float x, y, s0, t0, s1, t1, dt0;
   dt0 = dt * FLUID_SIZE;
-  for (i = 1; i <= FLUID_SIZE; i++)
+  for (j = 1; j <= FLUID_SIZE; j++)
   {
-    for (j = 1; j <= FLUID_SIZE; j++)
+    for (i = 1; i <= FLUID_SIZE; i++)
     {
       x = i - dt0 * u[IX(i, j)];
       y = j - dt0 * v[IX(i, j)];
@@ -286,9 +286,9 @@ void Fluid::FluidSim::VelocityStep(float dt)
 void Fluid::FluidSim::Project(float* u, float* v, float* p, float* div)
 {
   float h = 1.0f / FLUID_SIZE;
-  for (int i = 1; i <= FLUID_SIZE; i++)
+  for (int j = 1; j <= FLUID_SIZE; j++)
   {
-    for (int j = 1; j <= FLUID_SIZE; j++)
+    for (int i = 1; i <= FLUID_SIZE; i++)
     {
       div[IX(i, j)] = -0.5f * h * (u[IX(i + 1, j)] - u[IX(i - 1, j)] + v[IX(i, j + 1)] - v[IX(i, j - 1)]);
       p[IX(i, j)] = 0;
@@ -300,9 +300,9 @@ void Fluid::FluidSim::Project(float* u, float* v, float* p, float* div)
 
   for (int k = 0; k < 20; k++)
   {
-    for (int i = 1; i <= FLUID_SIZE; i++)
+    for (int j = 1; j <= FLUID_SIZE; j++)
     {
-      for (int j = 1; j <= FLUID_SIZE; j++)
+      for (int i = 1; i <= FLUID_SIZE; i++)
       {
         p[IX(i, j)] =
             (div[IX(i, j)] + p[IX(i - 1, j)] + p[IX(i + 1, j)] + p[IX(i, j - 1)] + p[IX(i, j + 1)]) / 4;
@@ -311,9 +311,9 @@ void Fluid::FluidSim::Project(float* u, float* v, float* p, float* div)
     BoundaryConditions(0, p);
   }
 
-  for (int i = 1; i <= FLUID_SIZE; i++)
+  for (int j = 1; j <= FLUID_SIZE; j++)
   {
-    for (int j = 1; j <= FLUID_SIZE; j++)
+    for (int i = 1; i <= FLUID_SIZE; i++)
     {
       u[IX(i, j)] -= 0.5f * (p[IX(i + 1, j)] - p[IX(i - 1, j)]) / h;
       v[IX(i, j)] -= 0.5f * (p[IX(i, j + 1)] - p[IX(i, j - 1)]) / h;
@@ -353,9 +353,9 @@ void Fluid::UpdateFluidTexture()
   {
     for (int j = 0; j < FluidSim::FLUID_SIZE; ++j)
     {
-      float u = Clamp(0.f, 1.f, s * _sim.uCur[FluidSim::IX(j, i)]);
-      float v = Clamp(0.f, 1.f, s * _sim.vCur[FluidSim::IX(j, i)]);
-      float d = Clamp(0.f, 1.f, s * _sim.dCur[FluidSim::IX(j, i)]);
+      float u = Clamp(0.f, 1.f, s * _sim.uCur[FluidSim::IX(j+1, i+1)]);
+      float v = Clamp(0.f, 1.f, s * _sim.vCur[FluidSim::IX(j+1, i+1)]);
+      float d = Clamp(0.f, 1.f, s * _sim.dCur[FluidSim::IX(j+1, i+1)]);
 
       float vals[] = {u, v, d };
       float f = vals[texture];
