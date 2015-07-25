@@ -37,7 +37,7 @@ namespace tano
     {
       enum
       {
-        FLUID_SIZE = 128,
+        FLUID_SIZE = 64,
         FLUID_SIZE_PADDED = FLUID_SIZE + 2,
         FLUID_SIZE_SQ = FLUID_SIZE * FLUID_SIZE,
         FLUID_SIZE_PADDED_SQ = FLUID_SIZE_PADDED * FLUID_SIZE_PADDED,
@@ -47,21 +47,21 @@ namespace tano
 
       static int IX(int x, int y) { return x + FLUID_SIZE_PADDED * y; }
 
-      void Update(const FixedUpdateState& state);
+      void Update(const UpdateState& state);
 
-      void AddForce(const FixedUpdateState& state, float* out, float* force);
-      void Diffuse(int b, const FixedUpdateState& state, float diff, float* out, float* old);
-      void Advect(int b, const FixedUpdateState& state, float* out, float* old, float* u, float *v);
+      void AddForce(float dt, float* out, float* force);
+      void Diffuse(int b, float dt, float diff, float* out, float* old);
+      void Advect(int b, float dt, float* out, float* old, float* u, float *v);
       void Project(float* u, float* v, float* p, float* div);
 
-      void DensityStep(const FixedUpdateState& state);
-      void VelocityStep(const FixedUpdateState& state);
+      void DensityStep(float dt);
+      void VelocityStep(float dt);
 
       void BoundaryConditions(int b, float* x);
 
-      float dForce[FLUID_SIZE_PADDED_SQ];
-      float uForce[FLUID_SIZE_PADDED_SQ];
-      float vForce[FLUID_SIZE_PADDED_SQ];
+      //float dForce[FLUID_SIZE_PADDED_SQ];
+      //float uForce[FLUID_SIZE_PADDED_SQ];
+      //float vForce[FLUID_SIZE_PADDED_SQ];
 
       float density0[FLUID_SIZE_PADDED_SQ];
       float density1[FLUID_SIZE_PADDED_SQ];
