@@ -560,7 +560,10 @@ ObjectHandle Graphics::LoadTexture(
 {
   D3DX11_IMAGE_INFO imageInfo;
   if (FAILED(D3DX11GetImageInfoFromFileA(filename, NULL, &imageInfo, NULL)))
+  {
+    LOG_INFO("Unable to load texture: ", filename);
     return emptyHandle;
+  }
 
   if (info)
     *info = imageInfo;

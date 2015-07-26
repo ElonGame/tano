@@ -12,9 +12,13 @@
 #include "../generated/demo.parse.hpp"
 #include "../generated/input_buffer.hpp"
 #include "../generated/output_buffer.hpp"
+#include "../scheduler.hpp"
 
 using namespace tano;
 using namespace bristol;
+using namespace tano::scheduler;
+
+static int NUM_GRIDS = 20;
 
 //------------------------------------------------------------------------------
 Fluid::Fluid(const string &name, const string& config, u32 id)
@@ -46,6 +50,19 @@ bool Fluid::Init()
   BEGIN_INIT_SEQUENCE();
 
   _fluidTexture = GRAPHICS.CreateTexture(FluidSim::FLUID_SIZE, FluidSim::FLUID_SIZE, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+
+  vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
+    CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT),
+    CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
+  };
+
+  INIT(_backgroundBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/fluid.texture", "VsMain")
+    .PixelShader("shaders/out/fluid.texture", "PsMain")
+    .InputElements(inputs)
+    .DynamicVb((NUM_GRIDS+1)*(NUM_GRIDS+1), sizeof(Pos4Tex))));
+
+  INIT_RESOURCE(_backgroundTexture, RESOURCE_MANAGER.LoadTexture("gfx/abstract1.jpg"));
 
   END_INIT_SEQUENCE();
 }
@@ -95,10 +112,6 @@ Fluid::FluidSim::FluidSim()
 {
   for (int i = 0; i < FLUID_SIZE_PADDED_SQ; ++i)
   {
-    //dForce[i] = 0.f;
-    //uForce[i] = 0.f;
-    //vForce[i] = 0.f;
-
     density0[i] = 0.f;
     density1[i] = 0.f;
 
@@ -130,8 +143,8 @@ void Fluid::FluidSim::Update(const UpdateState& state)
   {
     for (int j = 0; j < size; ++j)
     {
-      int x = FLUID_SIZE / 2 - size / 2 + j;
-      int y = FLUID_SIZE / 2 - size / 2 + i;
+      int x = FLUID_SIZE_PADDED / 2 - size / 2 + j;
+      int y = FLUID_SIZE_PADDED / 2 - size / 2 + i;
 
       V2 aa((float)(i - size /2), (float)(j - size / 2));
       aa = Normalize(aa);
@@ -159,18 +172,76 @@ void Fluid::FluidSim::AddForce(float dt, float* out, float* force)
 }
 
 //------------------------------------------------------------------------------
+void Fluid::FluidSim::FluidKernelWorker(const TaskData& td)
+{
+  FluidKernelChunk* chunk = (FluidKernelChunk*)td.kernelData.data;
+  int yStart = chunk->yStart;
+  int yEnd = chunk->yEnd;
+  float* out = chunk->out;
+  float* old = chunk->old;
+
+  float a = chunk->dt * chunk->diff * FLUID_SIZE_SQ;
+  float r = 1.0f / (1 + 4 * a);
+
+  for (int y = yStart; y < yEnd; ++y)
+  {
+    for (int x = 1; x <= FLUID_SIZE; ++x)
+    {
+      out[IX(x, y)] =
+        r * (old[IX(x, y)] + a * (out[IX(x - 1, y)] + out[IX(x + 1, y)] + out[IX(x, y - 1)] + out[IX(x, y + 1)]));
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
 void Fluid::FluidSim::Diffuse(int b, float dt, float diff, float* out, float* old)
 {
   float a = dt * diff * FLUID_SIZE_SQ;
-
-  // Implicit technique for calcuating D(n+1).
-  // Instead of D(t+1) = D(t) + dt * D(t, stuff), do
-  // D(t) = D(t+1) - dt * D(t+1, stuff) 
-
   float r = 1.0f / (1 + 4 * a);
 
+  // The diffusion equation:
+  // D(n+1)[i,j] = D(n)[i, j] + k * dt * (D(n)[i-1,j] + D(n)[i+1,j] + D(n)[i,j-1] + D(n)[i,j+1] - 4 * D(n)[i, j]) / h*h
+
+  // Instead we set up an implicit equation:
+  // D(n)[i,j] = D(n+1)[i, j] - k * dt * (D(n+1)[i-1,j] + D(n+1)[i+1,j] + D(n+1)[i,j-1] + D(n+1)[i,j+1] - 4 * D(n+1)[i, j]) / h*h
+  // which has the form: b = A x (which x are the diffusion terms we want), and solve iteratively
+
+    // The setup for both Jacobi and Gauss-Seidel is the same:
+
+  // a11 * x1 + a12 * x2 + ... + a1n * xn = b1
+  // solve for x1:
+  // x1 = 1 / a11 * (b1 - a12 * x2 = a13 * x3 - ... - a12 * xn)
+  
+#if 1
+  enum { NUM_TASKS = 4, NUM_ITERATIONS = 10 };
+  int rows = FLUID_SIZE / NUM_TASKS;
+  SimpleAppendBuffer<TaskId, NUM_ITERATIONS * NUM_TASKS> fluidTasks;
+
+  // TODO: hmm, there is probably a crazy amount of false sharing and other badness going on
+
   // Gauss-Seidel solver
-  for (int k = 0; k < 20; ++k)
+  for (int k = 0; k < NUM_ITERATIONS; ++k)
+  {
+    for (int i = 0; i < NUM_TASKS; ++i)
+    {
+      FluidKernelChunk* data = (FluidKernelChunk*)g_ScratchMemory.Alloc(sizeof(FluidKernelChunk));
+      *data = FluidKernelChunk{ 1 + i * rows, 1 + (i+1) * rows, out, old, dt, diff };
+      KernelData kd;
+      kd.data = data;
+      kd.size = sizeof(FluidKernelChunk);
+      fluidTasks.Append(SCHEDULER.AddTask(kd, FluidKernelWorker));
+    }
+  }
+
+  for (const TaskId& taskId : fluidTasks)
+    SCHEDULER.Wait(taskId);
+
+  BoundaryConditions(b, out);
+
+#else
+
+  // Gauss-Seidel solver
+  for (int k = 0; k < 10; ++k)
   {
     for (int y = 1; y <= FLUID_SIZE; ++y)
     {
@@ -183,72 +254,36 @@ void Fluid::FluidSim::Diffuse(int b, float dt, float diff, float* out, float* ol
 
     BoundaryConditions(b, out);
   }
+
+#endif
 }
 
 //------------------------------------------------------------------------------
 void Fluid::FluidSim::Advect(int b, float dt, float* out, float* old, float* u, float *v)
 {
-#if 0
-  float dt = state.delta * FLUID_SIZE;
-  float size = (float)FLUID_SIZE;
-
-  float fy = 1;
-  for (int y = 1; y <= FLUID_SIZE; ++y)
+  float dt0 = dt * FLUID_SIZE;
+  for (int j = 1; j <= FLUID_SIZE; j++)
   {
-    float fx = 1;
-    for (int x = 1; x <=  FLUID_SIZE; ++x)
+    for (int i = 1; i <= FLUID_SIZE; i++)
     {
-      // for each element, travel backwards along the velocity vector, and bilerp
-      // between the 4 cells we end up in
-      V2 p = V2(fx, fy) - dt * V2(u[IX(x, y)], v[IX(x, y)]);
-      p.x = Clamp(0.5f, size + 0.5f, p.x);
-      p.y = Clamp(0.5f, size + 0.5f, p.y);
-
-      int x0 = (int)p.x;
-      int x1 = x0 + 1;
-      int y0 = (int)p.y;
-      int y1 = y0 + 1;
-
-      float s0 = p.x - (float)x0;
-      float s1 = 1 - s0;
-      float t0 = p.y - (float)y0;
-      float t1 = 1 - t0;
-
-      dCur[IX(x, y)] = lerp(
-        lerp(dOld[IX(x0, y0)], dOld[IX(x1, y0)], s0),
-        lerp(dOld[IX(x0, y1)], dOld[IX(x1, y1)], s1),
-        t0);
-
-      fx += 1;
-    }
-    fy += 1;
-  }
-#endif
-  int i, j, i0, j0, i1, j1;
-  float x, y, s0, t0, s1, t1, dt0;
-  dt0 = dt * FLUID_SIZE;
-  for (j = 1; j <= FLUID_SIZE; j++)
-  {
-    for (i = 1; i <= FLUID_SIZE; i++)
-    {
-      x = i - dt0 * u[IX(i, j)];
-      y = j - dt0 * v[IX(i, j)];
+      float x = i - dt0 * u[IX(i, j)];
+      float y = j - dt0 * v[IX(i, j)];
       if (x < 0.5)
         x = 0.5;
       if (x > FLUID_SIZE + 0.5)
         x = FLUID_SIZE + 0.5;
-      i0 = (int)x;
-      i1 = i0 + 1;
+      int i0 = (int)x;
+      int i1 = i0 + 1;
       if (y < 0.5)
         y = 0.5;
       if (y > FLUID_SIZE + 0.5)
         y = FLUID_SIZE + 0.5;
-      j0 = (int)y;
-      j1 = j0 + 1;
-      s1 = x - i0;
-      s0 = 1 - s1;
-      t1 = y - j0;
-      t0 = 1 - t1;
+      int j0 = (int)y;
+      int j1 = j0 + 1;
+      float s1 = x - i0;
+      float s0 = 1 - s1;
+      float t1 = y - j0;
+      float t0 = 1 - t1;
       out[IX(i, j)] = s0 * (t0 * old[IX(i0, j0)] + t1 * old[IX(i0, j1)]) +
                       s1 * (t0 * old[IX(i1, j0)] + t1 * old[IX(i1, j1)]);
     }
@@ -357,6 +392,38 @@ void Fluid::FluidSim::BoundaryConditions(int b, float* x)
 }
 
 //------------------------------------------------------------------------------
+void Fluid::UpdateBackgroundTexture()
+{
+  ObjectHandle h = _backgroundBundle.objects._vb;
+  Pos4Tex* verts = _ctx->MapWriteDiscard<Pos4Tex>(h);
+
+  int NUM_GRIDS = 20;
+  float xInc = 2.0f / (float)NUM_GRIDS;
+  float yInc = 2.0f / (float)NUM_GRIDS;
+
+  float uInc = 1.0f / (float)NUM_GRIDS;
+  float vInc = 1.0f / (float)NUM_GRIDS;
+
+  float y = 1.0f;
+  float v = 0.f;
+  for (int i = 0; i <= NUM_GRIDS; ++i)
+  {
+    float x = -1.0f;
+    float u = 0.0f;
+    for (int j = 0; j <= NUM_GRIDS; ++j)
+    {
+      x += xInc;
+      u += uInc;
+    }
+
+    y += yInc;
+    v += vInc;
+  }
+
+  _ctx->Unmap(h);
+}
+
+//------------------------------------------------------------------------------
 void Fluid::UpdateFluidTexture()
 {
   static int texture = 2;
@@ -435,3 +502,4 @@ void Fluid::Register()
 {
   DEMO_ENGINE.RegisterFactory(Name(), Fluid::Create);
 }
+

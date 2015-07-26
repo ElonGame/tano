@@ -34,6 +34,10 @@ shaders = {
     'common.scale' : {
         'ps' : ['PsScaleBias', 'PsScaleBiasSecondary'],
     },
+    'fluid.texture' : {
+        'vs' : ['VsMain'],
+        'ps' : ['PsMain'],
+    },
     'imgui' : {
         'vs' : ['VsMain'],
         'ps' : ['PsMain'],

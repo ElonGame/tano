@@ -244,6 +244,11 @@ ObjectHandle ResourceManager::LoadTexture(
     D3DX11_IMAGE_INFO* info)
 {
   string fullPath = ResolveFilename(filename, true);
+  if (fullPath.empty())
+  {
+    LOG_INFO("Unable to resolve filename: ", filename);
+    return ObjectHandle();
+  }
   _readFiles.insert(FileInfo(filename, fullPath));
 
   return GRAPHICS.LoadTexture(fullPath.c_str(), srgb, info);

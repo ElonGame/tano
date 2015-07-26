@@ -2,9 +2,15 @@
 #include "../base_effect.hpp"
 #include "../camera.hpp"
 #include "../generated/demo.types.hpp"
+#include "../gpu_objects.hpp"
 
 namespace tano
 {
+  namespace scheduler
+  {
+    struct TaskData;
+  }
+
   class Fluid : public BaseEffect
   {
   public:
@@ -32,6 +38,7 @@ namespace tano
 
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
+    void UpdateBackgroundTexture();
 
     struct FluidSim
     {
@@ -61,6 +68,17 @@ namespace tano
 
       void Verify();
 
+      struct FluidKernelChunk
+      {
+        int yStart, yEnd;
+        float* out;
+        float* old;
+        float dt;
+        float diff;
+      };
+
+      static void FluidKernelWorker(const scheduler::TaskData& td);
+
       float density0[FLUID_SIZE_PADDED_SQ];
       float density1[FLUID_SIZE_PADDED_SQ];
       float* dCur = density0;
@@ -76,6 +94,10 @@ namespace tano
       float* vCur = v0;
       float* vOld = v1;
     };
+
+    GpuBundle _backgroundBundle;
+    ObjectHandle _backgroundTexture;
+
 
     FluidSim _sim;
     ObjectHandle _fluidTexture;
