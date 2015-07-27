@@ -51,11 +51,13 @@ namespace tano
       vector<vector<PathElem*>> paths;
       vector<PathElem*> startingPoints;
 
-      vector<int> count;
+      vector<int> particleCount;
+      vector<u8> background;
       int width, height;
     };
 
 
+    void Render();
     void Update(const UpdateState& state);
     bool Init();
 

@@ -52,7 +52,7 @@ GreetsBlock::~GreetsBlock()
 GreetsBlock::GreetsData::GreetsData(int w, int h)
   : width(w)
   , height(h)
-  , count(w*h)
+  , particleCount(w*h)
 {
 }
 
@@ -98,21 +98,32 @@ bool GreetsBlock::Init()
 
   for (int i : {0, 10, 19, 29, 38})
   {
-    GreetsData* d = new GreetsData(w, 8);
-    d->CalcPath(w, 8, greetsBuf + i * w * 4);
+    GreetsData* d = new GreetsData(w, 7);
+    d->CalcPath(w, 7, greetsBuf + i * w * 4);
 
+    int NUM_PARTICLES = 10;
+    int total = 0;
     for (const PathElem* p : d->startingPoints)
     {
-      d->particles.resize(500);
-      for (int i = 0; i < 500; ++i)
+      total += p->pathLength * NUM_PARTICLES;
+    }
+
+    d->particles.resize(total);
+    int idx = 0;
+    for (const PathElem* p : d->startingPoints)
+    {
+      for (int i = idx; i < idx + NUM_PARTICLES * p->pathLength; ++i)
       {
         d->particles[i].x = p->x;
         d->particles[i].y = p->y;
-        float ll = randf(0.01f, 0.1f);
+        float ll = randf(0.01f, 0.01f);
+        ll = 0.001f;
         d->particles[i].speed = ll;
         d->particles[i].cur = ll;
         d->particles[i].dir = rand() % 4;
       }
+
+      idx += NUM_PARTICLES * p->pathLength;
     }
 
     _data.push_back(d);
@@ -149,38 +160,58 @@ void GreetsBlock::GreetsData::Update(const UpdateState& state)
     if (p.cur > 0)
       continue;
 
-    count[p.y*width+p.x]--;
+    particleCount[p.y*width+p.x]--;
 
     p.cur = p.speed;
 
     // check if we can go in the current direction
-    int cnt = 0;
-    while (!IsValid(p.x + dir[p.dir*2+0], p.y + dir[p.dir*2+1]))
+    int validDirs[4];
+    int numValidDirs = 0;
+    for (int i = 0; i < 4; ++i)
     {
-      p.dir = (p.dir + 1) % 4;
-      cnt += 1;
-      if (cnt == 4)
+      if (IsValid(p.x + dir[i*2+0], p.y + dir[i*2+1]))
       {
-        // unable to move (single block?), so handle this..
+        validDirs[numValidDirs++] = i;
       }
+    }
+
+    if (numValidDirs == 0)
+    {
+      // TODO: ok, why does this happen? single block?
+      return;
+    }
+
+    if (numValidDirs > 2)
+    {
+      p.dir = validDirs[rand() % numValidDirs];
     }
 
     p.x += dir[p.dir*2+0];
     p.y += dir[p.dir*2+1];
 
-    count[p.y*width+p.x]++;
+    particleCount[p.y*width+p.x]++;
   }
 }
 
 //------------------------------------------------------------------------------
 bool GreetsBlock::GreetsData::IsValid(int x, int y)
 {
-  return x >= 0 && x < width && y >= 0 && y < height;
+  return x >= 0 && x < width && y >= 0 && y < height && background[y*width+x] == 0;
 }
 
 //------------------------------------------------------------------------------
 void GreetsBlock::GreetsData::CalcPath(int w, int h, const char* buf)
 {
+  background.resize(w*h);
+  for (int i = 0; i <h; ++i)
+  {
+    for (int j = 0; j < w; ++j)
+    {
+      //background[i*w + j] = max(buf[4 * (i*w + j) + 0], max(buf[4 * (i*w + j) + 1], max(buf[4 * (i*w + j) + 2], buf[4 * (i*w + j) + 3])));
+      background[i*w + j] = buf[4 * (i*w + j)];
+    }
+  }
+
   enum
   {
     FREE = 0,
@@ -749,6 +780,30 @@ void Fluid::UpdateBackgroundTexture(float dt)
 //------------------------------------------------------------------------------
 void Fluid::UpdateFluidTexture()
 {
+#if 1
+  int pitch;
+  u32* p = _ctx->MapWriteDiscard<u32>(_fluidTexture, &pitch);
+  pitch /= 4;
+
+  GreetsBlock::GreetsData* d = _greetsBlock._data[0];
+  for (int i = 0; i < d->height; ++i)
+  {
+    for (int j = 0; j < d->width; ++j)
+    {
+      int cnt = d->particleCount[i*d->width+j];
+
+      float f = Clamp(0.f, 1.f, (float)cnt / 10.f);
+      u32 r = (u32)(255 * f);
+      u32 g = (u32)(255 * f);
+      u32 b = (u32)(255 * f);
+      p[i * pitch + j] = (0xff000000) | (b << 16) | (g << 8) | (r << 0);
+
+    }
+  }
+
+  _ctx->Unmap(_fluidTexture);
+
+#else
   static int texture = 2;
   if (g_KeyUpTrigger.IsTriggered('B'))
     texture = (texture + 1) % 3;
@@ -765,7 +820,7 @@ void Fluid::UpdateFluidTexture()
       float v = Clamp(0.f, 1.f, s * (0.5f + _sim.vCur[FluidSim::IX(j + 1, i + 1)]));
       float d = Clamp(0.f, 1.f, s * _sim.dCur[FluidSim::IX(j + 1, i + 1)]);
 
-      float vals[] = {u, v, d};
+      float vals[] = { u, v, d };
       float f = vals[texture];
 
       u32 r = (u32)(255 * f);
@@ -775,6 +830,7 @@ void Fluid::UpdateFluidTexture()
     }
   }
   _ctx->Unmap(_fluidTexture);
+#endif
 }
 
 //------------------------------------------------------------------------------
