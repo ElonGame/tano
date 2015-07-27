@@ -27,6 +27,14 @@ namespace tano
       int pathLength = -1;
     };
 
+    struct Particle
+    {
+      int x, y;
+      float speed;
+      float cur;
+      int dir;
+    };
+
     struct GreetsData
     {
       GreetsData(int w, int h);
@@ -36,13 +44,21 @@ namespace tano
       void Update(const UpdateState& state);
       void Render();
 
+      bool IsValid(int x, int y);
+
+      vector<Particle> particles;
+
       vector<vector<PathElem*>> paths;
+      vector<PathElem*> startingPoints;
 
       vector<int> count;
       int width, height;
     };
 
+
+    void Update(const UpdateState& state);
     bool Init();
+
     vector<GreetsData*> _data;
   };
 

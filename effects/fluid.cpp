@@ -67,8 +67,17 @@ GreetsBlock::GreetsData::~GreetsData()
 }
 
 //------------------------------------------------------------------------------
-void GreetsBlock::GreetsData::Update(const UpdateState& state)
+void GreetsBlock::Render()
 {
+}
+
+//------------------------------------------------------------------------------
+void GreetsBlock::Update(const UpdateState& state)
+{
+  for (GreetsData* d : _data)
+  {
+    d->Update(state);
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -91,6 +100,21 @@ bool GreetsBlock::Init()
   {
     GreetsData* d = new GreetsData(w, 8);
     d->CalcPath(w, 8, greetsBuf + i * w * 4);
+
+    for (const PathElem* p : d->startingPoints)
+    {
+      d->particles.resize(500);
+      for (int i = 0; i < 500; ++i)
+      {
+        d->particles[i].x = p->x;
+        d->particles[i].y = p->y;
+        float ll = randf(0.01f, 0.1f);
+        d->particles[i].speed = ll;
+        d->particles[i].cur = ll;
+        d->particles[i].dir = rand() % 4;
+      }
+    }
+
     _data.push_back(d);
   }
 
@@ -110,6 +134,48 @@ int GreetsBlock::PathElem::CalcPathLength(PathElem* p)
     p->pathLength = res;
 
   return res;
+}
+
+//------------------------------------------------------------------------------
+void GreetsBlock::GreetsData::Update(const UpdateState& state)
+{
+  static int dir[] = { -1, 0, 0, -1, 1, 0, 0, 1 };
+  float dt = state.delta.TotalSecondsAsFloat();
+
+  for (GreetsBlock::Particle& p : particles)
+  {
+    // check if it's time to move
+    p.cur -= dt;
+    if (p.cur > 0)
+      continue;
+
+    count[p.y*width+p.x]--;
+
+    p.cur = p.speed;
+
+    // check if we can go in the current direction
+    int cnt = 0;
+    while (!IsValid(p.x + dir[p.dir*2+0], p.y + dir[p.dir*2+1]))
+    {
+      p.dir = (p.dir + 1) % 4;
+      cnt += 1;
+      if (cnt == 4)
+      {
+        // unable to move (single block?), so handle this..
+      }
+    }
+
+    p.x += dir[p.dir*2+0];
+    p.y += dir[p.dir*2+1];
+
+    count[p.y*width+p.x]++;
+  }
+}
+
+//------------------------------------------------------------------------------
+bool GreetsBlock::GreetsData::IsValid(int x, int y)
+{
+  return x >= 0 && x < width && y >= 0 && y < height;
 }
 
 //------------------------------------------------------------------------------
@@ -181,7 +247,9 @@ void GreetsBlock::GreetsData::CalcPath(int w, int h, const char* buf)
           // is using the tri-state visited flag, and I kind wonder how if made other
           // stuff that isn't broken without this :)
           deque<PathElem*> frontier;
-          frontier.push_back(new PathElem{i, j});
+          PathElem* p = new PathElem{i, j};
+          startingPoints.push_back(p);
+          frontier.push_back(p);
           while (!frontier.empty())
           {
             PathElem* cur = frontier.front();
@@ -261,6 +329,8 @@ bool Fluid::Update(const UpdateState& state)
   _sim.Update(state);
 
   UpdateBackgroundTexture(state.delta.TotalSecondsAsFloat());
+
+  _greetsBlock.Update(state);
 
   return true;
 }
