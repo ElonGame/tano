@@ -51,28 +51,6 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  u32* GenerateQuadIndices(u32 numQuads, u32* ibSize)
-  {
-    u32 ibSizeLocal = numQuads * 6 * sizeof(u32);
-    u32* triangleIndices = (u32*)g_ScratchMemory.Alloc(ibSizeLocal);
-    for (u32 i = 0; i < numQuads; ++i)
-    {
-      // 0, 1, 3
-      triangleIndices[i * 6 + 0] = i * 4 + 0;
-      triangleIndices[i * 6 + 1] = i * 4 + 1;
-      triangleIndices[i * 6 + 2] = i * 4 + 3;
-
-      // 3, 1, 2
-      triangleIndices[i * 6 + 3] = i * 4 + 3;
-      triangleIndices[i * 6 + 4] = i * 4 + 1;
-      triangleIndices[i * 6 + 5] = i * 4 + 2;
-    }
-
-    *ibSize = ibSizeLocal;
-    return triangleIndices;
-  }
-
-  //------------------------------------------------------------------------------
   bool InitConfigDialog(HINSTANCE hInstance)
   {
     int res = (int)DialogBox(hInstance, MAKEINTRESOURCE(IDD_SETUP_DLG), NULL, dialogWndProc);

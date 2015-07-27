@@ -7,17 +7,14 @@ using namespace tano;
 using namespace bristol;
 
 //------------------------------------------------------------------------------
-bool GpuObjects::CreateDynamic(
-  u32 ibSize, DXGI_FORMAT ibFormat,
-  u32 vbSize, u32 vbElemSize)
+bool GpuObjects::CreateDynamic(u32 ibSize, DXGI_FORMAT ibFormat, u32 vbSize, u32 vbElemSize)
 {
   return CreateDynamicIb(ibSize, ibFormat, nullptr) && CreateDynamicVb(vbSize, vbElemSize, nullptr);
 }
 
 //------------------------------------------------------------------------------
 bool GpuObjects::CreateDynamic(
-    u32 ibSize, DXGI_FORMAT ibFormat, const void* ibData,
-    u32 vbSize, u32 vbElemSize, const void* vbData)
+    u32 ibSize, DXGI_FORMAT ibFormat, const void* ibData, u32 vbSize, u32 vbElemSize, const void* vbData)
 {
   return CreateDynamicIb(ibSize, ibFormat, ibData) && CreateDynamicVb(vbSize, vbElemSize, vbData);
 }
@@ -43,7 +40,7 @@ bool GpuObjects::CreateDynamicIb(u32 ibSize, DXGI_FORMAT ibFormat, const void* i
 }
 
 //------------------------------------------------------------------------------
-bool GpuObjects::CreateVertexBuffer(u32 vbSize, u32 vbElemSize, const  void* vbData)
+bool GpuObjects::CreateVertexBuffer(u32 vbSize, u32 vbElemSize, const void* vbData)
 {
   _vbSize = vbSize;
   _vbElemSize = vbElemSize;
@@ -53,7 +50,7 @@ bool GpuObjects::CreateVertexBuffer(u32 vbSize, u32 vbElemSize, const  void* vbD
 }
 
 //------------------------------------------------------------------------------
-bool GpuObjects::CreateIndexBuffer(u32 ibSize, DXGI_FORMAT ibFormat, const  void* ibData)
+bool GpuObjects::CreateIndexBuffer(u32 ibSize, DXGI_FORMAT ibFormat, const void* ibData)
 {
   _ibSize = ibSize;
   _ibFormat = ibFormat;
@@ -64,10 +61,7 @@ bool GpuObjects::CreateIndexBuffer(u32 ibSize, DXGI_FORMAT ibFormat, const  void
 
 //------------------------------------------------------------------------------
 bool GpuObjects::LoadVertexShader(
-  const char* filename,
-  const char* entryPoint,
-  u32 flags,
-  vector<D3D11_INPUT_ELEMENT_DESC>* elements)
+    const char* filename, const char* entryPoint, u32 flags, vector<D3D11_INPUT_ELEMENT_DESC>* elements)
 {
   BEGIN_INIT_SEQUENCE();
   ObjectHandle* layout = (flags || elements) ? &_layout : nullptr;
@@ -114,19 +108,17 @@ bool GpuObjects::LoadGeometryShader(const char* filename, const char* entryPoint
 }
 
 //------------------------------------------------------------------------------
-bool GpuState::Create(
-  const D3D11_DEPTH_STENCIL_DESC* dssDesc,
-  const D3D11_BLEND_DESC* blendDesc,
-  const D3D11_RASTERIZER_DESC* rasterizerDesc)
+bool GpuState::Create(const D3D11_DEPTH_STENCIL_DESC* dssDesc,
+    const D3D11_BLEND_DESC* blendDesc,
+    const D3D11_RASTERIZER_DESC* rasterizerDesc)
 {
-  _depthStencilState = GRAPHICS.CreateDepthStencilState(
-    dssDesc ? *dssDesc : CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT()));
+  _depthStencilState =
+      GRAPHICS.CreateDepthStencilState(dssDesc ? *dssDesc : CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT()));
 
-  _blendState = GRAPHICS.CreateBlendState(
-    blendDesc ? *blendDesc : CD3D11_BLEND_DESC(CD3D11_DEFAULT()));
+  _blendState = GRAPHICS.CreateBlendState(blendDesc ? *blendDesc : CD3D11_BLEND_DESC(CD3D11_DEFAULT()));
 
   _rasterizerState = GRAPHICS.CreateRasterizerState(
-    rasterizerDesc ? *rasterizerDesc : CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT()));
+      rasterizerDesc ? *rasterizerDesc : CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT()));
 
   CD3D11_SAMPLER_DESC samplerDesc = CD3D11_SAMPLER_DESC(CD3D11_DEFAULT());
   _samplers[Linear] = GRAPHICS.CreateSamplerState(samplerDesc);
@@ -141,9 +133,8 @@ bool GpuState::Create(
   samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
   _samplers[Point] = GRAPHICS.CreateSamplerState(samplerDesc);
 
-  return
-    _depthStencilState.IsValid() && _blendState.IsValid() && _rasterizerState.IsValid() &&
-    _samplers[0].IsValid() && _samplers[1].IsValid() && _samplers[2].IsValid() && _samplers[3].IsValid();
+  return _depthStencilState.IsValid() && _blendState.IsValid() && _rasterizerState.IsValid() &&
+         _samplers[0].IsValid() && _samplers[1].IsValid() && _samplers[2].IsValid() && _samplers[3].IsValid();
 }
 
 //------------------------------------------------------------------------------
@@ -152,20 +143,19 @@ bool GpuBundle::Create(const BundleOptions& options)
   const BundleOptions::OptionFlags& flags = options.flags;
   BEGIN_INIT_SEQUENCE();
   INIT_FATAL(state.Create(
-    flags.IsSet(BundleOptions::OptionFlag::DepthStencilDesc) ? &options.depthStencilDesc : nullptr,
-    flags.IsSet(BundleOptions::OptionFlag::BlendDesc) ? &options.blendDesc : nullptr,
-    flags.IsSet(BundleOptions::OptionFlag::RasterizerDesc) ? &options.rasterizerDesc : nullptr));
+      flags.IsSet(BundleOptions::OptionFlag::DepthStencilDesc) ? &options.depthStencilDesc : nullptr,
+      flags.IsSet(BundleOptions::OptionFlag::BlendDesc) ? &options.blendDesc : nullptr,
+      flags.IsSet(BundleOptions::OptionFlag::RasterizerDesc) ? &options.rasterizerDesc : nullptr));
 
   objects._topology = options.topology;
 
   if (options.vsEntry)
   {
     vector<D3D11_INPUT_ELEMENT_DESC> inputElements(options.inputElements);
-    INIT_FATAL(objects.LoadVertexShader(
-      options.vsShaderFile,
-      options.vsEntry, 
-      options.vertexFlags,
-      inputElements.empty() ? nullptr : &inputElements));
+    INIT_FATAL(objects.LoadVertexShader(options.vsShaderFile,
+        options.vsEntry,
+        options.vertexFlags,
+        inputElements.empty() ? nullptr : &inputElements));
   }
 
   if (options.psEntry)
@@ -182,6 +172,25 @@ bool GpuBundle::Create(const BundleOptions& options)
   {
     INIT_FATAL(objects.CreateDynamicVb(options.vbNumElems * options.vbElemSize, options.vbElemSize));
   }
+
+  if (flags.IsSet(BundleOptions::OptionFlag::DynamicIb))
+  {
+    INIT_FATAL(objects.CreateDynamicIb(options.ibNumElems * options.ibElemSize, DXGI_FORMAT_R32_UINT));
+  }
+
+  if (flags.IsSet(BundleOptions::OptionFlag::StaticVb))
+  {
+    INIT_FATAL(objects.CreateVertexBuffer(
+        options.vbNumElems * options.vbElemSize, options.vbElemSize, options.staticVb));
+  }
+
+  if (flags.IsSet(BundleOptions::OptionFlag::StaticIb))
+  {
+    INIT_FATAL(objects.CreateIndexBuffer(options.ibNumElems * options.ibElemSize,
+        options.ibElemSize == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT,
+        options.staticIb));
+  }
+
   END_INIT_SEQUENCE();
 }
 
@@ -205,7 +214,6 @@ BundleOptions& BundleOptions::BlendDesc(const CD3D11_BLEND_DESC& desc)
   blendDesc = desc;
   flags.Set(BundleOptions::OptionFlag::BlendDesc);
   return *this;
-
 }
 
 //------------------------------------------------------------------------------
@@ -284,5 +292,25 @@ BundleOptions& BundleOptions::DynamicIb(int numElements, int elementSize)
   flags.Set(BundleOptions::OptionFlag::DynamicIb);
   ibNumElems = numElements;
   ibElemSize = elementSize;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::StaticVb(int numElements, int elementSize, void* data)
+{
+  flags.Set(BundleOptions::OptionFlag::StaticVb);
+  vbNumElems = numElements;
+  vbElemSize = elementSize;
+  staticVb = data;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::StaticIb(int numElements, int elementSize, void* data)
+{
+  flags.Set(BundleOptions::OptionFlag::StaticIb);
+  ibNumElems = numElements;
+  ibElemSize = elementSize;
+  staticIb = data;
   return *this;
 }

@@ -13,21 +13,19 @@
 #include "../generated/input_buffer.hpp"
 #include "../generated/output_buffer.hpp"
 #include "../scheduler.hpp"
+#include "../mesh_utils.hpp"
 
 using namespace tano;
 using namespace bristol;
 using namespace tano::scheduler;
 
-static int NUM_GRIDS = 20;
+static int NUM_GRIDS = FluidSim::FLUID_SIZE;
 
 //------------------------------------------------------------------------------
-Fluid::Fluid(const string &name, const string& config, u32 id)
-  : BaseEffect(name, config, id)
+Fluid::Fluid(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
 #if WITH_IMGUI
-  PROPERTIES.Register(Name(),
-    bind(&Fluid::RenderParameterSet, this),
-    bind(&Fluid::SaveParameterSet, this));
+  PROPERTIES.Register(Name(), bind(&Fluid::RenderParameterSet, this), bind(&Fluid::SaveParameterSet, this));
 
   PROPERTIES.SetActive(Name());
 #endif
@@ -45,24 +43,212 @@ bool Fluid::OnConfigChanged(const vector<char>& buf)
 }
 
 //------------------------------------------------------------------------------
+GreetsBlock::~GreetsBlock()
+{
+  SeqDelete(&_data);
+}
+
+//------------------------------------------------------------------------------
+GreetsBlock::GreetsData::GreetsData(int w, int h)
+  : width(w)
+  , height(h)
+  , count(w*h)
+{
+}
+
+//------------------------------------------------------------------------------
+GreetsBlock::GreetsData::~GreetsData()
+{
+  for (vector<PathElem*>& path : paths)
+  {
+    SeqDelete(&path);
+  }
+  paths.clear();
+}
+
+//------------------------------------------------------------------------------
+void GreetsBlock::GreetsData::Update(const UpdateState& state)
+{
+}
+
+//------------------------------------------------------------------------------
+void GreetsBlock::GreetsData::Render()
+{
+}
+
+//------------------------------------------------------------------------------
+bool GreetsBlock::Init()
+{
+  BEGIN_INIT_SEQUENCE();
+
+  vector<char> buf;
+  INIT(RESOURCE_MANAGER.LoadFile("gfx/greets.png", &buf));
+  int w, h, c;
+  const char* greetsBuf =
+    (const char*)stbi_load_from_memory((const u8*)buf.data(), (int)buf.size(), &w, &h, &c, 4);
+
+  for (int i : {0, 10, 19, 29, 38})
+  {
+    GreetsData* d = new GreetsData(w, 8);
+    d->CalcPath(w, 8, greetsBuf + i * w * 4);
+    _data.push_back(d);
+  }
+
+  END_INIT_SEQUENCE();
+}
+
+//------------------------------------------------------------------------------
+int GreetsBlock::PathElem::CalcPathLength(PathElem* p)
+{
+  int res = 1;
+  for (PathElem* c : p->children)
+  {
+    res += CalcPathLength(c);
+  }
+
+  if (p->pathLength == -1)
+    p->pathLength = res;
+
+  return res;
+}
+
+//------------------------------------------------------------------------------
+void GreetsBlock::GreetsData::CalcPath(int w, int h, const char* buf)
+{
+  enum
+  {
+    FREE = 0,
+    PENDING = 1,
+    VISITED = 2
+  };
+
+  u8* visited = g_ScratchMemory.Alloc<u8>(w * h);
+  memset(visited, FREE, w * h);
+
+  struct Char
+  {
+    int xStart, xEnd;
+  };
+
+  vector<Char> chars;
+
+  auto IsPosValid = [=](int x, int y, int w, int h)
+  {
+    return x >= 0 && x < w && y >= 0 && y < h;
+  };
+
+  auto IsEmptyCol = [=](int x)
+  {
+    for (int i = 0; i < h; ++i)
+    {
+      if (buf[(x + i * w) * 4] == 0)
+        return false;
+    }
+    return true;
+  };
+
+  // split each char. go left to right, and if we find an empty column, this is a potential split
+  for (int i = 0; i < w; ++i)
+  {
+    Char cur;
+    // first starting col
+    while (i < w && IsEmptyCol(i))
+      ++i;
+
+    if (i == w)
+      break;
+
+    cur.xStart = i;
+    while (i < w && !IsEmptyCol(i))
+      ++i;
+
+    cur.xEnd = i - 1;
+    chars.push_back(cur);
+  }
+
+  // trace the paths
+  for (const Char& c : chars)
+  {
+    for (int i = c.xStart; i <= c.xEnd; ++i)
+    {
+      // travel downwards, and when we hit a filled pixel, trace a path from it
+      for (int j = 0; j < h; ++j)
+      {
+        if (buf[(i + j * w) * 4] == 0 && visited[i + j * w] == FREE)
+        {
+          vector<PathElem*> path;
+          // this is pretty much a standard flood fill. the only interesting part
+          // is using the tri-state visited flag, and I kind wonder how if made other
+          // stuff that isn't broken without this :)
+          deque<PathElem*> frontier;
+          frontier.push_back(new PathElem{i, j});
+          while (!frontier.empty())
+          {
+            PathElem* cur = frontier.front();
+            frontier.pop_front();
+            if (visited[cur->x + cur->y * w] == VISITED)
+              continue;
+
+            path.push_back(cur);
+
+            visited[cur->x + cur->y * w] = VISITED;
+
+            int ofs[] = {-1, 0, 0, -1, +1, 0, 0, +1};
+            for (int i = 0; i < 4; ++i)
+            {
+              int xx = cur->x + ofs[i * 2 + 0];
+              int yy = cur->y + ofs[i * 2 + 1];
+              if (IsPosValid(xx, yy, c.xEnd + 1, h) && visited[xx + yy * w] == FREE && buf[(xx + yy * w) * 4] == 0)
+              {
+                visited[xx + yy * w] = PENDING;
+                PathElem* p = new PathElem{xx, yy};
+                cur->children.push_back(p);
+                frontier.push_front(p);
+              }
+            }
+          }
+          if (!path.empty())
+            PathElem::CalcPathLength(path[0]);
+          paths.push_back(path);
+        }
+      }
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
 bool Fluid::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  _fluidTexture = GRAPHICS.CreateTexture(FluidSim::FLUID_SIZE, FluidSim::FLUID_SIZE, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+  _fluidTexture =
+      GRAPHICS.CreateTexture(FluidSim::FLUID_SIZE, FluidSim::FLUID_SIZE, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
 
-  vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
-    CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT),
-    CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
-  };
+  {
+    // grid
+    vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
+        CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT),
+        CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
+    };
 
-  INIT(_backgroundBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/fluid.texture", "VsMain")
-    .PixelShader("shaders/out/fluid.texture", "PsMain")
-    .InputElements(inputs)
-    .DynamicVb((NUM_GRIDS+1)*(NUM_GRIDS+1), sizeof(Pos4Tex))));
+    vector<u32> indices;
+    GeneratePlaneIndices(NUM_GRIDS+1, NUM_GRIDS+1, &indices);
+    // clang-format off
+    INIT(_backgroundBundle.Create(BundleOptions()
+      .RasterizerDesc(rasterizeDescCullNone)
+      .DepthStencilDesc(depthDescDepthDisabled)
+      .VertexShader("shaders/out/fluid.texture", "VsMain")
+      .PixelShader("shaders/out/fluid.texture", "PsMain")
+      .InputElements(inputs)
+      .StaticIb((int)indices.size(), sizeof(u32), indices.data())
+      .DynamicVb((NUM_GRIDS + 1) * (NUM_GRIDS + 1), sizeof(Pos4Tex))));
+    // clang-format on
 
-  INIT_RESOURCE(_backgroundTexture, RESOURCE_MANAGER.LoadTexture("gfx/abstract1.jpg"));
+    INIT_RESOURCE(_backgroundTexture, RESOURCE_MANAGER.LoadTexture("gfx/abstract1.jpg"));
+    InitBackgroundTexture();
+  }
+
+  INIT(_greetsBlock.Init());
 
   END_INIT_SEQUENCE();
 }
@@ -73,6 +259,8 @@ bool Fluid::Update(const UpdateState& state)
   UpdateCameraMatrix(state);
   UpdateFluidTexture();
   _sim.Update(state);
+
+  UpdateBackgroundTexture(state.delta.TotalSecondsAsFloat());
 
   return true;
 }
@@ -102,13 +290,18 @@ bool Fluid::Render()
 
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
 
-  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+  {
+    // background
+    _ctx->SetBundleWithSamplers(_backgroundBundle, PixelShader);
+    _ctx->SetShaderResource(_backgroundTexture);
+    _ctx->DrawIndexed(6 * NUM_GRIDS * NUM_GRIDS, 0, 0);
+  }
 
   return true;
 }
 
 //------------------------------------------------------------------------------
-Fluid::FluidSim::FluidSim()
+FluidSim::FluidSim()
 {
   for (int i = 0; i < FLUID_SIZE_PADDED_SQ; ++i)
   {
@@ -124,7 +317,7 @@ Fluid::FluidSim::FluidSim()
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::Update(const UpdateState& state)
+void FluidSim::Update(const UpdateState& state)
 {
   for (int i = 0; i < FLUID_SIZE_PADDED_SQ; ++i)
   {
@@ -146,7 +339,7 @@ void Fluid::FluidSim::Update(const UpdateState& state)
       int x = FLUID_SIZE_PADDED / 2 - size / 2 + j;
       int y = FLUID_SIZE_PADDED / 2 - size / 2 + i;
 
-      V2 aa((float)(i - size /2), (float)(j - size / 2));
+      V2 aa((float)(i - size / 2), (float)(j - size / 2));
       aa = Normalize(aa);
       V2 bb = V2(cosf(angle), sinf(angle));
       float d = Dot(aa, bb);
@@ -163,7 +356,7 @@ void Fluid::FluidSim::Update(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::AddForce(float dt, float* out, float* force)
+void FluidSim::AddForce(float dt, float* out, float* force)
 {
   for (int i = 0; i < FLUID_SIZE_PADDED_SQ; ++i)
   {
@@ -172,7 +365,7 @@ void Fluid::FluidSim::AddForce(float dt, float* out, float* force)
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::FluidKernelWorker(const TaskData& td)
+void FluidSim::FluidKernelWorker(const TaskData& td)
 {
   FluidKernelChunk* chunk = (FluidKernelChunk*)td.kernelData.data;
   int yStart = chunk->yStart;
@@ -188,17 +381,19 @@ void Fluid::FluidSim::FluidKernelWorker(const TaskData& td)
     for (int x = 1; x <= FLUID_SIZE; ++x)
     {
       out[IX(x, y)] =
-        r * (old[IX(x, y)] + a * (out[IX(x - 1, y)] + out[IX(x + 1, y)] + out[IX(x, y - 1)] + out[IX(x, y + 1)]));
+          r * (old[IX(x, y)] +
+                  a * (out[IX(x - 1, y)] + out[IX(x + 1, y)] + out[IX(x, y - 1)] + out[IX(x, y + 1)]));
     }
   }
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::Diffuse(int b, float dt, float diff, float* out, float* old)
+void FluidSim::Diffuse(int b, float dt, float diff, float* out, float* old)
 {
   float a = dt * diff * FLUID_SIZE_SQ;
   float r = 1.0f / (1 + 4 * a);
 
+// clang-format off
   // The diffusion equation:
   // D(n+1)[i,j] = D(n)[i, j] + k * dt * (D(n)[i-1,j] + D(n)[i+1,j] + D(n)[i,j-1] + D(n)[i,j+1] - 4 * D(n)[i, j]) / h*h
 
@@ -211,9 +406,14 @@ void Fluid::FluidSim::Diffuse(int b, float dt, float diff, float* out, float* ol
   // a11 * x1 + a12 * x2 + ... + a1n * xn = b1
   // solve for x1:
   // x1 = 1 / a11 * (b1 - a12 * x2 = a13 * x3 - ... - a12 * xn)
-  
+// clang-format on
+
 #if 1
-  enum { NUM_TASKS = 4, NUM_ITERATIONS = 10 };
+  enum
+  {
+    NUM_TASKS = 4,
+    NUM_ITERATIONS = 10
+  };
   int rows = FLUID_SIZE / NUM_TASKS;
   SimpleAppendBuffer<TaskId, NUM_ITERATIONS * NUM_TASKS> fluidTasks;
 
@@ -225,7 +425,7 @@ void Fluid::FluidSim::Diffuse(int b, float dt, float diff, float* out, float* ol
     for (int i = 0; i < NUM_TASKS; ++i)
     {
       FluidKernelChunk* data = (FluidKernelChunk*)g_ScratchMemory.Alloc(sizeof(FluidKernelChunk));
-      *data = FluidKernelChunk{ 1 + i * rows, 1 + (i+1) * rows, out, old, dt, diff };
+      *data = FluidKernelChunk{1 + i * rows, 1 + (i + 1) * rows, out, old, dt, diff};
       KernelData kd;
       kd.data = data;
       kd.size = sizeof(FluidKernelChunk);
@@ -248,7 +448,8 @@ void Fluid::FluidSim::Diffuse(int b, float dt, float diff, float* out, float* ol
       for (int x = 1; x <= FLUID_SIZE; ++x)
       {
         out[IX(x, y)] =
-            r * (old[IX(x, y)] + a * (out[IX(x - 1, y)] + out[IX(x + 1, y)] + out[IX(x, y - 1)] + out[IX(x, y + 1)]));
+            r * (old[IX(x, y)] +
+                    a * (out[IX(x - 1, y)] + out[IX(x + 1, y)] + out[IX(x, y - 1)] + out[IX(x, y + 1)]));
       }
     }
 
@@ -259,7 +460,7 @@ void Fluid::FluidSim::Diffuse(int b, float dt, float diff, float* out, float* ol
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::Advect(int b, float dt, float* out, float* old, float* u, float *v)
+void FluidSim::Advect(int b, float dt, float* out, float* old, float* u, float* v)
 {
   float dt0 = dt * FLUID_SIZE;
   for (int j = 1; j <= FLUID_SIZE; j++)
@@ -293,18 +494,20 @@ void Fluid::FluidSim::Advect(int b, float dt, float* out, float* old, float* u, 
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::DensityStep(float dt)
+void FluidSim::DensityStep(float dt)
 {
   float diff = BLACKBOARD.GetFloatVar("fluid.diff");
+
   AddForce(dt, dCur, dOld);
   swap(dCur, dOld);
   Diffuse(0, dt, diff, dCur, dOld);
   swap(dCur, dOld);
   Advect(0, dt, dCur, dOld, uCur, vCur);
+
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::VelocityStep(float dt)
+void FluidSim::VelocityStep(float dt)
 {
   float visc = BLACKBOARD.GetFloatVar("fluid.visc");
   AddForce(dt, uCur, uOld);
@@ -323,7 +526,7 @@ void Fluid::FluidSim::VelocityStep(float dt)
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::Project(float* u, float* v, float* p, float* div)
+void FluidSim::Project(float* u, float* v, float* p, float* div)
 {
   float h = 1.0f / FLUID_SIZE;
   for (int j = 1; j <= FLUID_SIZE; j++)
@@ -365,7 +568,7 @@ void Fluid::FluidSim::Project(float* u, float* v, float* p, float* div)
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::Verify()
+void FluidSim::Verify()
 {
   for (int i = 0; i < FLUID_SIZE_PADDED_SQ; ++i)
   {
@@ -375,7 +578,7 @@ void Fluid::FluidSim::Verify()
 }
 
 //------------------------------------------------------------------------------
-void Fluid::FluidSim::BoundaryConditions(int b, float* x)
+void FluidSim::BoundaryConditions(int b, float* x)
 {
   int N = FLUID_SIZE;
   for (int i = 1; i <= N; i++)
@@ -392,12 +595,11 @@ void Fluid::FluidSim::BoundaryConditions(int b, float* x)
 }
 
 //------------------------------------------------------------------------------
-void Fluid::UpdateBackgroundTexture()
+void Fluid::InitBackgroundTexture()
 {
-  ObjectHandle h = _backgroundBundle.objects._vb;
-  Pos4Tex* verts = _ctx->MapWriteDiscard<Pos4Tex>(h);
+  _textureU.resize(FluidSim::FLUID_SIZE_PADDED_SQ);
+  _textureV.resize(FluidSim::FLUID_SIZE_PADDED_SQ);
 
-  int NUM_GRIDS = 20;
   float xInc = 2.0f / (float)NUM_GRIDS;
   float yInc = 2.0f / (float)NUM_GRIDS;
 
@@ -412,11 +614,62 @@ void Fluid::UpdateBackgroundTexture()
     float u = 0.0f;
     for (int j = 0; j <= NUM_GRIDS; ++j)
     {
+      _textureU[i * FluidSim::FLUID_SIZE_PADDED + 1 + j] = u;
+      _textureV[i * FluidSim::FLUID_SIZE_PADDED + 1 + j] = v;
+
       x += xInc;
       u += uInc;
     }
 
-    y += yInc;
+    y -= yInc;
+    v += vInc;
+  }
+
+}
+
+//------------------------------------------------------------------------------
+void Fluid::UpdateBackgroundTexture(float dt)
+{
+  ObjectHandle h = _backgroundBundle.objects._vb;
+  Pos4Tex* verts = _ctx->MapWriteDiscard<Pos4Tex>(h);
+  Pos4Tex* vertsOrg = verts;
+
+  vector<float> tmpU(FluidSim::FLUID_SIZE_PADDED_SQ);
+  vector<float> tmpV(FluidSim::FLUID_SIZE_PADDED_SQ);
+
+  _sim.Advect(0, dt, tmpU.data(), _textureU.data(), _sim.uCur, _sim.vCur);
+  _sim.Advect(0, dt, tmpV.data(), _textureV.data(), _sim.uCur, _sim.vCur);
+
+  _textureU.swap(tmpU);
+  _textureV.swap(tmpV);
+
+  float xInc = 2.0f / (float)NUM_GRIDS;
+  float yInc = 2.0f / (float)NUM_GRIDS;
+
+  float uInc = 1.0f / (float)NUM_GRIDS;
+  float vInc = 1.0f / (float)NUM_GRIDS;
+
+  float y = 1.0f;
+  float v = 0.f;
+  for (int i = 0; i <= NUM_GRIDS; ++i)
+  {
+    float x = -1.0f;
+    float u = 0.0f;
+    for (int j = 0; j <= NUM_GRIDS; ++j)
+    {
+      verts->pos = Vector4(x, y, 0, 1);
+
+      verts->tex = Vector2(
+        _textureU[i * FluidSim::FLUID_SIZE_PADDED + 1 + j],
+        _textureV[i * FluidSim::FLUID_SIZE_PADDED + 1 + j]);
+
+      verts++;
+
+      x += xInc;
+      u += uInc;
+    }
+
+    y -= yInc;
     v += vInc;
   }
 
@@ -431,22 +684,24 @@ void Fluid::UpdateFluidTexture()
     texture = (texture + 1) % 3;
 
   float s = BLACKBOARD.GetFloatVar("fluid.diffuseScale");
-  u32* p = _ctx->MapWriteDiscard<u32>(_fluidTexture);
+  int pitch;
+  u32* p = _ctx->MapWriteDiscard<u32>(_fluidTexture, &pitch);
+  pitch /= 4;
   for (int i = 0; i < FluidSim::FLUID_SIZE; ++i)
   {
     for (int j = 0; j < FluidSim::FLUID_SIZE; ++j)
     {
-      float u = Clamp(0.f, 1.f, s * (0.5f + _sim.uCur[FluidSim::IX(j+1, i+1)]));
-      float v = Clamp(0.f, 1.f, s * (0.5f + _sim.vCur[FluidSim::IX(j+1, i+1)]));
-      float d = Clamp(0.f, 1.f, s * _sim.dCur[FluidSim::IX(j+1, i+1)]);
+      float u = Clamp(0.f, 1.f, s * (0.5f + _sim.uCur[FluidSim::IX(j + 1, i + 1)]));
+      float v = Clamp(0.f, 1.f, s * (0.5f + _sim.vCur[FluidSim::IX(j + 1, i + 1)]));
+      float d = Clamp(0.f, 1.f, s * _sim.dCur[FluidSim::IX(j + 1, i + 1)]);
 
-      float vals[] = {u, v, d };
+      float vals[] = {u, v, d};
       float f = vals[texture];
 
       u32 r = (u32)(255 * f);
       u32 g = (u32)(255 * f);
       u32 b = (u32)(255 * f);
-      p[i * FluidSim::FLUID_SIZE + j] = (0xff000000) | (b << 16) | (g << 8) | (r << 0);
+      p[i * pitch + j] = (0xff000000) | (b << 16) | (g << 8) | (r << 0);
     }
   }
   _ctx->Unmap(_fluidTexture);
@@ -456,8 +711,8 @@ void Fluid::UpdateFluidTexture()
 #if WITH_IMGUI
 void Fluid::RenderParameterSet()
 {
-  ImGui::Image((void*)&_fluidTexture, 
-    ImVec2(4 * (float)FluidSim::FLUID_SIZE, 4 * (float)FluidSim::FLUID_SIZE));
+  ImGui::Image(
+      (void*)&_fluidTexture, ImVec2(4 * (float)FluidSim::FLUID_SIZE, 4 * (float)FluidSim::FLUID_SIZE));
 
   if (ImGui::Button("Reset"))
     Reset();
@@ -502,4 +757,3 @@ void Fluid::Register()
 {
   DEMO_ENGINE.RegisterFactory(Name(), Fluid::Create);
 }
-

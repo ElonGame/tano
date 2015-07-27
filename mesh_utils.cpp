@@ -31,401 +31,448 @@ namespace
   };
 }
 
-//------------------------------------------------------------------------------
-void InitMatrix4x3(const float* m, Matrix* mtx)
+namespace tano
 {
-  // clang-format off
-  *mtx = Matrix(
-    *(m + 0),   *(m + 1),   *(m + 2),   0, 
-    *(m + 3),   *(m + 4),   *(m + 5),   0, 
-    *(m + 6),   *(m + 7),   *(m + 8),   0, 
-    *(m + 9),   *(m + 10),  *(m + 11),  1);
-  // clang-format on
-}
-
-//------------------------------------------------------------------------------
-SceneOptions& SceneOptions::TransformToWorldSpace()
-{
-  flags.Set(OptionFlag::WorldSpace);
-  return *this;
-}
-
-//------------------------------------------------------------------------------
-SceneOptions& SceneOptions::UseMaterials()
-{
-  flags.Set(OptionFlag::UseMaterials);
-  return *this;
-}
-
-//------------------------------------------------------------------------------
-SceneOptions& SceneOptions::UniqueBuffers()
-{
-  flags.Set(OptionFlag::UniqueBuffers);
-  return *this;
-}
-
-//------------------------------------------------------------------------------
-SceneOptions& SceneOptions::SetUserDataSize(ObjectType type, u32 size)
-{
-  userDataSize[type] = size;
-  return *this;
-}
-
-//------------------------------------------------------------------------------
-SceneOptions& SceneOptions::SetLoadFilter(ObjectType filter)
-{
-  loadFilter = filter;
-  return *this;
-}
-
-//------------------------------------------------------------------------------
-bool tano::CreateScene(const MeshLoader& loader, const SceneOptions& options, scene::Scene* scene)
-{
-  BEGIN_INIT_SEQUENCE();
-
-  u32 numObjectsByType[SceneOptions::NUM_OBJECT_TYPES];
-  numObjectsByType[SceneOptions::NullObject] = (int)loader.nullObjects.size();
-  numObjectsByType[SceneOptions::Mesh] = (int)loader.meshes.size();
-  numObjectsByType[SceneOptions::Camera] = (int)loader.cameras.size();
-  numObjectsByType[SceneOptions::Light] = (int)loader.lights.size();
-  numObjectsByType[SceneOptions::Material] = (int)loader.materials.size();
-
-  u32 numObjects = 1 +
-    numObjectsByType[SceneOptions::NullObject] +
-    numObjectsByType[SceneOptions::Mesh] +
-    numObjectsByType[SceneOptions::Camera] +
-    numObjectsByType[SceneOptions::Light];
-
-  scene->baseObjects.resize(numObjects, nullptr);
-
-  // calc total user data size
-  u32 userDataSize = 0;
-  for (int i = 0; i < SceneOptions::NUM_OBJECT_TYPES; ++i)
+  //------------------------------------------------------------------------------
+  void InitMatrix4x3(const float* m, Matrix* mtx)
   {
-    // only look at sizes for object types we're actually loading
-    if (options.loadFilter & (1 << i))
-    {
-      userDataSize += numObjectsByType[i] * options.userDataSize[i];
-    }
+    // clang-format off
+    *mtx = Matrix(
+      *(m + 0), *(m + 1), *(m + 2), 0,
+      *(m + 3), *(m + 4), *(m + 5), 0,
+      *(m + 6), *(m + 7), *(m + 8), 0,
+      *(m + 9), *(m + 10), *(m + 11), 1);
+    // clang-format on
   }
 
-  u8* userDataPtr = nullptr;
-  if (userDataSize > 0)
+  //------------------------------------------------------------------------------
+  SceneOptions& SceneOptions::TransformToWorldSpace()
   {
-    scene->userData = new u8[userDataSize];
-    userDataPtr = scene->userData;
+    flags.Set(OptionFlag::WorldSpace);
+    return *this;
   }
 
-  if (options.loadFilter & SceneOptions::MeshFlag)
+  //------------------------------------------------------------------------------
+  SceneOptions& SceneOptions::UseMaterials()
   {
-    // vertex info per vertex format
-    unordered_map<u32, BufferInfo> bufferInfo;
+    flags.Set(OptionFlag::UseMaterials);
+    return *this;
+  }
 
-    for (size_t i = 0; i < loader.meshes.size(); ++i)
+  //------------------------------------------------------------------------------
+  SceneOptions& SceneOptions::UniqueBuffers()
+  {
+    flags.Set(OptionFlag::UniqueBuffers);
+    return *this;
+  }
+
+  //------------------------------------------------------------------------------
+  SceneOptions& SceneOptions::SetUserDataSize(ObjectType type, u32 size)
+  {
+    userDataSize[type] = size;
+    return *this;
+  }
+
+  //------------------------------------------------------------------------------
+  SceneOptions& SceneOptions::SetLoadFilter(ObjectType filter)
+  {
+    loadFilter = filter;
+    return *this;
+  }
+
+  //------------------------------------------------------------------------------
+  bool CreateScene(const MeshLoader& loader, const SceneOptions& options, scene::Scene* scene)
+  {
+    BEGIN_INIT_SEQUENCE();
+
+    u32 numObjectsByType[SceneOptions::NUM_OBJECT_TYPES];
+    numObjectsByType[SceneOptions::NullObject] = (int)loader.nullObjects.size();
+    numObjectsByType[SceneOptions::Mesh] = (int)loader.meshes.size();
+    numObjectsByType[SceneOptions::Camera] = (int)loader.cameras.size();
+    numObjectsByType[SceneOptions::Light] = (int)loader.lights.size();
+    numObjectsByType[SceneOptions::Material] = (int)loader.materials.size();
+
+    u32 numObjects = 1 + numObjectsByType[SceneOptions::NullObject] + numObjectsByType[SceneOptions::Mesh] +
+                     numObjectsByType[SceneOptions::Camera] + numObjectsByType[SceneOptions::Light];
+
+    scene->baseObjects.resize(numObjects, nullptr);
+
+    // calc total user data size
+    u32 userDataSize = 0;
+    for (int i = 0; i < SceneOptions::NUM_OBJECT_TYPES; ++i)
     {
-      const protocol::MeshBlob* meshBlob = loader.meshes[i];
-      u32 fmt = MeshLoader::GetVertexFormat(*meshBlob);
-      BufferInfo& info = bufferInfo[fmt];
-      info.indexCount += meshBlob->numIndices;
-      info.vertexCount += meshBlob->numVerts;
+      // only look at sizes for object types we're actually loading
+      if (options.loadFilter & (1 << i))
+      {
+        userDataSize += numObjectsByType[i] * options.userDataSize[i];
+      }
     }
 
-    V3 minVerts(+FLT_MAX, +FLT_MAX, +FLT_MAX);
-    V3 maxVerts(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-
-    for (size_t m = 0; m < loader.meshes.size(); ++m)
+    u8* userDataPtr = nullptr;
+    if (userDataSize > 0)
     {
-      const protocol::MeshBlob* meshBlob = loader.meshes[m];
-      scene::Mesh* mesh = new scene::Mesh(meshBlob->name, meshBlob->id, meshBlob->parentId);
-      if (options.userDataSize[SceneOptions::Mesh])
+      scene->userData = new u8[userDataSize];
+      userDataPtr = scene->userData;
+    }
+
+    if (options.loadFilter & SceneOptions::MeshFlag)
+    {
+      // vertex info per vertex format
+      unordered_map<u32, BufferInfo> bufferInfo;
+
+      for (size_t i = 0; i < loader.meshes.size(); ++i)
       {
-        mesh->userData = userDataPtr;
-        userDataPtr += options.userDataSize[SceneOptions::Mesh];
+        const protocol::MeshBlob* meshBlob = loader.meshes[i];
+        u32 fmt = MeshLoader::GetVertexFormat(*meshBlob);
+        BufferInfo& info = bufferInfo[fmt];
+        info.indexCount += meshBlob->numIndices;
+        info.vertexCount += meshBlob->numVerts;
       }
 
-      u32 vertexFormat = MeshLoader::GetVertexFormat(*meshBlob);
-      u32 vertexSize = VertexSizeFromFlags(vertexFormat);
-      u32 floatsPerElem = vertexSize / sizeof(float);
-      BufferInfo& info = bufferInfo[vertexFormat];
+      V3 minVerts(+FLT_MAX, +FLT_MAX, +FLT_MAX);
+      V3 maxVerts(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 
-      vector<BufferInfo::VtxInfo>& vtxInfo = info.vtxInfo;
-      u32 prevFloatCount = (u32)info.verts.size();
-      u32 prevVertexCount = prevFloatCount / floatsPerElem;
-      u32 prevIndexCount = (u32)info.indices.size();
-
-      vtxInfo.push_back(BufferInfo::VtxInfo{ mesh, prevVertexCount, prevIndexCount });
-
-      scene->meshes.push_back(mesh);
-      scene->baseObjects[meshBlob->id] = mesh;
-
-      mesh->vertexFormat = vertexFormat;
-
-      Matrix mtxLocal, mtxGlobal;
-      InitMatrix4x3(meshBlob->mtxLocal, &mtxLocal);
-      InitMatrix4x3(meshBlob->mtxGlobal, &mtxGlobal);
-
-      bool toWorldSpace = options.flags.IsSet(SceneOptions::OptionFlag::WorldSpace);
-
-      if (!toWorldSpace)
+      for (size_t m = 0; m < loader.meshes.size(); ++m)
       {
-        mesh->mtxLocal = mtxLocal;
-        mesh->mtxGlobal = mtxGlobal;
-        mesh->mtxInvLocal = mtxLocal.Invert();
-        mesh->mtxInvGlobal = mtxGlobal.Invert();
-      }
-
-      u32 numVerts = meshBlob->numVerts;
-      u32 numIndices = meshBlob->numIndices;
-      info.verts.resize(prevFloatCount + floatsPerElem * numVerts);
-      info.indices.resize(prevIndexCount + numIndices);
-      float* verts = &info.verts[prevFloatCount];
-      u32* indices = &info.indices[prevIndexCount];
-
-      // De-interleave the vertex data into a single array
-      for (u32 i = 0; i < numVerts; ++i)
-      {
-        const auto& fnCopy = [&verts, i, meshBlob](float* src, int n)
+        const protocol::MeshBlob* meshBlob = loader.meshes[m];
+        scene::Mesh* mesh = new scene::Mesh(meshBlob->name, meshBlob->id, meshBlob->parentId);
+        if (options.userDataSize[SceneOptions::Mesh])
         {
-          for (int j = 0; j < n; ++j)
-            verts[j] = *(src + i * n + j);
-          verts += n;
-        };
-
-        if (toWorldSpace)
-        {
-          Vector3 vv(meshBlob->verts[i * 3 + 0], meshBlob->verts[i * 3 + 1], meshBlob->verts[i * 3 + 2]);
-          Vector3::Transform(vv, mtxLocal, vv);
-          verts[0] = vv.x;
-          verts[1] = vv.y;
-          verts[2] = vv.z;
-          verts += 3;
-        }
-        else
-        {
-          fnCopy(meshBlob->verts, 3);
+          mesh->userData = userDataPtr;
+          userDataPtr += options.userDataSize[SceneOptions::Mesh];
         }
 
-        V3 vv(verts[-3], verts[-2], verts[-1]);
-        minVerts = Min(minVerts, vv);
-        maxVerts = Max(maxVerts, vv);
+        u32 vertexFormat = MeshLoader::GetVertexFormat(*meshBlob);
+        u32 vertexSize = VertexSizeFromFlags(vertexFormat);
+        u32 floatsPerElem = vertexSize / sizeof(float);
+        BufferInfo& info = bufferInfo[vertexFormat];
 
-        if (vertexFormat & VF_NORMAL)
-          fnCopy(meshBlob->normals, 3);
+        vector<BufferInfo::VtxInfo>& vtxInfo = info.vtxInfo;
+        u32 prevFloatCount = (u32)info.verts.size();
+        u32 prevVertexCount = prevFloatCount / floatsPerElem;
+        u32 prevIndexCount = (u32)info.indices.size();
 
-        if (vertexFormat & VF_TEX2_0)
-          fnCopy(meshBlob->uv, 2);
+        vtxInfo.push_back(BufferInfo::VtxInfo{mesh, prevVertexCount, prevIndexCount});
+
+        scene->meshes.push_back(mesh);
+        scene->baseObjects[meshBlob->id] = mesh;
+
+        mesh->vertexFormat = vertexFormat;
+
+        Matrix mtxLocal, mtxGlobal;
+        InitMatrix4x3(meshBlob->mtxLocal, &mtxLocal);
+        InitMatrix4x3(meshBlob->mtxGlobal, &mtxGlobal);
+
+        bool toWorldSpace = options.flags.IsSet(SceneOptions::OptionFlag::WorldSpace);
+
+        if (!toWorldSpace)
+        {
+          mesh->mtxLocal = mtxLocal;
+          mesh->mtxGlobal = mtxGlobal;
+          mesh->mtxInvLocal = mtxLocal.Invert();
+          mesh->mtxInvGlobal = mtxGlobal.Invert();
+        }
+
+        u32 numVerts = meshBlob->numVerts;
+        u32 numIndices = meshBlob->numIndices;
+        info.verts.resize(prevFloatCount + floatsPerElem * numVerts);
+        info.indices.resize(prevIndexCount + numIndices);
+        float* verts = &info.verts[prevFloatCount];
+        u32* indices = &info.indices[prevIndexCount];
+
+        // De-interleave the vertex data into a single array
+        for (u32 i = 0; i < numVerts; ++i)
+        {
+          const auto& fnCopy = [&verts, i, meshBlob](float* src, int n)
+          {
+            for (int j = 0; j < n; ++j)
+              verts[j] = *(src + i * n + j);
+            verts += n;
+          };
+
+          if (toWorldSpace)
+          {
+            Vector3 vv(meshBlob->verts[i * 3 + 0], meshBlob->verts[i * 3 + 1], meshBlob->verts[i * 3 + 2]);
+            Vector3::Transform(vv, mtxLocal, vv);
+            verts[0] = vv.x;
+            verts[1] = vv.y;
+            verts[2] = vv.z;
+            verts += 3;
+          }
+          else
+          {
+            fnCopy(meshBlob->verts, 3);
+          }
+
+          V3 vv(verts[-3], verts[-2], verts[-1]);
+          minVerts = Min(minVerts, vv);
+          maxVerts = Max(maxVerts, vv);
+
+          if (vertexFormat & VF_NORMAL)
+            fnCopy(meshBlob->normals, 3);
+
+          if (vertexFormat & VF_TEX2_0)
+            fnCopy(meshBlob->uv, 2);
+        }
+
+        copy(meshBlob->indices, meshBlob->indices + meshBlob->numIndices, indices);
+
+        // if (options.flags.IsSet(SceneOptions::OptionFlag::UseMaterials))
+        {
+          for (u32 i = 0; i < meshBlob->numMaterialGroups; ++i)
+          {
+            protocol::MeshBlob::MaterialGroup* mg = &meshBlob->materialGroups[i];
+            mesh->materialGroups.push_back({mg->materialId, mg->startIndex, mg->numIndices});
+            mesh->indexCount += mg->numIndices;
+          }
+        }
       }
 
-      copy(meshBlob->indices, meshBlob->indices + meshBlob->numIndices, indices);
+      scene->minVerts = minVerts;
+      scene->maxVerts = maxVerts;
 
-      //if (options.flags.IsSet(SceneOptions::OptionFlag::UseMaterials))
+      // Create the mesh buffers
+      for (const auto& kv : bufferInfo)
       {
-        for (u32 i = 0; i < meshBlob->numMaterialGroups; ++i)
+        u32 fmt = kv.first;
+        const BufferInfo& info = kv.second;
+
+        u32 vertexSize = VertexSizeFromFlags(fmt);
+
+        scene::MeshBuffer* buf = new scene::MeshBuffer();
+        scene->meshBuffers.push_back(buf);
+        ObjectHandle vb = GRAPHICS.CreateBuffer(
+            D3D11_BIND_VERTEX_BUFFER, info.vertexCount * vertexSize, false, info.verts.data(), vertexSize);
+        ObjectHandle ib = GRAPHICS.CreateBuffer(D3D11_BIND_INDEX_BUFFER, info.indexCount * sizeof(u32), false,
+            info.indices.data(), DXGI_FORMAT_R32_UINT);
+
+        buf->vb = vb;
+        buf->ib = ib;
+        for (const BufferInfo::VtxInfo& vtxInfo : info.vtxInfo)
         {
-          protocol::MeshBlob::MaterialGroup* mg = &meshBlob->materialGroups[i];
-          mesh->materialGroups.push_back({ mg->materialId, mg->startIndex, mg->numIndices });
-          mesh->indexCount += mg->numIndices;
+          buf->meshes.push_back(vtxInfo.mesh);
+          vtxInfo.mesh->vb = vb;
+          vtxInfo.mesh->ib = ib;
+          vtxInfo.mesh->startIndexLocation = vtxInfo.indexStart;
+          vtxInfo.mesh->baseVertexLocation = vtxInfo.vertexStart;
         }
       }
     }
 
-    scene->minVerts = minVerts;
-    scene->maxVerts = maxVerts;
-
-    // Create the mesh buffers
-    for (const auto& kv : bufferInfo)
+    if (options.loadFilter & SceneOptions::MaterialMask)
     {
-      u32 fmt = kv.first;
-      const BufferInfo& info = kv.second;
-
-      u32 vertexSize = VertexSizeFromFlags(fmt);
-
-      scene::MeshBuffer* buf = new scene::MeshBuffer();
-      scene->meshBuffers.push_back(buf);
-      ObjectHandle vb = GRAPHICS.CreateBuffer(
-        D3D11_BIND_VERTEX_BUFFER, info.vertexCount * vertexSize, false, info.verts.data(), vertexSize);
-      ObjectHandle ib = GRAPHICS.CreateBuffer(D3D11_BIND_INDEX_BUFFER, info.indexCount * sizeof(u32), false,
-        info.indices.data(), DXGI_FORMAT_R32_UINT);
-
-      buf->vb = vb;
-      buf->ib = ib;
-      for (const BufferInfo::VtxInfo& vtxInfo : info.vtxInfo)
+      for (const protocol::MaterialBlob* materialBlob : loader.materials)
       {
-        buf->meshes.push_back(vtxInfo.mesh);
-        vtxInfo.mesh->vb = vb;
-        vtxInfo.mesh->ib = ib;
-        vtxInfo.mesh->startIndexLocation = vtxInfo.indexStart;
-        vtxInfo.mesh->baseVertexLocation = vtxInfo.vertexStart;
+        if (scene->materials.find(materialBlob->materialId) == scene->materials.end())
+          scene->materials[materialBlob->materialId] = new scene::Material();
+
+        scene::Material* mat = scene->materials[materialBlob->materialId];
+        mat->id = materialBlob->materialId;
+        mat->flags = materialBlob->flags;
+        mat->name = materialBlob->name;
+
+        if (mat->flags & scene::Material::FLAG_COLOR)
+        {
+          mat->color.color = {materialBlob->color->r, materialBlob->color->g, materialBlob->color->b};
+          mat->color.texture = materialBlob->color->texture;
+          mat->color.brightness = materialBlob->color->brightness;
+        }
+
+        if (mat->flags & scene::Material::FLAG_LUMINANCE)
+        {
+          mat->luminance.color = {
+              materialBlob->luminance->r, materialBlob->luminance->g, materialBlob->luminance->b};
+          mat->luminance.texture = materialBlob->luminance->texture;
+          mat->luminance.brightness = materialBlob->luminance->brightness;
+        }
+
+        if (mat->flags & scene::Material::FLAG_REFLECTION)
+        {
+          mat->reflection.color = {
+              materialBlob->reflection->r, materialBlob->reflection->g, materialBlob->reflection->b};
+          mat->reflection.texture = materialBlob->reflection->texture;
+          mat->reflection.brightness = materialBlob->reflection->brightness;
+        }
+      }
+    }
+
+    if (options.loadFilter & SceneOptions::CameraFlag)
+    {
+      for (const protocol::CameraBlob* cameraBlob : loader.cameras)
+      {
+        scene->cameras.push_back(new scene::Camera(cameraBlob->name, cameraBlob->id, cameraBlob->parentId));
+        scene->baseObjects[cameraBlob->id] = scene->cameras.back();
+
+        scene::Camera* cam = scene->cameras.back();
+        cam->verticalFov = cameraBlob->verticalFov;
+        cam->nearPlane = cameraBlob->nearPlane;
+        cam->farPlane = cameraBlob->farPlane;
+
+        InitMatrix4x3(cameraBlob->mtxLocal, &cam->mtxLocal);
+        InitMatrix4x3(cameraBlob->mtxGlobal, &cam->mtxGlobal);
+      }
+    }
+
+    if (options.loadFilter & SceneOptions::NullObjectFlag)
+    {
+      for (const protocol::NullObjectBlob* nullBlob : loader.nullObjects)
+      {
+        scene->nullObjects.push_back(new scene::NullObject(nullBlob->name, nullBlob->id, nullBlob->parentId));
+        scene->baseObjects[nullBlob->id] = scene->nullObjects.back();
+
+        scene::NullObject* obj = scene->nullObjects.back();
+        InitMatrix4x3(nullBlob->mtxLocal, &obj->mtxLocal);
+        InitMatrix4x3(nullBlob->mtxGlobal, &obj->mtxGlobal);
+      }
+    }
+
+    for (scene::BaseObject* baseObj : scene->baseObjects)
+    {
+      if (baseObj && baseObj->parentId != 0xffffffff)
+      {
+        baseObj->parentPtr = scene->baseObjects[baseObj->parentId];
+      }
+    }
+
+    END_INIT_SEQUENCE();
+  }
+
+  //------------------------------------------------------------------------------
+  SceneOptions::SceneOptions()
+  {
+    for (int i = 0; i < NUM_OBJECT_TYPES; ++i)
+    {
+      userDataSize[i] = 0;
+    }
+  }
+
+  //------------------------------------------------------------------------------
+  int CalcPlexusGrouping(
+      V3* vtx, const V3* points, int num, int* neighbours, int maxNeighbours, const PlexusGrouping& config)
+  {
+    u8* connected = g_ScratchMemory.Alloc<u8>(num * num);
+    memset(connected, 0, num * num);
+
+    struct DistEntry
+    {
+      float dist;
+      int idx;
+    };
+    DistEntry* dist = g_ScratchMemory.Alloc<DistEntry>(num);
+    int* idx = g_ScratchMemory.Alloc<int>(num);
+    u8* degree = g_ScratchMemory.Alloc<u8>(num);
+    memset(degree, 0, num);
+
+    V3* orgVtx = vtx;
+
+    float minDist = config.min_dist;
+    float maxDist = config.max_dist;
+    int numNeighbours = config.num_neighbours;
+
+    float eps = config.eps;
+
+    auto fnSort = [&](int a, int b)
+    {
+      float da = dist[a].dist;
+      float db = dist[b].dist;
+      float d = da - db;
+      if (d < 0)
+        d *= -1;
+      if (d < eps)
+        return degree[a] < degree[b];
+      return da < db;
+    };
+
+    // iterate over all the neighbours, and calc distance etc
+    for (int i = 0; i < num; ++i)
+      idx[i] = i;
+
+    for (int i = 0; i < num; ++i)
+    {
+      int numValid = 0;
+      for (int j = 0; j < numNeighbours; ++j)
+      {
+        int curIdx = neighbours[i * maxNeighbours + j];
+        if (curIdx == -1)
+          break;
+
+        float d = Distance(points[i], points[curIdx]);
+
+        if (curIdx == i || d < minDist || d > maxDist || connected[i * num + curIdx] ||
+            connected[curIdx * num + i])
+          continue;
+
+        idx[numValid] = numValid;
+        dist[numValid].dist = d;
+        dist[numValid].idx = curIdx;
+        numValid++;
+      }
+
+      sort(idx, idx + numValid, fnSort);
+
+      int cnt = min(config.num_nearest, numValid);
+      for (int j = 0; j < cnt; ++j)
+      {
+        int curIdx = dist[idx[j]].idx;
+
+        vtx[0] = points[i];
+        vtx[1] = points[curIdx];
+        vtx += 2;
+
+        connected[i * num + curIdx] = 1;
+        degree[i]++;
+        degree[curIdx]++;
+      }
+    }
+
+    return (int)(vtx - orgVtx);
+  }
+
+  //------------------------------------------------------------------------------
+  void GenerateQuadIndices(u32 numQuads, vector<u32>* out)
+  {
+    out->resize(numQuads * 6);
+    u32* triangleIndices = out->data();
+    for (u32 i = 0; i < numQuads; ++i)
+    {
+      // 0, 1, 3
+      triangleIndices[i * 6 + 0] = i * 4 + 0;
+      triangleIndices[i * 6 + 1] = i * 4 + 1;
+      triangleIndices[i * 6 + 2] = i * 4 + 3;
+
+      // 3, 1, 2
+      triangleIndices[i * 6 + 3] = i * 4 + 3;
+      triangleIndices[i * 6 + 4] = i * 4 + 1;
+      triangleIndices[i * 6 + 5] = i * 4 + 2;
+    }
+  }
+
+  //------------------------------------------------------------------------------
+  void GeneratePlaneIndices(int width, int height, vector<u32>* out)
+  {
+    out->resize((width - 1) * (height - 1) * 6);
+    u32* res = out->data();
+
+    // 1 2
+    // 0 3
+
+    for (int i = 1; i < height; ++i)
+    {
+      for (int j = 0; j < width - 1; ++j)
+      {
+        // 0, 1, 3
+        res[0] = (i + 0) * width + (j + 0);
+        res[1] = (i - 1) * width + (j + 0);
+        res[2] = (i + 0) * width + (j + 1);
+
+        // 3, 1, 2
+        res[3] = (i + 0) * width + (j + 1);
+        res[4] = (i - 1) * width + (j + 0);
+        res[5] = (i - 1) * width + (j + 1);
+
+        res += 6;
+
       }
     }
   }
-
-  if (options.loadFilter & SceneOptions::MaterialMask)
-  {
-    for (const protocol::MaterialBlob* materialBlob : loader.materials)
-    {
-      if (scene->materials.find(materialBlob->materialId) == scene->materials.end())
-        scene->materials[materialBlob->materialId] = new scene::Material();
-
-      scene::Material* mat = scene->materials[materialBlob->materialId];
-      mat->id = materialBlob->materialId;
-      mat->flags = materialBlob->flags;
-      mat->name = materialBlob->name;
-
-      if (mat->flags & scene::Material::FLAG_COLOR)
-      {
-        mat->color.color = { materialBlob->color->r, materialBlob->color->g, materialBlob->color->b };
-        mat->color.texture = materialBlob->color->texture;
-        mat->color.brightness = materialBlob->color->brightness;
-      }
-
-      if (mat->flags & scene::Material::FLAG_LUMINANCE)
-      {
-        mat->luminance.color = {
-          materialBlob->luminance->r, materialBlob->luminance->g, materialBlob->luminance->b };
-        mat->luminance.texture = materialBlob->luminance->texture;
-        mat->luminance.brightness = materialBlob->luminance->brightness;
-      }
-
-      if (mat->flags & scene::Material::FLAG_REFLECTION)
-      {
-        mat->reflection.color = {
-          materialBlob->reflection->r, materialBlob->reflection->g, materialBlob->reflection->b };
-        mat->reflection.texture = materialBlob->reflection->texture;
-        mat->reflection.brightness = materialBlob->reflection->brightness;
-      }
-    }
-  }
-
-  if (options.loadFilter & SceneOptions::CameraFlag)
-  {
-    for (const protocol::CameraBlob* cameraBlob : loader.cameras)
-    {
-      scene->cameras.push_back(new scene::Camera(cameraBlob->name, cameraBlob->id, cameraBlob->parentId));
-      scene->baseObjects[cameraBlob->id] = scene->cameras.back();
-
-      scene::Camera* cam = scene->cameras.back();
-      cam->verticalFov = cameraBlob->verticalFov;
-      cam->nearPlane = cameraBlob->nearPlane;
-      cam->farPlane = cameraBlob->farPlane;
-
-      InitMatrix4x3(cameraBlob->mtxLocal, &cam->mtxLocal);
-      InitMatrix4x3(cameraBlob->mtxGlobal, &cam->mtxGlobal);
-    }
-  }
-
-  if (options.loadFilter & SceneOptions::NullObjectFlag)
-  {
-    for (const protocol::NullObjectBlob* nullBlob : loader.nullObjects)
-    {
-      scene->nullObjects.push_back(new scene::NullObject(nullBlob->name, nullBlob->id, nullBlob->parentId));
-      scene->baseObjects[nullBlob->id] = scene->nullObjects.back();
-
-      scene::NullObject* obj = scene->nullObjects.back();
-      InitMatrix4x3(nullBlob->mtxLocal, &obj->mtxLocal);
-      InitMatrix4x3(nullBlob->mtxGlobal, &obj->mtxGlobal);
-    }
-  }
-
-  for (scene::BaseObject* baseObj : scene->baseObjects)
-  {
-    if (baseObj && baseObj->parentId != 0xffffffff)
-    {
-      baseObj->parentPtr = scene->baseObjects[baseObj->parentId];
-    }
-  }
-
-  END_INIT_SEQUENCE();
-}
-
-//------------------------------------------------------------------------------
-SceneOptions::SceneOptions()
-{
-  for (int i = 0; i < NUM_OBJECT_TYPES; ++i)
-  {
-    userDataSize[i] = 0;
-  }
-}
-
-
-//------------------------------------------------------------------------------
-int tano::CalcPlexusGrouping(
-    V3* vtx, const V3* points, int num, int* neighbours, int maxNeighbours, const PlexusGrouping& config)
-{
-  u8* connected = g_ScratchMemory.Alloc<u8>(num * num);
-  memset(connected, 0, num * num);
-
-  struct DistEntry
-  {
-    float dist;
-    int idx;
-  };
-  DistEntry* dist = g_ScratchMemory.Alloc<DistEntry>(num);
-  int* idx = g_ScratchMemory.Alloc<int>(num);
-  u8* degree = g_ScratchMemory.Alloc<u8>(num);
-  memset(degree, 0, num);
-
-  V3* orgVtx = vtx;
-
-  float minDist = config.min_dist;
-  float maxDist = config.max_dist;
-  int numNeighbours = config.num_neighbours;
-
-  float eps = config.eps;
-
-  auto fnSort = [&](int a, int b)
-  {
-    float da = dist[a].dist;
-    float db = dist[b].dist;
-    float d = da - db;
-    if (d < 0)
-      d *= -1;
-    if (d < eps)
-      return degree[a] < degree[b];
-    return da < db;
-  };
-
-  // iterate over all the neighbours, and calc distance etc
-  for (int i = 0; i < num; ++i)
-    idx[i] = i;
-
-  for (int i = 0; i < num; ++i)
-  {
-    int numValid = 0;
-    for (int j = 0; j < numNeighbours; ++j)
-    {
-      int curIdx = neighbours[i * maxNeighbours + j];
-      if (curIdx == -1)
-        break;
-
-      float d = Distance(points[i], points[curIdx]);
-
-      if (curIdx == i || d < minDist || d > maxDist || connected[i * num + curIdx] ||
-          connected[curIdx * num + i])
-        continue;
-
-      idx[numValid] = numValid;
-      dist[numValid].dist = d;
-      dist[numValid].idx = curIdx;
-      numValid++;
-    }
-
-    sort(idx, idx + numValid, fnSort);
-
-    int cnt = min(config.num_nearest, numValid);
-    for (int j = 0; j < cnt; ++j)
-    {
-      int curIdx = dist[idx[j]].idx;
-
-      vtx[0] = points[i];
-      vtx[1] = points[curIdx];
-      vtx += 2;
-
-      connected[i * num + curIdx] = 1;
-      degree[i]++;
-      degree[curIdx]++;
-    }
-  }
-
-  return (int)(vtx - orgVtx);
 }

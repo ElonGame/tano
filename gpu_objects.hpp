@@ -105,6 +105,8 @@ namespace tano
         RasterizerDesc    = 1 << 2,
         DynamicVb         = 1 << 3,
         DynamicIb         = 1 << 4,
+        StaticVb          = 1 << 5,
+        StaticIb          = 1 << 6,
       };
 
       struct Bits {
@@ -133,6 +135,8 @@ namespace tano
 
     BundleOptions& DynamicVb(int numElements, int elementSize);
     BundleOptions& DynamicIb(int numElements, int elementSize);
+    BundleOptions& StaticVb(int numElements, int elementSize, void* vertices);
+    BundleOptions& StaticIb(int numElements, int elementSize, void* indices);
 
     CD3D11_DEPTH_STENCIL_DESC depthStencilDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
     CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
@@ -157,6 +161,9 @@ namespace tano
 
     int ibNumElems = 0;
     int ibElemSize = 0;
+
+    void* staticVb = nullptr;
+    void* staticIb = nullptr;
 
     OptionFlags flags;
   };

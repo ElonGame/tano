@@ -208,9 +208,6 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
-  u32* GenerateQuadIndices(u32 numQuads, u32* ibSize);
-
-  //------------------------------------------------------------------------------
   void InitDefaultDescs();
   extern CD3D11_BLEND_DESC blendDescBlendSrcAlpha;
   extern CD3D11_BLEND_DESC blendDescBlendOneOne;

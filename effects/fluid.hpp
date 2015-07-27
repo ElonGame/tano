@@ -11,6 +11,97 @@ namespace tano
     struct TaskData;
   }
 
+  //------------------------------------------------------------------------------
+  struct GreetsBlock
+  {
+    ~GreetsBlock();
+
+    struct PathElem
+    {
+      PathElem(int x, int y) : x(x), y(y) {}
+
+      static int CalcPathLength(PathElem* p);
+
+      int x, y;
+      vector<PathElem*> children;
+      int pathLength = -1;
+    };
+
+    struct GreetsData
+    {
+      GreetsData(int w, int h);
+      ~GreetsData();
+      void CalcPath(int w, int h, const char* buf);
+
+      void Update(const UpdateState& state);
+      void Render();
+
+      vector<vector<PathElem*>> paths;
+
+      vector<int> count;
+      int width, height;
+    };
+
+    bool Init();
+    vector<GreetsData*> _data;
+  };
+
+  //------------------------------------------------------------------------------
+  struct FluidSim
+  {
+    enum
+    {
+      FLUID_SIZE = 100,
+      FLUID_SIZE_PADDED = FLUID_SIZE + 2,
+      FLUID_SIZE_SQ = FLUID_SIZE * FLUID_SIZE,
+      FLUID_SIZE_PADDED_SQ = FLUID_SIZE_PADDED * FLUID_SIZE_PADDED,
+    };
+
+    FluidSim();
+
+    static int IX(int x, int y) { return x + FLUID_SIZE_PADDED * y; }
+
+    void Update(const UpdateState& state);
+
+    void AddForce(float dt, float* out, float* force);
+    void Diffuse(int b, float dt, float diff, float* out, float* old);
+    void Advect(int b, float dt, float* out, float* old, float* u, float *v);
+    void Project(float* u, float* v, float* p, float* div);
+
+    void DensityStep(float dt);
+    void VelocityStep(float dt);
+
+    void BoundaryConditions(int b, float* x);
+
+    void Verify();
+
+    struct FluidKernelChunk
+    {
+      int yStart, yEnd;
+      float* out;
+      float* old;
+      float dt;
+      float diff;
+    };
+
+    static void FluidKernelWorker(const scheduler::TaskData& td);
+
+    float density0[FLUID_SIZE_PADDED_SQ];
+    float density1[FLUID_SIZE_PADDED_SQ];
+    float* dCur = density0;
+    float* dOld = density1;
+
+    float u0[FLUID_SIZE_PADDED_SQ];
+    float u1[FLUID_SIZE_PADDED_SQ];
+    float* uCur = u0;
+    float* uOld = u1;
+
+    float v0[FLUID_SIZE_PADDED_SQ];
+    float v1[FLUID_SIZE_PADDED_SQ];
+    float* vCur = v0;
+    float* vOld = v1;
+  };
+
   class Fluid : public BaseEffect
   {
   public:
@@ -38,71 +129,22 @@ namespace tano
 
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
-    void UpdateBackgroundTexture();
+    void UpdateBackgroundTexture(float dt);
+    void InitBackgroundTexture();
 
-    struct FluidSim
-    {
-      enum
-      {
-        FLUID_SIZE = 128,
-        FLUID_SIZE_PADDED = FLUID_SIZE + 2,
-        FLUID_SIZE_SQ = FLUID_SIZE * FLUID_SIZE,
-        FLUID_SIZE_PADDED_SQ = FLUID_SIZE_PADDED * FLUID_SIZE_PADDED,
-      };
-
-      FluidSim();
-
-      static int IX(int x, int y) { return x + FLUID_SIZE_PADDED * y; }
-
-      void Update(const UpdateState& state);
-
-      void AddForce(float dt, float* out, float* force);
-      void Diffuse(int b, float dt, float diff, float* out, float* old);
-      void Advect(int b, float dt, float* out, float* old, float* u, float *v);
-      void Project(float* u, float* v, float* p, float* div);
-
-      void DensityStep(float dt);
-      void VelocityStep(float dt);
-
-      void BoundaryConditions(int b, float* x);
-
-      void Verify();
-
-      struct FluidKernelChunk
-      {
-        int yStart, yEnd;
-        float* out;
-        float* old;
-        float dt;
-        float diff;
-      };
-
-      static void FluidKernelWorker(const scheduler::TaskData& td);
-
-      float density0[FLUID_SIZE_PADDED_SQ];
-      float density1[FLUID_SIZE_PADDED_SQ];
-      float* dCur = density0;
-      float* dOld = density1;
-
-      float u0[FLUID_SIZE_PADDED_SQ];
-      float u1[FLUID_SIZE_PADDED_SQ];
-      float* uCur = u0;
-      float* uOld = u1;
-
-      float v0[FLUID_SIZE_PADDED_SQ];
-      float v1[FLUID_SIZE_PADDED_SQ];
-      float* vCur = v0;
-      float* vOld = v1;
-    };
+    vector<float> _textureU;
+    vector<float> _textureV;
 
     GpuBundle _backgroundBundle;
     ObjectHandle _backgroundTexture;
 
+    GreetsBlock _greetsBlock;
 
     FluidSim _sim;
     ObjectHandle _fluidTexture;
 
     FluidSettings _settings;
     FreeFlyCamera _camera;
+
   };
 }

@@ -65,5 +65,13 @@ namespace tano
     u32 userDataSize[NUM_OBJECT_TYPES];
   };
 
+  //------------------------------------------------------------------------------
   bool CreateScene(const MeshLoader& loader, const SceneOptions& options, scene::Scene* scene);
+
+  //------------------------------------------------------------------------------
+  void GenerateQuadIndices(u32 numQuads, vector<u32>* out);
+
+  //------------------------------------------------------------------------------
+  void GeneratePlaneIndices(int width, int height, vector<u32>* out);
+
 }
