@@ -103,7 +103,6 @@ namespace tano
     GpuBundle _backgroundBundle;
     ObjectHandle _backgroundTexture;
 
-
     FluidSim _sim;
     ObjectHandle _fluidTexture;
 

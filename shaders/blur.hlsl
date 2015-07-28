@@ -13,6 +13,7 @@ cbuffer settings : register(b0)
 };
 
 [numthreads(256,1,1)]
+// entry-point: cs
 void CopyTranspose(uint3 globalThreadID : SV_DispatchThreadID)
 {
   int y = globalThreadID.x;
@@ -28,6 +29,7 @@ void CopyTranspose(uint3 globalThreadID : SV_DispatchThreadID)
 }
 
 [numthreads(256,1,1)]
+// entry-point: cs
 void BlurTranspose(uint3 globalThreadID : SV_DispatchThreadID)
 {
   int y = globalThreadID.x;
@@ -55,6 +57,7 @@ void BlurTranspose(uint3 globalThreadID : SV_DispatchThreadID)
 }
 
 [numthreads(256,1,1)]
+// entry-point: cs
 void BoxBlurX(uint3 globalThreadID : SV_DispatchThreadID)
 {
   int y = globalThreadID.x;

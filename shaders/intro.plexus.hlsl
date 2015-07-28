@@ -36,6 +36,7 @@ struct PsLinesIn
   noperspective float4 endPoints: TEXCOORD1;
 };
 
+// entry-point: vs
 VsLinesOut VsLines(VsLinesIn v)
 {
   VsLinesOut res;
@@ -51,6 +52,7 @@ float2 projToWindow(in float4 pos)
 }
 
 [maxvertexcount(4)]
+// entry-point: gs
 void GsLines(line VsLinesOut input[2], inout TriangleStream<PsLinesIn> outStream)
 {
   matrix worldViewProj = mul(world, viewProj);
@@ -118,6 +120,7 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<PsLinesIn> outStream
 static float4 WireColor = float4(0.5, 0.7, 0.7, 1);
 static float LineWidth = 2.5;
 
+// entry-point: ps
 float4 PsLines(PsLinesIn p) : SV_Target
 {
   float2 a = p.endPoints.xy;

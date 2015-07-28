@@ -81,8 +81,6 @@ bool GreetsBlock::Init()
     (const char*)stbi_load_from_memory((const u8*)buf.data(), (int)buf.size(), &w, &h, &c, 4);
 
   int NUM_PARTICLES = BLACKBOARD.GetIntVar("fluid.particlesPerSegment");
-  float speedMin = BLACKBOARD.GetFloatVar("fluid.speedMin");
-  float speedMax = BLACKBOARD.GetFloatVar("fluid.speedMax");
 
   float speedMean = BLACKBOARD.GetFloatVar("fluid.speedMean");
   float speedVariance = BLACKBOARD.GetFloatVar("fluid.speedVariance");
@@ -116,8 +114,10 @@ bool GreetsBlock::Init()
         float ll = GaussianRand(speedMean, speedVariance);
         d->particles[i].speed = ll;
         d->particles[i].cur = ll;
-        //d->particles[i].dir = dir;
-        d->particles[i].dir = rand() % 4;
+        d->particles[i].dir = dir;
+        //d->particles[i].dir = rand() % 4;
+
+        d->particleCount[p->y*d->width + p->x]++;
       }
 
       idx += NUM_PARTICLES;
@@ -142,8 +142,6 @@ void GreetsBlock::GreetsData::Update(const UpdateState& state)
     p.cur -= dt;
     if (p.cur > 0)
       continue;
-
-    particleCount[p.y*width + p.x]--;
 
     p.cur = p.speed;
 
@@ -201,6 +199,8 @@ void GreetsBlock::GreetsData::Update(const UpdateState& state)
       }
     }
 
+    particleCount[p.y*width + p.x]--;
+
     p.x += GRID_DIRS[p.dir * 2 + 0];
     p.y += GRID_DIRS[p.dir * 2 + 1];
 
@@ -222,8 +222,7 @@ void GreetsBlock::GreetsData::CalcPath(int w, int h, const char* buf)
   {
     for (int j = 0; j < w; ++j)
     {
-      //background[i*w + j] = max(buf[4 * (i*w + j) + 0], max(buf[4 * (i*w + j) + 1], max(buf[4 * (i*w + j) + 2], buf[4 * (i*w + j) + 3])));
-      background[i*w + j] = buf[4 * (i*w + j)];
+      background[i*w + j] = *(int*)&buf[4 * (i*w + j)] == 0xffffffff ? 1 : 0;
     }
   }
 
@@ -372,9 +371,9 @@ bool Tunnel::Init()
 
   // clang-format off
   INIT(_linesBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/tunnel", "VsTunnelLines")
-    .GeometryShader("shaders/out/tunnel", "GsTunnelLines")
-    .PixelShader("shaders/out/tunnel", "PsTunnelLines")
+    .VertexShader("shaders/out/tunnel.lines", "VsTunnelLines")
+    .GeometryShader("shaders/out/tunnel.lines", "GsTunnelLines")
+    .PixelShader("shaders/out/tunnel.lines", "PsTunnelLines")
     .VertexFlags(VF_POS)
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
@@ -398,11 +397,13 @@ bool Tunnel::Init()
     .PixelShader("shaders/out/tunnel.mesh", "PsMesh")));
 
   INIT(_greetsBundle.Create(BundleOptions()
+    .RasterizerDesc(rasterizeDescCullNone)
+    .DepthStencilDesc(depthDescDepthDisabled)
     .VertexFlags(VF_POS)
     .VertexShader("shaders/out/tunnel.greets", "VsGreets")
     .PixelShader("shaders/out/tunnel.greets", "PsGreets")
     .DynamicVb(1024*16, sizeof(V3))
-    .StaticIb(64*8, sizeof(u32), GenerateQuadIndices(64*8).data())));
+    .StaticIb(64*8*6, sizeof(u32), GenerateQuadIndices(64*8).data())));
   // clang-format on
 
   INIT(_cbLines.Create());
@@ -427,29 +428,34 @@ void Tunnel::UpdateGreets(const UpdateState& state)
   ObjectHandle handle = _greetsBundle.objects._vb;
   V3* verts = _ctx->MapWriteDiscard<V3>(handle);
 
-  GreetsBlock::GreetsData* data = _greetsBlock._data[0];
+  GreetsBlock::GreetsData* data = _greetsBlock._data[_greetsBlock.curText];
   int w = data->width;
   int h = data->height;
   float fw = (float)w;
   float fh = (float)h;
 
   float s = 10;
-  V3 pos(-fw/2*s+s/2, fh/2*s-s/2, 0);
+  V3 pos(-fw/2*s+s/2, fh/2*s-s/2, 300);
+  float orgX = pos.x;
   for (int i = 0; i < h; ++i)
   {
+    pos.x = orgX;
     for (int j = 0; j < w; ++j)
     {
-      float ss = s * (float)data->particleCount[i*w+j] / 100;
+      float ss = s * Clamp(0.f, 1.f, (float)data->particleCount[i*w+j] / 10);
+      //ss = s;
       // 1 2
       // 0 3
-      verts[j * 4 + 0] = pos + V3(-ss / 2, -ss / 2, 0);
-      verts[j * 4 + 1] = pos + V3(-ss / 2, +ss / 2, 0);
-      verts[j * 4 + 2] = pos + V3(+ss / 2, +ss / 2, 0);
-      verts[j * 4 + 3] = pos + V3(+ss / 2, -ss / 2, 0);
+      verts[0] = pos + V3(-ss / 2, -ss / 2, 0);
+      verts[1] = pos + V3(-ss / 2, +ss / 2, 0);
+      verts[2] = pos + V3(+ss / 2, +ss / 2, 0);
+      verts[3] = pos + V3(+ss / 2, -ss / 2, 0);
+
+      verts += 4;
 
       pos.x += s;
     }
-    pos.y += s;
+    pos.y -= s;
   }
   _ctx->Unmap(handle);
 }
@@ -669,7 +675,8 @@ bool Tunnel::Render()
     // greets
     _cbGreets.Set(_ctx, 0);
     _ctx->SetBundle(_greetsBundle);
-    _ctx->DrawIndexed(6*64, 0, 0);
+    GreetsBlock::GreetsData* data = _greetsBlock._data[_greetsBlock.curText];
+    _ctx->DrawIndexed(data->width*data->height*6, 0, 0);
   }
 
 #if 0
@@ -737,6 +744,8 @@ bool Tunnel::Render()
 #if WITH_IMGUI
 void Tunnel::RenderParameterSet()
 {
+  ImGui::SliderInt("text", &_greetsBlock.curText, 0, 4);
+
   ImGui::SliderFloat("Exposure", &_settings.tonemap.exposure, 0.1f, 20.0f);
   ImGui::SliderFloat("Min White", &_settings.tonemap.min_white, 0.1f, 20.0f);
 

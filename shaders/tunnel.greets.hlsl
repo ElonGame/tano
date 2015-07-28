@@ -16,6 +16,7 @@ struct VsOut
   float4 pos : SV_Position;
 };
 
+// entry-point: vs
 VsOut VsGreets(VsIn v)
 {
   VsOut res;
@@ -24,6 +25,7 @@ VsOut VsGreets(VsIn v)
   return res;
 }
 
+// entry-point: ps
 float4 PsGreets(VsOut v) : SV_Target
 {
   return 1;

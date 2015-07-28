@@ -6,6 +6,7 @@ struct VSQuadOut
     float2 uv: TexCoord;
 };
 
+// entry-point: vs
 VSQuadOut VsMain(uint vertexID : SV_VertexID)
 {
   // 1, 2

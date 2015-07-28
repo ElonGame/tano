@@ -6,6 +6,7 @@ cbuffer F : register(b0)
 };
 
 //------------------------------------------------------
+// entry-point: ps
 float4 PsScaleBias(VSQuadOut p) : SV_Target
 {
   float2 uv = p.uv.xy;
@@ -14,6 +15,7 @@ float4 PsScaleBias(VSQuadOut p) : SV_Target
 }
 
 //------------------------------------------------------
+// entry-point: ps
 float4 PsScaleBiasSecondary(VSQuadOut p) : SV_Target
 {
   float2 uv = p.uv.xy;

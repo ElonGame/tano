@@ -91,13 +91,21 @@ void ResourceManager::AddPath(const string& path)
 //------------------------------------------------------------------------------
 bool ResourceManager::LoadFile(const char* filename, vector<char>* buf)
 {
-  LOG_DEBUG(" Loading: ", filename);
+  LOG_DEBUG("Loading: ", filename);
   const string& fullPath = ResolveFilename(filename, true);
   if (fullPath.empty())
     return false;
   _readFiles.insert(FileInfo(filename, fullPath));
 
-  return bristol::LoadFile(fullPath.c_str(), buf);
+  if (!bristol::LoadFile(fullPath.c_str(), buf))
+  {
+    LOG_INFO("Unable to load: ", fullPath);
+    return false;
+  }
+  else
+  {
+    return true;
+  }
 }
 
 //------------------------------------------------------------------------------

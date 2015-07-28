@@ -23,6 +23,7 @@ struct VsFractureOut
   float2 uv : TexCoord0;
 };
 
+// entry-point: vs
 VsFractureOut VsFracture(VsFractureIn v)
 {
   VsFractureOut res;
@@ -43,6 +44,7 @@ VsFractureOut VsFracture(VsFractureIn v)
   return res;
 }
 
+// entry-point: ps
 float4 PsFracture(VsFractureOut v) : SV_Target
 {
   return Texture0.Sample(LinearSampler, v.uv.xy);

@@ -7,6 +7,7 @@ cbuffer F : register(b0)
 };
 
 
+// entry-point: ps
 float4 PsComposite(VSQuadOut p) : SV_Target
 {
   // textures used:

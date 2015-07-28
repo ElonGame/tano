@@ -21,6 +21,7 @@ struct PS_INPUT
     float2 uv  : TEXCOORD0;
 };
 
+// entry-point: vs
 PS_INPUT VsMain(VS_INPUT input)
 {
     PS_INPUT output;
@@ -29,8 +30,8 @@ PS_INPUT VsMain(VS_INPUT input)
     output.uv  = input.uv;
     return output;
 }
-
             
+// entry-point: ps
 float4 PsMain(PS_INPUT input) : SV_Target
 {
     float4 out_col = input.col * texture0.Sample(sampler0, input.uv);

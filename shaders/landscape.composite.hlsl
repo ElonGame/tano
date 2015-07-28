@@ -5,6 +5,7 @@ cbuffer F : register(b0)
   float4 tonemap; // x = shoulder, y = max_white, z = exposure/lumAvg, w = min_white
 };
 
+// entry-point: ps
 float4 PsComposite(VSQuadOut p) : SV_Target
 {
   // Texture0 : color

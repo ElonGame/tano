@@ -12,6 +12,7 @@ cbuffer P : register(b0)
   float4 params;
 };
 
+// entry-point: ps
 float4 PsLensFlare(VSQuadOut p) : SV_Target
 {
   // texture0 = scale/biased input

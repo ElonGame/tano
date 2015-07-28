@@ -12,6 +12,7 @@ struct VsTextureOut
   float2 uv : TexCoord0;
 };
 
+// entry-point: vs
 VsTextureOut VsMain(VsTextureIn v)
 {
 	VsTextureOut res;
@@ -20,6 +21,7 @@ VsTextureOut VsMain(VsTextureIn v)
 	return res;
 }
 
+// entry-point: ps
 float4 PsMain(VsTextureOut p) : SV_Target
 {
   return Texture0.Sample(LinearSampler, p.uv.xy);

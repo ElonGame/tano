@@ -49,6 +49,7 @@ static float3 LIGHT_POS = float3(0, 100, -100);
 // pos
 //------------------------------------------------------
 
+// entry-point: vs
 VsPosOut VsPos(VsPosIn v)
 {
   VsPosOut res;
@@ -57,6 +58,7 @@ VsPosOut VsPos(VsPosIn v)
   return res;
 }
 
+// entry-point: ps
 float4 PsPos(VsPosOut p) : SV_Target
 {
   return 1;
@@ -66,6 +68,7 @@ float4 PsPos(VsPosOut p) : SV_Target
 // pos-color
 //------------------------------------------------------
 
+// entry-point: vs
 VsPosColorOut VsPosColor(VsPosColorIn v)
 {
   VsPosColorOut res;
@@ -75,6 +78,7 @@ VsPosColorOut VsPosColor(VsPosColorIn v)
   return res;
 }
 
+// entry-point: ps
 float4 PsPosColor(VsPosColorOut p) : SV_Target
 {
   return p.color;
@@ -85,6 +89,7 @@ float4 PsPosColor(VsPosColorOut p) : SV_Target
 // pos-normal
 //------------------------------------------------------
 
+// entry-point: vs
 VsPosNormalOut VsPosNormal(VsPosNormalIn v)
 {
   VsPosNormalOut res;
@@ -95,6 +100,7 @@ VsPosNormalOut VsPosNormal(VsPosNormalIn v)
   return res;
 }
 
+// entry-point: ps
 float4 PsPosNormal(VsPosNormalOut p) : SV_Target
 {
   // pos -> light

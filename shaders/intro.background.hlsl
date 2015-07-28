@@ -6,7 +6,7 @@ cbuffer F : register(b0)
   float4 outer;
 };
 
-
+// entry-point: ps
 float4 PsBackground(VSQuadOut input) : SV_TARGET
 {
   float t = input.uv.x;

@@ -23,6 +23,7 @@ struct VsMeshOut
   float2 uv : TexCoord0;
 };
 
+// entry-point: vs
 VsMeshOut VsMesh(VsMeshIn v)
 {
   VsMeshOut res;
@@ -33,6 +34,7 @@ VsMeshOut VsMesh(VsMeshIn v)
   return res;
 }
 
+// entry-point: ps
 float4 PsMesh(VsMeshOut v) : SV_Target
 {
   return 1;

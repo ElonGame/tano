@@ -7,6 +7,7 @@ cbuffer F : register(b0)
   float3 cameraLookAt;
 };
 
+// entry-point: ps
 PsColBrightnessOut PsSky(VSQuadOut p)
 {
   float2 uv = p.uv.xy;

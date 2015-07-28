@@ -31,6 +31,7 @@ struct VsLinesOut
 //
 // Vertex shader for AA lines
 //
+// entry-point: vs
 VsLinesOut VsMain(VsLinesIn input)
 {
   VsLinesOut output;
@@ -100,6 +101,7 @@ VsLinesOut VsMain(VsLinesIn input)
   return output;
 }
 
+// entry-point: ps
 float4 PsMain(VsLinesOut input) : SV_Target
 {
   //return 1;

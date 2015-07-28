@@ -33,6 +33,7 @@ static float2 uvsVtx[4] = {
   float2(0, 1), float2(0, 0), float2(1, 1), float2(1, 0)
 };
 
+// entry-point: vs
 VsParticleIn VsParticle(VsParticleIn v)
 {
   VsParticleIn res;
@@ -41,6 +42,7 @@ VsParticleIn VsParticle(VsParticleIn v)
 }
 
 [maxvertexcount(4)]
+// entry-point: gs
 void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
 {
   // Note, the DirectX strip order differs from my usual order. It might be
@@ -88,6 +90,7 @@ static float SoftParticleContrast = 2.0;
 static float intensity = 1.0;
 static float zEpsilon = 0.0;
 
+// entry-point: ps
 PsColBrightnessOut PsParticle(VsParticleOut p)
 {
   // Texture0 = particle texture

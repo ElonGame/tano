@@ -152,10 +152,11 @@ bool GpuBundle::Create(const BundleOptions& options)
   if (options.vsEntry)
   {
     vector<D3D11_INPUT_ELEMENT_DESC> inputElements(options.inputElements);
-    INIT_FATAL(objects.LoadVertexShader(options.vsShaderFile,
+    INIT_FATAL_LOG(objects.LoadVertexShader(options.vsShaderFile,
         options.vsEntry,
         options.vertexFlags,
-        inputElements.empty() ? nullptr : &inputElements));
+        inputElements.empty() ? nullptr : &inputElements),
+        "Error loading vertex shader: ", options.vsShaderFile, ":", options.vsEntry);
   }
 
   if (options.psEntry)

@@ -37,6 +37,7 @@ struct PsLandscapeIn
     float distance : TEXCOORD5;
 };
 
+// entry-point: vs
 VsLandscapeOut VsLandscape(VsLandscapeIn v)
 {
   VsLandscapeOut res;
@@ -68,6 +69,7 @@ float2 projToWindow(in float4 pos)
 
 
 [maxvertexcount(3)]
+// entry-point: gs
 void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandscapeIn> outStream)
 {
     PsLandscapeIn output;
@@ -233,7 +235,7 @@ static float4 ColorCases[] = {
     { 0, 0, 1, 1 }
 }; 
 
-
+// entry-point: ps
 PsColBrightnessOut PsLandscape(PsLandscapeIn p)
 {
     // Compute the shortest distance between the fragment and the edges.

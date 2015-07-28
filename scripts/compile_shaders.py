@@ -12,114 +12,45 @@ from string import Template
 
 SHADER_DIR = os.path.join('..', 'shaders')
 OUT_DIR = os.path.join(SHADER_DIR, 'out' )
+ENTRY_POINT_TAG = 'entry-point'
 
-## shaders and entry points
-shaders = {
-    'basic' : {
-        'vs' : ['VsPos', 'VsPosNormal', 'VsPosColor'],
-        'ps' : ['PsPos', 'PsPosNormal', 'PsPosColor'],
-    },
-    'blob' : {
-        'vs' : ['VsMesh'],
-        'ps' : ['PsMesh'],
-    },
-    'cluster' : {
-        'vs' : ['VsMesh'],
-        'ps' : ['PsMesh'],
-    },
-    'common' : {
-        'vs' : ['VsQuad'],
-        'ps' : ['PsCopy', 'PsAdd'],
-    },
-    'common.scale' : {
-        'ps' : ['PsScaleBias', 'PsScaleBiasSecondary'],
-    },
-    'fluid.texture' : {
-        'vs' : ['VsMain'],
-        'ps' : ['PsMain'],
-    },
-    'imgui' : {
-        'vs' : ['VsMain'],
-        'ps' : ['PsMain'],
-    },
-    'intro.background' : {
-        'ps' : ['PsBackground'],
-    },
-    'intro.composite' : {
-        'ps' : ['PsComposite'],
-    },
-    'intro.fracture' : {
-        'vs' : ['VsFracture'],
-        'ps' : ['PsFracture'],
-    },
-    'intro.particle' : {
-        'vs' : ['VsParticle'],
-        'ps' : ['PsParticle'],
-        'gs' : ['GsParticle'],
-    },
-    'intro.plexus' : {
-        'vs' : ['VsLines'],
-        'ps' : ['PsLines'],
-        'gs' : ['GsLines'],
-    },
-    'landscape.lensflare' : {
-        'ps' : ['PsLensFlare'],
-    },
-    'landscape.composite' : {
-        'ps' : ['PsComposite'],
-    },
-    'landscape.particle' : {
-        'vs' : ['VsParticle'],
-        'ps' : ['PsParticle'],
-        'gs' : ['GsParticle'],
-    },
-    'landscape.landscape' : {
-        'vs' : ['VsLandscape'],
-        'ps' : ['PsLandscape'],
-        'gs' : ['GsLandscape'],
-    },
-    'landscape.sky' : {
-        'ps' : ['PsSky'],
-    },
-    'lines' : {
-        'vs' : ['VsMain'],
-        'ps' : ['PsMain'],
-    },
-    'plexus' : {
-        'vs' : ['VsLines'],
-        'ps' : ['PsLines'],
-        'gs' : ['GsLines'],
-    },
-    'tunnel.lines' : {
-        'vs' : ['VsTunnelLines'],
-        'ps' : ['PsTunnelLines'],
-        'gs' : ['GsTunnelLines'],
-    },
-    'tunnel.composite' : {
-        'ps' : ['PsComposite'],
-    },
-    'tunnel.mesh' : {
-        'vs' : ['VsMesh'],
-        'ps' : ['PsMesh'],
-    },
-    'tunnel.greets' : {
-        'vs' : ['VsGreets'],
-        'ps' : ['PsGreets'],
-    },
-    'quad' : {
-        'vs' : ['VsMain'],
-    },
-    'imgui' : {
-        'vs' : ['VsMain'],
-        'ps' : ['PsMain'],
-    },
-    'raymarcher' : {
-        'ps' : ['PsRaymarcher'],
-    },
-    'blur' : {
-        'cs' : ['CopyTranspose', 'BlurTranspose', 'BoxBlurX'],
-    }
-}
+def get_entry_points():
+    # parse all the hlsl files, and look for marked entry points
+    res = {}
+    for f in glob.glob(os.path.join(SHADER_DIR, '*.hlsl')):
+        _, tail = os.path.split(f)
+        root, _ = os.path.splitext(tail)
+        cur = None
+        for r in open(f, 'rt').readlines():
+            r = r.strip()
+            if cur:
+                # previous row was an entry point, so parse the entry point name
+                _, _, name = r.partition(' ')
+                if name:
+                    name, _, _ = name.partition('(')
+                    if name:
+                        res.setdefault(root, {}).setdefault(cur, []).append(name)
+                cur = None
+            else:
+                try:
+                    idx = r.index(ENTRY_POINT_TAG)
+                    # found entry point tag. check if vs, ps etc
+                    _, _, t = r[idx:].partition(':')
+                    if len(t) == 0:
+                        print 'error parsing entry point tag'
+                        continue
+                    t = t.strip()
+                    t = t[:2].lower()
+                    if t in ('vs', 'ps', 'gs', 'cs'):
+                        # found correct entry point tag
+                        cur  = t
+                    else:
+                        print 'Unknown tag type: %s' % t
+                except ValueError:
+                    pass
+    return res
+
+shaders = get_entry_points()
 
 shader_data = {
     'vs' : { 'profile': 'vs', 'obj_ext': 'vso', 'asm_ext': 'vsa' },

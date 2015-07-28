@@ -86,6 +86,7 @@ float trace(float3 from, float3 direction)
   return col;
 }
 //------------------------------------------------------
+// entry-point: ps
 float4 PsRaymarcher(VSQuadOut input) : SV_TARGET
 {
   float ss = 20 * sin(time);

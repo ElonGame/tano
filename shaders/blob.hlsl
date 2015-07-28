@@ -93,6 +93,7 @@ float4 cook_torrance(in float3 normal, in float3 viewer, in float3 light)
 // mesh
 //------------------------------------------------------
 
+// entry-point: vs
 VsMeshOut VsMesh(VsMeshIn v)
 {
   VsMeshOut res;
@@ -103,6 +104,7 @@ VsMeshOut VsMesh(VsMeshIn v)
   return res;
 }
 
+// entry-point: ps
 float4 PsMesh(VsMeshOut p) : SV_Target
 {
   //float3 LIGHT_POS = float3(0, 100, 0);

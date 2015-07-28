@@ -33,6 +33,7 @@ static float2 uvsVtx[4] =
   float2(0, 1), float2(0, 0), float2(1, 1), float2(1, 0)
 };
 
+// entry-point: vs
 GsParticleIn VsParticle(VsParticleIn v)
 {
   GsParticleIn res;
@@ -43,6 +44,7 @@ GsParticleIn VsParticle(VsParticleIn v)
 }
 
 [maxvertexcount(4)]
+// entry-point: gs
 void GsParticle(point GsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
 {
   // Note, the DirectX strip order differs from my usual order. It might be
@@ -85,7 +87,7 @@ void GsParticle(point GsParticleIn input[1], inout TriangleStream<VsParticleOut>
   outStream.Append(p);
 }
 
-
+// entry-point: ps
 float4 PsParticle(VsParticleOut p) : SV_Target
 {
   float2 uv = p.uv.xy;

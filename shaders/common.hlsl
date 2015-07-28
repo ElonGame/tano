@@ -41,6 +41,7 @@ struct VSQuadOut
 //------------------------------------------------------
 // outputs a full screen triangle with screen-space coordinates
 // input: three empty vertices
+// entry-point: vs
 VSQuadOut VsQuad(uint vertexID : SV_VertexID)
 {
     VSQuadOut result;
@@ -53,12 +54,14 @@ VSQuadOut VsQuad(uint vertexID : SV_VertexID)
 }
 
 //------------------------------------------------------
+// entry-point: ps
 float4 PsCopy(VSQuadOut p) : SV_Target
 {
   return Texture0.Sample(LinearSampler, p.uv);
 }
 
 //------------------------------------------------------
+// entry-point: ps
 float4 PsAdd(VSQuadOut p) : SV_Target
 {
   float2 uv = p.uv.xy;
