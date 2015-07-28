@@ -60,8 +60,10 @@ namespace tano
     void Render();
     void Update(const UpdateState& state);
     bool Init();
+    void Reset();
 
     vector<GreetsData*> _data;
+    int curText = 0;
   };
 
   //------------------------------------------------------------------------------

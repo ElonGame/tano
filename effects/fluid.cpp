@@ -21,6 +21,10 @@ using namespace tano::scheduler;
 
 static int NUM_GRIDS = FluidSim::FLUID_SIZE;
 
+#define SHOW_GREETS 1
+
+static int GRID_DIRS[] = { -1, 0, 0, -1, 1, 0, 0, 1 };
+
 //------------------------------------------------------------------------------
 Fluid::Fluid(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
@@ -90,18 +94,26 @@ bool GreetsBlock::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
+  SeqDelete(&_data);
+
   vector<char> buf;
   INIT(RESOURCE_MANAGER.LoadFile("gfx/greets.png", &buf));
   int w, h, c;
   const char* greetsBuf =
     (const char*)stbi_load_from_memory((const u8*)buf.data(), (int)buf.size(), &w, &h, &c, 4);
 
+  int NUM_PARTICLES = BLACKBOARD.GetIntVar("fluid.particlesPerSegment");
+  float speedMin = BLACKBOARD.GetFloatVar("fluid.speedMin");
+  float speedMax = BLACKBOARD.GetFloatVar("fluid.speedMax");
+
+  float speedMean = BLACKBOARD.GetFloatVar("fluid.speedMean");
+  float speedVariance = BLACKBOARD.GetFloatVar("fluid.speedVariance");
+
   for (int i : {0, 10, 19, 29, 38})
   {
     GreetsData* d = new GreetsData(w, 7);
     d->CalcPath(w, 7, greetsBuf + i * w * 4);
 
-    int NUM_PARTICLES = 10;
     int total = 0;
     for (const PathElem* p : d->startingPoints)
     {
@@ -112,15 +124,25 @@ bool GreetsBlock::Init()
     int idx = 0;
     for (const PathElem* p : d->startingPoints)
     {
+      // find first valid starting dir
+      int dir = 0;
+      for (int i = 0; i < 4; ++i)
+      {
+        if (d->IsValid(p->x + GRID_DIRS[i*2+0], p->y + GRID_DIRS[i*2+1]))
+        {
+          dir = i;
+          break;
+        }
+      }
+
       for (int i = idx; i < idx + NUM_PARTICLES * p->pathLength; ++i)
       {
         d->particles[i].x = p->x;
         d->particles[i].y = p->y;
-        float ll = randf(0.01f, 0.01f);
-        ll = 0.001f;
+        float ll = GaussianRand(speedMean, speedVariance);
         d->particles[i].speed = ll;
         d->particles[i].cur = ll;
-        d->particles[i].dir = rand() % 4;
+        d->particles[i].dir = dir;
       }
 
       idx += NUM_PARTICLES * p->pathLength;
@@ -150,8 +172,9 @@ int GreetsBlock::PathElem::CalcPathLength(PathElem* p)
 //------------------------------------------------------------------------------
 void GreetsBlock::GreetsData::Update(const UpdateState& state)
 {
-  static int dir[] = { -1, 0, 0, -1, 1, 0, 0, 1 };
   float dt = state.delta.TotalSecondsAsFloat();
+
+  float changeProb = BLACKBOARD.GetFloatVar("fluid.changeProb");
 
   for (GreetsBlock::Particle& p : particles)
   {
@@ -165,29 +188,61 @@ void GreetsBlock::GreetsData::Update(const UpdateState& state)
     p.cur = p.speed;
 
     // check if we can go in the current direction
-    int validDirs[4];
-    int numValidDirs = 0;
+    int forwardDirs[4];
+    int allDirs[4];
+    int numForwardDirs = 0;
+    int numAllDirs = 0;
+
+    int backdir = (p.dir + 2) % 4;
+
+    bool curDirectionValid = false;
     for (int i = 0; i < 4; ++i)
     {
-      if (IsValid(p.x + dir[i*2+0], p.y + dir[i*2+1]))
+      if (IsValid(p.x + GRID_DIRS[i*2+0], p.y + GRID_DIRS[i*2+1]))
       {
-        validDirs[numValidDirs++] = i;
+        allDirs[numAllDirs++] = i;
+
+        if (i == p.dir)
+        {
+          curDirectionValid = true;
+        }
+        else
+        {
+          if (i != backdir)
+          {
+            forwardDirs[numForwardDirs++] = i;
+          }
+        }
       }
     }
 
-    if (numValidDirs == 0)
+    if (numAllDirs == 0)
     {
       // TODO: ok, why does this happen? single block?
       return;
     }
 
-    if (numValidDirs > 2)
+    if (curDirectionValid)
     {
-      p.dir = validDirs[rand() % numValidDirs];
+      if (numForwardDirs && randf(0.f, 1.0f) > changeProb)
+      {
+        p.dir = forwardDirs[rand() % numForwardDirs];
+      }
+    }
+    else
+    {
+      if (numForwardDirs)
+      {
+        p.dir = forwardDirs[rand() % numForwardDirs];
+      }
+      else
+      {
+        p.dir = allDirs[rand() % numAllDirs];
+      }
     }
 
-    p.x += dir[p.dir*2+0];
-    p.y += dir[p.dir*2+1];
+    p.x += GRID_DIRS[p.dir*2+0];
+    p.y += GRID_DIRS[p.dir*2+1];
 
     particleCount[p.y*width+p.x]++;
   }
@@ -320,8 +375,13 @@ bool Fluid::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
+#if SHOW_GREETS
   _fluidTexture =
-      GRAPHICS.CreateTexture(FluidSim::FLUID_SIZE, FluidSim::FLUID_SIZE, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+    GRAPHICS.CreateTexture(64, 8, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+#else
+  _fluidTexture =
+    GRAPHICS.CreateTexture(FluidSim::FLUID_SIZE, FluidSim::FLUID_SIZE, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+#endif
 
   {
     // grid
@@ -390,14 +450,14 @@ bool Fluid::Render()
   static Color black(0, 0, 0, 0);
 
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
-
+#if !SHOW_GREETS
   {
     // background
     _ctx->SetBundleWithSamplers(_backgroundBundle, PixelShader);
     _ctx->SetShaderResource(_backgroundTexture);
     _ctx->DrawIndexed(6 * NUM_GRIDS * NUM_GRIDS, 0, 0);
   }
-
+#endif
   return true;
 }
 
@@ -451,9 +511,11 @@ void FluidSim::Update(const UpdateState& state)
     }
   }
 
+#if !SHOW_GREETS
   float dt = BLACKBOARD.GetFloatVar("fluid.timeScale") * state.delta.TotalSecondsAsFloat();
   DensityStep(dt);
   VelocityStep(dt);
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -777,15 +839,15 @@ void Fluid::UpdateBackgroundTexture(float dt)
   _ctx->Unmap(h);
 }
 
+#if SHOW_GREETS
 //------------------------------------------------------------------------------
 void Fluid::UpdateFluidTexture()
 {
-#if 1
   int pitch;
   u32* p = _ctx->MapWriteDiscard<u32>(_fluidTexture, &pitch);
   pitch /= 4;
 
-  GreetsBlock::GreetsData* d = _greetsBlock._data[0];
+  GreetsBlock::GreetsData* d = _greetsBlock._data[_greetsBlock.curText];
   for (int i = 0; i < d->height; ++i)
   {
     for (int j = 0; j < d->width; ++j)
@@ -802,8 +864,11 @@ void Fluid::UpdateFluidTexture()
   }
 
   _ctx->Unmap(_fluidTexture);
-
+}
 #else
+//------------------------------------------------------------------------------
+void Fluid::UpdateFluidTexture()
+{
   static int texture = 2;
   if (g_KeyUpTrigger.IsTriggered('B'))
     texture = (texture + 1) % 3;
@@ -830,15 +895,22 @@ void Fluid::UpdateFluidTexture()
     }
   }
   _ctx->Unmap(_fluidTexture);
-#endif
 }
+#endif
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
 void Fluid::RenderParameterSet()
 {
+#if SHOW_GREETS
+  ImGui::SliderInt("text", &_greetsBlock.curText, 0, 4);
+
+  float scale = 8;
+  ImGui::Image((void*)&_fluidTexture, ImVec2(scale * 64, scale * 8));
+#else
   ImGui::Image(
-      (void*)&_fluidTexture, ImVec2(4 * (float)FluidSim::FLUID_SIZE, 4 * (float)FluidSim::FLUID_SIZE));
+    (void*)&_fluidTexture, ImVec2(4 * (float)FluidSim::FLUID_SIZE, 4 * (float)FluidSim::FLUID_SIZE));
+#endif
 
   if (ImGui::Button("Reset"))
     Reset();
@@ -858,6 +930,8 @@ void Fluid::Reset()
 {
   _camera._pos = Vector3(0.f, 0.f, 0.f);
   _camera._pitch = _camera._yaw = _camera._roll = 0.f;
+
+  _greetsBlock.Init();
 }
 
 //------------------------------------------------------------------------------
