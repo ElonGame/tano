@@ -21,9 +21,8 @@ using namespace tano::scheduler;
 
 static int NUM_GRIDS = FluidSim::FLUID_SIZE;
 
-#define SHOW_GREETS 1
+#define SHOW_GREETS 0
 
-static int GRID_DIRS[] = { -1, 0, 0, -1, 1, 0, 0, 1 };
 
 //------------------------------------------------------------------------------
 Fluid::Fluid(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
@@ -44,298 +43,6 @@ Fluid::~Fluid()
 bool Fluid::OnConfigChanged(const vector<char>& buf)
 {
   return ParseFluidSettings(InputBuffer(buf), &_settings);
-}
-
-//------------------------------------------------------------------------------
-GreetsBlock::~GreetsBlock()
-{
-  SeqDelete(&_data);
-}
-
-//------------------------------------------------------------------------------
-GreetsBlock::GreetsData::GreetsData(int w, int h)
-  : width(w)
-  , height(h)
-  , particleCount(w*h)
-{
-}
-
-//------------------------------------------------------------------------------
-GreetsBlock::GreetsData::~GreetsData()
-{
-  for (vector<PathElem*>& path : paths)
-  {
-    SeqDelete(&path);
-  }
-  paths.clear();
-}
-
-//------------------------------------------------------------------------------
-void GreetsBlock::Render()
-{
-}
-
-//------------------------------------------------------------------------------
-void GreetsBlock::Update(const UpdateState& state)
-{
-  for (GreetsData* d : _data)
-  {
-    d->Update(state);
-  }
-}
-
-//------------------------------------------------------------------------------
-void GreetsBlock::GreetsData::Render()
-{
-}
-
-//------------------------------------------------------------------------------
-bool GreetsBlock::Init()
-{
-  BEGIN_INIT_SEQUENCE();
-
-  SeqDelete(&_data);
-
-  vector<char> buf;
-  INIT(RESOURCE_MANAGER.LoadFile("gfx/greets.png", &buf));
-  int w, h, c;
-  const char* greetsBuf =
-    (const char*)stbi_load_from_memory((const u8*)buf.data(), (int)buf.size(), &w, &h, &c, 4);
-
-  int NUM_PARTICLES = BLACKBOARD.GetIntVar("fluid.particlesPerSegment");
-  float speedMin = BLACKBOARD.GetFloatVar("fluid.speedMin");
-  float speedMax = BLACKBOARD.GetFloatVar("fluid.speedMax");
-
-  float speedMean = BLACKBOARD.GetFloatVar("fluid.speedMean");
-  float speedVariance = BLACKBOARD.GetFloatVar("fluid.speedVariance");
-
-  for (int i : {0, 10, 19, 29, 38})
-  {
-    GreetsData* d = new GreetsData(w, 7);
-    d->CalcPath(w, 7, greetsBuf + i * w * 4);
-
-    int total = (int)d->startingPoints.size() * NUM_PARTICLES;
-
-    d->particles.resize(total);
-    int idx = 0;
-    for (const PathElem* p : d->startingPoints)
-    {
-      // find first valid starting dir
-      int dir = 0;
-      for (int i = 0; i < 4; ++i)
-      {
-        if (d->IsValid(p->x + GRID_DIRS[i*2+0], p->y + GRID_DIRS[i*2+1]))
-        {
-          dir = i;
-          break;
-        }
-      }
-
-      for (int i = idx; i < idx + NUM_PARTICLES; ++i)
-      {
-        d->particles[i].x = p->x;
-        d->particles[i].y = p->y;
-        float ll = GaussianRand(speedMean, speedVariance);
-        d->particles[i].speed = ll;
-        d->particles[i].cur = ll;
-        //d->particles[i].dir = dir;
-        d->particles[i].dir = rand() % 4;
-      }
-
-      idx += NUM_PARTICLES;
-    }
-
-    _data.push_back(d);
-  }
-
-  END_INIT_SEQUENCE();
-}
-
-//------------------------------------------------------------------------------
-void GreetsBlock::GreetsData::Update(const UpdateState& state)
-{
-  float dt = state.delta.TotalSecondsAsFloat();
-
-  float changeProb = BLACKBOARD.GetFloatVar("fluid.changeProb");
-
-  for (GreetsBlock::Particle& p : particles)
-  {
-    // check if it's time to move
-    p.cur -= dt;
-    if (p.cur > 0)
-      continue;
-
-    particleCount[p.y*width+p.x]--;
-
-    p.cur = p.speed;
-
-    // check if we can go in the current direction
-    int forwardDirs[4];
-    int allDirs[4];
-    int numForwardDirs = 0;
-    int numAllDirs = 0;
-
-    int backdir = (p.dir + 2) % 4;
-
-    bool curDirectionValid = false;
-    for (int i = 0; i < 4; ++i)
-    {
-      if (IsValid(p.x + GRID_DIRS[i*2+0], p.y + GRID_DIRS[i*2+1]))
-      {
-        allDirs[numAllDirs++] = i;
-
-        if (i == p.dir)
-        {
-          curDirectionValid = true;
-        }
-        else
-        {
-          if (i != backdir)
-          {
-            forwardDirs[numForwardDirs++] = i;
-          }
-        }
-      }
-    }
-
-    if (numAllDirs == 0)
-    {
-      // TODO: ok, why does this happen? single block?
-      return;
-    }
-
-    if (curDirectionValid)
-    {
-      if (numForwardDirs && randf(0.f, 1.0f) > changeProb)
-      {
-        p.dir = forwardDirs[rand() % numForwardDirs];
-      }
-    }
-    else
-    {
-      if (numForwardDirs)
-      {
-        p.dir = forwardDirs[rand() % numForwardDirs];
-      }
-      else
-      {
-        p.dir = allDirs[rand() % numAllDirs];
-      }
-    }
-
-    p.x += GRID_DIRS[p.dir*2+0];
-    p.y += GRID_DIRS[p.dir*2+1];
-
-    particleCount[p.y*width+p.x]++;
-  }
-}
-
-//------------------------------------------------------------------------------
-bool GreetsBlock::GreetsData::IsValid(int x, int y)
-{
-  return x >= 0 && x < width && y >= 0 && y < height && background[y*width+x] == 0;
-}
-
-//------------------------------------------------------------------------------
-void GreetsBlock::GreetsData::CalcPath(int w, int h, const char* buf)
-{
-  background.resize(w*h);
-  for (int i = 0; i <h; ++i)
-  {
-    for (int j = 0; j < w; ++j)
-    {
-      //background[i*w + j] = max(buf[4 * (i*w + j) + 0], max(buf[4 * (i*w + j) + 1], max(buf[4 * (i*w + j) + 2], buf[4 * (i*w + j) + 3])));
-      background[i*w + j] = buf[4 * (i*w + j)];
-    }
-  }
-
-  enum
-  {
-    FREE = 0,
-    PENDING = 1,
-    VISITED = 2
-  };
-
-  u8* visited = g_ScratchMemory.Alloc<u8>(w * h);
-  memset(visited, FREE, w * h);
-
-  struct Char
-  {
-    int xStart, xEnd;
-  };
-
-  vector<Char> chars;
-
-  auto IsPosValid = [=](int x, int y, int w, int h)
-  {
-    return x >= 0 && x < w && y >= 0 && y < h && *(int*)&buf[4*(x+y*w)] != 0xffffffff;
-  };
-
-  auto IsEmptyCol = [=](int x)
-  {
-    for (int i = 0; i < h; ++i)
-    {
-      if (buf[(x + i * w) * 4] == 0)
-        return false;
-    }
-    return true;
-  };
-
-  vector<pair<int, int>> starts;
-
-  // find each starting point
-  for (int i = 0; i < h; ++i)
-  {
-    for (int j = 0; j < w; ++j)
-    {
-      // bytes are stored as RGBA (from LSB to MSB)
-      u32 rgba = *(u32*)&buf[4*(i*w+j)+0];
-      if (rgba == 0xff0000ff)
-      {
-        starts.push_back(make_pair(j, i));
-      }
-    }
-  }
-
-
-  for (const pair<int, int>& s : starts)
-  {
-    vector<PathElem*> path;
-    // this is pretty much a standard flood fill. the only interesting part
-    // is using the tri-state visited flag, and I kind wonder how if made other
-    // stuff that isn't broken without this :)
-    deque<PathElem*> frontier;
-    int x = s.first;
-    int y = s.second;
-    PathElem* p = new PathElem{ x, y};
-    startingPoints.push_back(p);
-    frontier.push_back(p);
-    while (!frontier.empty())
-    {
-      PathElem* cur = frontier.front();
-      frontier.pop_front();
-      if (visited[cur->x + cur->y * w] == VISITED)
-        continue;
-
-      path.push_back(cur);
-
-      visited[cur->x + cur->y * w] = VISITED;
-
-      int ofs[] = { -1, 0, 0, -1, +1, 0, 0, +1 };
-      for (int i = 0; i < 4; ++i)
-      {
-        int xx = cur->x + ofs[i * 2 + 0];
-        int yy = cur->y + ofs[i * 2 + 1];
-        if (IsPosValid(xx, yy, w, h) && visited[xx + yy * w] == FREE)
-        {
-          visited[xx + yy * w] = PENDING;
-          PathElem* p = new PathElem{ xx, yy };
-          frontier.push_front(p);
-        }
-      }
-    }
-    paths.push_back(path);
-  }
 }
 
 //------------------------------------------------------------------------------
@@ -375,7 +82,6 @@ bool Fluid::Init()
     InitBackgroundTexture();
   }
 
-  INIT(_greetsBlock.Init());
 
   END_INIT_SEQUENCE();
 }
@@ -389,7 +95,6 @@ bool Fluid::Update(const UpdateState& state)
 
   UpdateBackgroundTexture(state.delta.TotalSecondsAsFloat());
 
-  _greetsBlock.Update(state);
 
   return true;
 }
@@ -898,8 +603,6 @@ void Fluid::Reset()
 {
   _camera._pos = Vector3(0.f, 0.f, 0.f);
   _camera._pitch = _camera._yaw = _camera._roll = 0.f;
-
-  _greetsBlock.Init();
 }
 
 //------------------------------------------------------------------------------

@@ -69,7 +69,7 @@ namespace tano
   bool CreateScene(const MeshLoader& loader, const SceneOptions& options, scene::Scene* scene);
 
   //------------------------------------------------------------------------------
-  void GenerateQuadIndices(u32 numQuads, vector<u32>* out);
+  vector<u32> GenerateQuadIndices(u32 numQuads);
 
   //------------------------------------------------------------------------------
   void GeneratePlaneIndices(int width, int height, vector<u32>* out);

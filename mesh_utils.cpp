@@ -429,22 +429,23 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  void GenerateQuadIndices(u32 numQuads, vector<u32>* out)
+  vector<u32> GenerateQuadIndices(u32 numQuads)
   {
-    out->resize(numQuads * 6);
-    u32* triangleIndices = out->data();
+    vector<u32> indices(numQuads * 6);
     for (u32 i = 0; i < numQuads; ++i)
     {
       // 0, 1, 3
-      triangleIndices[i * 6 + 0] = i * 4 + 0;
-      triangleIndices[i * 6 + 1] = i * 4 + 1;
-      triangleIndices[i * 6 + 2] = i * 4 + 3;
+      indices[i * 6 + 0] = i * 4 + 0;
+      indices[i * 6 + 1] = i * 4 + 1;
+      indices[i * 6 + 2] = i * 4 + 3;
 
       // 3, 1, 2
-      triangleIndices[i * 6 + 3] = i * 4 + 3;
-      triangleIndices[i * 6 + 4] = i * 4 + 1;
-      triangleIndices[i * 6 + 5] = i * 4 + 2;
+      indices[i * 6 + 3] = i * 4 + 3;
+      indices[i * 6 + 4] = i * 4 + 1;
+      indices[i * 6 + 5] = i * 4 + 2;
     }
+
+    return indices;
   }
 
   //------------------------------------------------------------------------------
@@ -471,7 +472,6 @@ namespace tano
         res[5] = (i - 1) * width + (j + 1);
 
         res += 6;
-
       }
     }
   }

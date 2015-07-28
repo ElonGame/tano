@@ -12,56 +12,6 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  struct GreetsBlock
-  {
-    ~GreetsBlock();
-
-    struct PathElem
-    {
-      PathElem(int x, int y) : x(x), y(y) {}
-      int x, y;
-    };
-
-    struct Particle
-    {
-      int x, y;
-      float speed;
-      float cur;
-      int dir;
-    };
-
-    struct GreetsData
-    {
-      GreetsData(int w, int h);
-      ~GreetsData();
-      void CalcPath(int w, int h, const char* buf);
-
-      void Update(const UpdateState& state);
-      void Render();
-
-      bool IsValid(int x, int y);
-
-      vector<Particle> particles;
-
-      vector<vector<PathElem*>> paths;
-      vector<PathElem*> startingPoints;
-
-      vector<int> particleCount;
-      vector<u8> background;
-      int width, height;
-    };
-
-
-    void Render();
-    void Update(const UpdateState& state);
-    bool Init();
-    void Reset();
-
-    vector<GreetsData*> _data;
-    int curText = 0;
-  };
-
-  //------------------------------------------------------------------------------
   struct FluidSim
   {
     enum
@@ -153,7 +103,6 @@ namespace tano
     GpuBundle _backgroundBundle;
     ObjectHandle _backgroundTexture;
 
-    GreetsBlock _greetsBlock;
 
     FluidSim _sim;
     ObjectHandle _fluidTexture;

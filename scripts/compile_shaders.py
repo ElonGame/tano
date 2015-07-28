@@ -102,6 +102,10 @@ shaders = {
         'vs' : ['VsMesh'],
         'ps' : ['PsMesh'],
     },
+    'tunnel.greets' : {
+        'vs' : ['VsGreets'],
+        'ps' : ['PsGreets'],
+    },
     'quad' : {
         'vs' : ['VsMain'],
     },

@@ -111,10 +111,9 @@ bool Landscape::Init()
     INIT(_landscapeGpuObjects.CreateDynamicVb(1024 * 1024 * 6 * vertexSize, vertexSize));
 
     u32 maxQuads = 1024 * 1024;
-    vector<u32> indices;
-    GenerateQuadIndices(maxQuads, &indices);
+    vector<u32> indices = GenerateQuadIndices(maxQuads);
     INIT(_landscapeGpuObjects.CreateIndexBuffer(
-        (u32)indices.size() * sizeof(u32), DXGI_FORMAT_R32_UINT, indices.data()));
+        (u32)indices.size() * sizeof(u32), DXGI_FORMAT_R32_UINT, GenerateQuadIndices(maxQuads).data()));
 
     INIT(
         _landscapeGpuObjects.LoadVertexShader("shaders/out/landscape.landscape", "VsLandscape", vertexFlags));
