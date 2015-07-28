@@ -19,12 +19,7 @@ namespace tano
     struct PathElem
     {
       PathElem(int x, int y) : x(x), y(y) {}
-
-      static int CalcPathLength(PathElem* p);
-
       int x, y;
-      vector<PathElem*> children;
-      int pathLength = -1;
     };
 
     struct Particle

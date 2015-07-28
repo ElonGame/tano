@@ -114,11 +114,7 @@ bool GreetsBlock::Init()
     GreetsData* d = new GreetsData(w, 7);
     d->CalcPath(w, 7, greetsBuf + i * w * 4);
 
-    int total = 0;
-    for (const PathElem* p : d->startingPoints)
-    {
-      total += p->pathLength * NUM_PARTICLES;
-    }
+    int total = (int)d->startingPoints.size() * NUM_PARTICLES;
 
     d->particles.resize(total);
     int idx = 0;
@@ -135,38 +131,24 @@ bool GreetsBlock::Init()
         }
       }
 
-      for (int i = idx; i < idx + NUM_PARTICLES * p->pathLength; ++i)
+      for (int i = idx; i < idx + NUM_PARTICLES; ++i)
       {
         d->particles[i].x = p->x;
         d->particles[i].y = p->y;
         float ll = GaussianRand(speedMean, speedVariance);
         d->particles[i].speed = ll;
         d->particles[i].cur = ll;
-        d->particles[i].dir = dir;
+        //d->particles[i].dir = dir;
+        d->particles[i].dir = rand() % 4;
       }
 
-      idx += NUM_PARTICLES * p->pathLength;
+      idx += NUM_PARTICLES;
     }
 
     _data.push_back(d);
   }
 
   END_INIT_SEQUENCE();
-}
-
-//------------------------------------------------------------------------------
-int GreetsBlock::PathElem::CalcPathLength(PathElem* p)
-{
-  int res = 1;
-  for (PathElem* c : p->children)
-  {
-    res += CalcPathLength(c);
-  }
-
-  if (p->pathLength == -1)
-    p->pathLength = res;
-
-  return res;
 }
 
 //------------------------------------------------------------------------------
@@ -286,7 +268,7 @@ void GreetsBlock::GreetsData::CalcPath(int w, int h, const char* buf)
 
   auto IsPosValid = [=](int x, int y, int w, int h)
   {
-    return x >= 0 && x < w && y >= 0 && y < h;
+    return x >= 0 && x < w && y >= 0 && y < h && *(int*)&buf[4*(x+y*w)] != 0xffffffff;
   };
 
   auto IsEmptyCol = [=](int x)
@@ -299,74 +281,60 @@ void GreetsBlock::GreetsData::CalcPath(int w, int h, const char* buf)
     return true;
   };
 
-  // split each char. go left to right, and if we find an empty column, this is a potential split
-  for (int i = 0; i < w; ++i)
+  vector<pair<int, int>> starts;
+
+  // find each starting point
+  for (int i = 0; i < h; ++i)
   {
-    Char cur;
-    // first starting col
-    while (i < w && IsEmptyCol(i))
-      ++i;
-
-    if (i == w)
-      break;
-
-    cur.xStart = i;
-    while (i < w && !IsEmptyCol(i))
-      ++i;
-
-    cur.xEnd = i - 1;
-    chars.push_back(cur);
+    for (int j = 0; j < w; ++j)
+    {
+      // bytes are stored as RGBA (from LSB to MSB)
+      u32 rgba = *(u32*)&buf[4*(i*w+j)+0];
+      if (rgba == 0xff0000ff)
+      {
+        starts.push_back(make_pair(j, i));
+      }
+    }
   }
 
-  // trace the paths
-  for (const Char& c : chars)
+
+  for (const pair<int, int>& s : starts)
   {
-    for (int i = c.xStart; i <= c.xEnd; ++i)
+    vector<PathElem*> path;
+    // this is pretty much a standard flood fill. the only interesting part
+    // is using the tri-state visited flag, and I kind wonder how if made other
+    // stuff that isn't broken without this :)
+    deque<PathElem*> frontier;
+    int x = s.first;
+    int y = s.second;
+    PathElem* p = new PathElem{ x, y};
+    startingPoints.push_back(p);
+    frontier.push_back(p);
+    while (!frontier.empty())
     {
-      // travel downwards, and when we hit a filled pixel, trace a path from it
-      for (int j = 0; j < h; ++j)
+      PathElem* cur = frontier.front();
+      frontier.pop_front();
+      if (visited[cur->x + cur->y * w] == VISITED)
+        continue;
+
+      path.push_back(cur);
+
+      visited[cur->x + cur->y * w] = VISITED;
+
+      int ofs[] = { -1, 0, 0, -1, +1, 0, 0, +1 };
+      for (int i = 0; i < 4; ++i)
       {
-        if (buf[(i + j * w) * 4] == 0 && visited[i + j * w] == FREE)
+        int xx = cur->x + ofs[i * 2 + 0];
+        int yy = cur->y + ofs[i * 2 + 1];
+        if (IsPosValid(xx, yy, w, h) && visited[xx + yy * w] == FREE)
         {
-          vector<PathElem*> path;
-          // this is pretty much a standard flood fill. the only interesting part
-          // is using the tri-state visited flag, and I kind wonder how if made other
-          // stuff that isn't broken without this :)
-          deque<PathElem*> frontier;
-          PathElem* p = new PathElem{i, j};
-          startingPoints.push_back(p);
-          frontier.push_back(p);
-          while (!frontier.empty())
-          {
-            PathElem* cur = frontier.front();
-            frontier.pop_front();
-            if (visited[cur->x + cur->y * w] == VISITED)
-              continue;
-
-            path.push_back(cur);
-
-            visited[cur->x + cur->y * w] = VISITED;
-
-            int ofs[] = {-1, 0, 0, -1, +1, 0, 0, +1};
-            for (int i = 0; i < 4; ++i)
-            {
-              int xx = cur->x + ofs[i * 2 + 0];
-              int yy = cur->y + ofs[i * 2 + 1];
-              if (IsPosValid(xx, yy, c.xEnd + 1, h) && visited[xx + yy * w] == FREE && buf[(xx + yy * w) * 4] == 0)
-              {
-                visited[xx + yy * w] = PENDING;
-                PathElem* p = new PathElem{xx, yy};
-                cur->children.push_back(p);
-                frontier.push_front(p);
-              }
-            }
-          }
-          if (!path.empty())
-            PathElem::CalcPathLength(path[0]);
-          paths.push_back(path);
+          visited[xx + yy * w] = PENDING;
+          PathElem* p = new PathElem{ xx, yy };
+          frontier.push_front(p);
         }
       }
     }
+    paths.push_back(path);
   }
 }
 
