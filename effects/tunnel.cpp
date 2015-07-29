@@ -142,7 +142,7 @@ void GreetsBlock::GreetsData::DiffuseUpdate(const UpdateState& state)
   {
     for (int j = 0; j < width; ++j)
     {
-      int numParticles = targetParticleCount[i*width+j];
+      float numParticles = targetParticleCount[i*width+j];
       if (numParticles)
       {
         int validDest[4];
@@ -157,8 +157,8 @@ void GreetsBlock::GreetsData::DiffuseUpdate(const UpdateState& state)
 
         if (validDestCount)
         {
-          int num = numParticles / validDestCount;
-          int left = numParticles;
+          float num = numParticles / validDestCount;
+          float left = numParticles;
           for (int k = 0; k < validDestCount; ++k)
           {
             if (k == validDestCount-1)
@@ -182,12 +182,13 @@ void GreetsBlock::GreetsData::Update(const UpdateState& state)
   float dt = state.delta.TotalSecondsAsFloat();
 
   float changeProb = BLACKBOARD.GetFloatVar("fluid.changeProb");
+  float updateSpeed = BLACKBOARD.GetFloatVar("fluid.updateSpeed");
 
   for (int i = 0; i < (int)targetParticleCount.size(); ++i)
   {
-    float diff = (float)(targetParticleCount[i] - curParticleCount[i]);
-    diff *= state.delta.TotalSecondsAsFloat();
-    curParticleCount[i] += (int)diff;
+    float diff = targetParticleCount[i] - curParticleCount[i];
+    diff *= updateSpeed * state.delta.TotalSecondsAsFloat();
+    curParticleCount[i] += diff;
   }
 
   for (GreetsBlock::Particle& p : particles)
@@ -498,7 +499,6 @@ void Tunnel::UpdateGreets(const UpdateState& state)
     {
       //float ss = s * Clamp(0.f, 1.f, (float)data->targetParticleCount[i*w + j] / 10);
       float ss = s * Clamp(0.f, 1.f, (float)data->curParticleCount[i*w + j] / 10);
-      //ss = s;
       // 1 2
       // 0 3
       verts[0] = pos + V3(-ss / 2, -ss / 2, 0);

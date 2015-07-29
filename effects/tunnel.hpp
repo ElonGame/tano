@@ -49,8 +49,8 @@ namespace tano
       vector<PathElem*> startingPoints;
 
       vector<float> curParticleCount;
-      vector<int> targetParticleCount;
-      vector<int> tmpParticleCount;
+      vector<float> targetParticleCount;
+      vector<float> tmpParticleCount;
       vector<u8> background;
       int width, height;
     };

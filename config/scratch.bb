@@ -66,9 +66,11 @@ namespace fluid
     float diff = 0.0001;
     float visc = 0.0001;
 
-    float changeProb = 0.85;
+    float changeProb = 0.55;
 
-    float speedMean = 0.05;
+    float speedMean = 0.15;
     float speedVariance = 0.05;
-    int particlesPerSegment = 100;
+    int particlesPerSegment = 250;
+
+    float updateSpeed = 1.0;
 }
