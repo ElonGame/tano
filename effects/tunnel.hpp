@@ -39,7 +39,6 @@ namespace tano
       void CalcPath(int w, int h, const char* buf);
 
       void Update(const UpdateState& state);
-      void DiffuseUpdate(const UpdateState& state);
 
       bool IsValid(int x, int y);
 
@@ -50,11 +49,9 @@ namespace tano
 
       vector<float> curParticleCount;
       vector<float> targetParticleCount;
-      vector<float> tmpParticleCount;
       vector<u8> background;
       int width, height;
     };
-
 
     void Update(const UpdateState& state);
     bool Init();
@@ -120,6 +117,7 @@ namespace tano
     GpuBundle _meshBundle;
     scene::Scene _scene;
 
+    int _numGreetsCubes = 0;
     GpuBundle _greetsBundle;
     GreetsBlock _greetsBlock;
 

@@ -69,9 +69,13 @@ namespace tano
   bool CreateScene(const MeshLoader& loader, const SceneOptions& options, scene::Scene* scene);
 
   //------------------------------------------------------------------------------
-  vector<u32> GenerateQuadIndices(u32 numQuads);
+  vector<u32> GenerateQuadIndices(int numQuads);
+  vector<u32> GenerateCubeIndices(int numCubes, bool faceted);
 
-  //------------------------------------------------------------------------------
+  V3* AddCube(V3* buf, const V3& pos, float scale);
+  V3* AddCubeWithNormal(V3* buf, const V3& pos, float scale);
+
   void GeneratePlaneIndices(int width, int height, vector<u32>* out);
+
 
 }

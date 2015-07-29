@@ -137,6 +137,11 @@ namespace tano
     BundleOptions& DynamicIb(int numElements, int elementSize);
     BundleOptions& StaticVb(int numElements, int elementSize, void* vertices);
     BundleOptions& StaticIb(int numElements, int elementSize, void* indices);
+    template <typename T>
+    BundleOptions& StaticIb(const vector<T>& elems)
+    {
+      return StaticIb((int)elems.size(), sizeof(T), (void*)elems.data());
+    }
 
     CD3D11_DEPTH_STENCIL_DESC depthStencilDesc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
     CD3D11_BLEND_DESC blendDesc = CD3D11_BLEND_DESC(CD3D11_DEFAULT());

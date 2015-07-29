@@ -20,7 +20,9 @@ using namespace tano;
 using namespace bristol;
 
 static float Z_SPACING = 50;
-int CAMERA_STEP = 10;
+static int CAMERA_STEP = 10;
+static int MAX_GREETS_WIDTH = 64;
+static int MAX_GREETS_HEIGHT = 8;
 
 static int GRID_DIRS[] = { -1, 0, 0, -1, 1, 0, 0, 1 };
 
@@ -35,7 +37,6 @@ GreetsBlock::GreetsData::GreetsData(int w, int h)
   : width(w)
   , height(h)
   , targetParticleCount(w*h)
-  , tmpParticleCount(w*h)
 {
 }
 
@@ -121,59 +122,6 @@ bool GreetsBlock::Init()
   }
 
   END_INIT_SEQUENCE();
-}
-
-//------------------------------------------------------------------------------
-void GreetsBlock::GreetsData::DiffuseUpdate(const UpdateState& state)
-{
-  tmpParticleCount.assign(tmpParticleCount.size(), 0);
-
-  static float time = 0;
-  static float ff = BLACKBOARD.GetFloatVar("fluid.speedMean");
-  time += state.delta.TotalSecondsAsFloat();
-  if (time < ff)
-  {
-    return;
-  }
-
-  time -= ff;
-
-  for (int i = 0; i < height; ++i)
-  {
-    for (int j = 0; j < width; ++j)
-    {
-      float numParticles = targetParticleCount[i*width+j];
-      if (numParticles)
-      {
-        int validDest[4];
-        int validDestCount = 0;
-        for (int k = 0; k < 4; ++k)
-        {
-          if (IsValid(j+GRID_DIRS[k*2+0], i+GRID_DIRS[k*2+1]))
-          {
-            validDest[validDestCount++] = k;
-          }
-        }
-
-        if (validDestCount)
-        {
-          float num = numParticles / validDestCount;
-          float left = numParticles;
-          for (int k = 0; k < validDestCount; ++k)
-          {
-            if (k == validDestCount-1)
-              num = left;
-
-            int kk = validDest[k];
-            tmpParticleCount[(j+GRID_DIRS[kk*2+0]) + (i+GRID_DIRS[kk*2+1]) * width] += num;
-            left -= num;
-          }
-        }
-
-      }
-    }
-  }
-  targetParticleCount = tmpParticleCount;
 }
 
 //------------------------------------------------------------------------------
@@ -457,8 +405,8 @@ bool Tunnel::Init()
     .VertexFlags(VF_POS)
     .VertexShader("shaders/out/tunnel.greets", "VsGreets")
     .PixelShader("shaders/out/tunnel.greets", "PsGreets")
-    .DynamicVb(1024*16, sizeof(V3))
-    .StaticIb(64*8*6, sizeof(u32), GenerateQuadIndices(64*8).data())));
+    .DynamicVb(MAX_GREETS_HEIGHT*MAX_GREETS_WIDTH*8, sizeof(V3))
+    .StaticIb(GenerateCubeIndices(MAX_GREETS_HEIGHT*MAX_GREETS_WIDTH, true))));
   // clang-format on
 
   INIT(_cbLines.Create());
@@ -479,6 +427,7 @@ bool Tunnel::Init()
 void Tunnel::UpdateGreets(const UpdateState& state)
 {
   _greetsBlock.Update(state);
+  _numGreetsCubes = 0;
 
   ObjectHandle handle = _greetsBundle.objects._vb;
   V3* verts = _ctx->MapWriteDiscard<V3>(handle);
@@ -499,14 +448,17 @@ void Tunnel::UpdateGreets(const UpdateState& state)
     {
       //float ss = s * Clamp(0.f, 1.f, (float)data->targetParticleCount[i*w + j] / 10);
       float ss = s * Clamp(0.f, 1.f, (float)data->curParticleCount[i*w + j] / 10);
-      // 1 2
-      // 0 3
-      verts[0] = pos + V3(-ss / 2, -ss / 2, 0);
-      verts[1] = pos + V3(-ss / 2, +ss / 2, 0);
-      verts[2] = pos + V3(+ss / 2, +ss / 2, 0);
-      verts[3] = pos + V3(+ss / 2, -ss / 2, 0);
+      if (ss > 0)
+      {
+        verts = AddCube(verts, pos, ss/2);
+        _numGreetsCubes++;
+      }
+      //verts[0] = pos + V3(-ss / 2, -ss / 2, 0);
+      //verts[1] = pos + V3(-ss / 2, +ss / 2, 0);
+      //verts[2] = pos + V3(+ss / 2, +ss / 2, 0);
+      //verts[3] = pos + V3(+ss / 2, -ss / 2, 0);
 
-      verts += 4;
+      //verts += 4;
 
       pos.x += s;
     }
@@ -731,7 +683,8 @@ bool Tunnel::Render()
     _cbGreets.Set(_ctx, 0);
     _ctx->SetBundle(_greetsBundle);
     GreetsBlock::GreetsData* data = _greetsBlock._data[_greetsBlock.curText];
-    _ctx->DrawIndexed(data->width*data->height*6, 0, 0);
+    //_ctx->DrawIndexed(data->width*data->height * 6, 0, 0);
+    _ctx->DrawIndexed(_numGreetsCubes * 36, 0, 0);
   }
 
 #if 0

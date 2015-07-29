@@ -429,10 +429,10 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  vector<u32> GenerateQuadIndices(u32 numQuads)
+  vector<u32> GenerateQuadIndices(int numQuads)
   {
     vector<u32> indices(numQuads * 6);
-    for (u32 i = 0; i < numQuads; ++i)
+    for (int i = 0; i < numQuads; ++i)
     {
       // 0, 1, 3
       indices[i * 6 + 0] = i * 4 + 0;
@@ -446,6 +446,124 @@ namespace tano
     }
 
     return indices;
+  }
+
+  //------------------------------------------------------------------------------
+  vector<u32> GenerateCubeIndices(int numCubes, bool faceted)
+  {
+    //    5----6
+    //   /    /|
+    //  1----2 |
+    //  | 4--|-7
+    //  |/   |/
+    //  0----3
+    //
+
+    vector<u32> indices(numCubes * 36);
+    u32* ptr = indices.data();
+
+    auto AddFace = [&](int i, int a, int b, int c){
+      *ptr++ = i * 8 + a;
+      *ptr++ = i * 8 + b;
+      *ptr++ = i * 8 + c;
+    };
+
+    for (int i = 0; i < numCubes; ++i)
+    {
+      // Front face
+      AddFace(i, 0, 1, 2);
+      AddFace(i, 0, 2, 3);
+
+      // Back face
+      AddFace(i, 4, 6, 5);
+      AddFace(i, 4, 7, 6);
+
+      // Left face
+      AddFace(i, 4, 5, 1);
+      AddFace(i, 4, 1, 0);
+
+      // Right face
+      AddFace(i, 3, 2, 6);
+      AddFace(i, 3, 6, 7);
+
+      // Top face
+      AddFace(i, 1, 5, 6);
+      AddFace(i, 1, 6, 2);
+
+      // Bottom face
+      AddFace(i, 4, 0, 3);
+      AddFace(i, 4, 3, 7);
+    }
+
+    return indices;
+  }
+
+  //------------------------------------------------------------------------------
+  V3* AddCube(V3* buf, const V3& pos, float scale)
+  {
+    *buf++ = pos + V3(-scale, -scale, -scale);
+    *buf++ = pos + V3(-scale, +scale, -scale);
+    *buf++ = pos + V3(+scale, +scale, -scale);
+    *buf++ = pos + V3(+scale, -scale, -scale);
+    *buf++ = pos + V3(-scale, -scale, +scale);
+    *buf++ = pos + V3(-scale, +scale, +scale);
+    *buf++ = pos + V3(+scale, +scale, +scale);
+    *buf++ = pos + V3(+scale, -scale, +scale);
+    return buf;
+  }
+
+  //------------------------------------------------------------------------------
+  V3* AddCubeWithNormal(V3* buf, const V3& pos, float scale)
+  {
+    V3 v0(pos + V3(-scale, -scale, -scale));
+    V3 v1(pos + V3(-scale, +scale, -scale));
+    V3 v2(pos + V3(+scale, +scale, -scale));
+    V3 v3(pos + V3(+scale, -scale, -scale));
+    V3 v4(pos + V3(-scale, -scale, +scale));
+    V3 v5(pos + V3(-scale, +scale, +scale));
+    V3 v6(pos + V3(+scale, +scale, +scale));
+    V3 v7(pos + V3(+scale, -scale, +scale));
+
+    //v3 n0(0, 0, -1);
+    //v3 n1(0, 0, +1);
+    //v3 n2(-1, 0, 0);
+    //v3 n3(+1, 0, 0);
+    //v3 n4(0, +1, 0);
+    //v3 n5(0, -1, 0);
+
+    //// Front face
+    //*buf++ = v0; *buf++ = n0;
+    //*buf++ = v1; *buf++ = n0;
+    //*buf++ = v2; *buf++ = n0;
+    //*buf++ = v3; *buf++ = n0;
+
+    //// Back face
+    //*buf++ = v4; *buf++ = n1;
+    //*buf++ = v5; *buf++ = n1;
+    //*buf++ = v6; *buf++ = n1;
+    //*buf++ = v7; *buf++ = n1;
+
+    //// Left face
+    //*buf++ = v4; *buf++ = n1;
+    //*buf++ = v5; *buf++ = n1;
+    //*buf++ = v6; *buf++ = n1;
+    //*buf++ = v7; *buf++ = n1;
+    //AddFace(i, mult, 4, 5, 1);
+    //AddFace(i, mult, 4, 1, 0);
+
+    //// Right face
+    //AddFace(i, mult, 3, 2, 6);
+    //AddFace(i, mult, 3, 6, 7);
+
+    //// Top face
+    //AddFace(i, mult, 1, 5, 6);
+    //AddFace(i, mult, 1, 6, 2);
+
+    //// Bottom face
+    //AddFace(i, mult, 4, 0, 3);
+    //AddFace(i, mult, 4, 3, 7);
+
+    return buf;
   }
 
   //------------------------------------------------------------------------------
