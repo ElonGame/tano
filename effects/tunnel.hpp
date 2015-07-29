@@ -39,7 +39,7 @@ namespace tano
       void CalcPath(int w, int h, const char* buf);
 
       void Update(const UpdateState& state);
-      void Render();
+      void DiffuseUpdate(const UpdateState& state);
 
       bool IsValid(int x, int y);
 
@@ -48,13 +48,14 @@ namespace tano
       vector<vector<PathElem*>> paths;
       vector<PathElem*> startingPoints;
 
-      vector<int> particleCount;
+      vector<float> curParticleCount;
+      vector<int> targetParticleCount;
+      vector<int> tmpParticleCount;
       vector<u8> background;
       int width, height;
     };
 
 
-    void Render();
     void Update(const UpdateState& state);
     bool Init();
     void Reset();

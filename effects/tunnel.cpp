@@ -34,7 +34,8 @@ GreetsBlock::~GreetsBlock()
 GreetsBlock::GreetsData::GreetsData(int w, int h)
   : width(w)
   , height(h)
-  , particleCount(w*h)
+  , targetParticleCount(w*h)
+  , tmpParticleCount(w*h)
 {
 }
 
@@ -49,22 +50,13 @@ GreetsBlock::GreetsData::~GreetsData()
 }
 
 //------------------------------------------------------------------------------
-void GreetsBlock::Render()
-{
-}
-
-//------------------------------------------------------------------------------
 void GreetsBlock::Update(const UpdateState& state)
 {
   for (GreetsData* d : _data)
   {
+    //d->DiffuseUpdate(state);
     d->Update(state);
   }
-}
-
-//------------------------------------------------------------------------------
-void GreetsBlock::GreetsData::Render()
-{
 }
 
 //------------------------------------------------------------------------------
@@ -117,16 +109,71 @@ bool GreetsBlock::Init()
         d->particles[i].dir = dir;
         //d->particles[i].dir = rand() % 4;
 
-        d->particleCount[p->y*d->width + p->x]++;
+        d->targetParticleCount[p->y*d->width + p->x]++;
       }
 
       idx += NUM_PARTICLES;
     }
 
+    d->curParticleCount = d->targetParticleCount;
+
     _data.push_back(d);
   }
 
   END_INIT_SEQUENCE();
+}
+
+//------------------------------------------------------------------------------
+void GreetsBlock::GreetsData::DiffuseUpdate(const UpdateState& state)
+{
+  tmpParticleCount.assign(tmpParticleCount.size(), 0);
+
+  static float time = 0;
+  static float ff = BLACKBOARD.GetFloatVar("fluid.speedMean");
+  time += state.delta.TotalSecondsAsFloat();
+  if (time < ff)
+  {
+    return;
+  }
+
+  time -= ff;
+
+  for (int i = 0; i < height; ++i)
+  {
+    for (int j = 0; j < width; ++j)
+    {
+      int numParticles = targetParticleCount[i*width+j];
+      if (numParticles)
+      {
+        int validDest[4];
+        int validDestCount = 0;
+        for (int k = 0; k < 4; ++k)
+        {
+          if (IsValid(j+GRID_DIRS[k*2+0], i+GRID_DIRS[k*2+1]))
+          {
+            validDest[validDestCount++] = k;
+          }
+        }
+
+        if (validDestCount)
+        {
+          int num = numParticles / validDestCount;
+          int left = numParticles;
+          for (int k = 0; k < validDestCount; ++k)
+          {
+            if (k == validDestCount-1)
+              num = left;
+
+            int kk = validDest[k];
+            tmpParticleCount[(j+GRID_DIRS[kk*2+0]) + (i+GRID_DIRS[kk*2+1]) * width] += num;
+            left -= num;
+          }
+        }
+
+      }
+    }
+  }
+  targetParticleCount = tmpParticleCount;
 }
 
 //------------------------------------------------------------------------------
@@ -136,6 +183,13 @@ void GreetsBlock::GreetsData::Update(const UpdateState& state)
 
   float changeProb = BLACKBOARD.GetFloatVar("fluid.changeProb");
 
+  for (int i = 0; i < (int)targetParticleCount.size(); ++i)
+  {
+    float diff = (float)(targetParticleCount[i] - curParticleCount[i]);
+    diff *= state.delta.TotalSecondsAsFloat();
+    curParticleCount[i] += (int)diff;
+  }
+
   for (GreetsBlock::Particle& p : particles)
   {
     // check if it's time to move
@@ -143,7 +197,7 @@ void GreetsBlock::GreetsData::Update(const UpdateState& state)
     if (p.cur > 0)
       continue;
 
-    p.cur = p.speed;
+    p.cur += p.speed;
 
     // check if we can go in the current direction
     int forwardDirs[4];
@@ -199,12 +253,12 @@ void GreetsBlock::GreetsData::Update(const UpdateState& state)
       }
     }
 
-    particleCount[p.y*width + p.x]--;
+    targetParticleCount[p.y*width + p.x]--;
 
     p.x += GRID_DIRS[p.dir * 2 + 0];
     p.y += GRID_DIRS[p.dir * 2 + 1];
 
-    particleCount[p.y*width + p.x]++;
+    targetParticleCount[p.y*width + p.x]++;
   }
 }
 
@@ -442,7 +496,8 @@ void Tunnel::UpdateGreets(const UpdateState& state)
     pos.x = orgX;
     for (int j = 0; j < w; ++j)
     {
-      float ss = s * Clamp(0.f, 1.f, (float)data->particleCount[i*w+j] / 10);
+      //float ss = s * Clamp(0.f, 1.f, (float)data->targetParticleCount[i*w + j] / 10);
+      float ss = s * Clamp(0.f, 1.f, (float)data->curParticleCount[i*w + j] / 10);
       //ss = s;
       // 1 2
       // 0 3
