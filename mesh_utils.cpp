@@ -449,7 +449,7 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  vector<u32> GenerateCubeIndices(int numCubes, bool faceted)
+  vector<u32> GenerateCubeIndices(int numCubes)
   {
     //    5----6
     //   /    /|
@@ -457,7 +457,6 @@ namespace tano
     //  | 4--|-7
     //  |/   |/
     //  0----3
-    //
 
     vector<u32> indices(numCubes * 36);
     u32* ptr = indices.data();
@@ -513,55 +512,90 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
+  vector<u32> GenerateCubeIndicesFaceted(int numCubes)
+  {
+    //    5----6
+    //   /    /|
+    //  1----2 |
+    //  | 4--|-7
+    //  |/   |/
+    //  0----3
+
+    vector<u32> indices(numCubes * 36);
+    u32* ptr = indices.data();
+
+    auto AddFace = [&](int i, int a, int b, int c){
+      *ptr++ = i + a;
+      *ptr++ = i + b;
+      *ptr++ = i + c;
+    };
+
+    // In a faceted cube all vertices are unique, so it's basically just
+    // repeating adding the first 2 faces 6 times
+    for (int i = 0; i < numCubes; ++i)
+    {
+      for (int j = 0; j < 6; ++j)
+      {
+        AddFace(i * 24 + j * 4, 0, 1, 2);
+        AddFace(i * 24 + j * 4, 0, 2, 3);
+      }
+    }
+
+    return indices;
+  }
+
+  //------------------------------------------------------------------------------
   V3* AddCubeWithNormal(V3* buf, const V3& pos, float scale)
   {
-    V3 v0(pos + V3(-scale, -scale, -scale));
-    V3 v1(pos + V3(-scale, +scale, -scale));
-    V3 v2(pos + V3(+scale, +scale, -scale));
-    V3 v3(pos + V3(+scale, -scale, -scale));
-    V3 v4(pos + V3(-scale, -scale, +scale));
-    V3 v5(pos + V3(-scale, +scale, +scale));
-    V3 v6(pos + V3(+scale, +scale, +scale));
-    V3 v7(pos + V3(+scale, -scale, +scale));
+    V3 verts[] = {
+      {pos + V3(-scale, -scale, -scale)},
+      {pos + V3(-scale, +scale, -scale)},
+      {pos + V3(+scale, +scale, -scale)},
+      {pos + V3(+scale, -scale, -scale)},
+      {pos + V3(-scale, -scale, +scale)},
+      {pos + V3(-scale, +scale, +scale)},
+      {pos + V3(+scale, +scale, +scale)},
+      {pos + V3(+scale, -scale, +scale)},
+    };
 
-    //v3 n0(0, 0, -1);
-    //v3 n1(0, 0, +1);
-    //v3 n2(-1, 0, 0);
-    //v3 n3(+1, 0, 0);
-    //v3 n4(0, +1, 0);
-    //v3 n5(0, -1, 0);
+    V3 n0(0, 0, -1);
+    V3 n1(0, 0, +1);
+    V3 n2(-1, 0, 0);
+    V3 n3(+1, 0, 0);
+    V3 n4(0, +1, 0);
+    V3 n5(0, -1, 0);
 
-    //// Front face
-    //*buf++ = v0; *buf++ = n0;
-    //*buf++ = v1; *buf++ = n0;
-    //*buf++ = v2; *buf++ = n0;
-    //*buf++ = v3; *buf++ = n0;
+    //    5----6
+    //   /    /|
+    //  1----2 |
+    //  | 4--|-7
+    //  |/   |/
+    //  0----3
 
-    //// Back face
-    //*buf++ = v4; *buf++ = n1;
-    //*buf++ = v5; *buf++ = n1;
-    //*buf++ = v6; *buf++ = n1;
-    //*buf++ = v7; *buf++ = n1;
+    auto AddFace = [&](int a, int b, int c, int d, const V3& n){
+      *buf++ = verts[a]; *buf++ = n;
+      *buf++ = verts[b]; *buf++ = n;
+      *buf++ = verts[c]; *buf++ = n;
+      *buf++ = verts[d]; *buf++ = n;
+    };
 
-    //// Left face
-    //*buf++ = v4; *buf++ = n1;
-    //*buf++ = v5; *buf++ = n1;
-    //*buf++ = v6; *buf++ = n1;
-    //*buf++ = v7; *buf++ = n1;
-    //AddFace(i, mult, 4, 5, 1);
-    //AddFace(i, mult, 4, 1, 0);
+    /// Front face
+    AddFace(0, 1, 2, 3, n0);
 
-    //// Right face
-    //AddFace(i, mult, 3, 2, 6);
-    //AddFace(i, mult, 3, 6, 7);
+    // Back face
+    AddFace(7, 6, 5, 4, n1);
 
-    //// Top face
-    //AddFace(i, mult, 1, 5, 6);
-    //AddFace(i, mult, 1, 6, 2);
+    // Left face
+    AddFace(3, 2, 6, 7, n2);
 
-    //// Bottom face
-    //AddFace(i, mult, 4, 0, 3);
-    //AddFace(i, mult, 4, 3, 7);
+    // Right face
+    AddFace(4, 5, 1, 0, n3);
+
+    // Top face
+    AddFace(1, 5, 6, 2, n4);
+
+    // Bottom face
+    AddFace(4, 0, 3, 7, n5);
 
     return buf;
   }

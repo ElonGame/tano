@@ -72,5 +72,5 @@ namespace fluid
     float speedVariance = 0.05;
     int particlesPerSegment = 250;
 
-    float updateSpeed = 1.0;
+    float updateSpeed = 1.5;
 }

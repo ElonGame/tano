@@ -388,25 +388,21 @@ bool Tunnel::Init()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/tunnel.composite", "PsComposite")));
 
-  vector<D3D11_INPUT_ELEMENT_DESC> inputsMesh = {
-    CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32_FLOAT),
-    CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT),
-    CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
-  };
-
   INIT(_meshBundle.Create(BundleOptions()
     .VertexShader("shaders/out/tunnel.mesh", "VsMesh")
-    .InputElements(inputsMesh)
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT))
     .PixelShader("shaders/out/tunnel.mesh", "PsMesh")));
 
   INIT(_greetsBundle.Create(BundleOptions()
-    .RasterizerDesc(rasterizeDescCullNone)
-    .DepthStencilDesc(depthDescDepthDisabled)
-    .VertexFlags(VF_POS)
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
     .VertexShader("shaders/out/tunnel.greets", "VsGreets")
     .PixelShader("shaders/out/tunnel.greets", "PsGreets")
-    .DynamicVb(MAX_GREETS_HEIGHT*MAX_GREETS_WIDTH*8, sizeof(V3))
-    .StaticIb(GenerateCubeIndices(MAX_GREETS_HEIGHT*MAX_GREETS_WIDTH, true))));
+    .DynamicVb(MAX_GREETS_HEIGHT*MAX_GREETS_WIDTH * 24 * 2, 2 * sizeof(V3))
+    .StaticIb(GenerateCubeIndicesFaceted(MAX_GREETS_HEIGHT*MAX_GREETS_WIDTH)))
+  );
   // clang-format on
 
   INIT(_cbLines.Create());
@@ -450,20 +446,14 @@ void Tunnel::UpdateGreets(const UpdateState& state)
       float ss = s * Clamp(0.f, 1.f, (float)data->curParticleCount[i*w + j] / 10);
       if (ss > 0)
       {
-        verts = AddCube(verts, pos, ss/2);
+        verts = AddCubeWithNormal(verts, pos, ss / 2);
         _numGreetsCubes++;
       }
-      //verts[0] = pos + V3(-ss / 2, -ss / 2, 0);
-      //verts[1] = pos + V3(-ss / 2, +ss / 2, 0);
-      //verts[2] = pos + V3(+ss / 2, +ss / 2, 0);
-      //verts[3] = pos + V3(+ss / 2, -ss / 2, 0);
-
-      //verts += 4;
-
       pos.x += s;
     }
     pos.y -= s;
   }
+
   _ctx->Unmap(handle);
 }
 
@@ -662,6 +652,7 @@ void Tunnel::UpdateCameraMatrix(const UpdateState& state)
 
   _cbGreets.vs0.viewProj = viewProj.Transpose();
   _cbGreets.vs0.objWorld = Matrix::Identity();
+  _cbGreets.vs0.camPos = _camera._pos;
 }
 
 //------------------------------------------------------------------------------

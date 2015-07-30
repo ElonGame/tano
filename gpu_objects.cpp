@@ -152,11 +152,14 @@ bool GpuBundle::Create(const BundleOptions& options)
   if (options.vsEntry)
   {
     vector<D3D11_INPUT_ELEMENT_DESC> inputElements(options.inputElements);
-    INIT_FATAL_LOG(objects.LoadVertexShader(options.vsShaderFile,
-        options.vsEntry,
-        options.vertexFlags,
-        inputElements.empty() ? nullptr : &inputElements),
-        "Error loading vertex shader: ", options.vsShaderFile, ":", options.vsEntry);
+    // clang-format off
+    INIT_FATAL_LOG(objects.LoadVertexShader(
+      options.vsShaderFile,
+      options.vsEntry,
+      options.vertexFlags,
+      inputElements.empty() ? nullptr : &inputElements),
+      "Error loading vertex shader: ", options.vsShaderFile, ":", options.vsEntry);
+    // clang-format on
   }
 
   if (options.psEntry)
@@ -268,6 +271,13 @@ BundleOptions& BundleOptions::VertexFlags(u32 flags)
 BundleOptions& BundleOptions::Topology(D3D11_PRIMITIVE_TOPOLOGY topologyIn)
 {
   topology = topologyIn;
+  return *this;
+}
+
+//------------------------------------------------------------------------------
+BundleOptions& BundleOptions::InputElement(const CD3D11_INPUT_ELEMENT_DESC& elem)
+{
+  inputElements.push_back(elem);
   return *this;
 }
 

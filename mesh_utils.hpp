@@ -70,7 +70,8 @@ namespace tano
 
   //------------------------------------------------------------------------------
   vector<u32> GenerateQuadIndices(int numQuads);
-  vector<u32> GenerateCubeIndices(int numCubes, bool faceted);
+  vector<u32> GenerateCubeIndices(int numCubes);
+  vector<u32> GenerateCubeIndicesFaceted(int numCubes);
 
   V3* AddCube(V3* buf, const V3& pos, float scale);
   V3* AddCubeWithNormal(V3* buf, const V3& pos, float scale);

@@ -131,8 +131,10 @@ namespace tano
 
     BundleOptions& VertexFlags(u32 flags);
     BundleOptions& InputElements(const vector<D3D11_INPUT_ELEMENT_DESC>& elems);
+    BundleOptions& InputElement(const bristol::CD3D11_INPUT_ELEMENT_DESC& elem);
     BundleOptions& Topology(D3D11_PRIMITIVE_TOPOLOGY topology);
 
+    // TODO: hmm, can the element size be inferred from the input elements?
     BundleOptions& DynamicVb(int numElements, int elementSize);
     BundleOptions& DynamicIb(int numElements, int elementSize);
     BundleOptions& StaticVb(int numElements, int elementSize, void* vertices);
