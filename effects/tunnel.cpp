@@ -652,7 +652,7 @@ void Tunnel::UpdateCameraMatrix(const UpdateState& state)
 
   _cbGreets.vs0.viewProj = viewProj.Transpose();
   _cbGreets.vs0.objWorld = Matrix::Identity();
-  _cbGreets.vs0.camPos = _camera._pos;
+  _cbGreets.ps0.camPos = _camera._pos;
 }
 
 //------------------------------------------------------------------------------
@@ -669,16 +669,7 @@ bool Tunnel::Render()
       DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
   _ctx->SetRenderTarget(rtColor._rtHandle, rtColor._dsHandle, &black);
 
-  {
-    // greets
-    _cbGreets.Set(_ctx, 0);
-    _ctx->SetBundle(_greetsBundle);
-    GreetsBlock::GreetsData* data = _greetsBlock._data[_greetsBlock.curText];
-    //_ctx->DrawIndexed(data->width*data->height * 6, 0, 0);
-    _ctx->DrawIndexed(_numGreetsCubes * 36, 0, 0);
-  }
-
-#if 0
+#if 1
   {
     // tunnel
     _cbLines.gs0.dim = Vector4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
@@ -716,11 +707,21 @@ bool Tunnel::Render()
 
         _cbMesh.vs1.objWorld = mtx.Transpose();
         _cbMesh.Set(_ctx, 1);
-        _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
+        //_ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
       }
     }
   }
 #endif
+
+    {
+      // greets
+      _cbGreets.Set(_ctx, 0);
+      _ctx->SetBundle(_greetsBundle);
+      GreetsBlock::GreetsData* data = _greetsBlock._data[_greetsBlock.curText];
+      //_ctx->DrawIndexed(data->width*data->height * 6, 0, 0);
+      _ctx->DrawIndexed(_numGreetsCubes * 36, 0, 0);
+    }
+
   {
     // composite
     _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);

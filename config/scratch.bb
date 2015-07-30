@@ -47,7 +47,7 @@ namespace plexus
 namespace tunnel
 {
     vec3 lineParams = { 5.0, 1.25, 1500 };
-    float radius = 150;
+    float radius = 200;
     float speed = 5;
     int segments = 20;
 

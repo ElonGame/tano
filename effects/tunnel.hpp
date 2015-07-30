@@ -9,6 +9,7 @@
 #include "../shaders/out/tunnel.composite_pscomposite.cbuffers.hpp"
 #include "../shaders/out/tunnel.mesh_vsmesh.cbuffers.hpp"
 #include "../shaders/out/tunnel.greets_vsgreets.cbuffers.hpp"
+#include "../shaders/out/tunnel.greets_psgreets.cbuffers.hpp"
 #include "../scene.hpp"
 
 namespace tano
@@ -105,7 +106,7 @@ namespace tano
 
     SimpleAppendBuffer<V3, 64 * 1024> _tunnelVerts;
 
-    ConstantBufferBundle<cb::TunnelGreetsF> _cbGreets;
+    ConstantBufferBundle<cb::TunnelGreetsV, cb::TunnelGreetsP> _cbGreets;
 
     float _dist = 0;
     CardinalSpline2 _spline;
