@@ -1,7 +1,8 @@
 # shader compile script
-# each shader's entry points are listed, and the script will try to compile debug
-# and optimized version for each entry point.
-# the script is on a loop, and constantly checks if shaders need to be recompiled.
+# each shader's entry points are listed, and the script will try to compile
+# debug and optimized version for each entry point.
+# the script is on a loop, and constantly checks if shaders need to be
+# recompiled.
 
 import os
 import time
@@ -11,55 +12,57 @@ import collections
 from string import Template
 
 SHADER_DIR = os.path.join('..', 'shaders')
-OUT_DIR = os.path.join(SHADER_DIR, 'out' )
+OUT_DIR = os.path.join(SHADER_DIR, 'out')
 ENTRY_POINT_TAG = 'entry-point'
+SHADERS = {}
+SHADER_FILES = set()
 
-def get_entry_points():
+
+def entry_points_for_file(f):
     # parse all the hlsl files, and look for marked entry points
-    res = {}
-    for f in glob.glob(os.path.join(SHADER_DIR, '*.hlsl')):
-        _, tail = os.path.split(f)
-        root, _ = os.path.splitext(tail)
-        cur = None
-        for r in open(f, 'rt').readlines():
-            r = r.strip()
-            if cur:
-                # previous row was an entry point, so parse the entry point name
-                _, _, name = r.partition(' ')
+    global SHADERS
+    _, tail = os.path.split(f)
+    root, _ = os.path.splitext(tail)
+    cur = None
+    for r in open(f, 'rt').readlines():
+        r = r.strip()
+        if cur:
+            # previous row was an entry point, so parse the entry point
+            # name
+            _, _, name = r.partition(' ')
+            if name:
+                name, _, _ = name.partition('(')
                 if name:
-                    name, _, _ = name.partition('(')
-                    if name:
-                        res.setdefault(root, {}).setdefault(cur, []).append(name)
-                cur = None
-            else:
-                try:
-                    idx = r.index(ENTRY_POINT_TAG)
-                    # found entry point tag. check if vs, ps etc
-                    _, _, t = r[idx:].partition(':')
-                    if len(t) == 0:
-                        print 'error parsing entry point tag'
-                        continue
-                    t = t.strip()
-                    t = t[:2].lower()
-                    if t in ('vs', 'ps', 'gs', 'cs'):
-                        # found correct entry point tag
-                        cur  = t
-                    else:
-                        print 'Unknown tag type: %s' % t
-                except ValueError:
-                    pass
-    return res
-
-shaders = get_entry_points()
+                    SHADERS.setdefault(root, {}).setdefault(
+                        cur, []).append(name)
+            cur = None
+        else:
+            try:
+                idx = r.index(ENTRY_POINT_TAG)
+                # found entry point tag. check if vs, ps etc
+                _, _, t = r[idx:].partition(':')
+                if len(t) == 0:
+                    print 'error parsing entry point tag'
+                    continue
+                t = t.strip()
+                t = t[:2].lower()
+                if t in ('vs', 'ps', 'gs', 'cs'):
+                    # found correct entry point tag
+                    cur = t
+                else:
+                    print 'Unknown tag type: %s' % t
+            except ValueError:
+                pass
 
 shader_data = {
-    'vs' : { 'profile': 'vs', 'obj_ext': 'vso', 'asm_ext': 'vsa' },
-    'gs' : { 'profile': 'gs', 'obj_ext': 'gso', 'asm_ext': 'gsa' },
-    'ps' : { 'profile': 'ps', 'obj_ext': 'pso', 'asm_ext': 'psa' },
-    'cs' : { 'profile': 'cs', 'obj_ext': 'cso', 'asm_ext': 'csa' },
+    'vs': {'profile': 'vs', 'obj_ext': 'vso', 'asm_ext': 'vsa'},
+    'gs': {'profile': 'gs', 'obj_ext': 'gso', 'asm_ext': 'gsa'},
+    'ps': {'profile': 'ps', 'obj_ext': 'pso', 'asm_ext': 'psa'},
+    'cs': {'profile': 'cs', 'obj_ext': 'cso', 'asm_ext': 'csa'},
 }
 
 last_fail_time = {}
+
 
 def safe_mkdir(path):
     try:
@@ -67,12 +70,14 @@ def safe_mkdir(path):
     except OSError:
         pass
 
+
 def filetime_is_newer(time, filename):
     try:
         obj_time = os.path.getmtime(filename)
         return time > obj_time
     except:
         return True
+
 
 def generate_files(base, entry_points, obj_ext, asm_ext):
     # returns the output files from the given base and entry points
@@ -85,12 +90,12 @@ def generate_files(base, entry_points, obj_ext, asm_ext):
     return res
 
 # conversion between HLSL and my types
-known_types = { 
-    'float' : { 'type': 'float', 'alignment': 3 },
-    'float2' : { 'type': 'Vector2', 'alignment': 2 },
-    'float3' : { 'type': 'Vector3', 'alignment': 1 },
-    'float4' : { 'type': 'Vector4' },
-    'float4x4' : { 'type': 'Matrix' },
+known_types = {
+    'float': {'type': 'float', 'alignment': 3},
+    'float2': {'type': 'Vector2', 'alignment': 2},
+    'float3': {'type': 'Vector3', 'alignment': 1},
+    'float4': {'type': 'Vector4'},
+    'float4x4': {'type': 'Matrix'},
 }
 
 buffer_template = Template("""#pragma once
@@ -103,6 +108,7 @@ $cbuffers
 }
 """)
 
+
 def dump_cbuffer(cbuffer_filename, cbuffers):
 
     if len(cbuffers) == 0:
@@ -110,7 +116,7 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
 
     bufs = []
     for name, cbuffer_vars in cbuffers:
-        cur =  '    struct %s\n    {\n' % name
+        cur = '    struct %s\n    {\n' % name
 
         # calc max line length, to align the comments
         max_len = 0
@@ -136,6 +142,7 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
 
     with open(cbuffer_filename, 'wt') as f:
         f.write(res)
+
 
 def parse_cbuffer(basename, entry_point, out_name, ext):
 
@@ -171,7 +178,7 @@ def parse_cbuffer(basename, entry_point, out_name, ext):
         if len(tmp) == 0:
             continue
         t, _, n = tmp.partition(' ')
-        if len(t) == 0 or len(n) == 0:
+        if not t or not n:
             continue
         if t not in known_types:
             continue
@@ -181,7 +188,7 @@ def parse_cbuffer(basename, entry_point, out_name, ext):
 
 
 def compile():
-    for basename, data in shaders.iteritems():
+    for basename, data in SHADERS.iteritems():
         for shader_type, entry_points in data.iteritems():
             profile = shader_data[shader_type]['profile']
             obj_ext = shader_data[shader_type]['obj_ext']
@@ -190,14 +197,24 @@ def compile():
             shader_file = os.path.join(SHADER_DIR, basename)
             hlsl_file_time = os.path.getmtime(shader_file + '.hlsl')
 
-            # if the compilation has failed, don't try again if the hlsl file hasn't updated
-            if shader_file in last_fail_time and last_fail_time[shader_file] == hlsl_file_time:
+            # if the compilation has failed, don't try again if the hlsl file
+            # hasn't updated
+            if (
+                shader_file in last_fail_time
+                and last_fail_time[shader_file] == hlsl_file_time
+            ):
                 continue
 
-            # check for old or missing files (each entry point gets its own file)
-            for output, entry_point, is_debug in generate_files(basename, entry_points, obj_ext, asm_ext):
-                if filetime_is_newer(hlsl_file_time, os.path.join(OUT_DIR, output)):
-                    out_name = os.path.join(OUT_DIR, basename + '_' + entry_point)
+            # check for old or missing files (each entry point gets its own
+            # file)
+            g = generate_files(basename, entry_points, obj_ext, asm_ext)
+            for output, entry_point, is_debug in g:
+                if (
+                    filetime_is_newer(
+                        hlsl_file_time, os.path.join(OUT_DIR, output))
+                ):
+                    out_name = os.path.join(
+                        OUT_DIR, basename + '_' + entry_point)
 
                     if is_debug:
                         # create debug shader
@@ -206,35 +223,41 @@ def compile():
                             'fxc',
                             '/nologo',
                             '/T%s_5_0' % profile,
-                            '/Od', 
-                            '/Zi', 
-                            '/E%s' % entry_point, 
+                            '/Od',
+                            '/Zi',
+                            '/E%s' % entry_point,
                             '/Fo%sD.%s' % (out_name, obj_ext),
                             '/Fc%sD.%s' % (out_name, asm_ext),
                             '%s.hlsl' % shader_file])
                     else:
                         # create optimized shader
                         res = subprocess.call([
-                            'fxc', 
+                            'fxc',
                             '/nologo',
                             '/T%s_5_0' % profile,
                             '/O3',
-                            '/E%s' % entry_point, 
+                            '/E%s' % entry_point,
                             '/Fo%s.%s' % (out_name, obj_ext),
                             '/Fc%s.%s' % (out_name, asm_ext),
                             '%s.hlsl' % shader_file])
 
                     if res:
-                        # if compilation failed, don't try again until the .hlsl file has been updated
+                        # if compilation failed, don't try again until the
+                        # .hlsl file has been updated
                         print '** FAILURE: %s, %s' % (shader_file, entry_point)
                         last_fail_time[shader_file] = hlsl_file_time
                     else:
                         parse_cbuffer(basename, entry_point, out_name, asm_ext)
-                        if shader_file in last_fail_time: 
+                        if shader_file in last_fail_time:
                             del(last_fail_time[shader_file])
 
 safe_mkdir(OUT_DIR)
 
 while True:
+    for f in glob.glob(os.path.join(SHADER_DIR, '*.hlsl')):
+        if f not in SHADER_FILES:
+            entry_points_for_file(f)
+            SHADER_FILES.add(f)
+
     compile()
     time.sleep(1)
