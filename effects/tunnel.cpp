@@ -411,7 +411,7 @@ bool Tunnel::Init()
   INIT(_cbGreets.Create());
 
   MeshLoader loader;
-  INIT(loader.Load("gfx/newblob1.boba"));
+  INIT(loader.Load("gfx/newblob2.boba"));
   INIT(CreateScene(loader, SceneOptions(), &_scene));
 
   INIT(_greetsBlock.Init());
@@ -649,6 +649,7 @@ void Tunnel::UpdateCameraMatrix(const UpdateState& state)
   _cbLines.gs0.cameraPos = _camera._pos;
 
   _cbMesh.vs0.viewProj = viewProj.Transpose();
+  _cbMesh.vs0.time = state.localTime.TotalSecondsAsFloat();
 
   _cbGreets.vs0.viewProj = viewProj.Transpose();
   _cbGreets.vs0.objWorld = Matrix::Identity();
@@ -688,6 +689,17 @@ bool Tunnel::Render()
   }
 
   {
+    // greets
+    _cbGreets.Set(_ctx, 0);
+    _ctx->SetBundle(_greetsBundle);
+    GreetsBlock::GreetsData* data = _greetsBlock._data[_greetsBlock.curText];
+    //_ctx->DrawIndexed(data->width*data->height * 6, 0, 0);
+    _ctx->DrawIndexed(_numGreetsCubes * 36, 0, 0);
+  }
+
+#endif
+
+  {
     // mesh
     _cbMesh.Set(_ctx, 0);
     _ctx->SetBundle(_meshBundle);
@@ -707,20 +719,10 @@ bool Tunnel::Render()
 
         _cbMesh.vs1.objWorld = mtx.Transpose();
         _cbMesh.Set(_ctx, 1);
-        //_ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
+        _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
       }
     }
   }
-#endif
-
-    {
-      // greets
-      _cbGreets.Set(_ctx, 0);
-      _ctx->SetBundle(_greetsBundle);
-      GreetsBlock::GreetsData* data = _greetsBlock._data[_greetsBlock.curText];
-      //_ctx->DrawIndexed(data->width*data->height * 6, 0, 0);
-      _ctx->DrawIndexed(_numGreetsCubes * 36, 0, 0);
-    }
 
   {
     // composite

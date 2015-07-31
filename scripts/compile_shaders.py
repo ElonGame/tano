@@ -86,6 +86,7 @@ def generate_files(base, entry_points, obj_ext, asm_ext):
 
 # conversion between HLSL and my types
 known_types = { 
+    'float' : { 'type': 'float', 'alignment': 3 },
     'float2' : { 'type': 'Vector2', 'alignment': 2 },
     'float3' : { 'type': 'Vector3', 'alignment': 1 },
     'float4' : { 'type': 'Vector4' },
