@@ -3,55 +3,62 @@
   silent: true;
   
   effects: [
-  {
-    name: 'intro';
-    factory: 'intro';
-    start_time: 0;
-    end_time: 22500;
-    settings: 'config/intro.gb';
-  },
-  {
-    name: 'landscape';
-    factory: 'landscape';
-    start_time: 22500;
-    end_time: 1300000;
-    settings: 'config/landscape.gb';
-  },
-  {
-    name: 'cloth';
-    factory: 'cloth';
-    start_time: 1300000;
-    end_time: 1300000;
-    settings: 'config/cloth.gb';
-  },
-  {
-    name: 'raymarcher';
-    factory: 'raymarcher';
-    start_time: 1300000;
-    end_time: 1300000;
-    settings: 'config/raymarcher.gb';
-  },
-  {
-    name: 'plexus';
-    factory: 'plexus';
-    start_time: 1300000;
-    end_time: 1300000;
-    settings: 'config/plexus.gb';
-  },
-  {
-    name: 'tunnel';
-    factory: 'tunnel';
-    start_time: 1300000;
-    end_time: 1300000;
-    settings: 'config/tunnel.gb';
-    force: true;
-  },
-  {
-    name: 'fluid';
-    factory: 'fluid';
-    start_time: 1300000;
-    end_time: 1300000;
-    settings: 'config/fluid.gb';
-  },
+    {
+      name: 'intro';
+      factory: 'intro';
+      start_time: 0;
+      end_time: 22500;
+      settings: 'config/intro.gb';
+    },
+    {
+      name: 'landscape';
+      factory: 'landscape';
+      start_time: 22500;
+      end_time: 1300000;
+      settings: 'config/landscape.gb';
+    },
+    {
+      name: 'cloth';
+      factory: 'cloth';
+      start_time: 1300000;
+      end_time: 1300000;
+      settings: 'config/cloth.gb';
+    },
+    {
+      name: 'raymarcher';
+      factory: 'raymarcher';
+      start_time: 1300000;
+      end_time: 1300000;
+      settings: 'config/raymarcher.gb';
+    },
+    {
+      name: 'plexus';
+      factory: 'plexus';
+      start_time: 1300000;
+      end_time: 1300000;
+      settings: 'config/plexus.gb';
+    },
+    {
+      name: 'tunnel';
+      factory: 'tunnel';
+      start_time: 1300000;
+      end_time: 1300000;
+      settings: 'config/tunnel.gb';
+    },
+    {
+      name: 'fluid';
+      factory: 'fluid';
+      start_time: 1300000;
+      end_time: 1300000;
+      settings: 'config/fluid.gb';
+    },
+    {
+      name: 'particle_trail';
+      factory: 'particle_trail';
+      start_time: 1300000;
+      end_time: 1300000;
+      settings: 'config/particle_trail.gb';
+      force: true;
+    },
   ];
 }

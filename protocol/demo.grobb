@@ -187,3 +187,8 @@ struct fluid_settings
 {
   tonemap_reinhard_settings tonemap;
 };
+
+struct particle_trail_settings
+{
+  tonemap_reinhard_settings tonemap;
+};

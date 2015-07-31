@@ -373,7 +373,7 @@ bool Tunnel::Init()
   }
 
   // clang-format off
-  INIT(_linesBundle.Create(BundleOptions()
+  INIT_FATAL(_linesBundle.Create(BundleOptions()
     .VertexShader("shaders/out/tunnel.lines", "VsTunnelLines")
     .GeometryShader("shaders/out/tunnel.lines", "GsTunnelLines")
     .PixelShader("shaders/out/tunnel.lines", "PsTunnelLines")
@@ -384,18 +384,18 @@ bool Tunnel::Init()
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
-  INIT(_compositeBundle.Create(BundleOptions()
+  INIT_FATAL(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/tunnel.composite", "PsComposite")));
 
-  INIT(_meshBundle.Create(BundleOptions()
+  INIT_FATAL(_meshBundle.Create(BundleOptions()
     .VertexShader("shaders/out/tunnel.mesh", "VsMesh")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT))
     .PixelShader("shaders/out/tunnel.mesh", "PsMesh")));
 
-  INIT(_greetsBundle.Create(BundleOptions()
+  INIT_FATAL(_greetsBundle.Create(BundleOptions()
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
     .VertexShader("shaders/out/tunnel.greets", "VsGreets")
@@ -411,10 +411,10 @@ bool Tunnel::Init()
   INIT(_cbGreets.Create());
 
   MeshLoader loader;
-  INIT(loader.Load("gfx/newblob2.boba"));
-  INIT(CreateScene(loader, SceneOptions(), &_scene));
+  INIT_FATAL(loader.Load("gfx/newblob2.boba"));
+  INIT_FATAL(CreateScene(loader, SceneOptions(), &_scene));
 
-  INIT(_greetsBlock.Init());
+  INIT_FATAL(_greetsBlock.Init());
 
   END_INIT_SEQUENCE();
 }
