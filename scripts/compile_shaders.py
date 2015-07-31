@@ -18,11 +18,16 @@ SHADERS = {}
 SHADER_FILES = set()
 
 
+def get_shader_root(f):
+    _, tail = os.path.split(f)
+    root, _ = os.path.splitext(tail)
+    return root
+
+
 def entry_points_for_file(f):
     # parse all the hlsl files, and look for marked entry points
     global SHADERS
-    _, tail = os.path.split(f)
-    root, _ = os.path.splitext(tail)
+    root = get_shader_root(f)
     cur = None
     for r in open(f, 'rt').readlines():
         r = r.strip()
@@ -115,17 +120,24 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
         return
 
     bufs = []
-    for name, cbuffer_vars in cbuffers:
+    for c in cbuffers:
+        name = c['name']
+        vars = c['vars']
+
+        # skip write the cbuffer if all the vars are unused
+        if len(vars) == c['unused']:
+            continue
+
         cur = '    struct %s\n    {\n' % name
 
         # calc max line length, to align the comments
         max_len = 0
-        for n, (tt, comments) in cbuffer_vars.iteritems():
+        for n, (tt, comments) in vars.iteritems():
             t = tt['type']
             max_len = max(max_len, len(n) + len(t))
 
         padder = 0
-        for n, (tt, comments) in cbuffer_vars.iteritems():
+        for n, (tt, comments) in vars.iteritems():
             t = tt['type']
             alignment = tt.get('alignment', 0)
             cur_len = len(n) + len(t)
@@ -151,38 +163,46 @@ def parse_cbuffer(basename, entry_point, out_name, ext):
 
     cbuffer_prefix = basename.title().replace('.', '')
 
-    cbuffer_name = None
-    cbuffer_vars = collections.OrderedDict()
     cbuffers = []
-    for line in open(filename).readlines():
+    cur_cbuffer = None
+    try:
+        with open(filename) as f:
+            lines = f.readlines()
+    except:
+        return
+
+    for line in lines:
         if not line.startswith('//'):
             continue
         line = line[3:]
         line = line.strip()
 
         if line.startswith('cbuffer'):
-            cbuffer_name = line[len('cbuffer '):]
+            name = line[len('cbuffer '):]
+            cur_cbuffer = {
+                'name': cbuffer_prefix + name,
+                'vars': collections.OrderedDict(),
+                'unused': 0,
+            }
             continue
         elif line.startswith('}'):
-            cbuffers.append((cbuffer_prefix + cbuffer_name, cbuffer_vars))
-            cbuffer_name = None
-            cbuffer_vars = collections.OrderedDict()
+            cbuffers.append(cur_cbuffer)
+            cur_cbuffer = None
             continue
 
-        if not cbuffer_name:
+        if not cur_cbuffer:
             continue
 
         tmp, _, comments = line.partition(';')
         comments = comments.strip()
-        tmp = tmp.strip()
-        if len(tmp) == 0:
+        if comments.find('[unused]') != -1:
+            cur_cbuffer['unused'] += 1
+        var_type, _, var_name = tmp.partition(' ')
+        if not var_type or not var_name:
             continue
-        t, _, n = tmp.partition(' ')
-        if not t or not n:
+        if var_type not in known_types:
             continue
-        if t not in known_types:
-            continue
-        cbuffer_vars[n] = (known_types[t], comments)
+        cur_cbuffer['vars'][var_name] = (known_types[var_type], comments)
 
     dump_cbuffer(cbuffer_filename, cbuffers)
 
@@ -251,13 +271,19 @@ def compile():
                         if shader_file in last_fail_time:
                             del(last_fail_time[shader_file])
 
-safe_mkdir(OUT_DIR)
-
 while True:
+    safe_mkdir(OUT_DIR)
+    cur_files = set()
     for f in glob.glob(os.path.join(SHADER_DIR, '*.hlsl')):
         if f not in SHADER_FILES:
             entry_points_for_file(f)
             SHADER_FILES.add(f)
+        cur_files.add(f)
+
+    # remove any files that no longer exist
+    for f in SHADER_FILES.difference(cur_files):
+        del SHADERS[get_shader_root(f)]
+        SHADER_FILES.remove(f)
 
     compile()
     time.sleep(1)
