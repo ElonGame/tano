@@ -64,7 +64,7 @@ namespace tano
     videoAdapters.clear();
 
     // Create DXGI factory to enumerate adapters
-    if (FAILED(CreateDXGIFactory(IID_PPV_ARGS(&GRAPHICS._curSetup.dxgi_factory))))
+    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&GRAPHICS._curSetup.dxgi_factory))))
     {
       return false;
     }
@@ -86,7 +86,9 @@ namespace tano
       vector<CComPtr<IDXGIOutput>> outputs;
       vector<DXGI_MODE_DESC> displayModes;
 
-      // Only enumerate the first adapter
+      // Enumerate the outputs on the adapter
+      // Note(magnus): This is a bit dodgey, but EnumOutputs always fails for the second card on a
+      // laptop with an integrated card (say an Intel).
       for (int j = 0; SUCCEEDED(adapter->EnumOutputs(j, &output)); ++j)
       {
         DXGI_OUTPUT_DESC outputDesc;
@@ -96,7 +98,7 @@ namespace tano
         size_t prevSize = displayModes.size();
         displayModes.resize(displayModes.size() + numModes);
         output->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, 0, &numModes, displayModes.data() + prevSize);
-        if (!GRAPHICS._displayAllModes)
+        if (!GRAPHICS._enumerateAllOutputs)
           break;
       }
 

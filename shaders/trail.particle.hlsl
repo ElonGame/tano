@@ -1,5 +1,10 @@
 #include "common.hlsl"
 
+cbuffer V : register(b0)
+{
+  float numParticles;
+};
+
 cbuffer G : register(b0)
 {
   matrix world;
@@ -10,14 +15,20 @@ cbuffer G : register(b0)
 struct VsParticleIn
 {
   float3 pos : Position;
+  uint vertexId : SV_VertexID;
+};
+
+struct GsParticleIn
+{
+  float3 pos : Position;
+  float fade : Texture0;
 };
 
 struct VsParticleOut
 {
   float4 pos : SV_Position;
   float2 uv : TexCoord0;
-  float z : TexCoord1;
-  float alpha : TexCoord2;
+  float fade : TexCoord1;
 };
 
 static float2 uvsVtx[4] = {
@@ -25,16 +36,17 @@ static float2 uvsVtx[4] = {
 };
 
 // entry-point: vs
-VsParticleIn VsParticle(VsParticleIn v)
+GsParticleIn VsParticle(VsParticleIn v)
 {
-  VsParticleIn res;
+  GsParticleIn res;
   res.pos = v.pos;
+  res.fade = (float)v.vertexId / numParticles;
   return res;
 }
 
 [maxvertexcount(4)]
 // entry-point: gs
-void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
+void GsParticle(uint id : SV_PrimitiveID, point GsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
 {
   // Note, the DirectX strip order differs from my usual order. It might be
   // a good idea to change my stuff..
@@ -50,7 +62,7 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   float3 up = cross(right, dir);
 
   VsParticleOut p;
-  p.alpha = 1;
+  p.fade = id;
   float s = 0.75;
   float3 p0 = float3(pos - s * right - s * up);
   float3 p1 = float3(pos - s * right + s * up);
@@ -58,22 +70,18 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   float3 p3 = float3(pos + s * right + s * up);
   p.pos = mul(float4(p0, 1), worldViewProj);
   p.uv = uvsVtx[0];
-  p.z = p.pos.z;
   outStream.Append(p);
 
   p.pos = mul(float4(p1, 1), worldViewProj);
   p.uv = uvsVtx[1];
-  p.z = p.pos.z;
   outStream.Append(p);
 
   p.pos = mul(float4(p2, 1), worldViewProj);
   p.uv = uvsVtx[2];
-  p.z = p.pos.z;
   outStream.Append(p);
 
   p.pos = mul(float4(p3, 1), worldViewProj);
   p.uv = uvsVtx[3];
-  p.z = p.pos.z;
   outStream.Append(p);
 }
 
@@ -84,8 +92,9 @@ static float zEpsilon = 0.0;
 // entry-point: ps
 float4 PsParticle(VsParticleOut p) : SV_Target
 {
+  return p.fade / 2000;
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
-  col = 0.1 * float4(0.2, 0.2, 0.1, 1) * col;
-  return col;
+  col = 0.1 * float4(0.2, 0.2, 0.3, 1) * col;
+  return p.fade * col;
 }

@@ -8,6 +8,7 @@ BinPackArguments: true
 BinPackParameters: true
 BreakBeforeBraces: Allman
 BreakConstructorInitializersBeforeComma: true
+BreakBeforeBinaryOperators: NonAssignment
 ColumnLimit: 110
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ConstructorInitializerIndentWidth: 4

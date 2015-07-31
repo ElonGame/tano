@@ -3,11 +3,29 @@
 #include "../camera.hpp"
 #include "../generated/demo.types.hpp"
 #include "../gpu_objects.hpp"
+#include "../shaders/out/trail.particle_vsparticle.cbuffers.hpp"
 #include "../shaders/out/trail.particle_gsparticle.cbuffers.hpp"
 #include "../shaders/out/trail.composite_pscomposite.cbuffers.hpp"
 
 namespace tano
 {
+  struct ParticleFade
+  {
+    V3 pos;
+  };
+  struct Taily
+  {
+    enum { MAX_TAIL_LENGTH = 1024 };
+
+    void AddPos(const V3& pos);
+    V3* CopyOut(V3* buf);
+
+    V3 cur = {0.1f, 0, 0 };
+    V3 tail[MAX_TAIL_LENGTH];
+    int tailLength = 0;
+    int writePos = 0;
+  };
+
   class ParticleTrail : public BaseEffect
   {
   public:
@@ -35,9 +53,11 @@ namespace tano
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
 
+    Taily _taily;
+
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
-    ConstantBufferBundle<void, void, cb::TrailParticleG> _cbParticle;
+    ConstantBufferBundle<cb::TrailParticleV, void, cb::TrailParticleG> _cbParticle;
 
     GpuBundle _compositeBundle;
     ConstantBufferBundle<void, cb::TrailCompositeP> _cbComposite;

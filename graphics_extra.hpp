@@ -13,10 +13,10 @@ namespace tano
   //------------------------------------------------------------------------------
   enum ShaderType
   {
-    VertexShader      = 1 << 0,
-    PixelShader       = 1 << 1,
-    GeometryShader    = 1 << 2,
-    ComputeShader     = 1 << 3,
+    VertexShader   = 1 << 0,
+    PixelShader    = 1 << 1,
+    GeometryShader = 1 << 2,
+    ComputeShader  = 1 << 3,
   };
 
   //------------------------------------------------------------------------------
@@ -24,9 +24,9 @@ namespace tano
   {
     enum Enum
     {
-      CreateMipMaps        = 1 << 0,
-      CreateSrv            = 1 << 1,
-      CreateUav            = 1 << 2,
+      CreateMipMaps = 1 << 0,
+      CreateSrv     = 1 << 1,
+      CreateUav     = 1 << 2,
     };
 
     struct Bits
@@ -50,19 +50,19 @@ namespace tano
   //------------------------------------------------------------------------------
   struct Setup
   {
-    CComPtr<IDXGIFactory> dxgi_factory;
+    CComPtr<IDXGIFactory1> dxgi_factory;
     vector<VideoAdapter> videoAdapters;
-    int selectedAdapter = -1;
+    int selectedAdapter     = -1;
     int SelectedDisplayMode = -1;
     int selectedAspectRatio = -1;
-    int multisampleCount = -1;
-    int width = -1;
-    int height = -1;
-    bool windowed = false;
+    int multisampleCount    = -1;
+    int width               = -1;
+    int height              = -1;
+    bool windowed           = false;
   };
 
   //------------------------------------------------------------------------------
-  template<class Resource, class Desc>
+  template <class Resource, class Desc>
   struct PointerAndDesc
   {
     void Release()
@@ -78,10 +78,7 @@ namespace tano
   //------------------------------------------------------------------------------
   struct DepthStencilResource
   {
-    DepthStencilResource()
-    {
-      Reset();
-    }
+    DepthStencilResource() { Reset(); }
 
     void Reset()
     {
@@ -98,10 +95,7 @@ namespace tano
   //------------------------------------------------------------------------------
   struct RenderTargetResource
   {
-    RenderTargetResource()
-    {
-      Reset();
-    }
+    RenderTargetResource() { Reset(); }
 
     void Reset()
     {
@@ -171,7 +165,9 @@ namespace tano
   struct RenderTargetDesc
   {
     RenderTargetDesc() {}
-    RenderTargetDesc(int width, int height, DXGI_FORMAT format) : width(width), height(height), format(format) {}
+    RenderTargetDesc(int width, int height, DXGI_FORMAT format) : width(width), height(height), format(format)
+    {
+    }
     int width;
     int height;
     DXGI_FORMAT format;
@@ -181,9 +177,12 @@ namespace tano
   struct ScopedRenderTarget
   {
     ScopedRenderTarget() {}
-    ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
-    ScopedRenderTarget(const RenderTargetDesc& desc, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
-    ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
+    ScopedRenderTarget(int width, int height, DXGI_FORMAT format,
+        const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
+    ScopedRenderTarget(
+        const RenderTargetDesc& desc, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
+    ScopedRenderTarget(
+        DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ~ScopedRenderTarget();
 
     operator ObjectHandle() { return _rtHandle; }
@@ -212,7 +211,7 @@ namespace tano
   extern CD3D11_BLEND_DESC blendDescBlendSrcAlpha;
   extern CD3D11_BLEND_DESC blendDescBlendOneOne;
   extern CD3D11_BLEND_DESC blendDescPreMultipliedAlpha;
-  
+
   extern CD3D11_RASTERIZER_DESC rasterizeDescCullNone;
 
   extern CD3D11_DEPTH_STENCIL_DESC depthDescDepthDisabled;

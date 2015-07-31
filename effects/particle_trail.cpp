@@ -19,14 +19,46 @@ using namespace bristol;
 
 static int MAX_NUM_PARTICLES = 32 * 1024;
 
+void Taily::AddPos(const V3& pos)
+{
+  // copy out old cur
+  tail[writePos] = cur;
+  writePos = (writePos + 1) % MAX_TAIL_LENGTH;
+  tailLength = min((int)MAX_TAIL_LENGTH, tailLength + 1);
+
+  cur = pos;
+}
+
+V3* Taily::CopyOut(V3* buf)
+{
+  if (tailLength <= MAX_TAIL_LENGTH)
+  {
+    memcpy((void*)buf, tail, tailLength * sizeof(V3));
+    buf += tailLength;
+    *buf++ = cur;
+    return buf;
+  }
+
+  // the buffer has looped, so we need 2 copies:
+  // - first from write pos -> end
+  // - then from start -> write pos
+
+  // 8 9 3 4 5 6 7
+  // writePos = 2
+  // MAX_TAIL_LENGTH = 7
+  int n = MAX_TAIL_LENGTH - writePos;
+  memcpy(buf, tail + writePos, n * sizeof(V3));
+  memcpy(buf + n, tail, writePos);
+  *(buf + MAX_TAIL_LENGTH) = cur;
+  return buf + MAX_TAIL_LENGTH + 1;
+}
+
 //------------------------------------------------------------------------------
-ParticleTrail::ParticleTrail(const string &name, const string& config, u32 id)
-  : BaseEffect(name, config, id)
+ParticleTrail::ParticleTrail(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
 #if WITH_IMGUI
-  PROPERTIES.Register(Name(),
-    bind(&ParticleTrail::RenderParameterSet, this),
-    bind(&ParticleTrail::SaveParameterSet, this));
+  PROPERTIES.Register(
+      Name(), bind(&ParticleTrail::RenderParameterSet, this), bind(&ParticleTrail::SaveParameterSet, this));
 
   PROPERTIES.SetActive(Name());
 #endif
@@ -57,7 +89,7 @@ bool ParticleTrail::Init()
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DynamicVb(MAX_NUM_PARTICLES, sizeof(V3))
     .DepthStencilDesc(depthDescDepthDisabled)
-    .BlendDesc(blendDescBlendOneOne)
+    //.BlendDesc(blendDescBlendOneOne)
     .RasterizerDesc(rasterizeDescCullNone)));
 
   INIT(_compositeBundle.Create(BundleOptions()
@@ -75,37 +107,52 @@ bool ParticleTrail::Init()
 }
 
 //------------------------------------------------------------------------------
+V3 LorenzUpdate(float a, float b, float c, float h, const V3& prev)
+{
+  return V3 {
+    prev.x + h * a * (prev.y - prev.x),
+    prev.y + h * (prev.x * (b - prev.z) - prev.y),
+    prev.z + h * (prev.x * prev.y - c * prev.z)
+  };
+}
+
+//------------------------------------------------------------------------------
 bool ParticleTrail::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
 
   ObjectHandle handle = _particleBundle.objects._vb;
-  V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
+  V3* vtx             = _ctx->MapWriteDiscard<V3>(handle);
 
   float h = 0.01f;
-
+  h = state.delta.TotalSecondsAsFloat();
   float a = _settings.lorenz_a;
   float b = _settings.lorenz_b;
   float c = _settings.lorenz_c;
 
-  float x0 = 0.1f;
-  float y0 = 0;
-  float z0 = 0;
-  for (int i = 0; i < MAX_NUM_PARTICLES+100; i++)
-  {
-    float x1 = x0 + h * a * (y0 - x0);
-    float y1 = y0 + h * (x0 * (b - z0) - y0);
-    float z1 = z0 + h * (x0 * y0 - c * z0);
-    x0 = x1;
-    y0 = y1;
-    z0 = z1;
+  _taily.AddPos(LorenzUpdate(a, b, c, h, _taily.cur));
+  _taily.CopyOut(vtx);
 
-    if (i >= 100)
-    {
-      *vtx = V3(x0, y0, z0);
-      ++vtx;
-    }
-  }
+  // c = 0.1f + state.localTime.TotalSecondsAsFloat();
+
+  //float x0 = 0.1f;
+  //float y0 = 0;
+  //float z0 = 0;
+  //for (int i = 0; i < MAX_NUM_PARTICLES + 100; i++)
+  //{
+  //  float x1 = x0 + h * a * (y0 - x0);
+  //  float y1 = y0 + h * (x0 * (b - z0) - y0);
+  //  float z1 = z0 + h * (x0 * y0 - c * z0);
+  //  x0       = x1;
+  //  y0       = y1;
+  //  z0       = z1;
+
+  //  if (i >= 100)
+  //  {
+  //    *vtx = V3(x0, y0, z0);
+  //    ++vtx;
+  //  }
+  //}
 
   _ctx->Unmap(handle);
   return true;
@@ -126,10 +173,9 @@ void ParticleTrail::UpdateCameraMatrix(const UpdateState& state)
 
   Matrix viewProj = view * proj;
 
-  _cbParticle.gs0.world = Matrix::Identity();
-  _cbParticle.gs0.viewProj = viewProj.Transpose();
+  _cbParticle.gs0.world     = Matrix::Identity();
+  _cbParticle.gs0.viewProj  = viewProj.Transpose();
   _cbParticle.gs0.cameraPos = _camera._pos;
-
 }
 
 //------------------------------------------------------------------------------
@@ -145,10 +191,11 @@ bool ParticleTrail::Render()
     // particle
     _ctx->SetRenderTarget(rtColor, &black);
 
+    _cbParticle.vs0.numParticles = (float)_taily.tailLength + 1;
     _cbParticle.Set(_ctx, 0);
     _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
     _ctx->SetShaderResource(_particleTexture);
-    _ctx->Draw(MAX_NUM_PARTICLES, 0);
+    _ctx->Draw(_taily.tailLength + 1, 0);
   }
 
   {
@@ -156,14 +203,14 @@ bool ParticleTrail::Render()
     _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
-    ObjectHandle inputs[] = { rtColor };
+    ObjectHandle inputs[] = {rtColor};
     fullscreen->Execute(inputs,
-      1,
-      GRAPHICS.GetBackBuffer(),
-      GRAPHICS.GetBackBufferDesc(),
-      GRAPHICS.GetDepthStencil(),
-      _compositeBundle.objects._ps,
-      false);
+        1,
+        GRAPHICS.GetBackBuffer(),
+        GRAPHICS.GetBackBufferDesc(),
+        GRAPHICS.GetDepthStencil(),
+        _compositeBundle.objects._ps,
+        false);
   }
 
   return true;
@@ -197,7 +244,7 @@ void ParticleTrail::SaveParameterSet()
 //------------------------------------------------------------------------------
 void ParticleTrail::Reset()
 {
-  _camera._pos = Vector3(0.f, 0.f, 0.f);
+  _camera._pos   = Vector3(0.f, 0.f, 0.f);
   _camera._pitch = _camera._yaw = _camera._roll = 0.f;
 }
 
