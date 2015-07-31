@@ -1,3 +1,5 @@
+#include "common.hlsl"
+
 cbuffer G : register(b0)
 {
   matrix world;
@@ -7,7 +9,7 @@ cbuffer G : register(b0)
 
 struct VsParticleIn
 {
-  float4 pos : Position;
+  float3 pos : Position;
 };
 
 struct VsParticleOut
@@ -42,7 +44,7 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
 
   matrix worldViewProj = mul(world, viewProj);
 
-  float3 pos = input[0].pos.xyz;
+  float3 pos = input[0].pos;
   float3 dir = normalize(cameraPos - pos);
   float3 right = cross(dir, float3(0,1,0));
   float3 up = cross(right, dir);
@@ -80,9 +82,10 @@ static float intensity = 1.0;
 static float zEpsilon = 0.0;
 
 // entry-point: ps
-PsColBrightnessOut PsParticle(VsParticleOut p)
+float4 PsParticle(VsParticleOut p) : SV_Target
 {
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
-  return (1 - p.uv.z) * float4(col.rgb, col.g);
+  col = 0.1 * float4(0.2, 0.2, 0.1, 1) * col;
+  return col;
 }

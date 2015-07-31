@@ -2,6 +2,9 @@
 #include "../base_effect.hpp"
 #include "../camera.hpp"
 #include "../generated/demo.types.hpp"
+#include "../gpu_objects.hpp"
+#include "../shaders/out/trail.particle_gsparticle.cbuffers.hpp"
+#include "../shaders/out/trail.composite_pscomposite.cbuffers.hpp"
 
 namespace tano
 {
@@ -31,6 +34,13 @@ namespace tano
 
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
+
+    ObjectHandle _particleTexture;
+    GpuBundle _particleBundle;
+    ConstantBufferBundle<void, void, cb::TrailParticleG> _cbParticle;
+
+    GpuBundle _compositeBundle;
+    ConstantBufferBundle<void, cb::TrailCompositeP> _cbComposite;
 
     ParticleTrailSettings _settings;
     FreeFlyCamera _camera;

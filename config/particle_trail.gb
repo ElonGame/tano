@@ -1,2 +1,9 @@
 {
+  tonemap: {
+    exposure: 1.000000;
+    min_white: 1.000000;
+  };
+  lorenz_a: 12.525001;
+  lorenz_b: 39.899002;
+  lorenz_c: 2.121000;
 };

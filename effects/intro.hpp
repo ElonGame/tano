@@ -51,18 +51,13 @@ namespace tano
     void UpdateCameraMatrix(const UpdateState& state);
     void GenRandomPoints(float kernelSize);
 
-    struct ParticleType
-    {
-      V4 pos;
-    };
-
     struct ParticleEmitter
     {
       void Create(const V3& center, int numParticles);
       void Destroy();
       void Update(float dt);
       void CreateParticle(int idx, float s);
-      void CopyToBuffer(ParticleType* vtx);
+      void CopyToBuffer(V4* vtx);
 
       XMVECTOR* pos = nullptr;
       XMVECTOR* vel = nullptr;
@@ -77,7 +72,7 @@ namespace tano
     {
       ParticleEmitter* emitter;
       float dt;
-      ParticleType* vtx;
+      V4* vtx;
     };
 
     struct MemCpyKernelData

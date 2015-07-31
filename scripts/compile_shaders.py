@@ -116,9 +116,7 @@ $cbuffers
 
 def dump_cbuffer(cbuffer_filename, cbuffers):
 
-    if len(cbuffers) == 0:
-        return
-
+    num_valid = 0
     bufs = []
     for c in cbuffers:
         name = c['name']
@@ -127,6 +125,7 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
         # skip write the cbuffer if all the vars are unused
         if len(vars) == c['unused']:
             continue
+        num_valid += 1
 
         cur = '    struct %s\n    {\n' % name
 
@@ -150,10 +149,20 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
 
         bufs.append(cur)
 
-    res = buffer_template.substitute({'cbuffers': '\n'.join(bufs)})
+    if num_valid:
+        res = buffer_template.substitute({'cbuffers': '\n'.join(bufs)})
 
-    with open(cbuffer_filename, 'wt') as f:
-        f.write(res)
+        # check if this is identical to the previous cbuffer
+        identical = False
+        try:
+            with open(cbuffer_filename, 'rt') as f:
+                identical = f.read() == res
+        except IOError:
+            pass
+
+        if not identical:
+            with open(cbuffer_filename, 'wt') as f:
+                f.write(res)
 
 
 def parse_cbuffer(basename, entry_point, out_name, ext):
@@ -271,19 +280,23 @@ def compile():
                         if shader_file in last_fail_time:
                             del(last_fail_time[shader_file])
 
-while True:
-    safe_mkdir(OUT_DIR)
-    cur_files = set()
-    for f in glob.glob(os.path.join(SHADER_DIR, '*.hlsl')):
-        if f not in SHADER_FILES:
-            entry_points_for_file(f)
-            SHADER_FILES.add(f)
-        cur_files.add(f)
+try:
+    while True:
+        safe_mkdir(OUT_DIR)
+        cur_files = set()
+        for f in glob.glob(os.path.join(SHADER_DIR, '*.hlsl')):
+            if f not in SHADER_FILES:
+                entry_points_for_file(f)
+                SHADER_FILES.add(f)
+            cur_files.add(f)
 
-    # remove any files that no longer exist
-    for f in SHADER_FILES.difference(cur_files):
-        del SHADERS[get_shader_root(f)]
-        SHADER_FILES.remove(f)
+        # remove any files that no longer exist
+        for f in SHADER_FILES.difference(cur_files):
+            del SHADERS[get_shader_root(f)]
+            SHADER_FILES.remove(f)
 
-    compile()
-    time.sleep(1)
+        compile()
+        time.sleep(1)
+except KeyboardInterrupt:
+    print 'Exiting'
+    exit(1)

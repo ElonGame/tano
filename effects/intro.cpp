@@ -205,9 +205,9 @@ void Intro::ParticleEmitter::Update(float dt)
 }
 
 //------------------------------------------------------------------------------
-void Intro::ParticleEmitter::CopyToBuffer(ParticleType* vtx)
+void Intro::ParticleEmitter::CopyToBuffer(V4* vtx)
 {
-  memcpy(vtx, pos, _numParticles * sizeof(ParticleType));
+  memcpy(vtx, pos, _numParticles * sizeof(V4));
 }
 
 //------------------------------------------------------------------------------
@@ -262,7 +262,7 @@ bool Intro::Init()
     .PixelShader("shaders/out/intro.particle", "PsParticle")
     .InputElements(inputs)
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
-    .DynamicVb(24 * _settings.num_particles, sizeof(ParticleType))
+    .DynamicVb(_settings.num_particles, sizeof(V4))
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescPreMultipliedAlpha)
     .RasterizerDesc(rasterizeDescCullNone)));
@@ -526,7 +526,7 @@ bool Intro::Update(const UpdateState& state)
   rmt_ScopedCPUSample(Particles_Update);
 
   ObjectHandle vb = _particleBundle.objects._vb;
-  ParticleType* vtx = _ctx->MapWriteDiscard<ParticleType>(_particleBundle.objects._vb);
+  V4* vtx = _ctx->MapWriteDiscard<V4>(_particleBundle.objects._vb);
 
   SimpleAppendBuffer<TaskId, 32> tasks;
 
