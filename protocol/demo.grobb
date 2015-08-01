@@ -24,8 +24,7 @@ struct camera_settings
   vec3 right = {1, 0, 0};
   vec3 up = {0, 1, 0};
 
-  float fov;
-  float aspect_ratio;
+  float fov = 1.047;
   float near_plane = 1;
   float far_plane = 2000;
 };

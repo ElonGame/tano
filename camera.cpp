@@ -17,7 +17,6 @@ void Camera::FromProtocol(const CameraSettings& settings)
   _up = settings.up;
 
   _fov = settings.fov;
-  _aspectRatio = settings.aspect_ratio;
   _nearPlane = settings.near_plane;
   _farPlane = settings.far_plane;
 }
@@ -31,7 +30,6 @@ void Camera::ToProtocol(CameraSettings* settings)
   settings->up = _up;
 
   settings->fov = _fov;
-  settings->aspect_ratio = _aspectRatio;
   settings->near_plane = _nearPlane;
   settings->far_plane = _farPlane;
 }
