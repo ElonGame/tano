@@ -143,6 +143,6 @@ namespace tano
 
     scene::Scene _scene;
     GpuBundle _fractureBundle;
-    FreeFlyCamera _fixedCamera;
+    FreeflyCamera _fixedCamera;
   };
 }

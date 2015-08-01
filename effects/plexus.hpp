@@ -57,6 +57,6 @@ namespace tano
 
     ObjectHandle _perlinTexture;
 
-    FreeFlyCamera _camera;
+    FreeflyCamera _camera;
   };
 }

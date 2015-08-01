@@ -64,6 +64,6 @@ namespace tano
     ConstantBufferBundle<void, cb::TrailCompositeP> _cbComposite;
 
     ParticleTrailSettings _settings;
-    FreeFlyCamera _camera;
+    FreeflyCamera _camera;
   };
 }

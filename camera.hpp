@@ -1,5 +1,6 @@
 #pragma once
 #include "dyn_particles.hpp"
+#include "generated/demo.types.hpp"
 
 namespace tano
 {
@@ -11,6 +12,9 @@ namespace tano
     Camera();
     virtual ~Camera() {}
     virtual void Update(const FixedUpdateState& state);
+
+    void FromProtocol(const CameraSettings& settings);
+    void ToProtocol(CameraSettings* settings);
 
     Vector3 _pos = Vector3(0,0,0);
     Vector3 _dir = Vector3(0, 0, 1);
@@ -28,9 +32,12 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
-  struct FreeFlyCamera : public Camera
+  struct FreeflyCamera : public Camera
   {
     virtual void Update(const FixedUpdateState& state) override;
+
+    void FromProtocol(const FreeflyCameraSettings& settings);
+    void ToProtocol(FreeflyCameraSettings* settings);
 
     float _yaw = 0;
     float _pitch = 0;

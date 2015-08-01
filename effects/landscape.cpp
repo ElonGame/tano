@@ -93,10 +93,7 @@ bool Landscape::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  _freeflyCamera._pitch = _settings.camera.pitch;
-  _freeflyCamera._yaw = _settings.camera.yaw;
-  _freeflyCamera._roll = _settings.camera.roll;
-  _freeflyCamera._pos = _settings.camera.pos;
+  _freeflyCamera.FromProtocol(_settings.camera);
 
   {
     // Landscape
@@ -982,10 +979,7 @@ void Landscape::RenderParameterSet()
 #if WITH_IMGUI
 void Landscape::SaveParameterSet(bool inc)
 {
-  _settings.camera.pos = _freeflyCamera._pos;
-  _settings.camera.yaw = _freeflyCamera._yaw;
-  _settings.camera.pitch = _freeflyCamera._pitch;
-  _settings.camera.roll = _freeflyCamera._roll;
+  _freeflyCamera.ToProtocol(&_settings.camera);
   SaveSettings(_settings, inc);
 }
 #endif

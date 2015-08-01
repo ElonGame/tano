@@ -96,7 +96,7 @@ namespace tano
     GpuState _clothState;
     GpuObjects _clothGpuObjects;
     ClothSettings _settings;
-    FreeFlyCamera _camera;
+    FreeflyCamera _camera;
 
     RollingAverage<double> _avgUpdate;
   };

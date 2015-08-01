@@ -66,7 +66,9 @@ ParticleTrail::~ParticleTrail()
 //------------------------------------------------------------------------------
 bool ParticleTrail::OnConfigChanged(const vector<char>& buf)
 {
-  return ParseParticleTrailSettings(InputBuffer(buf), &_settings);
+  bool res = ParseParticleTrailSettings(InputBuffer(buf), &_settings);
+  _camera.FromProtocol(_settings.camera);
+  return res;
 }
 
 //------------------------------------------------------------------------------
@@ -208,6 +210,7 @@ void ParticleTrail::RenderParameterSet()
 #if WITH_IMGUI
 void ParticleTrail::SaveParameterSet(bool inc)
 {
+  _camera.ToProtocol(&_settings.camera);
   SaveSettings(_settings, inc);
 }
 #endif

@@ -9,6 +9,52 @@ using namespace tano;
 using namespace bristol;
 
 //------------------------------------------------------------------------------
+void Camera::FromProtocol(const CameraSettings& settings)
+{
+  _pos = settings.pos;
+  _dir = settings.dir;
+  _right = settings.right;
+  _up = settings.up;
+
+  _fov = settings.fov;
+  _aspectRatio = settings.aspect_ratio;
+  _nearPlane = settings.near_plane;
+  _farPlane = settings.far_plane;
+}
+
+//------------------------------------------------------------------------------
+void Camera::ToProtocol(CameraSettings* settings)
+{
+  settings->pos = _pos;
+  settings->dir = _dir;
+  settings->right = _right;
+  settings->up = _up;
+
+  settings->fov = _fov;
+  settings->aspect_ratio = _aspectRatio;
+  settings->near_plane = _nearPlane;
+  settings->far_plane = _farPlane;
+}
+
+//------------------------------------------------------------------------------
+void FreeflyCamera::FromProtocol(const FreeflyCameraSettings& settings)
+{
+  Camera::FromProtocol(settings.camera);
+  _yaw = settings.yaw;
+  _pitch = settings.pitch;
+  _roll = settings.roll;
+}
+
+//------------------------------------------------------------------------------
+void FreeflyCamera::ToProtocol(FreeflyCameraSettings* settings)
+{
+  Camera::ToProtocol(&settings->camera);
+  settings->yaw = _yaw;
+  settings->pitch = _pitch;
+  settings->roll = _roll;
+}
+
+//------------------------------------------------------------------------------
 Camera::Camera()
 {
   int w, h;
@@ -26,7 +72,7 @@ void Camera::Update(const FixedUpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-void FreeFlyCamera::Update(const FixedUpdateState& updateState)
+void FreeflyCamera::Update(const FixedUpdateState& updateState)
 {
   const IoState& state = TANO.GetIoState();
 

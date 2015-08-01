@@ -34,7 +34,7 @@ namespace tano
     void UpdateCameraMatrix(const UpdateState& state);
 
     SampleSettings _settings;
-    FreeFlyCamera _camera;
+    FreeflyCamera _camera;
   };
 
 }

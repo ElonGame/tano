@@ -108,7 +108,7 @@ namespace tano
     ObjectHandle _fluidTexture;
 
     FluidSettings _settings;
-    FreeFlyCamera _camera;
+    FreeflyCamera _camera;
 
   };
 }

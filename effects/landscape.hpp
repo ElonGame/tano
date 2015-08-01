@@ -175,7 +175,7 @@ namespace tano
     BehaviorAlignment* _behaviorAlignment = nullptr;
     BehaviorLandscapeFollow* _landscapeFollow = nullptr;
 
-    FreeFlyCamera _freeflyCamera;
+    FreeflyCamera _freeflyCamera;
     FollowCam _followCamera;
     Camera* _curCamera = &_followCamera;
     int _followFlock = 0;

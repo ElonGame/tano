@@ -17,6 +17,27 @@ struct effect_settings
   bool force = false;
 };
 
+struct camera_settings
+{
+  vec3 pos = {0, 0, 0};
+  vec3 dir = {0, 0, 1};
+  vec3 right = {1, 0, 0};
+  vec3 up = {0, 1, 0};
+
+  float fov;
+  float aspect_ratio;
+  float near_plane = 1;
+  float far_plane = 2000;
+};
+
+struct freefly_camera_settings
+{
+  camera_settings camera;
+  float yaw = 0;
+  float pitch = 0;
+  float roll = 0;
+};
+
 struct tonemap_settings
 {
   float shoulder = 0.5;
@@ -95,14 +116,6 @@ struct cluster_settings
   
 };
 
-struct camera_settings
-{
-  float yaw = 0;
-  float pitch = 0;
-  float roll = 0;
-  vec3 pos = {0, 0, 0};
-};
-
 struct boid_settings
 {
   float separation_scale = 1.5;
@@ -130,7 +143,7 @@ struct lens_flare_settings
 
 struct landscape_settings
 {
-  camera_settings camera;
+  freefly_camera_settings camera;
   boid_settings boids;
   string particle_texture;
   tonemap_settings tonemap;
@@ -140,12 +153,12 @@ struct landscape_settings
 
 struct blob_settings
 {
-    camera_settings camera;
+    freefly_camera_settings camera;
 };
 
 struct cloth_settings
 {
-    camera_settings camera;
+    freefly_camera_settings camera;
     float damping = 0.01;
     vec3 gravity = {0, -1, 0};
 };
@@ -168,7 +181,7 @@ struct plexus_settings
   plexus_grouping plexus;
   plexus_sphere sphere;
   plexus_deform deform;
-  camera_settings camera;
+  freefly_camera_settings camera;
   noise_settings noise;
 };
 
@@ -190,6 +203,7 @@ struct fluid_settings
 
 struct particle_trail_settings
 {
+  freefly_camera_settings camera;
   tonemap_reinhard_settings tonemap;
   float lorenz_a = 10.0;
   float lorenz_b = 28.0;

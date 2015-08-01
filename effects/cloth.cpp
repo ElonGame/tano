@@ -59,10 +59,7 @@ bool Cloth::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  _camera._pitch = _settings.camera.pitch;
-  _camera._yaw = _settings.camera.yaw;
-  _camera._roll = _settings.camera.roll;
-  _camera._pos = _settings.camera.pos;
+  _camera.FromProtocol(_settings.camera);
 
   CD3D11_RASTERIZER_DESC rasterDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
   rasterDesc.CullMode = D3D11_CULL_NONE;
@@ -537,10 +534,7 @@ void Cloth::RenderParameterSet()
 #if WITH_IMGUI
 void Cloth::SaveParameterSet(bool inc)
 {
-  _settings.camera.pos = _camera._pos;
-  _settings.camera.yaw = _camera._yaw;
-  _settings.camera.pitch = _camera._pitch;
-  _settings.camera.roll = _camera._roll;
+  _camera.ToProtocol(&_settings.camera);
   SaveSettings(_settings, inc);
 }
 #endif

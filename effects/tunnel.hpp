@@ -114,7 +114,7 @@ namespace tano
     CardinalSpline2 _cameraSpline;
     TunnelSettings _settings;
     //Camera _camera;
-    FreeFlyCamera _camera;
+    FreeflyCamera _camera;
 
     GpuBundle _meshBundle;
     scene::Scene _scene;

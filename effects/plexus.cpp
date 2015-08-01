@@ -86,10 +86,7 @@ bool Plexus::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  _camera._pitch = _settings.camera.pitch;
-  _camera._yaw = _settings.camera.yaw;
-  _camera._roll = _settings.camera.roll;
-  _camera._pos = _settings.camera.pos;
+  _camera.FromProtocol(_settings.camera);
 
   GenRandomPoints(_settings.deform.blur_kernel);
 
@@ -523,10 +520,7 @@ void Plexus::RenderParameterSet()
 #if WITH_IMGUI
 void Plexus::SaveParameterSet(bool inc)
 {
-  _settings.camera.pos = _camera._pos;
-  _settings.camera.yaw = _camera._yaw;
-  _settings.camera.pitch = _camera._pitch;
-  _settings.camera.roll = _camera._roll;
+  _camera.ToProtocol(&_settings.camera);
   SaveSettings(_settings);
 }
 #endif
