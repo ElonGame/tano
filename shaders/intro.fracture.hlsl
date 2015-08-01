@@ -2,12 +2,12 @@
 
 cbuffer F : register(b0)
 {
-  matrix viewProj;
+  float4x4 viewProj;
 };
 
 cbuffer O : register(b1)
 {
-  matrix objWorld;
+  float4x4 objWorld;
 };
 
 struct VsFractureIn
@@ -28,7 +28,7 @@ VsFractureOut VsFracture(VsFractureIn v)
 {
   VsFractureOut res;
 
-  matrix worldViewProj = mul(objWorld, viewProj);
+  float4x4 worldViewProj = mul(objWorld, viewProj);
   res.pos = mul(float4(v.pos, 1), worldViewProj);
 //  res.pos = mul(float4(v.pos, 1), objWorld);
 //  res.pos.xy /= 50;

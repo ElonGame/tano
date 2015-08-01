@@ -101,6 +101,7 @@ known_types = {
     'float3': {'type': 'Vector3', 'alignment': 1},
     'float4': {'type': 'Vector4'},
     'float4x4': {'type': 'Matrix'},
+    'matrix': {'type': 'Matrix'},
 }
 
 buffer_template = Template("""#pragma once

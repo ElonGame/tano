@@ -23,15 +23,9 @@ static int NUM_GRIDS = FluidSim::FLUID_SIZE;
 
 #define SHOW_GREETS 0
 
-
 //------------------------------------------------------------------------------
 Fluid::Fluid(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
-#if WITH_IMGUI
-  PROPERTIES.Register(Name(), bind(&Fluid::RenderParameterSet, this), bind(&Fluid::SaveParameterSet, this));
-
-  PROPERTIES.SetActive(Name());
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -51,11 +45,10 @@ bool Fluid::Init()
   BEGIN_INIT_SEQUENCE();
 
 #if SHOW_GREETS
-  _fluidTexture =
-    GRAPHICS.CreateTexture(64, 8, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+  _fluidTexture = GRAPHICS.CreateTexture(64, 8, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
 #else
   _fluidTexture =
-    GRAPHICS.CreateTexture(FluidSim::FLUID_SIZE, FluidSim::FLUID_SIZE, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+      GRAPHICS.CreateTexture(FluidSim::FLUID_SIZE, FluidSim::FLUID_SIZE, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
 #endif
 
   {
@@ -66,7 +59,7 @@ bool Fluid::Init()
     };
 
     vector<u32> indices;
-    GeneratePlaneIndices(NUM_GRIDS+1, NUM_GRIDS+1, &indices);
+    GeneratePlaneIndices(NUM_GRIDS + 1, NUM_GRIDS + 1, &indices);
     // clang-format off
     INIT(_backgroundBundle.Create(BundleOptions()
       .RasterizerDesc(rasterizeDescCullNone)
@@ -82,7 +75,6 @@ bool Fluid::Init()
     InitBackgroundTexture();
   }
 
-
   END_INIT_SEQUENCE();
 }
 
@@ -94,7 +86,6 @@ bool Fluid::Update(const UpdateState& state)
   _sim.Update(state);
 
   UpdateBackgroundTexture(state.delta.TotalSecondsAsFloat());
-
 
   return true;
 }
@@ -217,8 +208,8 @@ void FluidSim::FluidKernelWorker(const TaskData& td)
     for (int x = 1; x <= FLUID_SIZE; ++x)
     {
       out[IX(x, y)] =
-          r * (old[IX(x, y)] +
-                  a * (out[IX(x - 1, y)] + out[IX(x + 1, y)] + out[IX(x, y - 1)] + out[IX(x, y + 1)]));
+          r * (old[IX(x, y)]
+                  + a * (out[IX(x - 1, y)] + out[IX(x + 1, y)] + out[IX(x, y - 1)] + out[IX(x, y + 1)]));
     }
   }
 }
@@ -284,8 +275,8 @@ void FluidSim::Diffuse(int b, float dt, float diff, float* out, float* old)
       for (int x = 1; x <= FLUID_SIZE; ++x)
       {
         out[IX(x, y)] =
-            r * (old[IX(x, y)] +
-                    a * (out[IX(x - 1, y)] + out[IX(x + 1, y)] + out[IX(x, y - 1)] + out[IX(x, y + 1)]));
+            r * (old[IX(x, y)]
+                    + a * (out[IX(x - 1, y)] + out[IX(x + 1, y)] + out[IX(x, y - 1)] + out[IX(x, y + 1)]));
       }
     }
 
@@ -321,8 +312,8 @@ void FluidSim::Advect(int b, float dt, float* out, float* old, float* u, float* 
       float s0 = 1 - s1;
       float t1 = y - j0;
       float t0 = 1 - t1;
-      out[IX(i, j)] = s0 * (t0 * old[IX(i0, j0)] + t1 * old[IX(i0, j1)]) +
-                      s1 * (t0 * old[IX(i1, j0)] + t1 * old[IX(i1, j1)]);
+      out[IX(i, j)] = s0 * (t0 * old[IX(i0, j0)] + t1 * old[IX(i0, j1)])
+                      + s1 * (t0 * old[IX(i1, j0)] + t1 * old[IX(i1, j1)]);
     }
   }
 
@@ -339,7 +330,6 @@ void FluidSim::DensityStep(float dt)
   Diffuse(0, dt, diff, dCur, dOld);
   swap(dCur, dOld);
   Advect(0, dt, dCur, dOld, uCur, vCur);
-
 }
 
 //------------------------------------------------------------------------------
@@ -460,7 +450,6 @@ void Fluid::InitBackgroundTexture()
     y -= yInc;
     v += vInc;
   }
-
 }
 
 //------------------------------------------------------------------------------
@@ -495,9 +484,8 @@ void Fluid::UpdateBackgroundTexture(float dt)
     {
       verts->pos = Vector4(x, y, 0, 1);
 
-      verts->tex = Vector2(
-        _textureU[i * FluidSim::FLUID_SIZE_PADDED + 1 + j],
-        _textureV[i * FluidSim::FLUID_SIZE_PADDED + 1 + j]);
+      verts->tex = Vector2(_textureU[i * FluidSim::FLUID_SIZE_PADDED + 1 + j],
+          _textureV[i * FluidSim::FLUID_SIZE_PADDED + 1 + j]);
 
       verts++;
 
@@ -525,14 +513,13 @@ void Fluid::UpdateFluidTexture()
   {
     for (int j = 0; j < d->width; ++j)
     {
-      int cnt = d->particleCount[i*d->width+j];
+      int cnt = d->particleCount[i * d->width + j];
 
       float f = Clamp(0.f, 1.f, (float)cnt / 10.f);
       u32 r = (u32)(255 * f);
       u32 g = (u32)(255 * f);
       u32 b = (u32)(255 * f);
       p[i * pitch + j] = (0xff000000) | (b << 16) | (g << 8) | (r << 0);
-
     }
   }
 
@@ -558,7 +545,7 @@ void Fluid::UpdateFluidTexture()
       float v = Clamp(0.f, 1.f, s * (0.5f + _sim.vCur[FluidSim::IX(j + 1, i + 1)]));
       float d = Clamp(0.f, 1.f, s * _sim.dCur[FluidSim::IX(j + 1, i + 1)]);
 
-      float vals[] = { u, v, d };
+      float vals[] = {u, v, d};
       float f = vals[texture];
 
       u32 r = (u32)(255 * f);
@@ -582,7 +569,7 @@ void Fluid::RenderParameterSet()
   ImGui::Image((void*)&_fluidTexture, ImVec2(scale * 64, scale * 8));
 #else
   ImGui::Image(
-    (void*)&_fluidTexture, ImVec2(4 * (float)FluidSim::FLUID_SIZE, 4 * (float)FluidSim::FLUID_SIZE));
+      (void*)&_fluidTexture, ImVec2(4 * (float)FluidSim::FLUID_SIZE, 4 * (float)FluidSim::FLUID_SIZE));
 #endif
 
   if (ImGui::Button("Reset"))
@@ -592,9 +579,9 @@ void Fluid::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void Fluid::SaveParameterSet()
+void Fluid::SaveParameterSet(bool inc)
 {
-  SaveSettings(_settings);
+  SaveSettings(_settings, inc);
 }
 #endif
 

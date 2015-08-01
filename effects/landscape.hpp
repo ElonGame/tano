@@ -48,6 +48,7 @@ namespace tano
     virtual bool Render() override;
     virtual bool Close() override;
     virtual bool InitAnimatedParameters() override;
+    virtual const char* GetName() { return Name(); }
 
     static const char* Name();
     static BaseEffect* Create(const char* name, const char* config, u32 id);
@@ -58,7 +59,7 @@ namespace tano
     void Reset();
 #if WITH_IMGUI
     void RenderParameterSet();
-    void SaveParameterSet();
+    void SaveParameterSet(bool inc);
 #endif
 
     void UpdateCameraMatrix(const UpdateState& state);

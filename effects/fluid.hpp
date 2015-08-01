@@ -79,6 +79,7 @@ namespace tano
     virtual bool FixedUpdate(const FixedUpdateState& state) override;
     virtual bool Render() override;
     virtual bool Close() override;
+    virtual const char* GetName() { return Name(); }
 
     static const char* Name();
     static BaseEffect* Create(const char* name, const char* config, u32 id);
@@ -87,7 +88,7 @@ namespace tano
   private:
 #if WITH_IMGUI
     void RenderParameterSet();
-    void SaveParameterSet();
+    void SaveParameterSet(bool inc);
 #endif
 
     void UpdateFluidTexture();

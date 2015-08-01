@@ -50,11 +50,6 @@ void BlurLine(const T* src, T* dst, int size, float r)
 //------------------------------------------------------------------------------
 Plexus::Plexus(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
-#if WITH_IMGUI
-  PROPERTIES.Register(Name(), bind(&Plexus::RenderParameterSet, this), bind(&Plexus::SaveParameterSet, this));
-
-  PROPERTIES.SetActive(Name());
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -211,8 +206,14 @@ void Plexus::UpdateNoise()
       float f;
       if (_settings.tonemap.enabled)
       {
-        f = 255 * Clamp(0.f, 1.f, ToneMap(pixels[i * NOISE_WIDTH + j], t.cross_over, t.black_point,
-                                      t.white_point, t.toe, t.shoulder));
+        f = 255 * Clamp(0.f,
+                      1.f,
+                      ToneMap(pixels[i * NOISE_WIDTH + j],
+                            t.cross_over,
+                            t.black_point,
+                            t.white_point,
+                            t.toe,
+                            t.shoulder));
       }
       else
       {
@@ -520,7 +521,7 @@ void Plexus::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void Plexus::SaveParameterSet()
+void Plexus::SaveParameterSet(bool inc)
 {
   _settings.camera.pos = _camera._pos;
   _settings.camera.yaw = _camera._yaw;

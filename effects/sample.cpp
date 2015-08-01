@@ -17,16 +17,8 @@ using namespace tano;
 using namespace bristol;
 
 //------------------------------------------------------------------------------
-Sample::Sample(const string &name, const string& config, u32 id)
-  : BaseEffect(name, config, id)
+Sample::Sample(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
-#if WITH_IMGUI
-  PROPERTIES.Register(Name(),
-    bind(&Sample::RenderParameterSet, this),
-    bind(&Sample::SaveParameterSet, this));
-
-  PROPERTIES.SetActive(Name());
-#endif
 }
 
 //------------------------------------------------------------------------------

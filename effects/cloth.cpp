@@ -41,13 +41,6 @@ Cloth::Cloth(const string &name, const string& config, u32 id)
   : BaseEffect(name, config, id)
   , _avgUpdate(100)
 {
-#if WITH_IMGUI
-  PROPERTIES.Register(Name(),
-    bind(&Cloth::RenderParameterSet, this),
-    bind(&Cloth::SaveParameterSet, this));
-
-  PROPERTIES.SetActive(Name());
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -542,13 +535,13 @@ void Cloth::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void Cloth::SaveParameterSet()
+void Cloth::SaveParameterSet(bool inc)
 {
   _settings.camera.pos = _camera._pos;
   _settings.camera.yaw = _camera._yaw;
   _settings.camera.pitch = _camera._pitch;
   _settings.camera.roll = _camera._roll;
-  SaveSettings(_settings);
+  SaveSettings(_settings, inc);
 }
 #endif
 

@@ -57,11 +57,14 @@ void BlurLine(const T* src, T* dst, int size, float r)
 }
 
 //------------------------------------------------------------------------------
-void DistortVerts(
-  V3* dst, const V3* src, int num, 
-  const V3* randomPoints, float scale, float strength,
-  const V3 ptOfs, float ptScale
-  )
+void DistortVerts(V3* dst,
+    const V3* src,
+    int num,
+    const V3* randomPoints,
+    float scale,
+    float strength,
+    const V3 ptOfs,
+    float ptScale)
 {
   for (int i = 0; i < num; ++i)
   {
@@ -100,12 +103,11 @@ static void CalcTextNeighbours(int num, const vector<int>& tris, int* neighbours
     int cnt = (u32)n.size();
     for (int j = 0; j < cnt; ++j)
     {
-      neighbours[i*num + j] = n[j];
+      neighbours[i * num + j] = n[j];
     }
     // terminate
-    neighbours[i*num + cnt] = -1;
+    neighbours[i * num + cnt] = -1;
   }
-
 }
 
 //------------------------------------------------------------------------------
@@ -149,17 +151,9 @@ void Intro::ParticleEmitter::Create(const V3& center, int numParticles)
 void Intro::ParticleEmitter::CreateParticle(int idx, float s)
 {
   // lifetime and lifetime decay is stored in the w-component
-  XMFLOAT4 p(
-    _center.x + randf(-s, s),
-    _center.y + randf(-s, s),
-    _center.z + randf(1500.f, 2000.f),
-    0.f);
+  XMFLOAT4 p(_center.x + randf(-s, s), _center.y + randf(-s, s), _center.z + randf(1500.f, 2000.f), 0.f);
 
-  XMFLOAT4 v(
-    randf(-s, s),
-    randf(-s, s),
-    -randf(10.f, 200.f),
-    0);
+  XMFLOAT4 v(randf(-s, s), randf(-s, s), -randf(10.f, 200.f), 0);
 
   pos[idx] = XMLoadFloat4(&p);
   vel[idx] = XMLoadFloat4(&v);
@@ -211,14 +205,8 @@ void Intro::ParticleEmitter::CopyToBuffer(V4* vtx)
 }
 
 //------------------------------------------------------------------------------
-Intro::Intro(const string &name, const string& config, u32 id)
-  : BaseEffect(name, config, id)
+Intro::Intro(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
-#if WITH_IMGUI
-  PROPERTIES.Register("particle tunnel", 
-    bind(&Intro::RenderParameterSet, this),
-    bind(&Intro::SaveParameterSet, this));
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -229,7 +217,6 @@ Intro::~Intro()
     _particleEmitters[i].Destroy();
   }
 }
-
 
 //------------------------------------------------------------------------------
 bool Intro::OnConfigChanged(const vector<char>& buf)
@@ -248,46 +235,44 @@ bool Intro::Init()
   BEGIN_INIT_SEQUENCE();
 
   // Background state setup
+  // clang-format off
   INIT(_backgroundBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/intro.background", "PsBackground")));
-
-  vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
-    CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT)
-  };
 
   INIT(_particleBundle.Create(BundleOptions()
     .VertexShader("shaders/out/intro.particle", "VsParticle")
     .GeometryShader("shaders/out/intro.particle", "GsParticle")
     .PixelShader("shaders/out/intro.particle", "PsParticle")
-    .InputElements(inputs)
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DynamicVb(_settings.num_particles, sizeof(V4))
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescPreMultipliedAlpha)
     .RasterizerDesc(rasterizeDescCullNone)));
+  // clang-format on
 
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
-  
+
   // Create default emitter
   for (int i = 0; i < 10; ++i)
   {
     _particleEmitters.Append(ParticleEmitter()).Create(V3(0, 0, 0), _settings.num_particles);
   }
-  
+
   // Composite state setup
+  // clang-format off
   INIT(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/intro.composite", "PsComposite")));
+  // clang-format on
 
   GenRandomPoints(_settings.deform.blur_kernel);
 
   // Text setup
   INIT(_textWriter.Init("gfx/text1.boba"));
   const char* text[] = {
-    "neurotica efs",
-    "radio silence",
-    "solskogen",
+      "neurotica efs", "radio silence", "solskogen",
   };
 
   int maxVerts = 0;
@@ -301,13 +286,14 @@ bool Intro::Init()
     copy(t.verts.begin(), t.verts.end(), t.transformedVerts.begin());
 
     int num = (u32)_textData[i].verts.size();
-    _textData[i].neighbours = new int[num*num];
-    memset(_textData[i].neighbours, 0xff, num*num*sizeof(int));
+    _textData[i].neighbours = new int[num * num];
+    memset(_textData[i].neighbours, 0xff, num * num * sizeof(int));
     CalcTextNeighbours(num, _textData[i].indices, _textData[i].neighbours);
 
     maxVerts = max(maxVerts, (int)_textData[i].outline.size());
   }
 
+  // clang-format off
   INIT(_plexusLineBundle.Create(BundleOptions()
     .VertexShader("shaders/out/intro.plexus", "VsLines")
     .GeometryShader("shaders/out/intro.plexus", "GsLines")
@@ -318,6 +304,7 @@ bool Intro::Init()
     .DepthStencilDesc(depthDescDepthDisabled)
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
+  // clang-format on
 
   // Generic setup
   INIT(_cbBackground.Create());
@@ -337,32 +324,32 @@ bool Intro::Init()
 
   MeshLoader meshLoader;
   INIT(meshLoader.Load("gfx/shatter_plane1.boba"));
-  CreateScene(meshLoader, 
-    SceneOptions().
-    TransformToWorldSpace().
-    SetUserDataSize(SceneOptions::Mesh, sizeof(FracturePiece)),
+  CreateScene(meshLoader,
+      SceneOptions().TransformToWorldSpace().SetUserDataSize(SceneOptions::Mesh, sizeof(FracturePiece)),
 
-    &_scene);
+      &_scene);
 
   for (scene::Mesh* mesh : _scene.meshes)
   {
     FracturePiece* p = (FracturePiece*)mesh->userData;
-    p->dir = PointOnHemisphere(V3(0,0,-1));
+    p->dir = PointOnHemisphere(V3(0, 0, -1));
     p->rot = RandomVector();
   }
 
   {
     vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
-      CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32_FLOAT),
-      CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT),
-      CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
+        CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32_FLOAT),
+        CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT),
+        CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
     };
 
+    // clang-format off
     INIT(_fractureBundle.Create(BundleOptions()
       .RasterizerDesc(rasterizeDescCullNone)
       .VertexShader("shaders/out/intro.fracture", "VsFracture")
       .InputElements(inputs)
       .PixelShader("shaders/out/intro.fracture", "PsFracture")));
+    // clang-format on
   }
 
   END_INIT_SEQUENCE();
@@ -437,7 +424,8 @@ bool Intro::Update(const UpdateState& state)
     float ee = BLACKBOARD.GetFloatVar(e);
     if (Inside(ms, ss, ee))
     {
-      float dd = (ms - ss) / (ee - ss);;
+      float dd = (ms - ss) / (ee - ss);
+      ;
       return invert ? 1 - dd : dd;
     }
 
@@ -456,10 +444,10 @@ bool Intro::Update(const UpdateState& state)
   }
 
   float ms = state.localTime.TotalMicroseconds() / (float)1e6;
-  
+
   TextData* t = nullptr;
   float scale;
-  V3 ptOfs(0,0,0);
+  V3 ptOfs(0, 0, 0);
   float ptScale = 1;
   BLACKBOARD.SetNamespace("intro");
   if (Inside(ms, BLACKBOARD.GetFloatVar("text0FadeInStart"), BLACKBOARD.GetFloatVar("text0FadeOutEnd")))
@@ -467,9 +455,8 @@ bool Intro::Update(const UpdateState& state)
     t = &_textData[0];
     scale = ms - BLACKBOARD.GetFloatVar("text0FadeInStart");
     float delta = BLACKBOARD.GetFloatVar("text0FadeInEnd") - BLACKBOARD.GetFloatVar("text0FadeInStart");
-    _lineFade = min(
-      fnCalcFade(ms, "text0FadeInStart", "text0FadeInEnd", false), 
-      fnCalcFade(ms, "text0FadeOutStart", "text0FadeOutEnd", true));
+    _lineFade = min(fnCalcFade(ms, "text0FadeInStart", "text0FadeInEnd", false),
+        fnCalcFade(ms, "text0FadeOutStart", "text0FadeOutEnd", true));
     scale = Clamp(0.f, 1.f, scale / delta);
     ptOfs = BLACKBOARD.GetVec3Var("text0pos");
     ptScale = BLACKBOARD.GetFloatVar("text0Scale");
@@ -479,9 +466,8 @@ bool Intro::Update(const UpdateState& state)
     t = &_textData[1];
     scale = ms - BLACKBOARD.GetFloatVar("text1FadeInStart");
     float delta = BLACKBOARD.GetFloatVar("text1FadeInEnd") - BLACKBOARD.GetFloatVar("text1FadeInStart");
-    _lineFade = min(
-      fnCalcFade(ms, "text1FadeInStart", "text1FadeInEnd", false),
-      fnCalcFade(ms, "text1FadeOutStart", "text1FadeOutEnd", true));
+    _lineFade = min(fnCalcFade(ms, "text1FadeInStart", "text1FadeInEnd", false),
+        fnCalcFade(ms, "text1FadeOutStart", "text1FadeOutEnd", true));
     scale = Clamp(0.f, 1.f, scale / delta);
     ptOfs = BLACKBOARD.GetVec3Var("text1pos");
     ptScale = BLACKBOARD.GetFloatVar("text1Scale");
@@ -491,9 +477,8 @@ bool Intro::Update(const UpdateState& state)
     t = &_textData[2];
     scale = ms - BLACKBOARD.GetFloatVar("text2FadeInStart");
     float delta = BLACKBOARD.GetFloatVar("text2FadeInEnd") - BLACKBOARD.GetFloatVar("text2FadeInStart");
-    _lineFade = min(
-      fnCalcFade(ms, "text2FadeInStart", "text2FadeInEnd", false),
-      fnCalcFade(ms, "text2FadeOutStart", "text2FadeOutStart", true));
+    _lineFade = min(fnCalcFade(ms, "text2FadeInStart", "text2FadeInEnd", false),
+        fnCalcFade(ms, "text2FadeOutStart", "text2FadeOutStart", true));
     scale = Clamp(0.f, 1.f, scale / delta);
     ptOfs = BLACKBOARD.GetVec3Var("text2pos");
     ptScale = BLACKBOARD.GetFloatVar("text2Scale");
@@ -505,17 +490,16 @@ bool Intro::Update(const UpdateState& state)
   {
     _drawText = true;
     _curText = t;
-    scale = (1-scale) * BLACKBOARD.GetFloatVar("maxStrength");
+    scale = (1 - scale) * BLACKBOARD.GetFloatVar("maxStrength");
 
-    DistortVerts(
-      t->transformedVerts.data(),
-      t->verts.data(),
-      (int)t->verts.size(),
-      _randomPoints.Data(),
-      _settings.deform.perlin_scale,
-      scale,
-      ptOfs,
-      ptScale);
+    DistortVerts(t->transformedVerts.data(),
+        t->verts.data(),
+        (int)t->verts.size(),
+        _randomPoints.Data(),
+        _settings.deform.perlin_scale,
+        scale,
+        ptOfs,
+        ptScale);
   }
 
   BLACKBOARD.ClearNamespace();
@@ -533,7 +517,7 @@ bool Intro::Update(const UpdateState& state)
   for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
     EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-    *data = EmitterKernelData{ &_particleEmitters[i], 0, vtx + i * _settings.num_particles };
+    *data = EmitterKernelData{&_particleEmitters[i], 0, vtx + i * _settings.num_particles};
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(EmitterKernelData);
@@ -547,9 +531,10 @@ bool Intro::Update(const UpdateState& state)
 
   double avg = stopWatch.Stop();
 #if WITH_IMGUI
-  TANO.AddPerfCallback([=]() {
-    ImGui::Text("Update time: %.3fms", 1000 * avg);
-  });
+  TANO.AddPerfCallback([=]()
+      {
+        ImGui::Text("Update time: %.3fms", 1000 * avg);
+      });
 #endif
   return true;
 }
@@ -569,7 +554,7 @@ bool Intro::FixedUpdate(const FixedUpdateState& state)
   for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
     EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-    *data = EmitterKernelData{ &_particleEmitters[i], dt, nullptr };
+    *data = EmitterKernelData{&_particleEmitters[i], dt, nullptr};
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(EmitterKernelData);
@@ -621,20 +606,20 @@ bool Intro::Render()
 
     ObjectHandle vb = _plexusLineBundle.objects._vb;
     V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
-    int numLines = CalcPlexusGrouping(
-      vtx,
-      _curText->transformedVerts.data(),
-      (int)_curText->transformedVerts.size(),
-      _curText->neighbours,
-      (int)_curText->transformedVerts.size(),
-      _settings.plexus);
+    int numLines = CalcPlexusGrouping(vtx,
+        _curText->transformedVerts.data(),
+        (int)_curText->transformedVerts.size(),
+        _curText->neighbours,
+        (int)_curText->transformedVerts.size(),
+        _settings.plexus);
     _ctx->Unmap(vb);
     _ctx->SetBundle(_plexusLineBundle);
     _ctx->Draw(numLines, 0);
     _ctx->UnsetRenderTargets(0, 1);
   }
 
-  ScopedRenderTarget rtBlur(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
+  ScopedRenderTarget rtBlur(
+      DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
   {
     // blur
     fullscreen->Blur(rtLines._rtHandle, rtBlur._rtHandle, rtBlur._desc, _settings.blur_radius, 1);
@@ -642,17 +627,18 @@ bool Intro::Render()
 
   ScopedRenderTarget rtCompose(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv);
   {
-    //composite
+    // composite
     _cbComposite.ps0.tonemap = Vector4(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
     _cbComposite.Set(_ctx, 0);
-    ObjectHandle inputs[] = { rt, rtLines, rtBlur };
-    fullscreen->Execute(
-      inputs, 3,
-      rtCompose, rtCompose._desc,
-      GRAPHICS.GetDepthStencil(),
-      _compositeBundle.objects._ps,
-      true,
-      &black);
+    ObjectHandle inputs[] = {rt, rtLines, rtBlur};
+    fullscreen->Execute(inputs,
+        3,
+        rtCompose,
+        rtCompose._desc,
+        GRAPHICS.GetDepthStencil(),
+        _compositeBundle.objects._ps,
+        true,
+        &black);
 
     _ctx->SetShaderResource(rtCompose._rtHandle);
     _ctx->SetRenderTarget(GRAPHICS.GetBackBuffer(), GRAPHICS.GetDepthStencil(), &black);
@@ -688,9 +674,13 @@ bool Intro::Render()
         Matrix mtxRotY = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.y);
         Matrix mtxRotZ = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.z);
 
-        _cbFracture.vs1.objWorld = (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ * mesh->mtxLocal * mtxScale * mtxDir).Transpose();
-        //_cbFracture.vs1.objWorld = (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ * mtxDir * mesh->mtxLocal ).Transpose();
-        //_cbFracture.vs1.objWorld = (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ * mesh->mtxLocal).Transpose();
+        _cbFracture.vs1.objWorld =
+            (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ * mesh->mtxLocal * mtxScale * mtxDir)
+                .Transpose();
+        //_cbFracture.vs1.objWorld = (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ * mtxDir *
+        //mesh->mtxLocal ).Transpose();
+        //_cbFracture.vs1.objWorld = (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ *
+        //mesh->mtxLocal).Transpose();
         //_cbFracture.vs1.objWorld = Matrix::Identity();
         _cbFracture.Set(_ctx, 1);
         _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
@@ -708,9 +698,9 @@ void Intro::RenderParameterSet()
   ImGui::Checkbox("extended", &extended);
   if (extended)
   {
-    //if (ImGui::ColorEdit4("Tint", &_settings.tint.x)) _cbPerFrame.tint = _settings.tint;
-    //if (ImGui::ColorEdit4("Inner", &_settings.inner_color.x)) _cbPerFrame.inner = _settings.inner_color;
-    //if (ImGui::ColorEdit4("Outer", &_settings.outer_color.x)) _cbPerFrame.outer = _settings.outer_color;
+    // if (ImGui::ColorEdit4("Tint", &_settings.tint.x)) _cbPerFrame.tint = _settings.tint;
+    // if (ImGui::ColorEdit4("Inner", &_settings.inner_color.x)) _cbPerFrame.inner = _settings.inner_color;
+    // if (ImGui::ColorEdit4("Outer", &_settings.outer_color.x)) _cbPerFrame.outer = _settings.outer_color;
     ImGui::Separator();
     ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
 
@@ -733,9 +723,9 @@ void Intro::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void Intro::SaveParameterSet()
+void Intro::SaveParameterSet(bool inc)
 {
-  SaveSettings(_settings);
+  SaveSettings(_settings, inc);
 }
 #endif
 

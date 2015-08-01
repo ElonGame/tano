@@ -321,19 +321,11 @@ void GreetsBlock::GreetsData::CalcPath(int w, int h, const char* buf)
 //------------------------------------------------------------------------------
 Tunnel::Tunnel(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
-#if WITH_IMGUI
-  PROPERTIES.Register(Name(), bind(&Tunnel::RenderParameterSet, this), bind(&Tunnel::SaveParameterSet, this));
-
-  PROPERTIES.SetActive(Name());
-#endif
-
-  //_neighbours = new int[16*1024*16];
 }
 
 //------------------------------------------------------------------------------
 Tunnel::~Tunnel()
 {
-  // SAFE_ADELETE(_neighbours);
 }
 
 //------------------------------------------------------------------------------

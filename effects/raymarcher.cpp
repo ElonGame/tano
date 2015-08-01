@@ -13,14 +13,8 @@ using namespace tano;
 using namespace bristol;
 
 //------------------------------------------------------------------------------
-RayMarcher::RayMarcher(const string& name, const string& config, u32 id)
-  : BaseEffect(name, config, id)
+RayMarcher::RayMarcher(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
-#if WITH_IMGUI
-  PROPERTIES.Register("ray marcher",
-    bind(&RayMarcher::RenderParameterSet, this),
-    bind(&RayMarcher::SaveParameterSet, this));
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -88,9 +82,9 @@ void RayMarcher::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void RayMarcher::SaveParameterSet()
+void RayMarcher::SaveParameterSet(bool inc)
 {
-  SaveSettings(_settings);
+  SaveSettings(_settings, inc);
 }
 #endif
 

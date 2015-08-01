@@ -75,12 +75,6 @@ Landscape::Flock::~Flock()
 //------------------------------------------------------------------------------
 Landscape::Landscape(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
-#if WITH_IMGUI
-  PROPERTIES.Register(
-      Name(), bind(&Landscape::RenderParameterSet, this), bind(&Landscape::SaveParameterSet, this));
-
-  PROPERTIES.SetActive(Name());
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -587,7 +581,9 @@ void Landscape::RasterizeLandscape()
   float ofs = 2 * _curCamera->_farPlane;
   Vector3 c = _curCamera->_pos;
   c.y = NOISE_HEIGHT;
-  Vector3 buf0[16] = {c + Vector3(-ofs, 0, +ofs), c + Vector3(+ofs, 0, +ofs), c + Vector3(+ofs, 0, -ofs),
+  Vector3 buf0[16] = {c + Vector3(-ofs, 0, +ofs),
+      c + Vector3(+ofs, 0, +ofs),
+      c + Vector3(+ofs, 0, -ofs),
       c + Vector3(-ofs, 0, -ofs)};
   Vector3 buf1[16];
 
@@ -661,7 +657,9 @@ void Landscape::RasterizeLandscape()
   for (Chunk* chunk : chunks)
     chunk->dist = Vector3::DistanceSquared(camPos, chunk->center);
 
-  sort(chunks.begin(), chunks.end(), [&](const Chunk* a, const Chunk* b)
+  sort(chunks.begin(),
+      chunks.end(),
+      [&](const Chunk* a, const Chunk* b)
       {
         return a->dist > b->dist;
       });
@@ -780,8 +778,10 @@ bool Landscape::Render()
       DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
   ScopedRenderTarget rtBloomEmissive(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-  _cbComposite.ps0.tonemap = Vector4(_settings.tonemap.shoulder, _settings.tonemap.max_white,
-      _settings.tonemap2.exposure, _settings.tonemap2.min_white);
+  _cbComposite.ps0.tonemap = Vector4(_settings.tonemap.shoulder,
+      _settings.tonemap.max_white,
+      _settings.tonemap2.exposure,
+      _settings.tonemap2.min_white);
 
   // We're using 2 render targets here. One for color, and one for bloom/emissive
   ObjectHandle renderTargets[] = {rtColor, rtBloomEmissive};
@@ -980,13 +980,13 @@ void Landscape::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void Landscape::SaveParameterSet()
+void Landscape::SaveParameterSet(bool inc)
 {
   _settings.camera.pos = _freeflyCamera._pos;
   _settings.camera.yaw = _freeflyCamera._yaw;
   _settings.camera.pitch = _freeflyCamera._pitch;
   _settings.camera.roll = _freeflyCamera._roll;
-  SaveSettings(_settings);
+  SaveSettings(_settings, inc);
 }
 #endif
 

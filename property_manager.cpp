@@ -8,70 +8,97 @@ using namespace tano;
 //------------------------------------------------------------------------------
 PropertyManager::PropertyManager()
 {
-  _comboString.push_back(0);
 }
 
 //------------------------------------------------------------------------------
-void PropertyManager::Register(const char* label, const cbRenderCallback& cbRender, const cbSaveCallback& cbSave)
+void PropertyManager::Register(const char* label,
+    const vector<int>& versions,
+    const cbRenderCallback& cbRender,
+    const cbSaveCallback& cbSave,
+    const cbSetVersionCallback& cbSetVersion)
 {
-  // the combo string is a series of 0-termianted strings, with an extra 0 as a sentinal.
-  // to add a new string, drop the sentinal, add the new guy, then add the sentinal.
-  _comboString.pop_back();
-  _comboString.insert(_comboString.end(), label, label + strlen(label) + 1);
-  _comboString.push_back(0);
+  bool found = false;
+  for (Properties& p : _properties)
+  {
+    // Overwrite existing version
+    if (p.label == label)
+    {
+      p.versions = versions;
+      p.cbRender = cbRender;
+      p.cbSave = cbSave;
+      p.cbSetVersion = cbSetVersion;
+      p.StringifyProperties();
+      found = true;
+      break;
+    }
+  }
 
-  _callbacks.push_back({ cbRender, cbSave });
+  if (!found)
+  {
+    _properties.push_back(Properties{string(label), versions, 0, cbRender, cbSave, cbSetVersion});
+    _properties.back().StringifyProperties();
+  }
 }
 
 //------------------------------------------------------------------------------
 void PropertyManager::SetActive(const char* label)
 {
-  if (_comboString.empty())
-    return;
-
-  const char* cur = _comboString.data();
-  int idx = 0;
-  while (true) {
-    if (!(*cur))
-      return;
-
-    size_t len = strlen(cur);
-    if (strcmp(cur, label) == 0) {
-      _curItem = idx;
-      return;
+  _curItem = 0;
+  for (int i = 0; i < (int)_properties.size(); ++i)
+  {
+    if (_properties[i].label == label)
+    {
+      _curItem = i;
+      break;
     }
-
-    // skip the current string, and the 0 char
-    cur += len + 1;
-    idx++;
   }
 }
 
 //------------------------------------------------------------------------------
 void PropertyManager::Tick()
 {
-  if (_callbacks.empty())
-    return;
-
   if (ImGui::Begin("Properties", &_windowOpened, ImGuiWindowFlags_AlwaysAutoResize))
   {
     ImGui::LabelText("Time", "%f", DEMO_ENGINE.Pos().TotalMilliseconds() / 1000.f);
 
-    // draw the combo box, and invoke the selected effects renderer
-    ImGui::Combo("parameter set", &_curItem, _comboString.data());
-    ImGui::Separator();
-    _callbacks[_curItem].render();
-    ImGui::Separator();
-    if (ImGui::Button("save"))
-      _callbacks[_curItem].save();
+    auto fnGetParam = [](void* data, int idx, const char** out_text)
+    {
+      PropertyManager* self = (PropertyManager*)data;
+      *out_text = self->_properties[idx].label.c_str();
+      return true;
+    };
 
-    if (ImGui::Button("pause"))
-      DEMO_ENGINE.SetPaused(!DEMO_ENGINE.Paused());
-    ImGui::SameLine();
+    // Draw the parameter set combo box
+    ImGui::Combo("parameter set", &_curItem, fnGetParam, this, (int)_properties.size());
 
-    if (ImGui::Button("reset"))
-      DEMO_ENGINE.SetDuration(TimeDuration());
-    ImGui::SameLine();
+    // Call the selected effect's parameter renderer
+    if (_curItem < _properties.size())
+    {
+      Properties& p = _properties[_curItem];
+
+      if (ImGui::Button("save"))
+        p.cbSave(false);
+      ImGui::SameLine();
+      if (ImGui::Button("+1"))
+        p.cbSave(true);
+      ImGui::SameLine();
+
+      auto fnGetVersion = [](void* data, int idx, const char** out_text)
+      {
+        PropertyManager* self = (PropertyManager*)data;
+        const Properties& p = self->_properties[self->_curItem];
+        *out_text = p.stringVersions[idx].c_str();
+        return true;
+      };
+
+      if (ImGui::Combo("version", &p.curVersion, fnGetVersion, this, (int)p.versions.size()))
+      {
+        p.cbSetVersion(p.versions[p.curVersion]);
+      }
+
+      ImGui::Separator();
+      p.cbRender();
+    }
   }
 
   ImGui::End();

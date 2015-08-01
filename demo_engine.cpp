@@ -425,18 +425,20 @@ bool DemoEngine::ApplySettings(const DemoSettings& settings)
     const char* configFile = e.settings.c_str();
     BaseEffect* effect = factory(e.name.c_str(), configFile, _nextEffectId++);
     _effects.push_back(effect);
+    effect->RegisterParameters();
 
     TimeDuration start = TimeDuration::Milliseconds(e.start_time);
     TimeDuration end = TimeDuration::Milliseconds(e.end_time);
     effect->SetDuration(start, end);
 
-    FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(
-      configFile, true, [this, effect](const string& filename)
+    auto fnOnFileChanged = [this, effect](const string& filename)
     {
       vector<char> buf;
       INIT_FATAL_LOG(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf), "Error loading config file: ", filename);
       return effect->OnConfigChanged(buf);
-    });
+    };
+
+    FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(configFile, true, fnOnFileChanged);
 
     // if using a force effect, only init that one
     if (!hasForceEffect || (hasForceEffect && e.force))

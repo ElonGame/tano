@@ -1,27 +1,22 @@
 #include "common.hlsl"
 
-cbuffer V : register(b0)
-{
-  float numParticles;
-};
-
 cbuffer G : register(b0)
 {
-  matrix world;
-  matrix viewProj;
+  float4x4 world;
+  float4x4 viewProj;
   float3 cameraPos;
+  float2 numParticles;
 };
 
 struct VsParticleIn
 {
   float3 pos : Position;
-  uint vertexId : SV_VertexID;
 };
 
 struct GsParticleIn
 {
   float3 pos : Position;
-  float fade : Texture0;
+  float id : TexCoord0;
 };
 
 struct VsParticleOut
@@ -36,17 +31,17 @@ static float2 uvsVtx[4] = {
 };
 
 // entry-point: vs
-GsParticleIn VsParticle(VsParticleIn v)
+GsParticleIn VsParticle(VsParticleIn v, uint vertexID : SV_VertexID)
 {
   GsParticleIn res;
   res.pos = v.pos;
-  res.fade = (float)v.vertexId / numParticles;
+  res.id = vertexID;
   return res;
 }
 
 [maxvertexcount(4)]
 // entry-point: gs
-void GsParticle(uint id : SV_PrimitiveID, point GsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
+void GsParticle(point GsParticleIn input[1], uint id : SV_PrimitiveID, inout TriangleStream<VsParticleOut> outStream)
 {
   // Note, the DirectX strip order differs from my usual order. It might be
   // a good idea to change my stuff..
@@ -54,7 +49,7 @@ void GsParticle(uint id : SV_PrimitiveID, point GsParticleIn input[1], inout Tri
   // |  |
   // 0--2
 
-  matrix worldViewProj = mul(world, viewProj);
+  float4x4 worldViewProj = mul(world, viewProj);
 
   float3 pos = input[0].pos;
   float3 dir = normalize(cameraPos - pos);
@@ -62,7 +57,7 @@ void GsParticle(uint id : SV_PrimitiveID, point GsParticleIn input[1], inout Tri
   float3 up = cross(right, dir);
 
   VsParticleOut p;
-  p.fade = id;
+  p.fade = input[0].id / numParticles.x;
   float s = 0.75;
   float3 p0 = float3(pos - s * right - s * up);
   float3 p1 = float3(pos - s * right + s * up);
@@ -92,9 +87,8 @@ static float zEpsilon = 0.0;
 // entry-point: ps
 float4 PsParticle(VsParticleOut p) : SV_Target
 {
-  return p.fade / 2000;
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
   col = 0.1 * float4(0.2, 0.2, 0.3, 1) * col;
-  return p.fade * col;
+  return float4(p.fade * col.rgb, col.a);
 }
