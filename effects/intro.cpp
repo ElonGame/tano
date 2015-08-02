@@ -224,7 +224,7 @@ bool Intro::OnConfigChanged(const vector<char>& buf)
   return ParseIntroSettings(InputBuffer(buf), &_settings);
 }
 
-Vector4 ToVector4(const Color& c)
+Vector4 ColorToVector4(const Color& c)
 {
   return Vector4(c.x, c.y, c.z, c.w);
 }
@@ -311,8 +311,8 @@ bool Intro::Init()
   INIT(_cbComposite.Create());
   INIT(_cbFracture.Create());
   INIT(_cbParticle.Create());
-  _cbBackground.ps0.inner = ToVector4(_settings.inner_color);
-  _cbBackground.ps0.outer = ToVector4(_settings.outer_color);
+  _cbBackground.ps0.inner = ColorToVector4(_settings.inner_color);
+  _cbBackground.ps0.outer = ColorToVector4(_settings.outer_color);
 
   INIT(_cbPlexus.Create());
 

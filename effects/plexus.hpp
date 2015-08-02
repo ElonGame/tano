@@ -47,10 +47,7 @@ namespace tano
 
     void UpdateNoise();
 
-    bool _renderPoints = false;
-    GpuBundle _pointBundle;
     GpuBundle _plexusLineBundle;
-
     ConstantBufferBundle<void, cb::PlexusPS, cb::PlexusGS> _cbPlexus;
 
     PlexusSettings _settings;

@@ -93,13 +93,6 @@ bool Plexus::Init()
   INIT(_cbPlexus.Create());
 
   // clang-format off
-  INIT(_pointBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/basic", "VsPos")
-    .VertexFlags(VF_POS)
-    .PixelShader("shaders/out/basic", "PsPos")
-    .DynamicVb(128 * 1024, sizeof(V3))
-    .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)));
-
   INIT(_plexusLineBundle.Create(BundleOptions()
     .VertexShader("shaders/out/plexus", "VsLines")
     .GeometryShader("shaders/out/plexus", "GsLines")
@@ -448,25 +441,13 @@ bool Plexus::Render()
   _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
   _cbPlexus.Set(_ctx, 0);
 
-  if (_renderPoints)
-  {
-    ObjectHandle vb = _pointBundle.objects._vb;
-    V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
-    memcpy(vtx, _points.Data(), _points.DataSize());
-    _ctx->Unmap(vb);
-    _ctx->SetBundle(_pointBundle);
-    _ctx->Draw(_points.Size(), 0);
-  }
-  else
-  {
-    ObjectHandle vb = _plexusLineBundle.objects._vb;
-    V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
-    int numLines = CalcPlexusGrouping(
-        vtx, _points.Data(), _points.Size(), _neighbours, _points.Size(), _settings.plexus);
-    _ctx->Unmap(vb);
-    _ctx->SetBundle(_plexusLineBundle);
-    _ctx->Draw(numLines, 0);
-  }
+  ObjectHandle vb = _plexusLineBundle.objects._vb;
+  V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
+  int numLines = CalcPlexusGrouping(
+    vtx, _points.Data(), _points.Size(), _neighbours, _points.Size(), _settings.plexus);
+  _ctx->Unmap(vb);
+  _ctx->SetBundle(_plexusLineBundle);
+  _ctx->Draw(numLines, 0);
 
   return true;
 }
@@ -475,9 +456,6 @@ bool Plexus::Render()
 #if WITH_IMGUI
 void Plexus::RenderParameterSet()
 {
-  ImGui::Checkbox("points-only", &_renderPoints);
-  ImGui::Separator();
-
   bool recalc = false;
   bool recalcEdges = true;
   if (ImGui::SliderFloat("radius", &_settings.sphere.radius, 50, 2000))

@@ -262,6 +262,11 @@ namespace tano
     return V4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
   }
 
+  inline Vector4 ToVector4(const V4& v)
+  {
+    return Vector4(v.x, v.y, v.z, v.w);
+  }
+
   //------------------------------------------------------------------------------
   struct Spherical
   {

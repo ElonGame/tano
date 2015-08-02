@@ -74,3 +74,10 @@ namespace fluid
 
     float updateSpeed = 1.5;
 }
+
+namespace particle_trail
+{
+    vec3 lineParams = { 10.0, 1.0, 250 };
+    vec4 upper = {0, 0, 0, 0};
+    vec4 lower = {0.03, 0, 0, 0};
+}

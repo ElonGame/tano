@@ -19,6 +19,70 @@ using namespace bristol;
 
 static int MAX_NUM_PARTICLES = 32 * 1024;
 
+#define WITH_TAILY 0
+
+//------------------------------------------------------------------------------
+void Pathy::Create()
+{
+  children.push_back(Instance{Vector3(0,0,0), 1, 0, 0, 0});
+
+  int idx = 0;
+
+  while (!children.empty())
+  {
+    Instance instance = children.front();
+    children.pop_front();
+
+    float angleX = instance.angleX;
+    float angleY = instance.angleY;
+    float angleZ = instance.angleZ;
+
+    Vector3 cur = instance.cur;
+    float scale = instance.scale;
+    float curLen = len * scale;
+
+    for (int i = 0; i < POINTS_PER_CHILD; ++i)
+    {
+      if (idx == TOTAL_POINTS)
+      {
+        children.clear();
+        break;
+      }
+
+      verts[idx++] = V3(cur);
+
+      float r = randf(0.f, 1.f);
+      if (r >= childProb)
+      {
+        children.push_back(Instance{cur,
+            scale * childScale,
+            angleX + GaussianRand(angleXMean, angleXVariance),
+            angleY + GaussianRand(angleYMean, angleYVariance),
+            angleZ + GaussianRand(angleZMean, angleZVariance)});
+      }
+
+      Matrix mtx = Matrix::CreateFromYawPitchRoll(angleX, angleY, angleZ);
+      Vector3 delta = curLen * Vector3::Transform(Vector3(0, 0, 1), mtx);
+
+      angleX += GaussianRand(angleXMean, angleXVariance);
+      angleY += GaussianRand(angleYMean, angleYVariance);
+      angleZ += GaussianRand(angleZMean, angleZVariance);
+
+      cur += delta;
+    }
+  }
+
+  numVerts = idx;
+}
+
+//------------------------------------------------------------------------------
+V3* Pathy::CopyOut(V3* buf)
+{
+  memcpy(buf, verts, numVerts* sizeof(V3));
+  return buf + numVerts;
+}
+
+//------------------------------------------------------------------------------
 void Taily::AddPos(const V3& pos)
 {
   // copy out old cur
@@ -29,6 +93,7 @@ void Taily::AddPos(const V3& pos)
   cur = pos;
 }
 
+//------------------------------------------------------------------------------
 V3* Taily::CopyOut(V3* buf)
 {
   if (tailLength < MAX_TAIL_LENGTH)
@@ -77,6 +142,10 @@ bool ParticleTrail::Init()
   BEGIN_INIT_SEQUENCE();
 
   // clang-format off
+  INIT(_backgroundBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/trail.background", "PsBackground")));
+
   INIT(_particleBundle.Create(BundleOptions()
     .VertexShader("shaders/out/trail.particle", "VsParticle")
     .GeometryShader("shaders/out/trail.particle", "GsParticle")
@@ -92,12 +161,27 @@ bool ParticleTrail::Init()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/trail.composite", "PsComposite")));
 
+  INIT(_lineBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/trail.lines", "VsLines")
+    .GeometryShader("shaders/out/trail.lines", "GsLines")
+    .PixelShader("shaders/out/trail.lines", "PsLines")
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
+    .RasterizerDesc(rasterizeDescCullNone)
+    .BlendDesc(blendDescBlendOneOne)
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .DynamicVb(128 * 1024, sizeof(V3))
+    .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP)));
+
   // clang-format on
 
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture("gfx/particle3.png"));
 
   INIT(_cbParticle.Create());
   INIT(_cbComposite.Create());
+  INIT(_cbPlexus.Create());
+  INIT(_cbBackground.Create());
+
+  _pathy.Create();
 
   END_INIT_SEQUENCE();
 }
@@ -115,25 +199,45 @@ bool ParticleTrail::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
 
-  ObjectHandle handle = _particleBundle.objects._vb;
-  V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
+#if WITH_TAILY
+  {
+    ObjectHandle handle = _particleBundle.objects._vb;
+    V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
+    _taily.CopyOut(vtx);
+    _ctx->Unmap(handle);
+  }
 
-  float h = 0.01f;
-  h = state.delta.TotalSecondsAsFloat();
-  float a = _settings.lorenz_a;
-  float b = _settings.lorenz_b;
-  float c = _settings.lorenz_c;
+  {
+    ObjectHandle handle = _lineBundle.objects._vb;
+    V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
+    _taily.CopyOut(vtx);
+    _ctx->Unmap(handle);
+  }
 
-  _taily.AddPos(LorenzUpdate(a, b, c, h, _taily.cur));
-  _taily.CopyOut(vtx);
+#else
+  {
+    ObjectHandle handle = _lineBundle.objects._vb;
+    V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
+    _pathy.CopyOut(vtx);
+    _ctx->Unmap(handle);
+  }
+#endif
 
-  _ctx->Unmap(handle);
+  _cbBackground.ps0.upper = ToVector4(BLACKBOARD.GetVec4Var("particle_trail.upper"));
+  _cbBackground.ps0.lower = ToVector4(BLACKBOARD.GetVec4Var("particle_trail.lower"));
   return true;
 }
 
 //------------------------------------------------------------------------------
 bool ParticleTrail::FixedUpdate(const FixedUpdateState& state)
 {
+  float h = state.delta;
+  float a = _settings.lorenz_a;
+  float b = _settings.lorenz_b;
+  float c = _settings.lorenz_c;
+
+  _taily.AddPos(LorenzUpdate(a, b, c, h, _taily.cur));
+
   _camera.Update(state);
   return true;
 }
@@ -149,6 +253,10 @@ void ParticleTrail::UpdateCameraMatrix(const UpdateState& state)
   _cbParticle.gs0.world = Matrix::Identity();
   _cbParticle.gs0.viewProj = viewProj.Transpose();
   _cbParticle.gs0.cameraPos = _camera._pos;
+
+  _cbPlexus.gs0.world = Matrix::Identity();
+  _cbPlexus.gs0.viewProj = viewProj.Transpose();
+  _cbPlexus.gs0.cameraPos = _camera._pos;
 }
 
 //------------------------------------------------------------------------------
@@ -160,16 +268,52 @@ bool ParticleTrail::Render()
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
 
   ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
+
+  _ctx->SetRenderTarget(rtColor, &black);
+
+  {
+    // Render the background
+    _cbBackground.Set(_ctx, 0);
+    _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
+    _ctx->SetBundle(_backgroundBundle);
+    _ctx->Draw(3, 0);
+  }
+
+#if WITH_TAILY
+#if 0
   {
     // particle
-    _ctx->SetRenderTarget(rtColor, &black);
-
     _cbParticle.gs0.numParticles.x = (float)_taily.tailLength + 1;
     _cbParticle.Set(_ctx, 0);
     _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
     _ctx->SetShaderResource(_particleTexture);
     _ctx->Draw(_taily.tailLength + 1, 0);
   }
+#else
+    {
+      // lines
+      RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+      _cbPlexus.gs0.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
+      V3 params = BLACKBOARD.GetVec3Var("particle_trail.lineParams");
+      _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
+      _cbPlexus.Set(_ctx, 0);
+      _ctx->SetBundle(_lineBundle);
+      _ctx->Draw(_taily.tailLength-1, 0);
+    }
+#endif
+#else
+    {
+      // lines
+      RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+      _cbPlexus.gs0.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
+      V3 params = BLACKBOARD.GetVec3Var("particle_trail.lineParams");
+      _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
+      _cbPlexus.Set(_ctx, 0);
+      _ctx->SetBundle(_lineBundle);
+      if (_pathy.numVerts)
+        _ctx->Draw(_pathy.numVerts - 1, 0);
+    }
+#endif
 
   {
     // composite
@@ -193,9 +337,25 @@ bool ParticleTrail::Render()
 #if WITH_IMGUI
 void ParticleTrail::RenderParameterSet()
 {
+#if WITH_TAILY
   ImGui::SliderFloat("a", &_settings.lorenz_a, -20, 20);
   ImGui::SliderFloat("b", &_settings.lorenz_b, -50, 50);
   ImGui::SliderFloat("c", &_settings.lorenz_c, -10, 10);
+#else
+  bool recalc = false;
+  recalc |= ImGui::SliderFloat("len", &_pathy.len, 1.f, 25.f);
+  recalc |= ImGui::SliderFloat("child-prob", &_pathy.childProb, 0.f, 1.f);
+  recalc |= ImGui::SliderFloat("child-scale", &_pathy.childScale, 0.f, 1.f);
+  recalc |= ImGui::SliderFloat("x-mean", &_pathy.angleXMean, 0, XM_PI / 4);
+  recalc |= ImGui::SliderFloat("x-var", &_pathy.angleXVariance, 0, 1);
+  recalc |= ImGui::SliderFloat("y-mean", &_pathy.angleYMean, 0, XM_PI / 4);
+  recalc |= ImGui::SliderFloat("y-var", &_pathy.angleYVariance, 0, 1);
+  recalc |= ImGui::SliderFloat("z-mean", &_pathy.angleZMean, 0, XM_PI / 4);
+  recalc |= ImGui::SliderFloat("z-var", &_pathy.angleZVariance, 0, 1);
+
+  if (recalc)
+    _pathy.Create();
+#endif
 
   ImGui::Separator();
   ImGui::SliderFloat("Exposure", &_settings.tonemap.exposure, 0.1f, 2.0f);

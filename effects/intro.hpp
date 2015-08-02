@@ -89,24 +89,22 @@ namespace tano
 
     SimpleAppendBuffer<ParticleEmitter, 24> _particleEmitters;
 
+    GpuBundle _backgroundBundle;
     ConstantBufferBundle<void, cb::IntroBackgroundF> _cbBackground;
+
+    GpuBundle _compositeBundle;
     ConstantBufferBundle<void, cb::IntroCompositeF> _cbComposite;
     ConstantBufferBundle<
       cb::IntroFractureF, void, void,
-      //void, void, void,
       cb::IntroFractureO, void, void> _cbFracture;
     ConstantBufferBundle<void, void, cb::IntroParticleF> _cbParticle;
 
     ConstantBufferBundle<void, cb::PlexusPS, cb::PlexusGS> _cbPlexus;
 
     string _configName;
-
-    GpuBundle _backgroundBundle;
-
+    
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
-
-    GpuBundle _compositeBundle;
 
     IntroSettings _settings;
 
