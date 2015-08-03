@@ -208,3 +208,9 @@ struct particle_trail_settings
   float lorenz_b = 28.0;
   float lorenz_c = 2.67;
 };
+
+struct split_settings
+{
+  freefly_camera_settings camera;
+  tonemap_reinhard_settings tonemap;
+};

@@ -1,4 +1,4 @@
-#include "particle_trail.hpp"
+#include "split.hpp"
 #include "../tano.hpp"
 #include "../graphics.hpp"
 #include "../graphics_context.hpp"
@@ -20,61 +20,96 @@ using namespace bristol;
 static int MAX_NUM_PARTICLES = 32 * 1024;
 
 //------------------------------------------------------------------------------
-void Taily::AddPos(const V3& pos)
+void Pathy::Create()
 {
-  // copy out old cur
-  tail[writePos] = cur;
-  writePos = (writePos + 1) % MAX_TAIL_LENGTH;
-  tailLength = min((int)MAX_TAIL_LENGTH, tailLength + 1);
+  verts.clear();
+  vector<Instance*> active;
+  active.push_back(new Instance{Vector3(0,0,0), 1, 0, 0, 0});
 
-  cur = pos;
-}
-
-//------------------------------------------------------------------------------
-V3* Taily::CopyOut(V3* buf)
-{
-  if (tailLength < MAX_TAIL_LENGTH)
+  int numVerts = 0;
+  while (numVerts < TOTAL_POINTS)
   {
-    memcpy((void*)buf, tail, tailLength * sizeof(V3));
-    buf += tailLength;
-    *buf++ = cur;
-    return buf;
+    // update all the active instances
+    for (int i = 0, e = (int)active.size(); i < e; ++i)
+    {
+      Instance& instance = *active[i];
+
+      float angleX = instance.angleX;
+      float angleY = instance.angleY;
+      float angleZ = instance.angleZ;
+
+      Vector3 cur = instance.cur;
+      float scale = instance.scale;
+      float curLen = len * scale;
+
+      instance.verts.push_back(V3(cur));
+      numVerts++;
+      if (numVerts >= TOTAL_POINTS)
+        break;
+
+      float r = randf(0.f, 1.f);
+      if (r >= childProb && (int)active.size() < maxChildren)
+      {
+        active.push_back(new Instance{ cur,
+          scale * childScale,
+          angleX + GaussianRand(angleXMean, angleXVariance),
+          angleY + GaussianRand(angleYMean, angleYVariance),
+          angleZ + GaussianRand(angleZMean, angleZVariance) });
+      }
+
+      Matrix mtx = Matrix::CreateFromYawPitchRoll(angleX, angleY, angleZ);
+      Vector3 delta = curLen * Vector3::Transform(Vector3(0, 0, 1), mtx);
+
+      instance.angleX += GaussianRand(angleXMean, angleXVariance);
+      instance.angleY += GaussianRand(angleYMean, angleYVariance);
+      instance.angleZ += GaussianRand(angleZMean, angleZVariance);
+      instance.cur += delta;
+    }
   }
 
-  // the buffer has looped, so we need 2 copies:
-  // - first from write pos -> end
-  // - then from start -> write pos
+  // copy over all the vertices
+  for (Instance* instance : active)
+  {
+    int ofs = (int)verts.size();
+    lines.push_back(Line{ofs, (int)instance->verts.size()});
+    verts.resize(verts.size() + instance->verts.size());
+    copy(instance->verts.begin(), instance->verts.end(), verts.begin() + ofs);
+  }
 
-  // 8 9 3 4 5 6 7
-  // writePos = 2
-  // MAX_TAIL_LENGTH = 7
-  int n = MAX_TAIL_LENGTH - writePos;
-  memcpy(buf, tail + writePos, n * sizeof(V3));
-  memcpy(buf + n, tail, writePos * sizeof(V3));
-  *(buf + MAX_TAIL_LENGTH) = cur;
-  return buf + MAX_TAIL_LENGTH + 1;
+  assert(numVerts <= TOTAL_POINTS);
+
+  SeqDelete(&active);
 }
 
 //------------------------------------------------------------------------------
-ParticleTrail::ParticleTrail(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
+V3* Pathy::CopyOut(V3* buf)
+{
+  assert(verts.size() <= TOTAL_POINTS);
+
+  memcpy(buf, verts.data(), verts.size() * sizeof(V3));
+  return buf + verts.size();
+}
+
+//------------------------------------------------------------------------------
+Split::Split(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
 }
 
 //------------------------------------------------------------------------------
-ParticleTrail::~ParticleTrail()
+Split::~Split()
 {
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTrail::OnConfigChanged(const vector<char>& buf)
+bool Split::OnConfigChanged(const vector<char>& buf)
 {
-  bool res = ParseParticleTrailSettings(InputBuffer(buf), &_settings);
+  bool res = ParseSplitSettings(InputBuffer(buf), &_settings);
   _camera.FromProtocol(_settings.camera);
   return res;
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTrail::Init()
+bool Split::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
@@ -118,35 +153,20 @@ bool ParticleTrail::Init()
   INIT(_cbPlexus.Create());
   INIT(_cbBackground.Create());
 
+  _pathy.Create();
+
   END_INIT_SEQUENCE();
 }
 
 //------------------------------------------------------------------------------
-V3 LorenzUpdate(float a, float b, float c, float h, const V3& prev)
-{
-  return V3{prev.x + h * a * (prev.y - prev.x),
-      prev.y + h * (prev.x * (b - prev.z) - prev.y),
-      prev.z + h * (prev.x * prev.y - c * prev.z)};
-}
-
-//------------------------------------------------------------------------------
-bool ParticleTrail::Update(const UpdateState& state)
+bool Split::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
 
-  {
-    ObjectHandle handle = _particleBundle.objects._vb;
-    V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
-    _taily.CopyOut(vtx);
-    _ctx->Unmap(handle);
-  }
-
-  {
-    ObjectHandle handle = _lineBundle.objects._vb;
-    V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
-    _taily.CopyOut(vtx);
-    _ctx->Unmap(handle);
-  }
+  ObjectHandle handle = _lineBundle.objects._vb;
+  V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
+  _pathy.CopyOut(vtx);
+  _ctx->Unmap(handle);
 
   _cbBackground.ps0.upper = ToVector4(BLACKBOARD.GetVec4Var("particle_trail.upper"));
   _cbBackground.ps0.lower = ToVector4(BLACKBOARD.GetVec4Var("particle_trail.lower"));
@@ -154,21 +174,14 @@ bool ParticleTrail::Update(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTrail::FixedUpdate(const FixedUpdateState& state)
+bool Split::FixedUpdate(const FixedUpdateState& state)
 {
-  float h = state.delta;
-  float a = _settings.lorenz_a;
-  float b = _settings.lorenz_b;
-  float c = _settings.lorenz_c;
-
-  _taily.AddPos(LorenzUpdate(a, b, c, h, _taily.cur));
-
   _camera.Update(state);
   return true;
 }
 
 //------------------------------------------------------------------------------
-void ParticleTrail::UpdateCameraMatrix(const UpdateState& state)
+void Split::UpdateCameraMatrix(const UpdateState& state)
 {
   Matrix view = _camera._view;
   Matrix proj = _camera._proj;
@@ -185,9 +198,9 @@ void ParticleTrail::UpdateCameraMatrix(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTrail::Render()
+bool Split::Render()
 {
-  rmt_ScopedCPUSample(ParticleTrail_Render);
+  rmt_ScopedCPUSample(Split_Render);
 
   static Color black(0, 0, 0, 0);
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
@@ -204,27 +217,19 @@ bool ParticleTrail::Render()
     _ctx->Draw(3, 0);
   }
 
-#if 0
   {
-    // particle
-    _cbParticle.gs0.numParticles.x = (float)_taily.tailLength + 1;
-    _cbParticle.Set(_ctx, 0);
-    _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
-    _ctx->SetShaderResource(_particleTexture);
-    _ctx->Draw(_taily.tailLength + 1, 0);
-  }
-#else
+    // lines
+    RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+    _cbPlexus.gs0.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
+    V3 params = BLACKBOARD.GetVec3Var("particle_trail.lineParams");
+    _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
+    _cbPlexus.Set(_ctx, 0);
+    _ctx->SetBundle(_lineBundle);
+    for (Pathy::Line& line : _pathy.lines)
     {
-      // lines
-      RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-      _cbPlexus.gs0.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
-      V3 params = BLACKBOARD.GetVec3Var("particle_trail.lineParams");
-      _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
-      _cbPlexus.Set(_ctx, 0);
-      _ctx->SetBundle(_lineBundle);
-      _ctx->Draw(_taily.tailLength-1, 0);
+      _ctx->Draw(line.size, line.startOfs);
     }
-#endif
+  }
 
   {
     // composite
@@ -246,11 +251,21 @@ bool ParticleTrail::Render()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void ParticleTrail::RenderParameterSet()
+void Split::RenderParameterSet()
 {
-  ImGui::SliderFloat("a", &_settings.lorenz_a, -20, 20);
-  ImGui::SliderFloat("b", &_settings.lorenz_b, -50, 50);
-  ImGui::SliderFloat("c", &_settings.lorenz_c, -10, 10);
+  bool recalc = false;
+  recalc |= ImGui::SliderFloat("len", &_pathy.len, 1.f, 25.f);
+  recalc |= ImGui::SliderFloat("child-prob", &_pathy.childProb, 0.f, 1.f);
+  recalc |= ImGui::SliderFloat("child-scale", &_pathy.childScale, 0.f, 1.f);
+  recalc |= ImGui::SliderFloat("x-mean", &_pathy.angleXMean, 0, XM_PI / 4);
+  recalc |= ImGui::SliderFloat("x-var", &_pathy.angleXVariance, 0, 1);
+  recalc |= ImGui::SliderFloat("y-mean", &_pathy.angleYMean, 0, XM_PI / 4);
+  recalc |= ImGui::SliderFloat("y-var", &_pathy.angleYVariance, 0, 1);
+  recalc |= ImGui::SliderFloat("z-mean", &_pathy.angleZMean, 0, XM_PI / 4);
+  recalc |= ImGui::SliderFloat("z-var", &_pathy.angleZVariance, 0, 1);
+
+  if (recalc)
+    _pathy.Create();
 
   ImGui::Separator();
   ImGui::SliderFloat("Exposure", &_settings.tonemap.exposure, 0.1f, 2.0f);
@@ -263,7 +278,7 @@ void ParticleTrail::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void ParticleTrail::SaveParameterSet(bool inc)
+void Split::SaveParameterSet(bool inc)
 {
   _camera.ToProtocol(&_settings.camera);
   SaveSettings(_settings, inc);
@@ -271,32 +286,32 @@ void ParticleTrail::SaveParameterSet(bool inc)
 #endif
 
 //------------------------------------------------------------------------------
-void ParticleTrail::Reset()
+void Split::Reset()
 {
   _camera._pos = Vector3(0.f, 0.f, 0.f);
   _camera._pitch = _camera._yaw = _camera._roll = 0.f;
 }
 
 //------------------------------------------------------------------------------
-bool ParticleTrail::Close()
+bool Split::Close()
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
-BaseEffect* ParticleTrail::Create(const char* name, const char* config, u32 id)
+BaseEffect* Split::Create(const char* name, const char* config, u32 id)
 {
-  return new ParticleTrail(name, config, id);
+  return new Split(name, config, id);
 }
 
 //------------------------------------------------------------------------------
-const char* ParticleTrail::Name()
+const char* Split::Name()
 {
-  return "particle_trail";
+  return "split";
 }
 
 //------------------------------------------------------------------------------
-void ParticleTrail::Register()
+void Split::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), ParticleTrail::Create);
+  DEMO_ENGINE.RegisterFactory(Name(), Split::Create);
 }

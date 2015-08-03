@@ -58,6 +58,13 @@
       start_time: 1300000;
       end_time: 1300000;
       settings: 'config/particle_trail.gb';
+    },
+    {
+      name: 'split';
+      factory: 'split';
+      start_time: 1300000;
+      end_time: 1300000;
+      settings: 'config/split.gb';
       force: true;
     },
   ];

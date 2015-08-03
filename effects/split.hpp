@@ -11,27 +11,57 @@
 
 namespace tano
 {
-  struct Taily
+  struct Pathy
   {
     enum
     {
-      MAX_TAIL_LENGTH = 16 * 1024
+      TOTAL_POINTS = 32 * 1024,
+      POINTS_PER_CHILD = 1024,
+      MAX_NUM_LINES = 32
     };
-
-    void AddPos(const V3& pos);
+    void Create();
     V3* CopyOut(V3* buf);
 
-    V3 cur = { 0.1f, 0, 0 };
-    V3 tail[MAX_TAIL_LENGTH];
-    int tailLength = 0;
-    int writePos = 0;
+    vector<V3> verts;
+
+    struct Instance
+    {
+      Vector3 cur;
+      float scale;
+      float angleX, angleY, angleZ;
+      vector<V3> verts;
+    };
+
+    float len = 5;
+
+    float angleXMean = 0.f;
+    float angleXVariance = 0.5f;
+
+    float angleYMean = 0.f;
+    float angleYVariance = 0.5f;
+
+    float angleZMean = 0.f;
+    float angleZVariance = 0.5f;
+
+    float childProb = 0.85f;
+    float childScale = 0.75f;
+
+    int maxChildren = 512;
+
+    struct Line
+    {
+      int startOfs;
+      int size;
+    };
+
+    vector<Line> lines;
   };
 
-  class ParticleTrail : public BaseEffect
+  class Split : public BaseEffect
   {
   public:
-    ParticleTrail(const string& name, const string& config, u32 id);
-    ~ParticleTrail();
+    Split(const string& name, const string& config, u32 id);
+    ~Split();
     virtual bool OnConfigChanged(const vector<char>& buf) override;
     virtual bool Init() override;
     virtual bool Update(const UpdateState& state) override;
@@ -53,7 +83,7 @@ namespace tano
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
 
-    Taily _taily;
+    Pathy _pathy;
 
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
@@ -68,7 +98,7 @@ namespace tano
     GpuBundle _lineBundle;
     ConstantBufferBundle<void, cb::TrailLinesPS, cb::TrailLinesGS> _cbPlexus;
 
-    ParticleTrailSettings _settings;
+    SplitSettings _settings;
     FreeflyCamera _camera;
   };
 }
