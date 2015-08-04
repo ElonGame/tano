@@ -22,29 +22,33 @@ namespace tano
     void Create();
     V3* CopyOut(V3* buf);
 
-    vector<V3> verts;
+    void CreateTubes(float t);
 
-    struct Instance
+    vector<V3> verts;
+    vector<Vector3> tubeVerts;
+
+    struct Segment
     {
       Vector3 cur;
       float scale;
       float angleX, angleY, angleZ;
       vector<V3> verts;
+      CardinalSpline2 spline;
     };
 
     float len = 5;
 
     float angleXMean = 0.f;
-    float angleXVariance = 0.5f;
+    float angleXVariance = 1.f;
 
     float angleYMean = 0.f;
-    float angleYVariance = 0.5f;
+    float angleYVariance = 1.f;
 
     float angleZMean = 0.f;
-    float angleZVariance = 0.5f;
+    float angleZVariance = 1.f;
 
-    float childProb = 0.85f;
-    float childScale = 0.75f;
+    float childProb = 0.75f;
+    float childScale = 0.50f;
 
     int maxChildren = 512;
 
@@ -53,6 +57,14 @@ namespace tano
       int startOfs;
       int size;
     };
+
+    struct SegmentStart
+    {
+      float time;
+      Segment* segment;
+    };
+    deque<SegmentStart> segmentStart;
+    vector<Segment*> segments;
 
     vector<Line> lines;
   };

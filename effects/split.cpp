@@ -22,63 +22,162 @@ static int MAX_NUM_PARTICLES = 32 * 1024;
 //------------------------------------------------------------------------------
 void Pathy::Create()
 {
+  SeqDelete(&segments);
+
+  float time = 0;
   verts.clear();
-  vector<Instance*> active;
-  active.push_back(new Instance{Vector3(0,0,0), 1, 0, 0, 0});
+
+  for (int i = 0; i < 10; ++i)
+  {
+    float ss = 50;
+    float x = randf(-ss, ss);
+    float z = randf(-ss, ss);
+    Segment* s = new Segment{ Vector3(x, 200, z), 1, 0, 0, 0 };
+    segments.push_back(s);
+    segmentStart.push_back(SegmentStart{ time, s });
+  }
 
   int numVerts = 0;
   while (numVerts < TOTAL_POINTS)
   {
     // update all the active instances
-    for (int i = 0, e = (int)active.size(); i < e; ++i)
+    for (int i = 0, e = (int)segments.size(); i < e; ++i)
     {
-      Instance& instance = *active[i];
+      Segment& segment = *segments[i];
 
-      float angleX = instance.angleX;
-      float angleY = instance.angleY;
-      float angleZ = instance.angleZ;
+      float angleX = segment.angleX;
+      float angleY = segment.angleY;
+      float angleZ = segment.angleZ;
 
-      Vector3 cur = instance.cur;
-      float scale = instance.scale;
+      Vector3 cur = segment.cur;
+      float scale = segment.scale;
       float curLen = len * scale;
 
-      instance.verts.push_back(V3(cur));
+      segment.verts.push_back(V3(cur));
       numVerts++;
       if (numVerts >= TOTAL_POINTS)
         break;
 
       float r = randf(0.f, 1.f);
-      if (r >= childProb && (int)active.size() < maxChildren)
+      if (r >= childProb && (int)segments.size() < maxChildren)
       {
-        active.push_back(new Instance{ cur,
+        Segment* s = new Segment{ cur,
           scale * childScale,
           angleX + GaussianRand(angleXMean, angleXVariance),
           angleY + GaussianRand(angleYMean, angleYVariance),
-          angleZ + GaussianRand(angleZMean, angleZVariance) });
+          angleZ + GaussianRand(angleZMean, angleZVariance) };
+
+        segments.push_back(s);
+        segmentStart.push_back(SegmentStart{ time, s });
       }
 
       Matrix mtx = Matrix::CreateFromYawPitchRoll(angleX, angleY, angleZ);
-      Vector3 delta = curLen * Vector3::Transform(Vector3(0, 0, 1), mtx);
+      Vector3 delta = curLen * Vector3::Transform(Vector3(0, -1, 0), mtx);
 
-      instance.angleX += GaussianRand(angleXMean, angleXVariance);
-      instance.angleY += GaussianRand(angleYMean, angleYVariance);
-      instance.angleZ += GaussianRand(angleZMean, angleZVariance);
-      instance.cur += delta;
+      segment.angleX += GaussianRand(angleXMean, angleXVariance);
+      segment.angleY += GaussianRand(angleYMean, angleYVariance);
+      segment.angleZ += GaussianRand(angleZMean, angleZVariance);
+      segment.cur += delta;
     }
+
+    time++;
   }
 
   // copy over all the vertices
-  for (Instance* instance : active)
+  for (Segment* segment : segments)
   {
+    segment->spline.Create(segment->verts.data(), (int)segment->verts.size(), 1);
     int ofs = (int)verts.size();
-    lines.push_back(Line{ofs, (int)instance->verts.size()});
-    verts.resize(verts.size() + instance->verts.size());
-    copy(instance->verts.begin(), instance->verts.end(), verts.begin() + ofs);
+    lines.push_back(Line{ofs, (int)segment->verts.size()});
+    verts.resize(verts.size() + segment->verts.size());
+    copy(segment->verts.begin(), segment->verts.end(), verts.begin() + ofs);
   }
 
   assert(numVerts <= TOTAL_POINTS);
 
-  SeqDelete(&active);
+}
+
+//------------------------------------------------------------------------------
+V3 Abs(const V3& v)
+{
+  return V3(fabs(v.x), fabs(v.y), fabs(v.z));
+}
+
+//------------------------------------------------------------------------------
+// Returns a vector perpendicular to u, using the method by Hughes-Moller
+V3 Perp(V3 u)
+{
+  V3 a = Abs(u);
+  V3 v;
+  if (a.x <= a.y && a.x <= a.z)
+    v = V3(0, -u.z, u.y);
+  else if (a.y <= a.x && a.y <= a.z)
+    v = V3(-u.z, 0, u.x);
+  else
+    v = V3(-u.y, u.x, 0);
+
+  return Normalize(v);
+}
+
+//------------------------------------------------------------------------------
+void Pathy::CreateTubes(float time)
+{
+  int SEGMENT_SPLITS = 10;
+  int ROTATION_SEGMENTS = 10;
+
+  tubeVerts.clear();
+
+  for (SegmentStart start : segmentStart)
+  {
+    if (start.time > time)
+    {
+      break;
+    }
+
+    float localTime = 0;
+
+    Segment* s = start.segment;
+
+    // each full second is a complete segment
+    int fullSegments = (int)(time - start.time);
+    float delta = 1.f / SEGMENT_SPLITS;
+
+    V3 d, t, n;
+    // Reference frame
+    d = Normalize(s->spline.Interpolate(localTime + delta) - s->spline.Interpolate(localTime));
+    t = Perp(d);
+    n = Cross(d, t);
+    t = Cross(n, d);
+   
+    float endTime = time - start.time;
+    while (true)
+    {
+      localTime = min(localTime, endTime);
+      V3 pos = s->spline.Interpolate(localTime);
+
+      // Propagate frame along spline, using method by Ken Sloan
+      d = Normalize(s->spline.Interpolate(localTime + delta) - pos);
+      // note, this uses t from the previous frame
+      n = Cross(d, t);
+      t = Cross(n, d);
+
+
+      float angle = 0;
+      float angleInc = XM_2PI / ROTATION_SEGMENTS;
+      for (int k = 0; k < ROTATION_SEGMENTS; ++k)
+      {
+        Matrix mtx = Matrix::CreateFromAxisAngle(ToVector3(d), angle);
+        Vector3 vv = ToVector3(pos) + Vector3::Transform(ToVector3(t), mtx);
+        tubeVerts.push_back(vv);
+        angle += angleInc;
+      }
+      
+      if (localTime == endTime)
+        break;
+
+      localTime += delta;
+    }
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -124,7 +223,7 @@ bool Split::Init()
     .PixelShader("shaders/out/trail.particle", "PsParticle")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
-    .DynamicVb(MAX_NUM_PARTICLES, sizeof(V3))
+    .DynamicVb(128 * 1024, sizeof(V3))
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescBlendOneOne)
     .RasterizerDesc(rasterizeDescCullNone)));
@@ -143,7 +242,6 @@ bool Split::Init()
     .DepthStencilDesc(depthDescDepthDisabled)
     .DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP)));
-
   // clang-format on
 
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture("gfx/particle3.png"));
@@ -163,10 +261,21 @@ bool Split::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
 
-  ObjectHandle handle = _lineBundle.objects._vb;
-  V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
-  _pathy.CopyOut(vtx);
-  _ctx->Unmap(handle);
+  _pathy.CreateTubes(state.globalTime.TotalSecondsAsFloat());
+
+  {
+    ObjectHandle handle = _lineBundle.objects._vb;
+    V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
+    _pathy.CopyOut(vtx);
+    _ctx->Unmap(handle);
+  }
+
+  {
+    ObjectHandle handle = _particleBundle.objects._vb;
+    void* vtx = _ctx->MapWriteDiscard<void*>(handle);
+    memcpy(vtx, _pathy.tubeVerts.data(), (int)_pathy.tubeVerts.size() * sizeof(Vector3));
+    _ctx->Unmap(handle);
+  }
 
   _cbBackground.ps0.upper = ToVector4(BLACKBOARD.GetVec4Var("particle_trail.upper"));
   _cbBackground.ps0.lower = ToVector4(BLACKBOARD.GetVec4Var("particle_trail.lower"));
@@ -217,6 +326,7 @@ bool Split::Render()
     _ctx->Draw(3, 0);
   }
 
+#if 0
   {
     // lines
     RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
@@ -229,6 +339,15 @@ bool Split::Render()
     {
       _ctx->Draw(line.size, line.startOfs);
     }
+  }
+#endif
+  {
+    int n = (int)_pathy.tubeVerts.size();
+    _cbParticle.gs0.numParticles.x = (float)n;
+    _cbParticle.Set(_ctx, 0);
+    _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
+    _ctx->SetShaderResource(_particleTexture);
+    _ctx->Draw(n, 0);
   }
 
   {

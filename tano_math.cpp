@@ -154,23 +154,26 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  void CardinalSpline2::Create(const V3* pts, int numPoints)
+  void CardinalSpline2::Create(const V3* pts, int numPoints, float scale)
   {
-    controlPoints.resize(numPoints);
-    copy(pts, pts + numPoints, controlPoints.begin());
+    assert(scale != 0);
+    _scale = scale;
+    _controlPoints.resize(numPoints);
+    copy(pts, pts + numPoints, _controlPoints.begin());
   }
 
   //------------------------------------------------------------------------------
   V3 CardinalSpline2::Interpolate(float t)
   {
-    int numPoints = (int)controlPoints.size();
+    int numPoints = (int)_controlPoints.size();
+    t /= _scale;
     int i = (int)t;
 
     int m = numPoints - 1;
-    V3 p0 = controlPoints[min(m, max(0, i - 1))];
-    V3 p1 = controlPoints[min(m, max(0, i + 0))];
-    V3 p2 = controlPoints[min(m, max(0, i + 1))];
-    V3 p3 = controlPoints[min(m, max(0, i + 2))];
+    V3 p0 = _controlPoints[min(m, max(0, i - 1))];
+    V3 p1 = _controlPoints[min(m, max(0, i + 0))];
+    V3 p2 = _controlPoints[min(m, max(0, i + 1))];
+    V3 p3 = _controlPoints[min(m, max(0, i + 2))];
 
     float s = t - (float)i;
     return CardinalSplineBlend(p0, p1, p2, p3, s);

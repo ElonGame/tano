@@ -327,9 +327,10 @@ namespace tano
   //------------------------------------------------------------------------------
   struct CardinalSpline2
   {
-    void Create(const V3* pts, int numPoints);
+    void Create(const V3* pts, int numPoints, float scale = 1.f);
     V3 Interpolate(float t);
-    vector<V3> controlPoints;
+    vector<V3> _controlPoints;
+    float _scale;
   };
 
 }
