@@ -182,7 +182,8 @@ void Pathy::CreateTubesIncremental(float time)
 
     s->inprogressRing.clear();
     float ss = (endTime - (int)(endTime / delta) * delta) / delta;
-    AddRing(endTime, s->frameT, s->spline, (1 - ss) * s->scale, &s->frameD, &s->frameN, &s->frameT, &s->inprogressRing);
+    ss = 1;
+    AddRing(endTime, s->frameT, s->spline, s->scale, &s->frameD, &s->frameN, &s->frameT, &s->inprogressRing);
 
     Append(s->completeRings, &tubeVerts);
     Append(s->inprogressRing, &tubeVerts);
