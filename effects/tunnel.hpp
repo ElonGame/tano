@@ -101,10 +101,6 @@ namespace tano
     ConstantBufferBundle<void, cb::TunnelLinesPS, cb::TunnelLinesGS> _cbLines;
     ConstantBufferBundle<void, cb::TunnelCompositeF> _cbComposite;
 
-    ConstantBufferBundle<
-      cb::TunnelMeshF, void, void,
-      cb::TunnelMeshO, void, void> _cbMesh;
-
     SimpleAppendBuffer<V3, 64 * 1024> _tunnelVerts;
 
     ConstantBufferBundle<cb::TunnelGreetsV, cb::TunnelGreetsP> _cbGreets;
@@ -116,6 +112,9 @@ namespace tano
     //Camera _camera;
     FreeflyCamera _camera;
 
+    ConstantBufferBundle<
+      cb::TunnelMeshF, void, void,
+      cb::TunnelMeshO, void, void> _cbMesh;
     GpuBundle _meshBundle;
     scene::Scene _scene;
 

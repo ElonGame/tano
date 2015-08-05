@@ -545,6 +545,37 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
+  vector<u32> CreateCylinderIndices(int numRingSegments, int numHeightSegments)
+  {
+    vector<u32> indices;
+
+    // 1--2
+    // |  |
+    // 0--3
+
+    for (int i = 0; i < numHeightSegments-1; ++i)
+    {
+      for (int j = 0; j < numRingSegments; ++j)
+      {
+        u32 v0 = (i + 0) * numRingSegments + j;
+        u32 v1 = (i + 1) * numRingSegments + j;
+        u32 v2 = (i + 1) * numRingSegments + (j+1) % numRingSegments;
+        u32 v3 = (i + 0) * numRingSegments + (j+1) % numRingSegments;
+
+        indices.push_back(v0);
+        indices.push_back(v1);
+        indices.push_back(v2);
+
+        indices.push_back(v0);
+        indices.push_back(v2);
+        indices.push_back(v3);
+      }
+    }
+
+    return indices;
+  }
+
+  //------------------------------------------------------------------------------
   V3* AddCubeWithNormal(V3* buf, const V3& pos, float scale)
   {
     V3 verts[] = {

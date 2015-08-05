@@ -244,8 +244,6 @@ void TextWriter::GenerateIndexedTris(
         (*indices)[j+prevIndices] = elem->indices[j] + prevVerts;
       }
 
-      //copy(elem->indices, elem->indices + numIndices, indices->begin() + prevIndices);
-
       // get max vertex dimensions
       for (u32 j = 0; j < numVerts; ++j)
       {

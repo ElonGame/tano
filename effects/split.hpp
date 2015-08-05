@@ -8,6 +8,7 @@
 #include "../shaders/out/trail.lines_gslines.cbuffers.hpp"
 #include "../shaders/out/trail.lines_pslines.cbuffers.hpp"
 #include "../shaders/out/trail.background_psbackground.cbuffers.hpp"
+#include "../shaders/out/split.mesh_vsmesh.cbuffers.hpp"
 
 namespace tano
 {
@@ -23,17 +24,28 @@ namespace tano
     V3* CopyOut(V3* buf);
 
     void CreateTubes(float t);
+    void CreateTubesIncremental(float t);
 
     vector<V3> verts;
     vector<Vector3> tubeVerts;
 
     struct Segment
     {
+      Segment(const Vector3& cur, float scale, float angleX, float angleY, float angleZ)
+          : cur(cur), scale(scale), angleX(angleX), angleY(angleY), angleZ(angleZ)
+      {
+      }
       Vector3 cur;
       float scale;
       float angleX, angleY, angleZ;
+      int lastNumTicks = 0;
       vector<V3> verts;
+      vector<Vector3> completeRings;
+      vector<Vector3> inprogressRing;
       CardinalSpline2 spline;
+
+      // last reference frame
+      V3 frameD, frameN, frameT;
     };
 
     float len = 5;
@@ -109,6 +121,12 @@ namespace tano
 
     GpuBundle _lineBundle;
     ConstantBufferBundle<void, cb::TrailLinesPS, cb::TrailLinesGS> _cbPlexus;
+
+    ConstantBufferBundle<
+      cb::SplitMeshF, void, void,
+      cb::SplitMeshO, void, void> _cbMesh;
+
+    GpuBundle _meshBundle;
 
     SplitSettings _settings;
     FreeflyCamera _camera;

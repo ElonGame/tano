@@ -282,6 +282,7 @@ bool Intro::Init()
     _textWriter.GenerateTris(text[i], TextWriter::TextOutline, &t.outline);
     _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap);
     _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &t.verts, &t.indices);
+    // TODO(magnus): Can I just swap here?
     t.transformedVerts.resize(t.verts.size());
     copy(t.verts.begin(), t.verts.end(), t.transformedVerts.begin());
 

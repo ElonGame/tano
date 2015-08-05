@@ -328,9 +328,19 @@ namespace tano
   struct CardinalSpline2
   {
     void Create(const V3* pts, int numPoints, float scale = 1.f);
-    V3 Interpolate(float t);
+    V3 Interpolate(float t) const;
     vector<V3> _controlPoints;
     float _scale;
   };
+
+  //------------------------------------------------------------------------------
+  inline V3 Abs(const V3& v)
+  {
+    return V3(fabs(v.x), fabs(v.y), fabs(v.z));
+  }
+
+  //------------------------------------------------------------------------------
+  // Returns a vector perpendicular to u, using the method by Hughes-Moller
+  V3 Perp(V3 u);
 
 }

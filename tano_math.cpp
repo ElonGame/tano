@@ -163,7 +163,7 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  V3 CardinalSpline2::Interpolate(float t)
+  V3 CardinalSpline2::Interpolate(float t) const
   {
     int numPoints = (int)_controlPoints.size();
     t /= _scale;
@@ -178,6 +178,22 @@ namespace tano
     float s = t - (float)i;
     return CardinalSplineBlend(p0, p1, p2, p3, s);
 
+  }
+
+  //------------------------------------------------------------------------------
+  // Returns a vector perpendicular to u, using the method by Hughes-Moller
+  V3 Perp(V3 u)
+  {
+    V3 a = Abs(u);
+    V3 v;
+    if (a.x <= a.y && a.x <= a.z)
+      v = V3(0, -u.z, u.y);
+    else if (a.y <= a.x && a.y <= a.z)
+      v = V3(-u.z, 0, u.x);
+    else
+      v = V3(-u.y, u.x, 0);
+
+    return Normalize(v);
   }
 
 }
