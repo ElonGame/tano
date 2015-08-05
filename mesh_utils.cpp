@@ -557,10 +557,10 @@ namespace tano
     {
       for (int j = 0; j < numRingSegments; ++j)
       {
-        u32 v0 = (i + 0) * numRingSegments + j;
-        u32 v1 = (i + 1) * numRingSegments + j;
-        u32 v2 = (i + 1) * numRingSegments + (j+1) % numRingSegments;
-        u32 v3 = (i + 0) * numRingSegments + (j+1) % numRingSegments;
+        u32 v0 = (i + 1) * numRingSegments + j;
+        u32 v1 = (i + 0) * numRingSegments + j;
+        u32 v2 = (i + 0) * numRingSegments + (j+1) % numRingSegments;
+        u32 v3 = (i + 1) * numRingSegments + (j+1) % numRingSegments;
 
         indices.push_back(v0);
         indices.push_back(v1);

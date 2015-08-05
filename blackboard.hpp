@@ -45,6 +45,9 @@ namespace tano
 #endif
 
   private:
+
+    ~Blackboard();
+
     bool Init(const char* filename, const char* datafile);
     bool ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack);
     void Reset();
@@ -60,7 +63,7 @@ namespace tano
 
     string _curNamespace;
 
-     template <typename T>
+    template <typename T>
     struct Keyframes
     {
       Keyframes() {}

@@ -10,6 +10,12 @@ using namespace bristol;
 Blackboard* Blackboard::_instance;
 
 //------------------------------------------------------------------------------
+Blackboard::~Blackboard()
+{
+  Reset();
+}
+
+//------------------------------------------------------------------------------
 bool Blackboard::Create(const char* filename, const char* datafile)
 {
   assert(!_instance);

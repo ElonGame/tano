@@ -103,7 +103,6 @@ bool App::Destroy()
 #endif
 
   Blackboard::Destory();
-
   INIT(RESOURCE_MANAGER_STATIC::Destroy());
   DemoEngine::Destroy();
   DebugApi::Destroy();

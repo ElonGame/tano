@@ -3,10 +3,7 @@
 #include "../camera.hpp"
 #include "../generated/demo.types.hpp"
 #include "../gpu_objects.hpp"
-#include "../shaders/out/trail.particle_gsparticle.cbuffers.hpp"
 #include "../shaders/out/trail.composite_pscomposite.cbuffers.hpp"
-#include "../shaders/out/trail.lines_gslines.cbuffers.hpp"
-#include "../shaders/out/trail.lines_pslines.cbuffers.hpp"
 #include "../shaders/out/trail.background_psbackground.cbuffers.hpp"
 #include "../shaders/out/split.mesh_vsmesh.cbuffers.hpp"
 
@@ -23,7 +20,6 @@ namespace tano
     void Create();
     V3* CopyOut(V3* buf);
 
-    void CreateTubes(float t);
     void CreateTubesIncremental(float t);
 
     vector<V3> verts;
@@ -109,18 +105,11 @@ namespace tano
 
     Pathy _pathy;
 
-    ObjectHandle _particleTexture;
-    GpuBundle _particleBundle;
-    ConstantBufferBundle<void, void, cb::TrailParticleG> _cbParticle;
-
     GpuBundle _backgroundBundle;
     ConstantBufferBundle<void, cb::TrailBackgroundF> _cbBackground;
 
     GpuBundle _compositeBundle;
     ConstantBufferBundle<void, cb::TrailCompositeP> _cbComposite;
-
-    GpuBundle _lineBundle;
-    ConstantBufferBundle<void, cb::TrailLinesPS, cb::TrailLinesGS> _cbPlexus;
 
     ConstantBufferBundle<
       cb::SplitMeshF, void, void,
