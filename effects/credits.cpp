@@ -95,7 +95,8 @@ bool Credits::Init()
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DynamicVb(MAX_PARTICLES, sizeof(V4))
     .DepthStencilDesc(depthDescDepthDisabled)
-    .BlendDesc(blendDescBlendOneOne)
+    //.BlendDesc(blendDescBlendOneOne)
+    .BlendDesc(blendDescPreMultipliedAlpha)
     .RasterizerDesc(rasterizeDescCullNone)));
   // clang-format on
 

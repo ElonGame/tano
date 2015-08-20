@@ -87,12 +87,12 @@ namespace credits
     vec4 upper = {0, 0, 0, 0};
     vec4 lower = {0, 0, 0.003, 0};
 
-    int numParticles = 1000;
+    int numParticles = 2000;
 
-    float particleHeight = 40;
-    float particleHeightVar = 5;
+    float particleHeight = 50;
+    float particleHeightVar = 15;
 
-    float particleSpeed = 75;
+    float particleSpeed = 55;
     float particleSpeedVar = 25;
 
     float particleAngleSpeed = 5;
