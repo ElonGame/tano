@@ -81,7 +81,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
-      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointModel>Strict</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -159,7 +159,7 @@
     <ClCompile Include="..\circular_buffer.cpp" />
     <ClCompile Include="..\debug_api.cpp" />
     <ClCompile Include="..\dyn_particles.cpp" />
-    <ClCompile Include="..\effects\cloth.cpp" />
+    <ClCompile Include="..\effects\credits.cpp" />
     <ClCompile Include="..\effects\fluid.cpp" />
     <ClCompile Include="..\effects\landscape.cpp" />
     <ClCompile Include="..\effects\particle_trail.cpp" />
@@ -493,7 +493,7 @@
     <ClInclude Include="..\circular_buffer.hpp" />
     <ClInclude Include="..\debug_api.hpp" />
     <ClInclude Include="..\dyn_particles.hpp" />
-    <ClInclude Include="..\effects\cloth.hpp" />
+    <ClInclude Include="..\effects\credits.hpp" />
     <ClInclude Include="..\effects\fluid.hpp" />
     <ClInclude Include="..\effects\landscape.hpp" />
     <ClInclude Include="..\effects\particle_trail.hpp" />

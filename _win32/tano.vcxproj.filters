@@ -211,9 +211,6 @@
     <ClCompile Include="..\effects\intro.cpp">
       <Filter>effects</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\cloth.cpp">
-      <Filter>effects</Filter>
-    </ClCompile>
     <ClCompile Include="..\effects\plexus.cpp">
       <Filter>effects</Filter>
     </ClCompile>
@@ -231,6 +228,9 @@
     </ClCompile>
     <ClCompile Include="..\effects\split.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\credits.cpp">
+      <Filter>effects</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -456,9 +456,6 @@
     <ClInclude Include="..\effects\intro.hpp">
       <Filter>effects</Filter>
     </ClInclude>
-    <ClInclude Include="..\effects\cloth.hpp">
-      <Filter>effects</Filter>
-    </ClInclude>
     <ClInclude Include="..\effects\plexus.hpp">
       <Filter>effects</Filter>
     </ClInclude>
@@ -476,6 +473,9 @@
     </ClInclude>
     <ClInclude Include="..\effects\split.hpp">
       <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\credits.hpp">
+      <Filter>effects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

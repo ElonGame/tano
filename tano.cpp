@@ -16,7 +16,7 @@
 #include "effects/intro.hpp"
 #include "effects/raymarcher.hpp"
 #include "effects/landscape.hpp"
-#include "effects/cloth.hpp"
+#include "effects/credits.hpp"
 #include "effects/plexus.hpp"
 #include "effects/tunnel.hpp"
 #include "effects/fluid.hpp"
@@ -175,7 +175,7 @@ bool App::Init(HINSTANCE hinstance)
   Intro::Register();
   RayMarcher::Register();
   Landscape::Register();
-  Cloth::Register();
+  Credits::Register();
   Plexus::Register();
   Tunnel::Register();
   Fluid::Register();

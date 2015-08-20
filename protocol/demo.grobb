@@ -155,13 +155,13 @@ struct blob_settings
     freefly_camera_settings camera;
 };
 
-struct cloth_settings
+struct credits_settings
 {
-    freefly_camera_settings camera;
-    float damping = 0.01;
-    vec3 gravity = {0, -1, 0};
+  string particle_texture;
+  freefly_camera_settings camera;
+  float damping = 0.01;
+  vec3 gravity = {0, -1, 0};
 };
-
 
 struct noise_settings
 {

@@ -8,16 +8,16 @@
 #include "../camera.hpp"
 #include "../scene.hpp"
 #include "../tano_math.hpp"
+#include "../shaders/out/credits.particle_gsparticle.cbuffers.hpp"
 
 namespace tano
 {
-
-  class Cloth : public BaseEffect
+  class Credits : public BaseEffect
   {
   public:
 
-    Cloth(const string &name, const string& config, u32 id);
-    ~Cloth();
+    Credits(const string &name, const string& config, u32 id);
+    ~Credits();
     virtual bool OnConfigChanged(const vector<char>& buf) override;
     virtual bool Init() override;
     virtual bool Update(const UpdateState& state) override;
@@ -62,7 +62,7 @@ namespace tano
     };
     ConstantBuffer<CBufferPerFrame> _cbPerFrame;
 
-    struct Particle
+    struct ClothParticle
     {
       V3 pos;
       V3 lastPos;
@@ -74,28 +74,35 @@ namespace tano
       Constraint() {}
       Constraint(u32 idx0, u32 idx1, float length) : idx0(idx0), idx1(idx1), restLength(length) {}
       union {
-        Particle* p0;
+        ClothParticle* p0;
         u32 idx0;
       };
       union {
-        Particle* p1;
+        ClothParticle* p1;
         u32 idx1;
       };
 
       float restLength;
     };
 
-    vector<Particle> _particles;
+    vector<V4> _particles;
+
+    vector<ClothParticle> _clothParticles;
     vector<Constraint> _constraints;
+
+    ConstantBufferBundle<void, void, cb::CreditsParticleF> _cbParticle;
 
     u32 _numTris = 0;
     u32 _numParticles = 0;
     int _clothDimX = 0;
     int _clothDimY = 0;
 
+    ObjectHandle _particleTexture;
+    GpuBundle _particleBundle;
+
     GpuState _clothState;
     GpuObjects _clothGpuObjects;
-    ClothSettings _settings;
+    CreditsSettings _settings;
     FreeflyCamera _camera;
 
     RollingAverage<double> _avgUpdate;

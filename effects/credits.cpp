@@ -1,4 +1,4 @@
-#include "cloth.hpp"
+#include "credits.hpp"
 #include "../tano.hpp"
 #include "../graphics.hpp"
 #include "../graphics_context.hpp"
@@ -32,30 +32,32 @@ namespace
 {
   int GRID_SIZE = 20;
   float CLOTH_SIZE = 10;
+
+  int NUM_PARTICLES = 1024;
 }
 
 StopWatch g_stopWatch;
 
 //------------------------------------------------------------------------------
-Cloth::Cloth(const string &name, const string& config, u32 id)
+Credits::Credits(const string &name, const string& config, u32 id)
   : BaseEffect(name, config, id)
   , _avgUpdate(100)
 {
 }
 
 //------------------------------------------------------------------------------
-Cloth::~Cloth()
+Credits::~Credits()
 {
 }
 
 //------------------------------------------------------------------------------
-bool Cloth::OnConfigChanged(const vector<char>& buf)
+bool Credits::OnConfigChanged(const vector<char>& buf)
 {
-  return ParseClothSettings(InputBuffer(buf), &_settings);
+  return ParseCreditsSettings(InputBuffer(buf), &_settings);
 }
 
 //------------------------------------------------------------------------------
-bool Cloth::Init()
+bool Credits::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
@@ -75,20 +77,42 @@ bool Cloth::Init()
   INIT(_clothGpuObjects.LoadVertexShader("shaders/out/basic", "VsPos", VF_POS));
   INIT(_clothGpuObjects.LoadPixelShader("shaders/out/basic", "PsPos"));
 
-  INIT(InitParticles());
+  // clang-format off
+  INIT(_particleBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/intro.particle", "VsParticle")
+    .GeometryShader("shaders/out/intro.particle", "GsParticle")
+    .PixelShader("shaders/out/intro.particle", "PsParticle")
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
+    .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
+    .DynamicVb(NUM_PARTICLES, sizeof(V4))
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .BlendDesc(blendDescBlendOneOne)
+    .RasterizerDesc(rasterizeDescCullNone)));
+  // clang-format on
+
+  for (int i = 0; i < NUM_PARTICLES; ++i)
+  {
+    _particles.push_back(V4{-500.f+1000/NUM_PARTICLES*i, 0, 0, 1});
+  }
+
+
+  INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
+
+  //INIT(InitParticles());
+  INIT(_cbParticle.Create());
 
   END_INIT_SEQUENCE();
 }
 
 //------------------------------------------------------------------------------
-void Cloth::UpdateParticles(const FixedUpdateState& state)
+void Credits::UpdateParticles(const FixedUpdateState& state)
 {
-  if (_particles.empty())
+  if (_clothParticles.empty())
     return;
 
   g_stopWatch.Start();
 
-  size_t numParticles = _particles.size();
+  size_t numParticles = _clothParticles.size();
   float dt = state.delta;
   float dt2 = dt * dt;
 
@@ -105,22 +129,13 @@ void Cloth::UpdateParticles(const FixedUpdateState& state)
         float dx = (float)xOfs;
         float dy = (float)yOfs;
         float r = Clamp(0.f, 1.f, s/2 - sqrtf(dx*dx+dy*dy));
-        _particles[(_clothDimY/2+yOfs) * _clothDimX + _clothDimX/2+xOfs].acc = r * V3(0, 0, 50);
+        _clothParticles[(_clothDimY/2+yOfs) * _clothDimX + _clothDimX/2+xOfs].acc = r * V3(0, 0, 50);
       }
     }
-
-    int a = 10;
-  }
-  else
-  {
-    //for (size_t i = 0; i < numParticles; ++i)
-    //{
-    //  _particles[i].acc = V3(_settings.gravity);
-    //}
   }
 
 
-  Particle* p = &_particles[0];
+  ClothParticle* p = &_clothParticles[0];
   for (size_t i = 0; i < numParticles; ++i)
   {
     // verlet integration
@@ -132,9 +147,9 @@ void Cloth::UpdateParticles(const FixedUpdateState& state)
   }
 
   // apply the constraints
-  p = &_particles[0];
+  p = &_clothParticles[0];
   Constraint* c = &_constraints[0];
-  for (int i = 0; i < 2; ++i)
+  for (int i = 0; i < 5; ++i)
   {
     int num = (int)(_constraints.size() / 4);
     for (int j = 0; j < num; ++j)
@@ -149,10 +164,10 @@ void Cloth::UpdateParticles(const FixedUpdateState& state)
       V3 v2 = (c2.p1->pos - c2.p0->pos);
       V3 v3 = (c3.p1->pos - c3.p0->pos);
 
-      float dist0 = Length(v0);
-      float dist1 = Length(v1);
-      float dist2 = Length(v2);
-      float dist3 = Length(v3);
+      float dist0 = max(0.001f, Length(v0));
+      float dist1 = max(0.001f, Length(v1));
+      float dist2 = max(0.001f, Length(v2));
+      float dist3 = max(0.001f, Length(v3));
 
       float s0 = 1 - c0.restLength / dist0;
       float s1 = 1 - c1.restLength / dist1;
@@ -181,8 +196,8 @@ void Cloth::UpdateParticles(const FixedUpdateState& state)
   V3 bottom(-CLOTH_SIZE / 2.f, -CLOTH_SIZE / 2.f, 0);
   for (int i = 0; i < _clothDimX; ++i)
   {
-    _particles[i].pos = top;
-    _particles[(_clothDimY-1)*_clothDimX+i].pos = bottom;
+    _clothParticles[i].pos = top;
+    _clothParticles[(_clothDimY-1)*_clothDimX+i].pos = bottom;
     top.x += incX;
     bottom.x += incX;
   }
@@ -190,16 +205,13 @@ void Cloth::UpdateParticles(const FixedUpdateState& state)
   _avgUpdate.AddSample(g_stopWatch.Stop());
 
   V3* vtx = _ctx->MapWriteDiscard<V3>(_clothGpuObjects._vb);
-  memcpy(vtx, _particles.data(), _numParticles * sizeof(Particle));
+  memcpy(vtx, _clothParticles.data(), _numParticles * sizeof(ClothParticle));
   _ctx->Unmap(_clothGpuObjects._vb);
 }
 
 //------------------------------------------------------------------------------
-bool Cloth::InitParticles()
+bool Credits::InitParticles()
 {
-  // TODO(magnus): broken for now
-  return true;
-
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
 
@@ -207,7 +219,7 @@ bool Cloth::InitParticles()
   int dimY = h / GRID_SIZE + 1;
   
   int numParticles = dimX * dimY;
-  _clothGpuObjects.CreateDynamicVb(numParticles * sizeof(Particle), sizeof(Particle));
+  _clothGpuObjects.CreateDynamicVb(numParticles * sizeof(ClothParticle), sizeof(ClothParticle));
 
   _clothDimX = dimX;
   _clothDimY = dimY;
@@ -242,7 +254,7 @@ bool Cloth::InitParticles()
   }
   _clothGpuObjects.CreateIndexBuffer((u32)indices.size() * sizeof(u32), DXGI_FORMAT_R32_UINT, indices.data());
 
-  _particles.resize(numParticles);
+  _clothParticles.resize(numParticles);
 
   ResetParticles();
 
@@ -260,8 +272,8 @@ bool Cloth::InitParticles()
 
     for (int i = 0; i < num; ++i)
     {
-      _constraints[i].p0 = &_particles[data[i * 2 + 0]];
-      _constraints[i].p1 = &_particles[data[i * 2 + 1]];
+      _constraints[i].p0 = &_clothParticles[data[i * 2 + 0]];
+      _constraints[i].p1 = &_clothParticles[data[i * 2 + 1]];
       _constraints[i].restLength = Distance(_constraints[i].p0->pos, _constraints[i].p1->pos);
     }
   }
@@ -286,8 +298,8 @@ bool Cloth::InitParticles()
     // apply the constaint fixup
     for (Constraint& c : _constraints)
     {
-      c.p0 = &_particles[c.idx0];
-      c.p1 = &_particles[c.idx1];
+      c.p0 = &_clothParticles[c.idx0];
+      c.p1 = &_clothParticles[c.idx1];
     }
 #endif
   }
@@ -297,7 +309,7 @@ bool Cloth::InitParticles()
 }
 
 //------------------------------------------------------------------------------
-void Cloth::GroupConstraints()
+void Credits::GroupConstraints()
 {
   int dimX = _clothDimX;
   int dimY = _clothDimY;
@@ -309,7 +321,7 @@ void Cloth::GroupConstraints()
     for (int j = 0; j < dimX; ++j)
     {
       u32 idx0 = i*dimX + j;
-      V3* p0 = &_particles[idx0].pos;
+      V3* p0 = &_clothParticles[idx0].pos;
 
       static int ofs[] = {
         -1, +0,
@@ -332,7 +344,7 @@ void Cloth::GroupConstraints()
             continue;
 
           u32 idx1 = yy*dimX + xx;
-          V3* p1 = &_particles[idx1].pos;
+          V3* p1 = &_clothParticles[idx1].pos;
 
           _constraints.push_back(Constraint(idx0, idx1, Distance(*p0, *p1)));
         }
@@ -340,6 +352,7 @@ void Cloth::GroupConstraints()
     }
   }
 
+#if 1
   // make num constraints a multiple of 4
   for (int i = 0; i < (_constraints.size() & 3); ++i)
   {
@@ -424,11 +437,11 @@ DONE:
   }
 
   _constraints.swap(reorderedConstraints);
-
+#endif
 }
 
 //------------------------------------------------------------------------------
-void Cloth::ResetParticles()
+void Credits::ResetParticles()
 {
   // create grid around -1..+1
   float incX = CLOTH_SIZE / (_clothDimX - 1);
@@ -436,7 +449,7 @@ void Cloth::ResetParticles()
 
   V3 org(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
   V3 cur = org;
-  Particle* p = &_particles[0];
+  ClothParticle* p = &_clothParticles[0];
 
   for (int i = 0; i < _clothDimY; ++i)
   {
@@ -454,22 +467,22 @@ void Cloth::ResetParticles()
 }
 
 //------------------------------------------------------------------------------
-bool Cloth::Update(const UpdateState& state)
+bool Credits::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
   return true;
 }
 
 //------------------------------------------------------------------------------
-bool Cloth::FixedUpdate(const FixedUpdateState& state)
+bool Credits::FixedUpdate(const FixedUpdateState& state)
 {
   _camera.Update(state);
-  UpdateParticles(state);
+  //UpdateParticles(state);
   return true;
 }
 
 //------------------------------------------------------------------------------
-void Cloth::UpdateCameraMatrix(const UpdateState& state)
+void Credits::UpdateCameraMatrix(const UpdateState& state)
 {
 
   int w, h;
@@ -488,10 +501,13 @@ void Cloth::UpdateCameraMatrix(const UpdateState& state)
   _cbPerFrame.cameraPos = _camera._pos;
 //  _cbPerFrame.cameraLookAt = target;
 //  _cbPerFrame.cameraUp = up;
+
+  _cbParticle.gs0.world = Matrix::Identity();
+  _cbParticle.gs0.viewProj = viewProj.Transpose();
 }
 
 //------------------------------------------------------------------------------
-bool Cloth::Render()
+bool Credits::Render()
 {
   rmt_ScopedCPUSample(Cloth_Render);
 
@@ -499,26 +515,39 @@ bool Cloth::Render()
 
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
 
-  u32 flags = ShaderType::VertexShader | ShaderType::PixelShader;
-  _ctx->SetConstantBuffer(_cbPerFrame, flags, 0);
+  {
+    ObjectHandle h = _particleBundle.objects._vb;
+    V4* vtx = _ctx->MapWriteDiscard<V4>(h);
+    memcpy(vtx, _particles.data(), (int)_particles.size() * sizeof(V4));
+    _ctx->Unmap(h);
 
-  _ctx->SetGpuState(_clothState);
+    // Render particles
+    _cbParticle.Set(_ctx, 0);
+    _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
+    _ctx->SetShaderResource(_particleTexture);
+    _ctx->Draw((int)_particles.size(), 0);
+  }
 
-  _ctx->SetGpuObjects(_clothGpuObjects);
-  _ctx->DrawIndexed(_numTris*3, 0, 0);
+  //u32 flags = ShaderType::VertexShader | ShaderType::PixelShader;
+  //_ctx->SetConstantBuffer(_cbPerFrame, flags, 0);
+
+  //_ctx->SetGpuState(_clothState);
+
+  //_ctx->SetGpuObjects(_clothGpuObjects);
+  //_ctx->DrawIndexed(_numTris*3, 0, 0);
 
   return true;
 }
 
 //------------------------------------------------------------------------------
-bool Cloth::InitAnimatedParameters()
+bool Credits::InitAnimatedParameters()
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void Cloth::RenderParameterSet()
+void Credits::RenderParameterSet()
 {
   double avg = _avgUpdate.GetAverage();
   ImGui::Text("Avg update: %lfs (%.1lf fps)", avg, 1 / avg );
@@ -532,7 +561,7 @@ void Cloth::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void Cloth::SaveParameterSet(bool inc)
+void Credits::SaveParameterSet(bool inc)
 {
   _camera.ToProtocol(&_settings.camera);
   SaveSettings(_settings, inc);
@@ -540,32 +569,32 @@ void Cloth::SaveParameterSet(bool inc)
 #endif
 
 //------------------------------------------------------------------------------
-void Cloth::Reset()
+void Credits::Reset()
 {
   _camera._pos = Vector3(0.f, 0.f, -10.f);
   _camera._pitch = _camera._yaw = _camera._roll = 0.f;
 }
 
 //------------------------------------------------------------------------------
-bool Cloth::Close()
+bool Credits::Close()
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
-BaseEffect* Cloth::Create(const char* name, const char* config, u32 id)
+BaseEffect* Credits::Create(const char* name, const char* config, u32 id)
 {
-  return new Cloth(name, config, id);
+  return new Credits(name, config, id);
 }
 
 //------------------------------------------------------------------------------
-const char* Cloth::Name()
+const char* Credits::Name()
 {
-  return "cloth";
+  return "credits";
 }
 
 //------------------------------------------------------------------------------
-void Cloth::Register()
+void Credits::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), Cloth::Create);
+  DEMO_ENGINE.RegisterFactory(Name(), Credits::Create);
 }
