@@ -56,6 +56,10 @@ bool Blackboard::Init(const char* filename, const char* datafile)
           InputBuffer inputBuffer(buf);
           deque<string> namespaceStack;
           res = ParseBlackboard(inputBuffer, namespaceStack);
+          if (res)
+          {
+            _triggeredIds.clear();
+          }
           return res;
         }
         else
@@ -72,6 +76,17 @@ bool Blackboard::Init(const char* filename, const char* datafile)
   LoadData();
 
   return res;
+}
+
+//------------------------------------------------------------------------------
+bool Blackboard::IsDirtyTrigger(void* id)
+{
+  // has the blackboard changed since the id last polled?
+  if (_triggeredIds.count(id) > 0)
+    return false;
+
+  _triggeredIds.insert(id);
+  return true;
 }
 
 //------------------------------------------------------------------------------

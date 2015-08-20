@@ -11,6 +11,7 @@
 #include "../mesh_utils.hpp"
 #include "../fullscreen_effect.hpp"
 #include "../stop_watch.hpp"
+#include "../blackboard.hpp"
 
 /*
   update timing:
@@ -33,7 +34,7 @@ namespace
   int GRID_SIZE = 20;
   float CLOTH_SIZE = 10;
 
-  int NUM_PARTICLES = 1024;
+  int MAX_PARTICLES = 16 * 1024;
 }
 
 StopWatch g_stopWatch;
@@ -78,30 +79,53 @@ bool Credits::Init()
   INIT(_clothGpuObjects.LoadPixelShader("shaders/out/basic", "PsPos"));
 
   // clang-format off
+  INIT(_backgroundBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/credits.background", "PsBackground")));
+
+  INIT(_compositeBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/credits.composite", "PsComposite")));
+
   INIT(_particleBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/intro.particle", "VsParticle")
-    .GeometryShader("shaders/out/intro.particle", "GsParticle")
-    .PixelShader("shaders/out/intro.particle", "PsParticle")
+    .VertexShader("shaders/out/credits.particle", "VsParticle")
+    .GeometryShader("shaders/out/credits.particle", "GsParticle")
+    .PixelShader("shaders/out/credits.particle", "PsParticle")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
-    .DynamicVb(NUM_PARTICLES, sizeof(V4))
+    .DynamicVb(MAX_PARTICLES, sizeof(V4))
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescBlendOneOne)
     .RasterizerDesc(rasterizeDescCullNone)));
   // clang-format on
 
-  for (int i = 0; i < NUM_PARTICLES; ++i)
-  {
-    _particles.push_back(V4{-500.f+1000/NUM_PARTICLES*i, 0, 0, 1});
-  }
-
-
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
 
   //INIT(InitParticles());
+  INIT(_cbComposite.Create());
+  INIT(_cbBackground.Create());
   INIT(_cbParticle.Create());
 
+  ResetParticleSpline();
+
   END_INIT_SEQUENCE();
+}
+
+//------------------------------------------------------------------------------
+void Credits::ResetParticleSpline()
+{
+  int num = BLACKBOARD.GetIntVar("credits.numParticles");
+  vector<int> tmp(num);
+  for (int i = 0; i < num; ++i)
+    tmp[i] = i;
+
+  InitParticleSpline(tmp);
+
+  for (int i = 0; i < 1000; ++i)
+  {
+    UpdateParticleSpline(0.05f);
+  }
+
 }
 
 //------------------------------------------------------------------------------
@@ -205,7 +229,7 @@ void Credits::UpdateParticles(const FixedUpdateState& state)
   _avgUpdate.AddSample(g_stopWatch.Stop());
 
   V3* vtx = _ctx->MapWriteDiscard<V3>(_clothGpuObjects._vb);
-  memcpy(vtx, _clothParticles.data(), _numParticles * sizeof(ClothParticle));
+  memcpy(vtx, _clothParticles.data(), _numClothParticles * sizeof(ClothParticle));
   _ctx->Unmap(_clothGpuObjects._vb);
 }
 
@@ -223,7 +247,7 @@ bool Credits::InitParticles()
 
   _clothDimX = dimX;
   _clothDimY = dimY;
-  _numParticles = numParticles;
+  _numClothParticles = numParticles;
 
   // create the grid
   vector<u32> indices((dimX-1)*(dimY-1)*2*3);
@@ -467,9 +491,96 @@ void Credits::ResetParticles()
 }
 
 //------------------------------------------------------------------------------
+void Credits::InitParticleSpline(const vector<int>& indices)
+{
+  BLACKBOARD.SetNamespace("credits");
+
+  _numParticles = BLACKBOARD.GetIntVar("numParticles");
+
+  // if # particles have changes, just redo everything..
+  if (_numParticles != (int)_particles.size())
+  {
+    _particles.resize(_numParticles);
+    _particleState.resize(_numParticles);
+  }
+
+  float speed = BLACKBOARD.GetFloatVar("particleSpeed");
+  float speedVar = BLACKBOARD.GetFloatVar("particleSpeedVar");
+
+  float angleSpeed = BLACKBOARD.GetFloatVar("particleAngleSpeed");
+  float angleSpeedVar = BLACKBOARD.GetFloatVar("particleAngleSpeedVar");
+
+  float fadeSpeed = BLACKBOARD.GetFloatVar("particleFadeSpeed");
+  float fadeSpeedVar = BLACKBOARD.GetFloatVar("particleFadeSpeedVar");
+
+  float angleVar = BLACKBOARD.GetFloatVar("angleVar");
+
+  float height = BLACKBOARD.GetFloatVar("particleHeight");
+  float heightVar = BLACKBOARD.GetFloatVar("particleHeightVar");
+
+  float width = BLACKBOARD.GetFloatVar("waveWidth");
+
+  for (int i : indices)
+  {
+    float s = GaussianRand(angleSpeed, angleSpeedVar);
+    if (s == 0.f)
+      s += 0.001f;
+
+    _particleState[i] = ParticleState{
+      GaussianRand(speed, speedVar),
+      -width,
+      GaussianRand(height, heightVar),
+      GaussianRand(XM_2PI, angleVar),
+      XM_2PI / s,
+      0,
+      GaussianRand(fadeSpeed, fadeSpeedVar)};
+  }
+
+  BLACKBOARD.ClearNamespace();
+}
+
+//------------------------------------------------------------------------------
+void Credits::UpdateParticleSpline(float dt)
+{
+  if (BLACKBOARD.IsDirtyTrigger(this))
+  {
+    ResetParticleSpline();
+  }
+
+  BLACKBOARD.SetNamespace("credits");
+  float width = BLACKBOARD.GetFloatVar("waveWidth");
+
+  vector<int> deadParticles;
+
+  for (int i = 0; i < _numParticles; ++i)
+  {
+    ParticleState& s = _particleState[i];
+    s.pos += dt * s.speed;
+    s.angle += dt * s.angleInc;
+    s.fade += dt * s.fadeInc;
+
+    _particles[i] = V4{s.pos, s.height * sinf(s.angle), 0, cosf(s.fade)};
+
+    if (s.pos > width)
+      deadParticles.push_back(i);
+  }
+
+  if (!deadParticles.empty())
+  {
+    InitParticleSpline(deadParticles);
+  }
+
+  BLACKBOARD.ClearNamespace();
+}
+
+//------------------------------------------------------------------------------
 bool Credits::Update(const UpdateState& state)
 {
+  _cbBackground.ps0.upper = ToVector4(BLACKBOARD.GetVec4Var("credits.upper"));
+  _cbBackground.ps0.lower = ToVector4(BLACKBOARD.GetVec4Var("credits.lower"));
+
   UpdateCameraMatrix(state);
+  UpdateParticleSpline(state.delta.TotalSecondsAsFloat());
   return true;
 }
 
@@ -511,9 +622,21 @@ bool Credits::Render()
 {
   rmt_ScopedCPUSample(Cloth_Render);
 
-  static Color black(.1f, .1f, .1f, 0);
+  float s = 0.01f;
+  static Color black(s, s, s, 0);
 
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
+  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+
+  ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
+
+  {
+    // TODO: rendering the background messes up the alpha channel..
+    // Render the background
+    //_cbBackground.Set(_ctx, 0);
+    //_ctx->SetBundle(_backgroundBundle);
+    //_ctx->Draw(3, 0);
+  }
 
   {
     ObjectHandle h = _particleBundle.objects._vb;
@@ -526,6 +649,21 @@ bool Credits::Render()
     _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
     _ctx->SetShaderResource(_particleTexture);
     _ctx->Draw((int)_particles.size(), 0);
+  }
+
+  {
+    // composite
+    _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);
+    _cbComposite.Set(_ctx, 0);
+
+    ObjectHandle inputs[] = { rtColor };
+    fullscreen->Execute(inputs,
+      1,
+      GRAPHICS.GetBackBuffer(),
+      GRAPHICS.GetBackBufferDesc(),
+      GRAPHICS.GetDepthStencil(),
+      _compositeBundle.objects._ps,
+      false);
   }
 
   //u32 flags = ShaderType::VertexShader | ShaderType::PixelShader;
@@ -553,6 +691,10 @@ void Credits::RenderParameterSet()
   ImGui::Text("Avg update: %lfs (%.1lf fps)", avg, 1 / avg );
   ImGui::SliderFloat("Damping", &_settings.damping, 0, 1);
   ImGui::SliderFloat3("Gravity", &_settings.gravity.x, -5, +5);
+
+  ImGui::Separator();
+  ImGui::SliderFloat("Exposure", &_settings.tonemap.exposure, 0.1f, 2.0f);
+  ImGui::SliderFloat("Min White", &_settings.tonemap.min_white, 0.1f, 2.0f);
 
   if (ImGui::Button("Reset"))
     Reset();

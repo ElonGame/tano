@@ -9,6 +9,8 @@
 #include "../scene.hpp"
 #include "../tano_math.hpp"
 #include "../shaders/out/credits.particle_gsparticle.cbuffers.hpp"
+#include "../shaders/out/credits.composite_pscomposite.cbuffers.hpp"
+#include "../shaders/out/credits.background_psbackground.cbuffers.hpp"
 
 namespace tano
 {
@@ -45,6 +47,10 @@ namespace tano
     bool InitParticles();
     void ResetParticles();
     void GroupConstraints();
+
+    void ResetParticleSpline();
+    void UpdateParticleSpline(float dt);
+    void InitParticleSpline(const vector<int>& indices);
 
     struct CBufferPerFrame
     {
@@ -85,6 +91,19 @@ namespace tano
       float restLength;
     };
 
+    struct ParticleState
+    {
+      float speed;
+      float pos;
+      float height;
+      float angle;
+      float angleInc;
+      float fade;
+      float fadeInc;
+    };
+
+    vector<ParticleState> _particleState;
+
     vector<V4> _particles;
 
     vector<ClothParticle> _clothParticles;
@@ -92,13 +111,20 @@ namespace tano
 
     ConstantBufferBundle<void, void, cb::CreditsParticleF> _cbParticle;
 
+    GpuBundle _backgroundBundle;
+    ConstantBufferBundle<void, cb::CreditsBackgroundF> _cbBackground;
+
+    GpuBundle _compositeBundle;
+    ConstantBufferBundle<void, cb::CreditsCompositeP> _cbComposite;
+
     u32 _numTris = 0;
-    u32 _numParticles = 0;
+    u32 _numClothParticles = 0;
     int _clothDimX = 0;
     int _clothDimY = 0;
 
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
+    int _numParticles = 0;
 
     GpuState _clothState;
     GpuObjects _clothGpuObjects;

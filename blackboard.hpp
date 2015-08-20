@@ -44,6 +44,8 @@ namespace tano
     void SetBlockingIo(bool blocking);
 #endif
 
+    bool IsDirtyTrigger(void* id);
+
   private:
 
     ~Blackboard();
@@ -90,6 +92,8 @@ namespace tano
 
     string _filename;
     string _datafile;
+
+    unordered_set<void*> _triggeredIds;
 
 #if WITH_BLACKBOARD_SAVE
     unordered_map<string, vector<char>> _rawKeyframes;

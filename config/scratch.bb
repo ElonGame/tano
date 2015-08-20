@@ -81,3 +81,27 @@ namespace particle_trail
     vec4 upper = {0, 0, 0, 0};
     vec4 lower = {0.03, 0, 0, 0};
 }
+
+namespace credits
+{
+    vec4 upper = {0, 0, 0, 0};
+    vec4 lower = {0, 0, 0.003, 0};
+
+    int numParticles = 1000;
+
+    float particleHeight = 40;
+    float particleHeightVar = 5;
+
+    float particleSpeed = 75;
+    float particleSpeedVar = 25;
+
+    float particleAngleSpeed = 5;
+    float particleAngleSpeedVar = 2;
+
+    float particleFadeSpeed = 1;
+    float particleFadeSpeedVar = 2;
+
+    float angleVar = 1;
+
+    float waveWidth = 200;
+}

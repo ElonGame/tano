@@ -298,14 +298,14 @@ void FluidSim::Advect(int b, float dt, float* out, float* old, float* u, float* 
       float y = j - dt0 * v[IX(i, j)];
       if (x < 0.5)
         x = 0.5;
-      if (x > FLUID_SIZE + 0.5)
-        x = FLUID_SIZE + 0.5;
+      if (x > FLUID_SIZE + 0.5f)
+        x = FLUID_SIZE + 0.5f;
       int i0 = (int)x;
       int i1 = i0 + 1;
       if (y < 0.5)
         y = 0.5;
-      if (y > FLUID_SIZE + 0.5)
-        y = FLUID_SIZE + 0.5;
+      if (y > FLUID_SIZE + 0.5f)
+        y = FLUID_SIZE + 0.5f;
       int j0 = (int)y;
       int j1 = j0 + 1;
       float s1 = x - i0;

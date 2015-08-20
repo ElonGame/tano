@@ -113,6 +113,12 @@ void FreeflyCamera::Update(const FixedUpdateState& updateState)
   if (state.keysPressed['S'])
     _pos -= s * _dir;
 
+  if (state.keysPressed['F'])
+    _pos += s * _up;
+
+  if (state.keysPressed['V'])
+    _pos -= s * _up;
+
   Vector3 target = _pos + _dir;
   _view = Matrix::CreateLookAt(_pos, target, _up);
   _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
