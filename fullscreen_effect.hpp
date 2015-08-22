@@ -53,6 +53,21 @@ namespace tano
       const RenderTargetDesc& outputDesc, 
       float radius, 
       int scale);
+
+    void BlurHoriz(
+      ObjectHandle inputBuffer,
+      ObjectHandle outputBuffer,
+      const RenderTargetDesc& outputDesc,
+      float radius,
+      int scale);
+
+    void BlurVert(
+      ObjectHandle inputBuffer,
+      ObjectHandle outputBuffer,
+      const RenderTargetDesc& outputDesc,
+      float radius,
+      int scale);
+
     void Copy(ObjectHandle inputBuffer, ObjectHandle outputBuffer, const RenderTargetDesc& outputDesc, bool releaseOutput = true);
     void Add(ObjectHandle input0, ObjectHandle input1, ObjectHandle outputBuffer, float scale0, float scale1);
 
@@ -80,6 +95,7 @@ namespace tano
 
     ConstantBuffer<CBufferBlur> _cbBlur;
     ObjectHandle _csBlurX;
+    ObjectHandle _csBlurY;
     ObjectHandle _csBlurTranspose;
     ObjectHandle _csCopyTranspose;
 

@@ -87,21 +87,21 @@ namespace credits
     vec4 upper = {0, 0, 0, 0};
     vec4 lower = {0, 0, 0.003, 0};
 
-    int numParticles = 2000;
+    int numParticles = 5000;
 
     float particleHeight = 50;
-    float particleHeightVar = 15;
+    float particleHeightVar = 55;
 
     float particleSpeed = 55;
-    float particleSpeedVar = 25;
+    float particleSpeedVar = 55;
 
     float particleAngleSpeed = 5;
     float particleAngleSpeedVar = 2;
 
-    float particleFadeSpeed = 1;
-    float particleFadeSpeedVar = 2;
+    float particleFadeSpeed = 2;
+    float particleFadeSpeedVar = 1;
 
-    float angleVar = 1;
+    float angleVar = 2;
 
     float waveWidth = 200;
 }

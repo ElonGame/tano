@@ -11,6 +11,7 @@
 #include "../shaders/out/credits.particle_gsparticle.cbuffers.hpp"
 #include "../shaders/out/credits.composite_pscomposite.cbuffers.hpp"
 #include "../shaders/out/credits.background_psbackground.cbuffers.hpp"
+#include "../shaders/out/credits.gaussian_psblur35.cbuffers.hpp"
 
 namespace tano
 {
@@ -117,6 +118,9 @@ namespace tano
     GpuBundle _compositeBundle;
     ConstantBufferBundle<void, cb::CreditsCompositeP> _cbComposite;
 
+    GpuBundle _blurBundle;
+    ConstantBufferBundle<void, cb::CreditsGaussianF> _cbBlur;
+
     u32 _numTris = 0;
     u32 _numClothParticles = 0;
     int _clothDimX = 0;
@@ -132,5 +136,8 @@ namespace tano
     FreeflyCamera _camera;
 
     RollingAverage<double> _avgUpdate;
+
+    float _blurAmount = 245;
+
   };
 }

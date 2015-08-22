@@ -57,13 +57,9 @@ bool Credits::OnConfigChanged(const vector<char>& buf)
   return ParseCreditsSettings(InputBuffer(buf), &_settings);
 }
 
-string GenerateGaussShaderKernelWeightsAndOffsets(int kernelSize);
-
 //------------------------------------------------------------------------------
 bool Credits::Init()
 {
-  string str = GenerateGaussShaderKernelWeightsAndOffsets(35);
-
   BEGIN_INIT_SEQUENCE();
 
   _camera.FromProtocol(_settings.camera);
@@ -102,6 +98,11 @@ bool Credits::Init()
     //.BlendDesc(blendDescBlendOneOne)
     .BlendDesc(blendDescPreMultipliedAlpha)
     .RasterizerDesc(rasterizeDescCullNone)));
+
+  INIT(_blurBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/credits.gaussian", "PsBlur35")));
+
   // clang-format on
 
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
@@ -110,6 +111,8 @@ bool Credits::Init()
   INIT(_cbComposite.Create());
   INIT(_cbBackground.Create());
   INIT(_cbParticle.Create());
+  INIT(_cbBlur.Create());
+
 
   ResetParticleSpline();
 
@@ -656,14 +659,30 @@ bool Credits::Render()
     _ctx->Draw((int)_particles.size(), 0);
   }
 
+  //RenderTargetDesc halfSize(
+  //  rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
+  //ScopedRenderTarget rtBlurHalf(halfSize);
+
+  ScopedRenderTarget rtBlur(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
+  {
+    // blur
+    _ctx->UnsetRenderTargets(0, 1);
+    fullscreen->BlurVert(rtColor, rtBlur, rtBlur._desc, _blurAmount, 1);
+
+    //_cbBlur.ps0.dim = Vector2(rtColor._desc.width / 2, rtColor._desc.height / 2);
+    //_cbBlur.Set(_ctx, 0);
+    //fullscreen->Execute(rtColor, rtBlurHalf, rtBlurHalf._desc, ObjectHandle(), _blurBundle.objects._ps);
+  }
+
+
   {
     // composite
     _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
-    ObjectHandle inputs[] = { rtColor };
+    ObjectHandle inputs[] = { rtColor, rtBlur };
     fullscreen->Execute(inputs,
-      1,
+      2,
       GRAPHICS.GetBackBuffer(),
       GRAPHICS.GetBackBufferDesc(),
       GRAPHICS.GetDepthStencil(),
@@ -700,6 +719,9 @@ void Credits::RenderParameterSet()
   ImGui::Separator();
   ImGui::SliderFloat("Exposure", &_settings.tonemap.exposure, 0.1f, 2.0f);
   ImGui::SliderFloat("Min White", &_settings.tonemap.min_white, 0.1f, 2.0f);
+
+  ImGui::Separator();
+  ImGui::SliderFloat("BlurAmount", &_blurAmount, 1, 500);
 
   if (ImGui::Button("Reset"))
     Reset();

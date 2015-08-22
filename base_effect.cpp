@@ -62,13 +62,13 @@ BaseEffect::BaseEffect(const string& instanceName, const string& config, u32 id)
     , _ctx(GRAPHICS.GetGraphicsContext())
     , _firstTick(true)
 {
+  FindFileVersions(_configName.c_str(), &_configFileVersions, &_configVersionToFilename);
 }
 
+#if WITH_IMGUI
 //------------------------------------------------------------------------------
 void BaseEffect::RegisterParameters()
 {
-  FindFileVersions(_configName.c_str(), &_configFileVersions, &_configVersionToFilename);
-
   PROPERTIES.Register(GetName(),
     _configFileVersions,
     bind(&BaseEffect::RenderParameterSet, this),
@@ -77,6 +77,7 @@ void BaseEffect::RegisterParameters()
 
   PROPERTIES.SetActive(GetName());
 }
+#endif
 
 //------------------------------------------------------------------------------
 bool BaseEffect::Show()

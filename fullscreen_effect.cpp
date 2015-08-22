@@ -48,6 +48,7 @@ bool FullscreenEffect::Init()
   INIT_RESOURCE(_csBlurTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BlurTranspose"));
   INIT_RESOURCE(_csCopyTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "CopyTranspose"));
   INIT_RESOURCE(_csBlurX, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BoxBlurX"));
+  INIT_RESOURCE(_csBlurY, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BoxBlurY"));
 
   END_INIT_SEQUENCE();
 }
@@ -184,13 +185,12 @@ void FullscreenEffect::Blur(
   int h = outputDesc.height / scale;
   BufferFlags f = BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav);
 
-  ObjectHandle half;
+  ObjectHandle scaledRt;
   if (scale > 1)
   {
-    half = GRAPHICS.GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
-    Copy(input, half, RenderTargetDesc(w, h,  DXGI_FORMAT_R16G16B16A16_FLOAT), true);
+    scaledRt = GRAPHICS.GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+    Copy(input, scaledRt, RenderTargetDesc(w, h,  DXGI_FORMAT_R16G16B16A16_FLOAT), true);
   }
-  //ScopedRenderTarget half(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
 
   ScopedRenderTarget hscratch0(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
   ScopedRenderTarget hscratch1(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
@@ -215,8 +215,8 @@ void FullscreenEffect::Blur(
 
   if (scale > 1)
   {
-    srcDst[0] = half;
-    srcDst[11] = half;
+    srcDst[0] = scaledRt;
+    srcDst[11] = scaledRt;
   }
 
   int numThreads = 256;
@@ -253,8 +253,117 @@ void FullscreenEffect::Blur(
 
   if (scale > 1)
   {
-    Copy(half, output, outputDesc, true);
-    GRAPHICS.ReleaseTempRenderTarget(half);
+    Copy(scaledRt, output, outputDesc, true);
+    GRAPHICS.ReleaseTempRenderTarget(scaledRt);
+  }
+}
+
+//------------------------------------------------------------------------------
+void FullscreenEffect::BlurHoriz(
+  ObjectHandle input,
+  ObjectHandle output,
+  const RenderTargetDesc& outputDesc,
+  float radius,
+  int scale)
+{
+  int w = outputDesc.width / scale;
+  int h = outputDesc.height / scale;
+  BufferFlags f = BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav);
+
+  ObjectHandle scaledRt;
+  if (scale > 1)
+  {
+    scaledRt = GRAPHICS.GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+    Copy(input, scaledRt, RenderTargetDesc(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT), true);
   }
 
+  ScopedRenderTarget scratch0(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+  ScopedRenderTarget scratch1(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+
+  // set constant buffers
+  _cbBlur.inputSize.x = (float)w;
+  _cbBlur.inputSize.y = (float)h;
+  _cbBlur.radius = radius;
+  _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
+
+  // set constant buffers
+  ObjectHandle srcDst[] =
+  {
+    // horiz
+    input, scratch0, scratch0, scratch1, scratch1, output,
+  };
+
+  if (scale > 1)
+  {
+    srcDst[0] = scaledRt;
+  }
+
+  int numThreads = 256;
+
+  // horizontal blur (ends up in output)
+  for (int i = 0; i < 3; ++i)
+  {
+    _ctx->SetShaderResource(srcDst[i * 2 + 0], ShaderType::ComputeShader);
+    _ctx->SetUnorderedAccessView(srcDst[i * 2 + 1], nullptr);
+
+    _ctx->SetComputeShader(_csBlurX);
+    _ctx->Dispatch(h / numThreads + 1, 1, 1);
+
+    _ctx->UnsetUnorderedAccessViews(0, 1);
+    _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
+  }
+}
+
+//------------------------------------------------------------------------------
+void FullscreenEffect::BlurVert(
+  ObjectHandle input,
+  ObjectHandle output,
+  const RenderTargetDesc& outputDesc,
+  float radius,
+  int scale)
+{
+  int w = outputDesc.width / scale;
+  int h = outputDesc.height / scale;
+  BufferFlags f = BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav);
+
+  ObjectHandle scaledRt;
+  if (scale > 1)
+  {
+    scaledRt = GRAPHICS.GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+    Copy(input, scaledRt, RenderTargetDesc(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT), true);
+  }
+
+  ScopedRenderTarget scratch0(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+  ScopedRenderTarget scratch1(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+
+  // set constant buffers
+  _cbBlur.inputSize.x = (float)w;
+  _cbBlur.inputSize.y = (float)h;
+  _cbBlur.radius = radius;
+  _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
+
+  // set constant buffers
+  ObjectHandle srcDst[] =
+  {
+    input, scratch0, scratch0, scratch1, scratch1, output,
+  };
+
+  if (scale > 1)
+  {
+    srcDst[0] = scaledRt;
+  }
+
+  int numThreads = 256;
+
+  for (int i = 0; i < 3; ++i)
+  {
+    _ctx->SetShaderResource(srcDst[i * 2 + 0], ShaderType::ComputeShader);
+    _ctx->SetUnorderedAccessView(srcDst[i * 2 + 1], nullptr);
+
+    _ctx->SetComputeShader(_csBlurY);
+    _ctx->Dispatch(w / numThreads + 1, 1, 1);
+
+    _ctx->UnsetUnorderedAccessViews(0, 1);
+    _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
+  }
 }

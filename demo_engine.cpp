@@ -425,7 +425,9 @@ bool DemoEngine::ApplySettings(const DemoSettings& settings)
     const char* configFile = e.settings.c_str();
     BaseEffect* effect = factory(e.name.c_str(), configFile, _nextEffectId++);
     _effects.push_back(effect);
+#if WITH_IMGUI
     effect->RegisterParameters();
+#endif
 
     TimeDuration start = TimeDuration::Milliseconds(e.start_time);
     TimeDuration end = TimeDuration::Milliseconds(e.end_time);
