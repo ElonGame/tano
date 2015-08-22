@@ -57,9 +57,13 @@ bool Credits::OnConfigChanged(const vector<char>& buf)
   return ParseCreditsSettings(InputBuffer(buf), &_settings);
 }
 
+string GenerateGaussShaderKernelWeightsAndOffsets(int kernelSize);
+
 //------------------------------------------------------------------------------
 bool Credits::Init()
 {
+  string str = GenerateGaussShaderKernelWeightsAndOffsets(35);
+
   BEGIN_INIT_SEQUENCE();
 
   _camera.FromProtocol(_settings.camera);
