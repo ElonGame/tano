@@ -60,12 +60,19 @@
       settings: 'config/split.gb';
     },
     {
+      name: 'blob';
+      factory: 'blob';
+      start_time: 1300000;
+      end_time: 1300000;
+      settings: 'config/blob.gb';
+      force: true;
+    },
+    {
       name: 'credits';
       factory: 'credits';
       start_time: 1300000;
       end_time: 1300000;
       settings: 'config/credits.gb';
-      force: true;
     },
   ];
 }

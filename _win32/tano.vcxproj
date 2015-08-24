@@ -159,6 +159,7 @@
     <ClCompile Include="..\circular_buffer.cpp" />
     <ClCompile Include="..\debug_api.cpp" />
     <ClCompile Include="..\dyn_particles.cpp" />
+    <ClCompile Include="..\effects\blob.cpp" />
     <ClCompile Include="..\effects\credits.cpp" />
     <ClCompile Include="..\effects\fluid.cpp" />
     <ClCompile Include="..\effects\landscape.cpp" />
@@ -493,6 +494,7 @@
     <ClInclude Include="..\circular_buffer.hpp" />
     <ClInclude Include="..\debug_api.hpp" />
     <ClInclude Include="..\dyn_particles.hpp" />
+    <ClInclude Include="..\effects\blob.hpp" />
     <ClInclude Include="..\effects\credits.hpp" />
     <ClInclude Include="..\effects\fluid.hpp" />
     <ClInclude Include="..\effects\landscape.hpp" />

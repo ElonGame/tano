@@ -214,22 +214,25 @@
     <ClCompile Include="..\effects\plexus.cpp">
       <Filter>effects</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\tunnel.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\effects\sample.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\effects\fluid.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\effects\particle_trail.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\split.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\effects\credits.cpp">
+      <Filter>effects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\blob.cpp">
+      <Filter>effects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\fluid.cpp">
+      <Filter>effects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\split.cpp">
+      <Filter>effects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\tunnel.cpp">
       <Filter>effects</Filter>
     </ClCompile>
   </ItemGroup>
@@ -459,9 +462,6 @@
     <ClInclude Include="..\effects\plexus.hpp">
       <Filter>effects</Filter>
     </ClInclude>
-    <ClInclude Include="..\effects\tunnel.hpp">
-      <Filter>inc</Filter>
-    </ClInclude>
     <ClInclude Include="..\effects\sample.hpp">
       <Filter>inc</Filter>
     </ClInclude>
@@ -471,10 +471,16 @@
     <ClInclude Include="..\effects\particle_trail.hpp">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="..\effects\split.hpp">
-      <Filter>inc</Filter>
-    </ClInclude>
     <ClInclude Include="..\effects\credits.hpp">
+      <Filter>effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\blob.hpp">
+      <Filter>effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\split.hpp">
+      <Filter>effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\tunnel.hpp">
       <Filter>effects</Filter>
     </ClInclude>
   </ItemGroup>

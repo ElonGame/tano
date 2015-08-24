@@ -401,11 +401,7 @@ bool DemoEngine::ApplySettings(const DemoSettings& settings)
   {
     if (e.force)
     {
-      if (hasForceEffect)
-      {
-        INJECT_ERROR("Only a single effect can be marked as force!");
-        continue;
-      }
+      VERIFY_FATAL(!hasForceEffect, "Only a single effect can be marked as force!");
       hasForceEffect = true;
     }
   }
@@ -414,11 +410,7 @@ bool DemoEngine::ApplySettings(const DemoSettings& settings)
   {
     // Look up the factory
     auto it = _effectFactories.find(e.factory);
-    if (it == _effectFactories.end())
-    {
-      INJECT_ERROR(ToString("Unable to find factory: %s", e.factory.c_str()).c_str());
-      continue;
-    }
+    VERIFY_FATAL(it != _effectFactories.end(), "Unable to find factory: ", e.factory);
 
     // Create and init the effect
     EffectFactory factory = it->second;

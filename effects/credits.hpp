@@ -126,6 +126,7 @@ namespace tano
     int _clothDimX = 0;
     int _clothDimY = 0;
 
+    ObjectHandle _creditsTexture;
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
     int _numParticles = 0;
@@ -136,8 +137,5 @@ namespace tano
     FreeflyCamera _camera;
 
     RollingAverage<double> _avgUpdate;
-
-    float _blurAmount = 245;
-
   };
 }

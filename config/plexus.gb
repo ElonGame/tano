@@ -7,6 +7,13 @@
     black_point: 0.087000;
     cross_over: 0.933000;
   };
+  plexus: {
+    eps: 0.010000;
+    min_dist: 0.100000;
+    max_dist: 123.838005;
+    num_neighbours: 11;
+    num_nearest: 5;
+  };
   sphere: {
     radius: 1074.242065;
     slices: 11;
@@ -15,29 +22,30 @@
   };
   deform: {
     blur_kernel: 250.000015;
-    noise_strength: 2500.000000;
+    noise_strength: 392.825378;
     perlin_scale: 1000.000061;
   };
-  plexus: {
-    eps: 0.010000;
-    min_dist: 0.100000;
-    max_dist: 123.838005;
-    num_neighbours: 11;
-    num_nearest: 5;
-  };
   camera: {
+    camera: {
+      pos: { -60.098854, 90.484489, -942.756897 };
+      dir: { 0.063329, -0.095348, 0.993428 };
+      right: { 0.997974, 0.000000, -0.063619 };
+      up: { 0.006066, 0.995444, 0.095155 };
+      fov: 1.047000;
+      near_plane: 1.000000;
+      far_plane: 2000.000000;
+    };
     yaw: 0.063662;
     pitch: 0.095493;
     roll: 0.000000;
-    pos: { -91.430313, 88.245689, -806.350586 };
   };
   noise: {
     layer_lock: -1;
-    num_layers: 4;
-    max_scale: 1.000000;
-    scale_factor: 3.729000;
-    max_opacity: 0.367000;
-    opacity_factor: 0.864000;
-    turbulence: 104.292007;
+    num_layers: 1;
+    max_scale: 1000.000000;
+    scale_factor: 0.500000;
+    max_opacity: 1.000000;
+    opacity_factor: 0.500000;
+    turbulence: 10.000000;
   };
 };

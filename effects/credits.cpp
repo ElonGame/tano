@@ -106,6 +106,7 @@ bool Credits::Init()
   // clang-format on
 
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
+  INIT_RESOURCE(_creditsTexture, RESOURCE_MANAGER.LoadTexture("gfx/credits.png"));
 
   //INIT(InitParticles());
   INIT(_cbComposite.Create());
@@ -639,14 +640,6 @@ bool Credits::Render()
   _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
 
   {
-    // TODO: rendering the background messes up the alpha channel..
-    // Render the background
-    //_cbBackground.Set(_ctx, 0);
-    //_ctx->SetBundle(_backgroundBundle);
-    //_ctx->Draw(3, 0);
-  }
-
-  {
     ObjectHandle h = _particleBundle.objects._vb;
     V4* vtx = _ctx->MapWriteDiscard<V4>(h);
     memcpy(vtx, _particles.data(), (int)_particles.size() * sizeof(V4));
@@ -659,44 +652,27 @@ bool Credits::Render()
     _ctx->Draw((int)_particles.size(), 0);
   }
 
-  //RenderTargetDesc halfSize(
-  //  rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
-  //ScopedRenderTarget rtBlurHalf(halfSize);
-
   ScopedRenderTarget rtBlur(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
   {
     // blur
     _ctx->UnsetRenderTargets(0, 1);
-    fullscreen->BlurVert(rtColor, rtBlur, rtBlur._desc, _blurAmount, 1);
-
-    //_cbBlur.ps0.dim = Vector2(rtColor._desc.width / 2, rtColor._desc.height / 2);
-    //_cbBlur.Set(_ctx, 0);
-    //fullscreen->Execute(rtColor, rtBlurHalf, rtBlurHalf._desc, ObjectHandle(), _blurBundle.objects._ps);
+    fullscreen->BlurVert(rtColor, rtBlur, rtBlur._desc, _settings.blur_amount, 1);
   }
-
 
   {
     // composite
     _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
-    ObjectHandle inputs[] = { rtColor, rtBlur };
+    ObjectHandle inputs[] = { rtColor, rtBlur, _creditsTexture };
     fullscreen->Execute(inputs,
-      2,
+      3,
       GRAPHICS.GetBackBuffer(),
       GRAPHICS.GetBackBufferDesc(),
       GRAPHICS.GetDepthStencil(),
       _compositeBundle.objects._ps,
       false);
   }
-
-  //u32 flags = ShaderType::VertexShader | ShaderType::PixelShader;
-  //_ctx->SetConstantBuffer(_cbPerFrame, flags, 0);
-
-  //_ctx->SetGpuState(_clothState);
-
-  //_ctx->SetGpuObjects(_clothGpuObjects);
-  //_ctx->DrawIndexed(_numTris*3, 0, 0);
 
   return true;
 }
@@ -721,7 +697,7 @@ void Credits::RenderParameterSet()
   ImGui::SliderFloat("Min White", &_settings.tonemap.min_white, 0.1f, 2.0f);
 
   ImGui::Separator();
-  ImGui::SliderFloat("BlurAmount", &_blurAmount, 1, 500);
+  ImGui::SliderFloat("Blur Amount", &_settings.blur_amount, 1, 500);
 
   if (ImGui::Button("Reset"))
     Reset();

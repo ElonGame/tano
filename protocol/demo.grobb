@@ -157,6 +157,7 @@ struct blob_settings
 
 struct credits_settings
 {
+  float blur_amount = 245;
   string particle_texture;
   freefly_camera_settings camera;
   float damping = 0.01;
