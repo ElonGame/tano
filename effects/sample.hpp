@@ -27,7 +27,7 @@ namespace tano
 
 #if WITH_IMGUI
     void RenderParameterSet();
-    void SaveParameterSet();
+    void SaveParameterSet(bool inc);
 #endif
 
     void Reset();

@@ -2,6 +2,8 @@
 #include "../base_effect.hpp"
 #include "../camera.hpp"
 #include "../generated/demo.types.hpp"
+#include "../shaders/out/blob.mesh_vsmesh.cbuffers.hpp"
+#include "../mesh_utils.hpp"
 
 namespace tano
 {
@@ -27,14 +29,18 @@ namespace tano
 
 #if WITH_IMGUI
     void RenderParameterSet();
-    void SaveParameterSet();
+    void SaveParameterSet(bool inc);
 #endif
 
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
 
+    GpuBundle _meshBundle;
+    ConstantBufferBundle<cb::BlobMeshF, void, void, cb::BlobMeshO, void, void> _cbMesh;
+
+    scene::Scene _scene;
+
     BlobSettings _settings;
     FreeflyCamera _camera;
   };
-
 }

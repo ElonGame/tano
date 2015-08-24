@@ -88,9 +88,9 @@ void Sample::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void Sample::SaveParameterSet()
+void Sample::SaveParameterSet(bool inc)
 {
-  SaveSettings(_settings);
+  SaveSettings(_settings, inc);
 }
 #endif
 

@@ -113,8 +113,7 @@ bool Credits::Init()
   INIT(_cbBackground.Create());
   INIT(_cbParticle.Create());
   INIT(_cbBlur.Create());
-
-
+  
   ResetParticleSpline();
 
   END_INIT_SEQUENCE();

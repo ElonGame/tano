@@ -327,7 +327,6 @@ bool Intro::Init()
   INIT(meshLoader.Load("gfx/shatter_plane1.boba"));
   CreateScene(meshLoader,
       SceneOptions().TransformToWorldSpace().SetUserDataSize(SceneOptions::Mesh, sizeof(FracturePiece)),
-
       &_scene);
 
   for (scene::Mesh* mesh : _scene.meshes)
