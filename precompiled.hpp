@@ -29,7 +29,7 @@
   #endif
 #endif
 
-#define WITH_IMGUI 1
+#define WITH_IMGUI 0
 
 #define WITH_CONFIG_DLG 0
 #define WITH_UNPACKED_RESOUCES 1

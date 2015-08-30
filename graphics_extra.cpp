@@ -13,6 +13,8 @@ namespace tano
   CD3D11_BLEND_DESC blendDescBlendSrcAlpha;
   CD3D11_BLEND_DESC blendDescBlendOneOne;
   CD3D11_BLEND_DESC blendDescPreMultipliedAlpha;
+  CD3D11_BLEND_DESC blendDescWeightedBlend;
+  CD3D11_BLEND_DESC blendDescWeightedBlendResolve;
 
   CD3D11_RASTERIZER_DESC rasterizeDescCullNone;
   CD3D11_RASTERIZER_DESC rasterizeDescWireframe;
@@ -40,6 +42,31 @@ namespace tano
     blendDescBlendOneOne.RenderTarget[0].BlendEnable = TRUE;
     blendDescBlendOneOne.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
     blendDescBlendOneOne.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
+
+    blendDescWeightedBlend = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+    blendDescWeightedBlend.IndependentBlendEnable = TRUE;
+    blendDescWeightedBlend.RenderTarget[0].BlendEnable = TRUE;
+    blendDescWeightedBlend.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+    blendDescWeightedBlend.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+    blendDescWeightedBlend.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
+    blendDescWeightedBlend.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+    blendDescWeightedBlend.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+    blendDescWeightedBlend.RenderTarget[1].BlendEnable = TRUE;
+    blendDescWeightedBlend.RenderTarget[1].SrcBlend = D3D11_BLEND_ZERO;
+    blendDescWeightedBlend.RenderTarget[1].SrcBlendAlpha = D3D11_BLEND_ZERO;
+    blendDescWeightedBlend.RenderTarget[1].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDescWeightedBlend.RenderTarget[1].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDescWeightedBlend.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+    blendDescWeightedBlendResolve = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
+    blendDescWeightedBlendResolve.IndependentBlendEnable = FALSE;
+    blendDescWeightedBlendResolve.RenderTarget[0].BlendEnable = TRUE;
+    blendDescWeightedBlendResolve.RenderTarget[0].SrcBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDescWeightedBlendResolve.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDescWeightedBlendResolve.RenderTarget[0].DestBlend = D3D11_BLEND_SRC_ALPHA;
+    blendDescWeightedBlendResolve.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_DEST_ALPHA;
+    blendDescWeightedBlendResolve.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL & ~D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
     rasterizeDescCullNone = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
     rasterizeDescCullNone.CullMode = D3D11_CULL_NONE;

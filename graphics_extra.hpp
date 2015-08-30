@@ -212,6 +212,9 @@ namespace tano
   extern CD3D11_BLEND_DESC blendDescBlendOneOne;
   extern CD3D11_BLEND_DESC blendDescPreMultipliedAlpha;
 
+  extern CD3D11_BLEND_DESC blendDescWeightedBlend;
+  extern CD3D11_BLEND_DESC blendDescWeightedBlendResolve;
+
   extern CD3D11_RASTERIZER_DESC rasterizeDescCullNone;
   extern CD3D11_RASTERIZER_DESC rasterizeDescWireframe;
 

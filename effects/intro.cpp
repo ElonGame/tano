@@ -638,6 +638,7 @@ bool Intro::Render()
         GRAPHICS.GetDepthStencil(),
         _compositeBundle.objects._ps,
         true,
+        true,
         &black);
 
     _ctx->SetShaderResource(rtCompose._rtHandle);

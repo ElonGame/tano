@@ -13,62 +13,57 @@ namespace tano
 
     bool Init();
 
-    void Execute(
-      ObjectHandle input,
-      ObjectHandle output,
-      const RenderTargetDesc& outputDesc,
-      ObjectHandle depthStencil,
-      ObjectHandle shader,
-      bool releaseOutput = true,
-      const Color* clearColor = nullptr);
+    void Execute(ObjectHandle input,
+        ObjectHandle output,
+        const RenderTargetDesc& outputDesc,
+        ObjectHandle depthStencil,
+        ObjectHandle shader,
+        bool releaseOutput = true,
+        bool setBundle = true,
+        const Color* clearColor = nullptr);
 
-    void Execute(
-      const ObjectHandle* inputs,
-      int numInputs, 
-      ObjectHandle output,
-      const RenderTargetDesc& outputDesc,
-      ObjectHandle depthStencil,
-      ObjectHandle shader,
-      bool releaseOutput = true,
-      const Color* clearColor = nullptr);
+    void Execute(const ObjectHandle* inputs,
+        int numInputs,
+        ObjectHandle output,
+        const RenderTargetDesc& outputDesc,
+        ObjectHandle depthStencil,
+        ObjectHandle shader,
+        bool releaseOutput = true,
+        bool setBundle = true,
+        const Color* clearColor = nullptr);
 
     void ScaleBias(
-      ObjectHandle input,
-      ObjectHandle output,
-      const RenderTargetDesc& outputDesc,
-      float scale,
-      float bias);
+        ObjectHandle input, ObjectHandle output, const RenderTargetDesc& outputDesc, float scale, float bias);
 
-    void ScaleBiasSecondary(
-      ObjectHandle input0,
-      ObjectHandle input1, 
-      ObjectHandle output, 
-      const RenderTargetDesc& outputDesc, 
-      float scale, 
-      float bias);
+    void ScaleBiasSecondary(ObjectHandle input0,
+        ObjectHandle input1,
+        ObjectHandle output,
+        const RenderTargetDesc& outputDesc,
+        float scale,
+        float bias);
 
-    void Blur(
-      ObjectHandle inputBuffer, 
-      ObjectHandle outputBuffer, 
-      const RenderTargetDesc& outputDesc, 
-      float radius, 
-      int scale);
+    void Blur(ObjectHandle inputBuffer,
+        ObjectHandle outputBuffer,
+        const RenderTargetDesc& outputDesc,
+        float radius,
+        int scale);
 
-    void BlurHoriz(
-      ObjectHandle inputBuffer,
-      ObjectHandle outputBuffer,
-      const RenderTargetDesc& outputDesc,
-      float radius,
-      int scale);
+    void BlurHoriz(ObjectHandle inputBuffer,
+        ObjectHandle outputBuffer,
+        const RenderTargetDesc& outputDesc,
+        float radius,
+        int scale);
 
-    void BlurVert(
-      ObjectHandle inputBuffer,
-      ObjectHandle outputBuffer,
-      const RenderTargetDesc& outputDesc,
-      float radius,
-      int scale);
+    void BlurVert(ObjectHandle inputBuffer,
+        ObjectHandle outputBuffer,
+        const RenderTargetDesc& outputDesc,
+        float radius,
+        int scale);
 
-    void Copy(ObjectHandle inputBuffer, ObjectHandle outputBuffer, const RenderTargetDesc& outputDesc, bool releaseOutput = true);
+    void Copy(ObjectHandle inputBuffer,
+        ObjectHandle outputBuffer,
+        const RenderTargetDesc& outputDesc,
+        bool releaseOutput = true);
     void Add(ObjectHandle input0, ObjectHandle input1, ObjectHandle outputBuffer, float scale0, float scale1);
 
   private:

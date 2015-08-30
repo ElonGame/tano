@@ -3,6 +3,7 @@
 #include "../camera.hpp"
 #include "../generated/demo.types.hpp"
 #include "../shaders/out/blob.mesh_vsmesh.cbuffers.hpp"
+#include "../shaders/out/blob.compose_pscomposite.cbuffers.hpp"
 #include "../mesh_utils.hpp"
 
 namespace tano
@@ -36,9 +37,14 @@ namespace tano
     void UpdateCameraMatrix(const UpdateState& state);
 
     GpuBundle _meshBundle;
-    ConstantBufferBundle<cb::BlobMeshF, void, void, cb::BlobMeshO, void, void> _cbMesh;
+    ConstantBufferBundle<
+      cb::BlobMeshF, void, void,
+      cb::BlobMeshO, cb::BlobMeshO, void> _cbMesh;
 
     scene::Scene _scene;
+
+    GpuBundle _compositeBundle;
+    ConstantBufferBundle<void, cb::BlobComposeF> _cbComposite;
 
     BlobSettings _settings;
     FreeflyCamera _camera;

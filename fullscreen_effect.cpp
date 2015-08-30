@@ -5,8 +5,7 @@
 using namespace tano;
 
 //------------------------------------------------------------------------------
-FullscreenEffect::FullscreenEffect(GraphicsContext* ctx)
-  : _ctx(ctx)
+FullscreenEffect::FullscreenEffect(GraphicsContext* ctx) : _ctx(ctx)
 {
 }
 
@@ -20,29 +19,30 @@ bool FullscreenEffect::Init()
   INIT(_cbBlur.Create());
 
   INIT(_defaultBundle.Create(BundleOptions()
-    .DepthStencilDesc(depthDescDepthDisabled)
-    .RasterizerDesc(rasterizeDescCullNone)
-    .VertexShader("shaders/out/quad", "VsMain")));
+                                 .DepthStencilDesc(depthDescDepthDisabled)
+                                 .RasterizerDesc(rasterizeDescCullNone)
+                                 .VertexShader("shaders/out/quad", "VsMain")));
 
   INIT(_scaleBiasBundle.Create(BundleOptions()
-    .DepthStencilDesc(depthDescDepthDisabled)
-    .RasterizerDesc(rasterizeDescCullNone)
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/common.scale", "PsScaleBias")));
+                                   .DepthStencilDesc(depthDescDepthDisabled)
+                                   .RasterizerDesc(rasterizeDescCullNone)
+                                   .VertexShader("shaders/out/common", "VsQuad")
+                                   .PixelShader("shaders/out/common.scale", "PsScaleBias")));
 
-  INIT(_scaleBiasSecondaryBundle.Create(BundleOptions()
-    .DepthStencilDesc(depthDescDepthDisabled)
-    .RasterizerDesc(rasterizeDescCullNone)
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/common.scale", "PsScaleBiasSecondary")));
+  INIT(
+      _scaleBiasSecondaryBundle.Create(BundleOptions()
+                                           .DepthStencilDesc(depthDescDepthDisabled)
+                                           .RasterizerDesc(rasterizeDescCullNone)
+                                           .VertexShader("shaders/out/common", "VsQuad")
+                                           .PixelShader("shaders/out/common.scale", "PsScaleBiasSecondary")));
 
   INIT(_copyBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/common", "PsCopy")));
+                              .VertexShader("shaders/out/common", "VsQuad")
+                              .PixelShader("shaders/out/common", "PsCopy")));
 
   INIT(_addBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/common", "PsAdd")));
+                             .VertexShader("shaders/out/common", "VsQuad")
+                             .PixelShader("shaders/out/common", "PsAdd")));
 
   // blur setup
   INIT_RESOURCE(_csBlurTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BlurTranspose"));
@@ -54,39 +54,46 @@ bool FullscreenEffect::Init()
 }
 
 //------------------------------------------------------------------------------
-void FullscreenEffect::Execute(
-  ObjectHandle input,
-  ObjectHandle output,
-  const RenderTargetDesc& outputDesc,
-  ObjectHandle depthStencil,
-  ObjectHandle shader,
-  bool releaseOutput,
-  const Color* clearColor)
+void FullscreenEffect::Execute(ObjectHandle input,
+    ObjectHandle output,
+    const RenderTargetDesc& outputDesc,
+    ObjectHandle depthStencil,
+    ObjectHandle shader,
+    bool releaseOutput,
+    bool setBundle,
+    const Color* clearColor)
 {
-  Execute(&input, 1, output, outputDesc, depthStencil, shader, releaseOutput, clearColor);
+  Execute(&input, 1, output, outputDesc, depthStencil, shader, releaseOutput, setBundle, clearColor);
 }
 
 //------------------------------------------------------------------------------
-void FullscreenEffect::Execute(
-  const ObjectHandle* inputs,
-  int numInputs,
-  ObjectHandle output,
-  const RenderTargetDesc& outputDesc,
-  ObjectHandle depthStencil,
-  ObjectHandle shader,
-  bool releaseOutput,
-  const Color* clearColor)
+void FullscreenEffect::Execute(const ObjectHandle* inputs,
+    int numInputs,
+    ObjectHandle output,
+    const RenderTargetDesc& outputDesc,
+    ObjectHandle depthStencil,
+    ObjectHandle shader,
+    bool releaseOutput,
+    bool setBundle,
+    const Color* clearColor)
 {
   assert(output.IsValid());
 
   _ctx->SetLayout(ObjectHandle());
-  _ctx->SetGpuState(_defaultBundle.state);
-  _ctx->SetGpuStateSamplers(_defaultBundle.state, ShaderType::PixelShader);
-  _ctx->SetGpuStateSamplers(_defaultBundle.state, ShaderType::ComputeShader);
-  _ctx->SetGpuObjects(_defaultBundle.objects);
+
+  if (setBundle)
+  {
+    _ctx->SetGpuState(_defaultBundle.state);
+    _ctx->SetGpuStateSamplers(_defaultBundle.state, ShaderType::PixelShader);
+    _ctx->SetGpuStateSamplers(_defaultBundle.state, ShaderType::ComputeShader);
+    _ctx->SetGpuObjects(_defaultBundle.objects);
+  }
+  else
+  {
+    _ctx->SetVertexShader(_defaultBundle.objects._vs);
+  }
 
   _ctx->SetRenderTarget(output, depthStencil, clearColor);
-
   _ctx->SetShaderResources(inputs, numInputs, ShaderType::PixelShader);
 
   CD3D11_VIEWPORT viewport = CD3D11_VIEWPORT(0.f, 0.f, (float)outputDesc.width, (float)outputDesc.height);
@@ -102,11 +109,10 @@ void FullscreenEffect::Execute(
 }
 
 //------------------------------------------------------------------------------
-void FullscreenEffect::Copy(
-  ObjectHandle inputBuffer,
-  ObjectHandle outputBuffer,
-  const RenderTargetDesc& outputDesc,
-  bool releaseOutput)
+void FullscreenEffect::Copy(ObjectHandle inputBuffer,
+    ObjectHandle outputBuffer,
+    const RenderTargetDesc& outputDesc,
+    bool releaseOutput)
 {
   Execute(inputBuffer, outputBuffer, outputDesc, ObjectHandle(), _copyBundle.objects._ps, releaseOutput);
 }
@@ -119,11 +125,7 @@ inline CD3D11_VIEWPORT ViewportFromDesc(const RenderTargetDesc& desc)
 
 //------------------------------------------------------------------------------
 void FullscreenEffect::ScaleBias(
-  ObjectHandle input,
-  ObjectHandle output,
-  const RenderTargetDesc& outputDesc,
-  float scale, 
-  float bias)
+    ObjectHandle input, ObjectHandle output, const RenderTargetDesc& outputDesc, float scale, float bias)
 {
   assert(output.IsValid());
 
@@ -145,13 +147,12 @@ void FullscreenEffect::ScaleBias(
 }
 
 //------------------------------------------------------------------------------
-void FullscreenEffect::ScaleBiasSecondary(
-  ObjectHandle input0,
-  ObjectHandle input1,
-  ObjectHandle output,
-  const RenderTargetDesc& outputDesc,
-  float scale,
-  float bias)
+void FullscreenEffect::ScaleBiasSecondary(ObjectHandle input0,
+    ObjectHandle input1,
+    ObjectHandle output,
+    const RenderTargetDesc& outputDesc,
+    float scale,
+    float bias)
 {
   assert(output.IsValid());
 
@@ -160,7 +161,7 @@ void FullscreenEffect::ScaleBiasSecondary(
 
   _ctx->SetRenderTarget(output, ObjectHandle(), nullptr);
 
-  ObjectHandle inputs[] = { input0, input1 };
+  ObjectHandle inputs[] = {input0, input1};
   _ctx->SetShaderResources(inputs, 2, ShaderType::PixelShader);
   _cbScaleBias.scaleBias = Vector4(scale, bias, 0, 0);
   _ctx->SetConstantBuffer(_cbScaleBias, ShaderType::PixelShader, 0);
@@ -175,11 +176,7 @@ void FullscreenEffect::ScaleBiasSecondary(
 
 //------------------------------------------------------------------------------
 void FullscreenEffect::Blur(
-  ObjectHandle input,
-  ObjectHandle output,
-  const RenderTargetDesc& outputDesc,
-  float radius,
-  int scale)
+    ObjectHandle input, ObjectHandle output, const RenderTargetDesc& outputDesc, float radius, int scale)
 {
   int w = outputDesc.width / scale;
   int h = outputDesc.height / scale;
@@ -189,7 +186,7 @@ void FullscreenEffect::Blur(
   if (scale > 1)
   {
     scaledRt = GRAPHICS.GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
-    Copy(input, scaledRt, RenderTargetDesc(w, h,  DXGI_FORMAT_R16G16B16A16_FLOAT), true);
+    Copy(input, scaledRt, RenderTargetDesc(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT), true);
   }
 
   ScopedRenderTarget hscratch0(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
@@ -205,12 +202,21 @@ void FullscreenEffect::Blur(
   _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
 
   // set constant buffers
-  ObjectHandle srcDst[] =
-  {
-    // horiz
-    input, hscratch0, hscratch0, hscratch1, hscratch1, vscratch0,
-    // vert
-    vscratch0, vscratch1, vscratch1, vscratch0, vscratch0, output, 
+  ObjectHandle srcDst[] = {
+      // horiz
+      input,
+      hscratch0,
+      hscratch0,
+      hscratch1,
+      hscratch1,
+      vscratch0,
+      // vert
+      vscratch0,
+      vscratch1,
+      vscratch1,
+      vscratch0,
+      vscratch0,
+      output,
   };
 
   if (scale > 1)
@@ -260,11 +266,7 @@ void FullscreenEffect::Blur(
 
 //------------------------------------------------------------------------------
 void FullscreenEffect::BlurHoriz(
-  ObjectHandle input,
-  ObjectHandle output,
-  const RenderTargetDesc& outputDesc,
-  float radius,
-  int scale)
+    ObjectHandle input, ObjectHandle output, const RenderTargetDesc& outputDesc, float radius, int scale)
 {
   int w = outputDesc.width / scale;
   int h = outputDesc.height / scale;
@@ -287,10 +289,14 @@ void FullscreenEffect::BlurHoriz(
   _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
 
   // set constant buffers
-  ObjectHandle srcDst[] =
-  {
-    // horiz
-    input, scratch0, scratch0, scratch1, scratch1, output,
+  ObjectHandle srcDst[] = {
+      // horiz
+      input,
+      scratch0,
+      scratch0,
+      scratch1,
+      scratch1,
+      output,
   };
 
   if (scale > 1)
@@ -316,11 +322,7 @@ void FullscreenEffect::BlurHoriz(
 
 //------------------------------------------------------------------------------
 void FullscreenEffect::BlurVert(
-  ObjectHandle input,
-  ObjectHandle output,
-  const RenderTargetDesc& outputDesc,
-  float radius,
-  int scale)
+    ObjectHandle input, ObjectHandle output, const RenderTargetDesc& outputDesc, float radius, int scale)
 {
   int w = outputDesc.width / scale;
   int h = outputDesc.height / scale;
@@ -343,9 +345,8 @@ void FullscreenEffect::BlurVert(
   _ctx->SetConstantBuffer(_cbBlur, ShaderType::ComputeShader, 0);
 
   // set constant buffers
-  ObjectHandle srcDst[] =
-  {
-    input, scratch0, scratch0, scratch1, scratch1, output,
+  ObjectHandle srcDst[] = {
+      input, scratch0, scratch0, scratch1, scratch1, output,
   };
 
   if (scale > 1)

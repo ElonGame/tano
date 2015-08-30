@@ -93,7 +93,8 @@ void GraphicsContext::SetRenderTargets(
     // clear render target (and depth stenci)
     if (clearTargets && clearTargets[i])
     {
-      _ctx->ClearRenderTargetView(rts[i], &clearTargets[i]->x);
+      Color clearCol = *clearTargets[i];
+      _ctx->ClearRenderTargetView(rts[i], &clearCol.x);
     }
   }
   CD3D11_VIEWPORT viewport(0.0f, 0.0f, (float)textureDesc.Width, (float)textureDesc.Height);

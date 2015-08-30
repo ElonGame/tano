@@ -152,7 +152,8 @@ struct landscape_settings
 
 struct blob_settings
 {
-    freefly_camera_settings camera;
+  tonemap_reinhard_settings tonemap;
+  freefly_camera_settings camera;
 };
 
 struct credits_settings
