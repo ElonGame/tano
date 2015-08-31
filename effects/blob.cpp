@@ -94,6 +94,8 @@ void Blob::UpdateCameraMatrix(const UpdateState& state)
 
   _cbMesh.vs0.view = view.Transpose();
   _cbMesh.vs0.viewProj = viewProj.Transpose();
+  _cbMesh.ps0.cameraPos = _camera._pos;
+
   _cbMesh.vs1.objWorld = Matrix::Identity();
 }
 

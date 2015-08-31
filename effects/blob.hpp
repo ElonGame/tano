@@ -38,7 +38,7 @@ namespace tano
 
     GpuBundle _meshBundle;
     ConstantBufferBundle<
-      cb::BlobMeshF, void, void,
+      cb::BlobMeshF, cb::BlobMeshF, void,
       cb::BlobMeshO, cb::BlobMeshO, void> _cbMesh;
 
     scene::Scene _scene;
