@@ -7,7 +7,6 @@
 #include "../animation_helpers.hpp"
 #include "../append_buffer.hpp"
 #include "../tano_math.hpp"
-#include "../mesh_utils.hpp"
 #include "../camera.hpp"
 #include "../shaders/out/intro.background_psbackground.cbuffers.hpp"
 #include "../shaders/out/intro.composite_pscomposite.cbuffers.hpp"
@@ -15,14 +14,12 @@
 #include "../shaders/out/intro.particle_gsparticle.cbuffers.hpp"
 #include "../shaders/out/plexus_gslines.cbuffers.hpp"
 #include "../shaders/out/plexus_pslines.cbuffers.hpp"
+#include "../particle_emitters.hpp"
+
+#define WITH_RADIAL_PARTICLES 1
 
 namespace tano
 {
-  namespace scheduler
-  {
-    struct TaskData;
-  }
-
   class Intro : public BaseEffect
   {
   public:
@@ -52,51 +49,20 @@ namespace tano
     void UpdateCameraMatrix(const UpdateState& state);
     void GenRandomPoints(float kernelSize);
 
-    struct ParticleEmitter
-    {
-      void Create(const V3& center, int numParticles);
-      void Destroy();
-      void Update(float dt);
-      void CreateParticle(int idx, float s);
-      void CopyToBuffer(V4* vtx);
+    void UpdateParticleEmitters(float dt);
+    void CopyOutParticleEmitters();
 
-      XMVECTOR* pos = nullptr;
-      XMVECTOR* vel = nullptr;
-
-      int* _deadParticles = nullptr;
-
-      int _numParticles = 0;
-      V3 _center = { 0, 0, 0 };
-    };
-
-    struct EmitterKernelData
-    {
-      ParticleEmitter* emitter;
-      float dt;
-      V4* vtx;
-    };
-
-    struct MemCpyKernelData
-    {
-      void *dst;
-      const void* src;
-      int size;
-    };
-    static void MemCpy(const scheduler::TaskData& data);
-
-    static void UpdateEmitter(const scheduler::TaskData& data);
-    static void CopyOutEmitter(const scheduler::TaskData& data);
-
+#if WITH_RADIAL_PARTICLES
+    SimpleAppendBuffer<RadialParticleEmitter, 24> _particleEmitters;
+#else
     SimpleAppendBuffer<ParticleEmitter, 24> _particleEmitters;
+#endif
 
     GpuBundle _backgroundBundle;
     ConstantBufferBundle<void, cb::IntroBackgroundF> _cbBackground;
 
     GpuBundle _compositeBundle;
     ConstantBufferBundle<void, cb::IntroCompositeF> _cbComposite;
-    ConstantBufferBundle<
-      cb::IntroFractureF, void, void,
-      cb::IntroFractureO, void, void> _cbFracture;
     ConstantBufferBundle<void, void, cb::IntroParticleF> _cbParticle;
 
     ConstantBufferBundle<void, cb::PlexusPS, cb::PlexusGS> _cbPlexus;
@@ -123,15 +89,6 @@ namespace tano
 
     float _particlesStart, _particlesEnd;
 
-    struct FracturePiece
-    {
-      //scene::Mesh* mesh;
-      V3 dir;
-      V3 rot;
-    };
-
-    vector<FracturePiece> _pieces;
-
     SimpleAppendBuffer<V3, 1024> _randomPoints;
     GpuBundle _plexusLineBundle;
 
@@ -139,8 +96,6 @@ namespace tano
     float _lineFade = 1.0f;
     float _curTime = 0;
 
-    scene::Scene _scene;
-    GpuBundle _fractureBundle;
     FreeflyCamera _fixedCamera;
   };
 }

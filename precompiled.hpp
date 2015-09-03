@@ -29,7 +29,7 @@
   #endif
 #endif
 
-#define WITH_IMGUI 0
+#define WITH_IMGUI 1
 
 #define WITH_CONFIG_DLG 0
 #define WITH_UNPACKED_RESOUCES 1
@@ -37,8 +37,6 @@
 #define WITH_MUSIC 1
 
 #define WITH_SCHEDULER_STATS 0
-
-#define WITH_FILE_WATCH 0
 
 #ifdef _PUBLIC
   #define WITH_UNPACKED_RESOUCES 0

@@ -1,5 +1,5 @@
 {
-  soundtrack: 'AuX - Emotions (Original Mix).mp3';
+  soundtrack: 'music.ogg';
   silent: true;
   
   effects: [
@@ -9,20 +9,14 @@
       start_time: 0;
       end_time: 22500;
       settings: 'config/intro.gb';
-    },
+     force: true;
+     },
     {
       name: 'landscape';
       factory: 'landscape';
       start_time: 22500;
       end_time: 1300000;
       settings: 'config/landscape.gb';
-    },
-    {
-      name: 'raymarcher';
-      factory: 'raymarcher';
-      start_time: 1300000;
-      end_time: 1300000;
-      settings: 'config/raymarcher.gb';
     },
     {
       name: 'plexus';
@@ -65,7 +59,13 @@
       start_time: 1300000;
       end_time: 1300000;
       settings: 'config/blob.gb';
-      force: true;
+    },
+    {
+      name: 'raymarcher';
+      factory: 'raymarcher';
+      start_time: 1300000;
+      end_time: 1300000;
+      settings: 'config/raymarcher.gb';
     },
     {
       name: 'credits';

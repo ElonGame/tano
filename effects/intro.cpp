@@ -32,6 +32,7 @@ namespace
   bool extended = false;
 }
 
+
 //------------------------------------------------------------------------------
 template <typename T>
 void BlurLine(const T* src, T* dst, int size, float r)
@@ -127,84 +128,6 @@ void Intro::GenRandomPoints(float kernelSize)
 }
 
 //------------------------------------------------------------------------------
-void Intro::ParticleEmitter::Create(const V3& center, int numParticles)
-{
-  _center = center;
-  _numParticles = numParticles;
-  pos = new XMVECTOR[_numParticles];
-  vel = new XMVECTOR[_numParticles];
-  _deadParticles = new int[_numParticles];
-
-  float s = 100;
-  for (int i = 0; i < _numParticles; ++i)
-  {
-    CreateParticle(i, s);
-  }
-
-  for (int i = 0; i < 1000; ++i)
-  {
-    Update(0.01f);
-  }
-}
-
-//------------------------------------------------------------------------------
-void Intro::ParticleEmitter::CreateParticle(int idx, float s)
-{
-  // lifetime and lifetime decay is stored in the w-component
-  XMFLOAT4 p(_center.x + randf(-s, s), _center.y + randf(-s, s), _center.z + randf(1500.f, 2000.f), 0.f);
-
-  XMFLOAT4 v(randf(-s, s), randf(-s, s), -randf(10.f, 200.f), 0);
-
-  pos[idx] = XMLoadFloat4(&p);
-  vel[idx] = XMLoadFloat4(&v);
-}
-
-//------------------------------------------------------------------------------
-void Intro::ParticleEmitter::Destroy()
-{
-  SAFE_ADELETE(pos);
-  SAFE_ADELETE(vel);
-  SAFE_ADELETE(_deadParticles);
-}
-
-//------------------------------------------------------------------------------
-void Intro::ParticleEmitter::Update(float dt)
-{
-  int numDead = 0;
-  int* dead = _deadParticles;
-
-  XMVECTOR zClip = XMVectorReplicate(-1500);
-
-  for (int i = 0, e = _numParticles; i < e; ++i)
-  {
-    XMVECTOR scaledVel = XMVectorScale(vel[i], dt);
-    pos[i] = XMVectorAdd(pos[i], scaledVel);
-
-    XMVECTOR res = XMVectorLess(pos[i], zClip);
-    u32 rr[4];
-    // rr[2] is 0xffffffff if pos[i] < zClip
-    XMStoreInt4(rr, res);
-    if (rr[2])
-    {
-      *dead++ = i;
-      numDead++;
-    }
-  }
-
-  float s = 100;
-  for (int i = 0; i < numDead; ++i)
-  {
-    CreateParticle(_deadParticles[i], s);
-  }
-}
-
-//------------------------------------------------------------------------------
-void Intro::ParticleEmitter::CopyToBuffer(V4* vtx)
-{
-  memcpy(vtx, pos, _numParticles * sizeof(V4));
-}
-
-//------------------------------------------------------------------------------
 Intro::Intro(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
 }
@@ -234,7 +157,6 @@ bool Intro::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  // Background state setup
   // clang-format off
   INIT(_backgroundBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
@@ -246,26 +168,31 @@ bool Intro::Init()
     .PixelShader("shaders/out/intro.particle", "PsParticle")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
-    .DynamicVb(_settings.num_particles, sizeof(V4))
+    .DynamicVb(24 * _settings.num_particles, sizeof(V4))
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescPreMultipliedAlpha)
     .RasterizerDesc(rasterizeDescCullNone)));
+
+  INIT(_compositeBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/intro.composite", "PsComposite")));
   // clang-format on
 
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
 
   // Create default emitter
+#if WITH_RADIAL_PARTICLES
+  for (int i = 0; i < 10; ++i)
+  {
+    _particleEmitters.Append(RadialParticleEmitter()).Create(V3(0, 0, 0), 10.f * i, _settings.num_particles);
+  }
+#else
   for (int i = 0; i < 10; ++i)
   {
     _particleEmitters.Append(ParticleEmitter()).Create(V3(0, 0, 0), _settings.num_particles);
   }
+#endif
 
-  // Composite state setup
-  // clang-format off
-  INIT(_compositeBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/intro.composite", "PsComposite")));
-  // clang-format on
 
   GenRandomPoints(_settings.deform.blur_kernel);
 
@@ -310,7 +237,6 @@ bool Intro::Init()
   // Generic setup
   INIT(_cbBackground.Create());
   INIT(_cbComposite.Create());
-  INIT(_cbFracture.Create());
   INIT(_cbParticle.Create());
   _cbBackground.ps0.inner = ColorToVector4(_settings.inner_color);
   _cbBackground.ps0.outer = ColorToVector4(_settings.outer_color);
@@ -322,35 +248,6 @@ bool Intro::Init()
   Vector4 dim((float)w, (float)h, 0, 0);
   _cbPlexus.gs0.dim = dim;
   _cbPlexus.gs0.world = Matrix::Identity();
-
-  MeshLoader meshLoader;
-  INIT(meshLoader.Load("gfx/shatter_plane1.boba"));
-  CreateScene(meshLoader,
-      SceneOptions().TransformToWorldSpace().SetUserDataSize(SceneOptions::Mesh, sizeof(FracturePiece)),
-      &_scene);
-
-  for (scene::Mesh* mesh : _scene.meshes)
-  {
-    FracturePiece* p = (FracturePiece*)mesh->userData;
-    p->dir = PointOnHemisphere(V3(0, 0, -1));
-    p->rot = RandomVector();
-  }
-
-  {
-    vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
-        CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32_FLOAT),
-        CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT),
-        CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
-    };
-
-    // clang-format off
-    INIT(_fractureBundle.Create(BundleOptions()
-      .RasterizerDesc(rasterizeDescCullNone)
-      .VertexShader("shaders/out/intro.fracture", "VsFracture")
-      .InputElements(inputs)
-      .PixelShader("shaders/out/intro.fracture", "PsFracture")));
-    // clang-format on
-  }
 
   END_INIT_SEQUENCE();
 }
@@ -384,30 +281,6 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
   view = _fixedCamera._view;
   proj = _fixedCamera._proj;
   viewProj = view * proj;
-  _cbFracture.vs0.viewProj = viewProj.Transpose();
-}
-
-//------------------------------------------------------------------------------
-void Intro::MemCpy(const scheduler::TaskData& data)
-{
-  MemCpyKernelData* memcpyData = (MemCpyKernelData*)data.kernelData.data;
-  memcpy(memcpyData->dst, memcpyData->src, memcpyData->size);
-}
-
-//------------------------------------------------------------------------------
-void Intro::UpdateEmitter(const TaskData& data)
-{
-  EmitterKernelData* emitterData = (EmitterKernelData*)data.kernelData.data;
-  ParticleEmitter* emitter = emitterData->emitter;
-  emitter->Update(emitterData->dt);
-}
-
-//------------------------------------------------------------------------------
-void Intro::CopyOutEmitter(const scheduler::TaskData& data)
-{
-  EmitterKernelData* emitterData = (EmitterKernelData*)data.kernelData.data;
-  ParticleEmitter* emitter = emitterData->emitter;
-  emitter->CopyToBuffer(emitterData->vtx);
 }
 
 //------------------------------------------------------------------------------
@@ -415,6 +288,8 @@ bool Intro::Update(const UpdateState& state)
 {
   static AvgStopWatch stopWatch;
   stopWatch.Start();
+
+  UpdateParticleEmitters(state.delta.TotalSecondsAsFloat());
 
   _curTime = state.localTime.TotalMicroseconds() / (float)1e6;
 
@@ -425,7 +300,6 @@ bool Intro::Update(const UpdateState& state)
     if (Inside(ms, ss, ee))
     {
       float dd = (ms - ss) / (ee - ss);
-      ;
       return invert ? 1 - dd : dd;
     }
 
@@ -436,12 +310,12 @@ bool Intro::Update(const UpdateState& state)
 
   UpdateCameraMatrix(state);
 
-  if (g_KeyUpTrigger.IsTriggered('1'))
-  {
-    float s = 500;
-    V3 center(randf(-s, s), randf(-s, s), 0);
-    _particleEmitters.Append(ParticleEmitter()).Create(center, _settings.num_particles);
-  }
+  //if (g_KeyUpTrigger.IsTriggered('1'))
+  //{
+  //  float s = 500;
+  //  V3 center(randf(-s, s), randf(-s, s), 0);
+  //  _particleEmitters.Append(ParticleEmitter()).Create(center, _settings.num_particles);
+  //}
 
   float ms = state.localTime.TotalMicroseconds() / (float)1e6;
 
@@ -507,27 +381,7 @@ bool Intro::Update(const UpdateState& state)
   _cbComposite.ps0.time.x = ms;
   _cbComposite.ps0.tonemap = Vector4(1, 1, 0, 0);
 
-  rmt_ScopedCPUSample(Particles_Update);
-
-  ObjectHandle vb = _particleBundle.objects._vb;
-  V4* vtx = _ctx->MapWriteDiscard<V4>(_particleBundle.objects._vb);
-
-  SimpleAppendBuffer<TaskId, 32> tasks;
-
-  for (int i = 0; i < _particleEmitters.Size(); ++i)
-  {
-    EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-    *data = EmitterKernelData{&_particleEmitters[i], 0, vtx + i * _settings.num_particles};
-    KernelData kd;
-    kd.data = data;
-    kd.size = sizeof(EmitterKernelData);
-    tasks.Append(SCHEDULER.AddTask(kd, CopyOutEmitter));
-  }
-
-  for (const TaskId& taskId : tasks)
-    SCHEDULER.Wait(taskId);
-
-  _ctx->Unmap(vb);
+  CopyOutParticleEmitters();
 
   double avg = stopWatch.Stop();
 #if WITH_IMGUI
@@ -540,29 +394,85 @@ bool Intro::Update(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-bool Intro::FixedUpdate(const FixedUpdateState& state)
+void Intro::UpdateParticleEmitters(float dt)
 {
-  float ms = state.localTime.TotalMicroseconds() / (float)1e6;
-
   rmt_ScopedCPUSample(Particles_Update);
-  float dt = state.delta;
+
+  SimpleAppendBuffer<TaskId, 32> tasks;
+
+#if WITH_RADIAL_PARTICLES
+  typedef RadialParticleEmitter::EmitterKernelData EmitterKernelData;
+#else
+  typedef ParticleEmitter::EmitterKernelData EmitterKernelData;
+#endif
+
+  for (int i = 0; i < _particleEmitters.Size(); ++i)
+  {
+    EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
+    *data = EmitterKernelData{ &_particleEmitters[i], dt, nullptr };
+    KernelData kd;
+    kd.data = data;
+    kd.size = sizeof(EmitterKernelData);
+#if WITH_RADIAL_PARTICLES
+    tasks.Append(SCHEDULER.AddTask(kd, RadialParticleEmitter::UpdateEmitter));
+#else
+    tasks.Append(SCHEDULER.AddTask(kd, ParticleEmitter::UpdateEmitter));
+#endif
+
+  }
+
+  for (const TaskId& taskId : tasks)
+    SCHEDULER.Wait(taskId);
+
+}
+
+//------------------------------------------------------------------------------
+void Intro::CopyOutParticleEmitters()
+{
+  rmt_ScopedCPUSample(Particles_CopyOut);
+
+#if WITH_RADIAL_PARTICLES
+  typedef RadialParticleEmitter::EmitterKernelData EmitterKernelData;
+#else
+  typedef ParticleEmitter::EmitterKernelData EmitterKernelData;
+#endif
+
 
   ObjectHandle vb = _particleBundle.objects._vb;
+  V4* vtx = _ctx->MapWriteDiscard<V4>(_particleBundle.objects._vb);
 
   SimpleAppendBuffer<TaskId, 32> tasks;
 
   for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
     EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-    *data = EmitterKernelData{&_particleEmitters[i], dt, nullptr};
+    *data = EmitterKernelData{ &_particleEmitters[i], 0, vtx + i * _settings.num_particles };
     KernelData kd;
     kd.data = data;
-    kd.size = sizeof(EmitterKernelData);
-    tasks.Append(SCHEDULER.AddTask(kd, UpdateEmitter));
+    kd.size = sizeof(ParticleEmitter::EmitterKernelData);
+
+#if WITH_RADIAL_PARTICLES
+    tasks.Append(SCHEDULER.AddTask(kd, RadialParticleEmitter::CopyOutEmitter));
+#else
+    tasks.Append(SCHEDULER.AddTask(kd, ParticleEmitter::CopyOutEmitter));
+#endif
+
   }
 
   for (const TaskId& taskId : tasks)
     SCHEDULER.Wait(taskId);
+
+  _ctx->Unmap(vb);
+
+}
+
+//------------------------------------------------------------------------------
+bool Intro::FixedUpdate(const FixedUpdateState& state)
+{
+  float ms = state.localTime.TotalMicroseconds() / (float)1e6;
+
+  rmt_ScopedCPUSample(Particles_Update);
+  float dt = state.delta;
 
   _fixedCamera.Update(state);
 
@@ -633,60 +543,13 @@ bool Intro::Render()
     ObjectHandle inputs[] = {rt, rtLines, rtBlur};
     fullscreen->Execute(inputs,
         3,
-        rtCompose,
-        rtCompose._desc,
+        GRAPHICS.GetBackBuffer(),
+        GRAPHICS.GetBackBufferDesc(),
         GRAPHICS.GetDepthStencil(),
         _compositeBundle.objects._ps,
         true,
         true,
         &black);
-
-    _ctx->SetShaderResource(rtCompose._rtHandle);
-    _ctx->SetRenderTarget(GRAPHICS.GetBackBuffer(), GRAPHICS.GetDepthStencil(), &black);
-  }
-
-  {
-    // fracture
-    _ctx->SetBundle(_fractureBundle);
-
-    int w, h;
-    GRAPHICS.GetBackBufferSize(&w, &h);
-    float aspect = (float)w / h;
-    Matrix mtxScale = Matrix::CreateScale(aspect, 1, 1);
-
-    float explodeFactor = max(0.f, _curTime - BLACKBOARD.GetFloatVar("intro.explodeTime"));
-    float moveSpeed = BLACKBOARD.GetFloatVar("intro.moveSpeed");
-    float rotSpeed = BLACKBOARD.GetFloatVar("intro.rotSpeed");
-
-    _cbFracture.Set(_ctx, 0);
-
-    for (scene::MeshBuffer* buf : _scene.meshBuffers)
-    {
-      _ctx->SetVertexBuffer(buf->vb);
-      _ctx->SetIndexBuffer(buf->ib);
-
-      for (scene::Mesh* mesh : buf->meshes)
-      {
-        FracturePiece* p = (FracturePiece*)mesh->userData;
-        Matrix mtx = mesh->mtxGlobal;
-
-        Matrix mtxDir = Matrix::CreateTranslation(explodeFactor * moveSpeed * ToVector3(p->dir));
-        Matrix mtxRotX = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.x);
-        Matrix mtxRotY = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.y);
-        Matrix mtxRotZ = Matrix::CreateRotationX(explodeFactor * rotSpeed * p->rot.z);
-
-        _cbFracture.vs1.objWorld =
-            (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ * mesh->mtxLocal * mtxScale * mtxDir)
-                .Transpose();
-        //_cbFracture.vs1.objWorld = (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ * mtxDir *
-        //mesh->mtxLocal ).Transpose();
-        //_cbFracture.vs1.objWorld = (mesh->mtxInvLocal * mtxRotX * mtxRotY * mtxRotZ *
-        //mesh->mtxLocal).Transpose();
-        //_cbFracture.vs1.objWorld = Matrix::Identity();
-        _cbFracture.Set(_ctx, 1);
-        _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
-      }
-    }
   }
 
   return true;

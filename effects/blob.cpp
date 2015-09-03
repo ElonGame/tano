@@ -113,8 +113,8 @@ bool Blob::Render()
   ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
   _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
 
-  ScopedRenderTarget rtOpacity(DXGI_FORMAT_R32G32B32A32_FLOAT);
-  ScopedRenderTarget rtRevealage(DXGI_FORMAT_R32G32B32A32_FLOAT);
+  ScopedRenderTarget rtOpacity(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtRevealage(DXGI_FORMAT_R16_FLOAT);
 
   const Color* clearColors[] = {&Color(0, 0, 0, 0), &Color(1, 1, 1, 1)};
   ObjectHandle targets[] = {rtOpacity, rtRevealage};

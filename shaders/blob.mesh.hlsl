@@ -57,7 +57,7 @@ PSOut PsMesh(VsMeshOut p)
   //float w = clamp(pow(min(1.0, a * 10.0) + 0.01, 3.0) * 1e8 * pow(1.0 - p.depthVS * 0.9, 3.0), 1e-2, 3e3);
   float w = pow(a, 1.0) * clamp(0.3 / (1e-5 + pow(z / 200, 4.0)), 1e-2, 3e3);
 
-  float3 lightPos = float3(0, 100, -500);
+  float3 lightPos = float3(0, 0, -500);
 
   float3 n = normalize(p.normal);
   float3 l = normalize(lightPos - p.posWS);

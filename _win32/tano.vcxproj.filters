@@ -235,6 +235,9 @@
     <ClCompile Include="..\effects\tunnel.cpp">
       <Filter>effects</Filter>
     </ClCompile>
+    <ClCompile Include="..\particle_emitters.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -482,6 +485,9 @@
     </ClInclude>
     <ClInclude Include="..\effects\tunnel.hpp">
       <Filter>effects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\particle_emitters.hpp">
+      <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
