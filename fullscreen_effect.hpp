@@ -60,6 +60,13 @@ namespace tano
         float radius,
         int scale);
 
+    void BlurVertCustom(ObjectHandle inputBuffer,
+        ObjectHandle outputBuffer,
+        const RenderTargetDesc& outputDesc,
+        ObjectHandle shader,
+        float radius,
+        int scale);
+
     void Copy(ObjectHandle inputBuffer,
         ObjectHandle outputBuffer,
         const RenderTargetDesc& outputDesc,

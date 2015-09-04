@@ -103,6 +103,7 @@ struct intro_settings
   plexus_sphere sphere;
   plexus_deform deform;
   tonemap_reinhard_settings tonemap;
+  freefly_camera_settings camera;
 };
 
 struct ray_marcher_settings

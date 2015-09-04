@@ -18,31 +18,32 @@ bool FullscreenEffect::Init()
   INIT(_cbScaleBias.Create());
   INIT(_cbBlur.Create());
 
+  // clang-format off
   INIT(_defaultBundle.Create(BundleOptions()
-                                 .DepthStencilDesc(depthDescDepthDisabled)
-                                 .RasterizerDesc(rasterizeDescCullNone)
-                                 .VertexShader("shaders/out/quad", "VsMain")));
+  .DepthStencilDesc(depthDescDepthDisabled)
+  .RasterizerDesc(rasterizeDescCullNone)
+  .VertexShader("shaders/out/quad", "VsMain")));
 
   INIT(_scaleBiasBundle.Create(BundleOptions()
-                                   .DepthStencilDesc(depthDescDepthDisabled)
-                                   .RasterizerDesc(rasterizeDescCullNone)
-                                   .VertexShader("shaders/out/common", "VsQuad")
-                                   .PixelShader("shaders/out/common.scale", "PsScaleBias")));
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .RasterizerDesc(rasterizeDescCullNone)
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/common.scale", "PsScaleBias")));
 
-  INIT(
-      _scaleBiasSecondaryBundle.Create(BundleOptions()
-                                           .DepthStencilDesc(depthDescDepthDisabled)
-                                           .RasterizerDesc(rasterizeDescCullNone)
-                                           .VertexShader("shaders/out/common", "VsQuad")
-                                           .PixelShader("shaders/out/common.scale", "PsScaleBiasSecondary")));
+  INIT(_scaleBiasSecondaryBundle.Create(BundleOptions()
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .RasterizerDesc(rasterizeDescCullNone)
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/common.scale", "PsScaleBiasSecondary")));
 
   INIT(_copyBundle.Create(BundleOptions()
-                              .VertexShader("shaders/out/common", "VsQuad")
-                              .PixelShader("shaders/out/common", "PsCopy")));
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/common", "PsCopy")));
 
   INIT(_addBundle.Create(BundleOptions()
-                             .VertexShader("shaders/out/common", "VsQuad")
-                             .PixelShader("shaders/out/common", "PsAdd")));
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/common", "PsAdd")));
+  // clang-format on
 
   // blur setup
   INIT_RESOURCE(_csBlurTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BlurTranspose"));
@@ -321,8 +322,12 @@ void FullscreenEffect::BlurHoriz(
 }
 
 //------------------------------------------------------------------------------
-void FullscreenEffect::BlurVert(
-    ObjectHandle input, ObjectHandle output, const RenderTargetDesc& outputDesc, float radius, int scale)
+void FullscreenEffect::BlurVertCustom(ObjectHandle input,
+    ObjectHandle output,
+    const RenderTargetDesc& outputDesc,
+    ObjectHandle shader,
+    float radius,
+    int scale)
 {
   int w = outputDesc.width / scale;
   int h = outputDesc.height / scale;
@@ -361,10 +366,17 @@ void FullscreenEffect::BlurVert(
     _ctx->SetShaderResource(srcDst[i * 2 + 0], ShaderType::ComputeShader);
     _ctx->SetUnorderedAccessView(srcDst[i * 2 + 1], nullptr);
 
-    _ctx->SetComputeShader(_csBlurY);
+    _ctx->SetComputeShader(shader);
     _ctx->Dispatch(w / numThreads + 1, 1, 1);
 
     _ctx->UnsetUnorderedAccessViews(0, 1);
     _ctx->UnsetShaderResources(0, 1, ShaderType::ComputeShader);
   }
+}
+
+//------------------------------------------------------------------------------
+void FullscreenEffect::BlurVert(
+    ObjectHandle input, ObjectHandle output, const RenderTargetDesc& outputDesc, float radius, int scale)
+{
+  BlurVertCustom(input, output, outputDesc, _csBlurY, radius, scale);
 }

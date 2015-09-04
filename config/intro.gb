@@ -3,16 +3,18 @@
   tint: { 0.866667, 0.878431, 1.000000, 0.752941 };
   inner_color: { 0.098039, 0.058824, 0.133333, 1.000000 };
   outer_color: { 0.188235, 0.278431, 0.486275, 1.000000 };
-  num_particles: 5000;
+  num_particles: 500;
   text_min_dist: 500.000000;
   text_max_dist: 2000.000000;
-  text_triangle_prob: 0.000000;
   blur_radius: 15.000000;
-  text_start: 4.000000;
-  text_length: 5.000000;
-  fade_delay: 1.000000;
-  fade_out: 2.000000;
-    sphere: {
+  plexus: {
+    eps: 0.010000;
+    min_dist: 0.100000;
+    max_dist: 200.000000;
+    num_neighbours: 10;
+    num_nearest: 2;
+  };
+  sphere: {
     radius: 600.000000;
     slices: 13;
     stacks: 6;
@@ -23,11 +25,22 @@
     noise_strength: 0.000000;
     perlin_scale: 10.000000;
   };
-  plexus: {
-    eps: 0.010000;
-    min_dist: 0.100000;
-    max_dist: 200.000000;
-    num_neighbours: 10;
-    num_nearest: 2;
+  tonemap: {
+    exposure: 1.000000;
+    min_white: 1.000000;
+  };
+  camera: {
+    camera: {
+      pos: { 0.000000, 138.066406, -487.255432 };
+      dir: { 0.000000, -0.459529, 0.888163 };
+      right: { 1.000000, 0.000000, -0.000000 };
+      up: { 0.000000, 0.888163, 0.459529 };
+      fov: 1.047000;
+      near_plane: 1.000000;
+      far_plane: 2000.000000;
+    };
+    yaw: 0.000000;
+    pitch: 0.477465;
+    roll: 0.000000;
   };
 };

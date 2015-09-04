@@ -69,6 +69,8 @@ namespace tano
 
     string _configName;
     
+    ObjectHandle _csParticleBlur;
+
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
 
@@ -89,6 +91,7 @@ namespace tano
 
     float _particlesStart, _particlesEnd;
 
+    int _numSpawnedParticles = 0;
     SimpleAppendBuffer<V3, 1024> _randomPoints;
     GpuBundle _plexusLineBundle;
 
@@ -96,6 +99,7 @@ namespace tano
     float _lineFade = 1.0f;
     float _curTime = 0;
 
-    FreeflyCamera _fixedCamera;
+    FreeflyCamera _textCamera;
+    FreeflyCamera _camera;
   };
 }

@@ -64,6 +64,13 @@ bool Credits::Init()
 
   _camera.FromProtocol(_settings.camera);
 
+  {
+    // setup text camera
+    float zz = -100;
+    _textCamera._pos.z = zz;
+    _textCamera._fov = atan(100.f / fabsf(zz));
+  }
+
   CD3D11_RASTERIZER_DESC rasterDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
   rasterDesc.CullMode = D3D11_CULL_NONE;
   rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
@@ -104,6 +111,8 @@ bool Credits::Init()
     .PixelShader("shaders/out/credits.gaussian", "PsBlur35")));
 
   // clang-format on
+
+  INIT_RESOURCE(_csBlur, GRAPHICS.LoadComputeShaderFromFile("shaders/out/credits.blur", "BoxBlurY"));
 
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
   INIT_RESOURCE(_creditsTexture, RESOURCE_MANAGER.LoadTexture("gfx/credits.png"));
@@ -604,25 +613,26 @@ bool Credits::FixedUpdate(const FixedUpdateState& state)
 void Credits::UpdateCameraMatrix(const UpdateState& state)
 {
 
-  int w, h;
-  GRAPHICS.GetBackBufferSize(&w, &h);
-  float aspectRatio = (float)w / h;
+  Matrix view, proj, viewProj;
+  {
+    view = _textCamera._view;
+    proj = _textCamera._proj;
+    viewProj = view * proj;
+    _cbPerFrame.world = Matrix::Identity();
+    _cbPerFrame.view = view.Transpose();
+    _cbPerFrame.proj = proj.Transpose();
+    _cbPerFrame.viewProj = viewProj.Transpose();
+    _cbPerFrame.cameraPos = _textCamera._pos;
+  }
 
-  Matrix proj = _camera._proj;
-  Matrix view = _camera._view;
+  {
+    proj = _camera._proj;
+    view = _camera._view;
+    viewProj = view * proj;
+    _cbParticle.gs0.world = Matrix::Identity();
+    _cbParticle.gs0.viewProj = viewProj.Transpose();
+  }
 
-  Matrix viewProj = view * proj;
-
-  _cbPerFrame.world = Matrix::Identity();
-  _cbPerFrame.view = view.Transpose();
-  _cbPerFrame.proj = proj.Transpose();
-  _cbPerFrame.viewProj = viewProj.Transpose();
-  _cbPerFrame.cameraPos = _camera._pos;
-//  _cbPerFrame.cameraLookAt = target;
-//  _cbPerFrame.cameraUp = up;
-
-  _cbParticle.gs0.world = Matrix::Identity();
-  _cbParticle.gs0.viewProj = viewProj.Transpose();
 }
 
 //------------------------------------------------------------------------------
@@ -655,7 +665,7 @@ bool Credits::Render()
   {
     // blur
     _ctx->UnsetRenderTargets(0, 1);
-    fullscreen->BlurVert(rtColor, rtBlur, rtBlur._desc, _settings.blur_amount, 1);
+    fullscreen->BlurVertCustom(rtColor, rtBlur, rtBlur._desc, _csBlur, _settings.blur_amount, 1);
   }
 
   {

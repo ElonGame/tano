@@ -17,8 +17,8 @@ namespace tano
     void CreateParticle(int idx, float s);
     void CopyToBuffer(V4* vtx);
 
-    XMVECTOR* pos = nullptr;
-    XMVECTOR* vel = nullptr;
+    XMVECTOR* _pos = nullptr;
+    XMVECTOR* _vel = nullptr;
 
     int* _deadParticles = nullptr;
 
@@ -45,15 +45,15 @@ namespace tano
     void CreateParticle(int idx, float s);
     void CopyToBuffer(V4* vtx);
 
-    XMVECTOR* pos = nullptr;
-    //XMVECTOR* vel = nullptr;
-    float* angle = nullptr;
-    float* angleVel = nullptr;
+    XMVECTOR* _pos = nullptr;
+    float* _angle = nullptr;
+    float* _angleVel = nullptr;
 
     int* _deadParticles = nullptr;
 
+    int _spawnedParticles = 0;
     int _numParticles = 0;
-    float radius = 10;
+    float _radius = 10;
     V3 _center = { 0, 0, 0 };
 
     struct EmitterKernelData

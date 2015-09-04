@@ -117,7 +117,7 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<PsLinesIn> outStream
 }
 
 
-static float4 WireColor = float4(0.5, 0.7, 0.7, 1);
+static float4 WireColor = float4(0.7, 0.7, 0.3, 1);
 static float LineWidth = 2.5;
 
 // entry-point: ps
@@ -142,17 +142,9 @@ float4 PsLines(PsLinesIn p) : SV_Target
   float3 params = lineParams.xyz;
   float fade = lineParams.w;
 
-//  float t = smoothstep(0, 5, dist);
-//  float alpha = 1 - pow(t, 0.25);
-//  alpha *= 1-smoothstep(0, 250, distAB);
-
   float t = smoothstep(0, params.x, dist);
   float alpha = 1 - pow(t, params.y);
   alpha *= 1-smoothstep(0, params.z, distAB);
-
-  // Cull fragments too far from the edge.
-  //if (dist > 0.5*LineWidth+1)
-    //discard;
 
   return WireColor * alpha * fade;
 }

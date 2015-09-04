@@ -5,22 +5,22 @@ namespace intro
     float rotSpeed = 3.0;
 
     vec3 lineParams = { 5.0, 0.25, 150 };
-    vec3 text0pos = { -600, 400, 0 };
-    float text0Scale = 0.5;
+    vec3 text0pos = { -600, 600, 0 };
+    float text0Scale = 0.6;
     float text0FadeInStart = 2.7;
     float text0FadeInEnd = 5;
     float text0FadeOutStart = 7;
     float text0FadeOutEnd = 8.3;
 
     vec3 text1pos = { 0, 50, 0 };
-    float text1Scale = 1;
+    float text1Scale = 1.25;
     float text1FadeInStart = 8.3;
     float text1FadeInEnd = 11;
     float text1FadeOutStart = 14;
     float text1FadeOutEnd = 16;
 
     vec3 text2pos = { 600, -500, 0 };
-    float text2Scale = 0.5;
+    float text2Scale = 0.6;
     float text2FadeInStart = 16.6;
     float text2FadeInEnd = 18.9;
     float text2FadeOutStart = 23;
@@ -104,4 +104,10 @@ namespace credits
     float angleVar = 2;
 
     float waveWidth = 200;
+}
+
+namespace radial
+{
+    float radius_mult = 0.1;
+    float radius_scale = 0.01;
 }

@@ -62,7 +62,7 @@ void GsParticle(point GsParticleIn input[1], inout TriangleStream<VsParticleOut>
   float3 up = float3(0,1,0);
 
   VsParticleOut p;
-  float s = 10;
+  float s = 5;
   float3 p0 = float3(pos - s * right - s * up);
   float3 p1 = float3(pos - s * right + s * up);
   float3 p2 = float3(pos + s * right - s * up);
@@ -92,5 +92,7 @@ float4 PsParticle(VsParticleOut p) : SV_Target
 {
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
+  // return float4(col.rgb, col.g);
+  return float4(col.rgb, 0);
   return (1 - p.uv.z) * float4(col.rgb, col.g);
 }

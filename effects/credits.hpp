@@ -136,6 +136,9 @@ namespace tano
     CreditsSettings _settings;
     FreeflyCamera _camera;
 
+    FreeflyCamera _textCamera;
+    ObjectHandle _csBlur;
+
     RollingAverage<double> _avgUpdate;
   };
 }

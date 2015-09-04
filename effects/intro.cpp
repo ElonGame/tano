@@ -32,6 +32,7 @@ namespace
   bool extended = false;
 }
 
+static int MAX_NUM_PARTICLES = 128 * 1024;
 
 //------------------------------------------------------------------------------
 template <typename T>
@@ -157,6 +158,8 @@ bool Intro::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
+  _camera.FromProtocol(_settings.camera);
+
   // clang-format off
   INIT(_backgroundBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
@@ -168,7 +171,7 @@ bool Intro::Init()
     .PixelShader("shaders/out/intro.particle", "PsParticle")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
-    .DynamicVb(24 * _settings.num_particles, sizeof(V4))
+    .DynamicVb(MAX_NUM_PARTICLES, sizeof(V4))
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescPreMultipliedAlpha)
     .RasterizerDesc(rasterizeDescCullNone)));
@@ -179,12 +182,13 @@ bool Intro::Init()
   // clang-format on
 
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
+  INIT_RESOURCE(_csParticleBlur, GRAPHICS.LoadComputeShaderFromFile("shaders/out/intro.blur", "BoxBlurY"));
 
   // Create default emitter
 #if WITH_RADIAL_PARTICLES
-  for (int i = 0; i < 10; ++i)
+  for (int i = 0; i < 20; ++i)
   {
-    _particleEmitters.Append(RadialParticleEmitter()).Create(V3(0, 0, 0), 10.f * i, _settings.num_particles);
+    _particleEmitters.Append(RadialParticleEmitter()).Create(V3(0, 0, 0), 25.f * (i+1), _settings.num_particles);
   }
 #else
   for (int i = 0; i < 10; ++i)
@@ -208,7 +212,7 @@ bool Intro::Init()
     TextData& t = _textData[i];
     _textWriter.GenerateTris(text[i], TextWriter::TextOutline, &t.outline);
     _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap);
-    _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &t.verts, &t.indices);
+    _textWriter.GenerateIndexedTris(text[i], TextWriter::TextCap1, &t.verts, &t.indices);
     // TODO(magnus): Can I just swap here?
     t.transformedVerts.resize(t.verts.size());
     copy(t.verts.begin(), t.verts.end(), t.transformedVerts.begin());
@@ -255,32 +259,38 @@ bool Intro::Init()
 //------------------------------------------------------------------------------
 void Intro::UpdateCameraMatrix(const UpdateState& state)
 {
-  float x = distance * sin(angle);
-  float z = -distance * cos(angle);
-  Vector3 pos = Vector3(x, height, z);
-  Vector3 target = Vector3(0, 0, 0);
-  Vector3 dir = target - pos;
-  dir.Normalize();
-
-  int w, h;
-  GRAPHICS.GetBackBufferSize(&w, &h);
-  float aspect = (float)w / h;
-  Matrix view = Matrix::CreateLookAt(pos, Vector3(0, 0, 0), Vector3(0, 1, 0));
-  Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), aspect, 0.1f, 3000.f);
+  Matrix view = _camera._view;
+  Matrix proj = _camera._proj;
   Matrix viewProj = view * proj;
 
   _cbParticle.gs0.world = Matrix::Identity();
   _cbParticle.gs0.viewProj = viewProj.Transpose();
 
-  _cbPlexus.gs0.viewProj = viewProj.Transpose();
-  _cbPlexus.gs0.cameraPos = pos;
 
-  float zz = -100;
-  _fixedCamera._pos.z = zz;
-  _fixedCamera._fov = atan(100.f / fabsf(zz));
-  view = _fixedCamera._view;
-  proj = _fixedCamera._proj;
-  viewProj = view * proj;
+  {
+    float x = distance * sin(angle);
+    float z = -distance * cos(angle);
+    Vector3 pos = Vector3(x, height, z);
+    Vector3 target = Vector3(0, 0, 0);
+    Vector3 dir = target - pos;
+    dir.Normalize();
+
+    int w, h;
+    GRAPHICS.GetBackBufferSize(&w, &h);
+    float aspect = (float)w / h;
+    Matrix view = Matrix::CreateLookAt(pos, Vector3(0, 0, 0), Vector3(0, 1, 0));
+    Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), aspect, 0.1f, 3000.f);
+    Matrix viewProj = view * proj;
+
+    _cbPlexus.gs0.viewProj = viewProj.Transpose();
+    _cbPlexus.gs0.cameraPos = pos;
+  }
+  //view = _textCamera._view;
+  //proj = _textCamera._proj;
+  //viewProj = view * proj;
+  //_cbPlexus.gs0.viewProj = viewProj.Transpose();
+  //_cbPlexus.gs0.cameraPos = _textCamera._pos;
+
 }
 
 //------------------------------------------------------------------------------
@@ -443,10 +453,11 @@ void Intro::CopyOutParticleEmitters()
 
   SimpleAppendBuffer<TaskId, 32> tasks;
 
+  _numSpawnedParticles = 0;
   for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
     EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-    *data = EmitterKernelData{ &_particleEmitters[i], 0, vtx + i * _settings.num_particles };
+    *data = EmitterKernelData{ &_particleEmitters[i], 0, vtx + i * _particleEmitters[i]._spawnedParticles };
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(ParticleEmitter::EmitterKernelData);
@@ -457,6 +468,7 @@ void Intro::CopyOutParticleEmitters()
     tasks.Append(SCHEDULER.AddTask(kd, ParticleEmitter::CopyOutEmitter));
 #endif
 
+    _numSpawnedParticles += _particleEmitters[i]._spawnedParticles;
   }
 
   for (const TaskId& taskId : tasks)
@@ -474,7 +486,12 @@ bool Intro::FixedUpdate(const FixedUpdateState& state)
   rmt_ScopedCPUSample(Particles_Update);
   float dt = state.delta;
 
-  _fixedCamera.Update(state);
+  _camera.Update(state);
+
+  float zz = -1000;
+  _textCamera._pos.z = zz;
+  _textCamera._fov = atan(100.f / fabsf(zz));
+  _textCamera.Update(state);
 
   return true;
 }
@@ -486,11 +503,11 @@ bool Intro::Render()
 
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
 
-  ScopedRenderTarget rt(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
   {
     // Render the background
     _cbBackground.Set(_ctx, 0);
-    _ctx->SetRenderTarget(rt._rtHandle, GRAPHICS.GetDepthStencil(), &black);
+    _ctx->SetRenderTarget(rtColor._rtHandle, GRAPHICS.GetDepthStencil(), &black);
     _ctx->SetBundle(_backgroundBundle);
     _ctx->Draw(3, 0);
   }
@@ -500,8 +517,16 @@ bool Intro::Render()
     _cbParticle.Set(_ctx, 0);
     _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
     _ctx->SetShaderResource(_particleTexture);
-    _ctx->Draw(_settings.num_particles * _particleEmitters.Size(), 0);
+    _ctx->Draw(_numSpawnedParticles, 0);
   }
+
+  ScopedRenderTarget rtBlur2(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
+  {
+    // blur
+    _ctx->UnsetRenderTargets(0, 1);
+    fullscreen->BlurVertCustom(rtColor, rtBlur2, rtBlur2._desc, _csParticleBlur, 20, 1);
+  }
+
 
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
   if (_drawText && _curText)
@@ -540,9 +565,9 @@ bool Intro::Render()
     // composite
     _cbComposite.ps0.tonemap = Vector4(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
     _cbComposite.Set(_ctx, 0);
-    ObjectHandle inputs[] = {rt, rtLines, rtBlur};
+    ObjectHandle inputs[] = {rtColor, rtLines, rtBlur, rtBlur2};
     fullscreen->Execute(inputs,
-        3,
+        4,
         GRAPHICS.GetBackBuffer(),
         GRAPHICS.GetBackBufferDesc(),
         GRAPHICS.GetDepthStencil(),
@@ -589,6 +614,7 @@ void Intro::RenderParameterSet()
 #if WITH_IMGUI
 void Intro::SaveParameterSet(bool inc)
 {
+  _camera.ToProtocol(&_settings.camera);
   SaveSettings(_settings, inc);
 }
 #endif
