@@ -137,7 +137,7 @@ void RadialParticleEmitter::Create(const V3& center, float radius, int numPartic
 
   for (int i = 0; i < 1000; ++i)
   {
-    Update(0.01f);
+    Update(0.05f);
   }
 }
 
@@ -154,7 +154,7 @@ void RadialParticleEmitter::CreateParticle(int idx, float s)
 
   _pos[idx] = XMLoadFloat4(&newPos);
   _angle[idx] = newAngle;
-  _angleVel[idx] = newAngle;
+  _angleVel[idx] = newAngle / 4;
 }
 
 //------------------------------------------------------------------------------

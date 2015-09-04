@@ -33,6 +33,7 @@ namespace tano
 #define INJECT_ERROR(str) { InitSequence::AddFailure(__FILE__, __LINE__, str, false); }
 #define INJECT_ERROR_FATAL(str) { InitSequence::AddFailure(__FILE__, __LINE__, str, true); }
 #define INIT_RESOURCE(h, x) { h = (x); if (!(h).IsValid()) { InitSequence::AddFailure(__FILE__, __LINE__, #x, false); } }
+#define INIT_RESOURCE_FATAL(h, x) { h = (x); if (!(h).IsValid()) { InitSequence::AddFailure(__FILE__, __LINE__, #x, true); } }
 #define INIT_FATAL_LOG(x, ...) if (!(x)) { InitSequence::AddFailure(__FILE__, __LINE__, #x, true); LOG_ERROR_NAKED(__VA_ARGS__); return InitSequence::Exit(); }
 #define VERIFY_FATAL INIT_FATAL_LOG
 #define INIT_FATAL(x) if (!(x)) { InitSequence::AddFailure(__FILE__, __LINE__, #x, true); return InitSequence::Exit(); }

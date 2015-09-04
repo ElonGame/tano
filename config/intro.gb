@@ -1,5 +1,5 @@
 {
-  texture: 'gfx/particle1_pre.png';
+  texture: 'gfx/particle_orange.png';
   tint: { 0.866667, 0.878431, 1.000000, 0.752941 };
   inner_color: { 0.098039, 0.058824, 0.133333, 1.000000 };
   outer_color: { 0.188235, 0.278431, 0.486275, 1.000000 };

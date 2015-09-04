@@ -169,7 +169,6 @@ __time64_t ResourceManager::ModifiedDate(const char* filename)
 //------------------------------------------------------------------------------
 string ResourceManager::ResolveFilename(const char* filename, bool fullPath)
 {
-
   if (bristol::FileExists(filename))
   {
     if (fullPath)

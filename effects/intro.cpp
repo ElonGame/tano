@@ -181,8 +181,8 @@ bool Intro::Init()
     .PixelShader("shaders/out/intro.composite", "PsComposite")));
   // clang-format on
 
-  INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
-  INIT_RESOURCE(_csParticleBlur, GRAPHICS.LoadComputeShaderFromFile("shaders/out/intro.blur", "BoxBlurY"));
+  INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
+  INIT_RESOURCE_FATAL(_csParticleBlur, GRAPHICS.LoadComputeShaderFromFile("shaders/out/intro.blur", "BoxBlurY"));
 
   // Create default emitter
 #if WITH_RADIAL_PARTICLES
