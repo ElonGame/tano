@@ -292,7 +292,7 @@ bool Intro::Init()
   GenRandomPoints(_settings.deform.blur_kernel);
 
   // Text setup
-  INIT(_textWriter.Init("gfx/text1.boba"));
+  INIT(_textWriter.Init("gfx/text2.boba"));
   const char* text[] = {
       "neurotica efs", "radio silence", "solskogen",
   };
@@ -303,7 +303,7 @@ bool Intro::Init()
     TextData& t = _textData[i];
     _textWriter.GenerateTris(text[i], TextWriter::TextOutline, &t.outline);
     _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap);
-    _textWriter.GenerateIndexedTris(text[i], TextWriter::TextCap1, &t.verts, &t.indices);
+    _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &t.verts, &t.indices, &t.edges);
     t.transformedVerts = t.verts;
 
     int num = (u32)_textData[i].verts.size();
@@ -446,25 +446,25 @@ bool Intro::Update(const UpdateState& state)
 
   if (_curText)
   {
-    for (size_t i = 0; i < _curText->verts.size(); ++i)
-    {
-      float tt = 1 - SmoothStep(0, 1, scale);
-      _curText->transformedVerts[i] = _curText->verts[i] + tt * 1500 * V3(0, 0, -1);
-    }
+    //for (size_t i = 0; i < _curText->verts.size(); ++i)
+    //{
+    //  float tt = 1 - SmoothStep(0, 1, scale);
+    //  _curText->transformedVerts[i] = ptScale * _curText->verts[i] + ptOfs + tt * 1500 * V3(0, 0, -1);
+    //}
 
-    vector<u32> tris;
-    CreateTriangles(_curText->transformedVerts.data(), (int)_curText->transformedVerts.size(), &tris);
+    //vector<u32> tris;
+    //CreateTriangles(_curText->transformedVerts.data(), (int)_curText->transformedVerts.size(), &tris);
 
-    //scale = (1 - scale) * BLACKBOARD.GetFloatVar("maxStrength");
+    scale = (1 - scale) * BLACKBOARD.GetFloatVar("maxStrength");
 
-    //DistortVerts(_curText->transformedVerts.data(),
-    //    _curText->verts.data(),
-    //    (int)_curText->verts.size(),
-    //    _randomPoints.Data(),
-    //    _settings.deform.perlin_scale,
-    //    scale,
-    //    ptOfs,
-    //    ptScale);
+    DistortVerts(_curText->transformedVerts.data(),
+        _curText->verts.data(),
+        (int)_curText->verts.size(),
+        _randomPoints.Data(),
+        _settings.deform.perlin_scale,
+        scale,
+        ptOfs,
+        ptScale);
   }
 
   BLACKBOARD.ClearNamespace();
@@ -604,12 +604,28 @@ bool Intro::Render()
 
     ObjectHandle vb = _plexusLineBundle.objects._vb;
     V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
-    int numLines = CalcPlexusGrouping(vtx,
+
+    int numLines = 0;
+    if (_curText->edges.size())
+    {
+      int i = 0;
+      for (u32 idx : _curText->edges)
+      {
+        *vtx = _curText->transformedVerts[idx];
+        vtx++;
+      }
+      numLines = _curText->edges.size() / 2;
+    }
+    else
+    {
+      numLines = CalcPlexusGrouping(vtx,
         _curText->transformedVerts.data(),
         (int)_curText->transformedVerts.size(),
         _curText->neighbours,
         (int)_curText->transformedVerts.size(),
         _settings.plexus);
+    }
+
     _ctx->Unmap(vb);
     _ctx->SetBundle(_plexusLineBundle);
     _ctx->Draw(numLines, 0);
@@ -647,12 +663,15 @@ bool Intro::Render()
 #if WITH_IMGUI
 void Intro::RenderParameterSet()
 {
-  ImGui::Checkbox("extended", &extended);
+  ImGui::Checkbox("plexus", &extended);
   if (extended)
   {
-    // if (ImGui::ColorEdit4("Tint", &_settings.tint.x)) _cbPerFrame.tint = _settings.tint;
-    // if (ImGui::ColorEdit4("Inner", &_settings.inner_color.x)) _cbPerFrame.inner = _settings.inner_color;
-    // if (ImGui::ColorEdit4("Outer", &_settings.outer_color.x)) _cbPerFrame.outer = _settings.outer_color;
+    ImGui::SliderFloat("eps", &_settings.plexus.eps, 0.1f, 25.0f);
+    ImGui::SliderFloat("min-dist", &_settings.plexus.min_dist, 0.1f, 25.0f);
+    ImGui::SliderFloat("max-dist", &_settings.plexus.max_dist, 10.0, 1500.0f);
+    ImGui::SliderInt("num-nearest", &_settings.plexus.num_nearest, 1, 20);
+    ImGui::SliderInt("num-neighbours", &_settings.plexus.num_neighbours, 1, 100);
+
     ImGui::Separator();
     ImGui::InputInt("# particles", &_settings.num_particles, 25, 100);
 

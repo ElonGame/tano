@@ -9,6 +9,7 @@ _win32/x64/Public/*
 *.aps
 *.user
 *.mp3
+*.ogg
 *.psess
 *.vsp
 *.ipch

@@ -4,9 +4,9 @@ namespace intro
     float moveSpeed = 15.0;
     float rotSpeed = 3.0;
 
-    vec3 lineParams = { 5.0, 0.25, 150 };
+    vec3 lineParams = { 5.0, 1.25, 1500 };
 
-    vec3 text0pos = { 0, 50, 0 };
+    vec3 text0pos = { 0, -200, 0 };
     float text0Scale = 1.25;
     float text0FadeInStart = 0;
     float text0FadeInEnd = 4;

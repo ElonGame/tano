@@ -1,11 +1,13 @@
 #pragma once
 
-#pragma pack(push, 1)
 namespace protocol
 {
+#pragma pack(push, 1)
   struct SceneBlob
   {
     char id[4];
+    u32 version;
+    u32 flags;
     u32 fixupOffset;
     u32 nullObjectDataStart;
     u32 meshDataStart;
@@ -47,6 +49,9 @@ namespace protocol
     float* normals;
     float* uv;
     u32* indices;
+    
+    u32 numSelectedEdges;
+    u32* selectedEdges;
 
     // bounding sphere
     float sx, sy, sz, r;
@@ -74,7 +79,7 @@ namespace protocol
   {
     struct MaterialComponent
     {
-      float r, g, b;
+      float r, g, b, a;
       const char* texture;
       float brightness;
     };
@@ -87,8 +92,9 @@ namespace protocol
     MaterialComponent* luminance;
     MaterialComponent* reflection;
   };
-}
 #pragma pack(pop)
+
+}
 
 namespace tano
 {

@@ -78,6 +78,7 @@ namespace tano
       vector<V3> verts;
       vector<V3> transformedVerts;
       vector<int> indices;
+      vector<u32> edges;
       int* neighbours;
     };
     TextData _textData[3];

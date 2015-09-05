@@ -40,15 +40,19 @@ void TextWriter::Letter::CalcBounds()
 {
   u32 numIndices = cap1->numIndices;
 
-  float minX = FLT_MAX; float maxX = -FLT_MAX;
-  float minY = FLT_MAX; float maxY = -FLT_MAX;
+  float minX = FLT_MAX;
+  float maxX = -FLT_MAX;
+  float minY = FLT_MAX;
+  float maxY = -FLT_MAX;
   for (u32 j = 0; j < numIndices; ++j)
   {
     float x = cap1->verts[cap1->indices[j] * 3 + 0];
     float y = cap1->verts[cap1->indices[j] * 3 + 1];
     float z = cap1->verts[cap1->indices[j] * 3 + 2];
-    minX = min(minX, x); maxX = max(maxX, x);
-    minY = min(minY, y); maxY = max(maxY, y);
+    minX = min(minX, x);
+    maxX = max(maxX, x);
+    minY = min(minY, y);
+    maxY = max(maxY, y);
   }
 
   width = maxX - minX;
@@ -136,7 +140,7 @@ void TextWriter::GenerateTris(const char* str, TextSegment segment, vector<V3>* 
 
       // Copy vertices to @tris
       // The actual mesh data uses indices, so we expand those here
-      const protocol::MeshBlob* blobs[] = { letter.outline, letter.cap1, letter.cap2 };
+      const protocol::MeshBlob* blobs[] = {letter.outline, letter.cap1, letter.cap2};
       const protocol::MeshBlob* elem = blobs[(int)segment];
       u32 numIndices = elem->numIndices;
       verts->resize(verts->size() + numIndices);
@@ -154,9 +158,7 @@ void TextWriter::GenerateTris(const char* str, TextSegment segment, vector<V3>* 
       xOfs += letter.width * 1.05f;
     }
 
-    lineInfo.push_back({
-      triStart, (u32)verts->size(),
-      vMin.x, vMax.x, vMin.y, vMax.y});
+    lineInfo.push_back({triStart, (u32)verts->size(), vMin.x, vMax.x, vMin.y, vMax.y});
   }
 
   float xStart = lineInfo[0].xMin;
@@ -197,10 +199,7 @@ void TextWriter::GenerateTris(const char* str, TextSegment segment, vector<V3>* 
 
 //------------------------------------------------------------------------------
 void TextWriter::GenerateIndexedTris(
-    const char* str,
-    TextSegment segment,
-    vector<V3>* verts,
-    vector<int>* indices)
+    const char* str, TextSegment segment, vector<V3>* verts, vector<int>* indices, vector<u32>* edges)
 {
 
   vector<string> rows;
@@ -230,7 +229,7 @@ void TextWriter::GenerateIndexedTris(
       }
 
       const TextWriter::Letter& letter = _letters[ch - 'A'];
-      const protocol::MeshBlob* blobs[] = { letter.outline, letter.cap1, letter.cap2 };
+      const protocol::MeshBlob* blobs[] = {letter.outline, letter.cap1, letter.cap2};
       const protocol::MeshBlob* elem = blobs[(int)segment];
 
       // copy verts/indices
@@ -241,16 +240,23 @@ void TextWriter::GenerateIndexedTris(
       indices->resize(indices->size() + numIndices);
       verts->resize(verts->size() + numVerts);
 
+      {
+        size_t prev = edges->size();
+        u32 num = elem->numSelectedEdges;
+        edges->resize(prev + num);
+        copy(elem->selectedEdges, elem->selectedEdges + num, edges->begin() + prev);
+      }
+
       for (u32 j = 0; j < numIndices; ++j)
       {
-        (*indices)[j+prevIndices] = elem->indices[j] + prevVerts;
+        (*indices)[j + prevIndices] = elem->indices[j] + prevVerts;
       }
 
       // get max vertex dimensions
       for (u32 j = 0; j < numVerts; ++j)
       {
-        V3 v(elem->verts[j*3 + 0] + xOfs, elem->verts[j*3 + 1], elem->verts[j*3 + 2]);
-        (*verts)[j+prevVerts] = v;
+        V3 v(elem->verts[j * 3 + 0] + xOfs, elem->verts[j * 3 + 1], elem->verts[j * 3 + 2]);
+        (*verts)[j + prevVerts] = v;
         vMin = Min(v, vMin);
         vMax = Max(v, vMax);
       }
@@ -258,9 +264,7 @@ void TextWriter::GenerateIndexedTris(
       xOfs += letter.width * 1.05f;
     }
 
-    lineInfo.push_back({
-      triStart, (u32)verts->size(),
-      vMin.x, vMax.x, vMin.y, vMax.y });
+    lineInfo.push_back({triStart, (u32)verts->size(), vMin.x, vMax.x, vMin.y, vMax.y});
   }
 
   float xStart = lineInfo[0].xMin;

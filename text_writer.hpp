@@ -16,7 +16,11 @@ namespace tano
     bool Init(const char* filename);
 
     void GenerateTris(const char* str, TextSegment segment, vector<V3>* verts);
-    void GenerateIndexedTris(const char* str, TextSegment segment, vector<V3>* verts, vector<int>* indices);
+    void GenerateIndexedTris(const char* str,
+        TextSegment segment,
+        vector<V3>* verts,
+        vector<int>* indices,
+        vector<u32>* edges = nullptr);
 
     struct Letter
     {
