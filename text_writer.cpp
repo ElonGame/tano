@@ -1,4 +1,5 @@
 #include "text_writer.hpp"
+#include "resource_manager.hpp"
 
 //------------------------------------------------------------------------------
 using namespace tano;
@@ -57,7 +58,8 @@ void TextWriter::Letter::CalcBounds()
 //------------------------------------------------------------------------------
 bool TextWriter::Init(const char* filename)
 {
-  if (!_loader.Load(filename))
+  string resolvedNamed = RESOURCE_MANAGER.ResolveFilename(filename, false);
+  if (!_loader.Load(resolvedNamed.c_str()))
     return false;
 
   u32 numLetters = 'Z' - 'A' + 1;

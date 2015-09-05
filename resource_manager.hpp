@@ -13,10 +13,11 @@ namespace tano
     ResourceManager(const char* outputFilename);
     ~ResourceManager();
 
-    static ResourceManager &Instance();
+    static ResourceManager& Instance();
     static bool Create(const char* outputFilename, const char* appRoot);
     static bool Destroy();
 
+    string ResolveFilename(const char* filename, bool returnFullPath);
     bool FileExists(const char* filename);
     __time64_t ModifiedDate(const char* filename);
     bool LoadFile(const char* filename, vector<char>* buf);
@@ -33,29 +34,19 @@ namespace tano
     void WriteFile(FILE* f, const char* buf, int len);
     void CloseFile(FILE* f);
 
-    ObjectHandle LoadTexture(
-        const char* filename,
-        bool srgb = false,
-        D3DX11_IMAGE_INFO* info = nullptr);
-    ObjectHandle LoadTextureFromMemory(
-        const char* buf,
-        u32 len,
-        bool srgb,
-        D3DX11_IMAGE_INFO* info);
+    ObjectHandle LoadTexture(const char* filename, bool srgb = false, D3DX11_IMAGE_INFO* info = nullptr);
+    ObjectHandle LoadTextureFromMemory(const char* buf, u32 len, bool srgb, D3DX11_IMAGE_INFO* info);
 
-    void AddPath(const string &path);
+    void AddPath(const string& path);
 
     FileWatcherWin32::AddFileWatchResult AddFileWatch(
-        const string& filename, 
-        bool initial_callback,
-        const FileWatcherWin32::cbFileChanged& cb);
+        const string& filename, bool initial_callback, const FileWatcherWin32::cbFileChanged& cb);
 
     void RemoveFileWatch(FileWatcher::WatchId id);
 
     void Tick();
 
   private:
-    string ResolveFilename(const char* filename, bool fullPath);
 
     FileWatcherWin32 _fileWatcher;
 
@@ -66,10 +57,12 @@ namespace tano
 
     struct FileInfo
     {
-      FileInfo(const string &orgName, const string &resolvedName) 
-        : orgName(orgName), resolvedName(resolvedName) {}
+      FileInfo(const string& orgName, const string& resolvedName)
+          : orgName(orgName), resolvedName(resolvedName)
+      {
+      }
 
-      bool operator<(const FileInfo &rhs) const
+      bool operator<(const FileInfo& rhs) const
       {
         return make_pair(orgName, resolvedName) < make_pair(rhs.orgName, rhs.resolvedName);
       }
@@ -79,7 +72,6 @@ namespace tano
 
     set<FileInfo> _readFiles;
     string _appRoot;
-
   };
 #define RESOURCE_MANAGER ResourceManager::Instance()
 #define RESOURCE_MANAGER_STATIC ResourceManager
@@ -91,34 +83,30 @@ namespace tano
   public:
     PackedResourceManager(const char* resourceFile);
 
-    static PackedResourceManager &Instance();
+    static PackedResourceManager& Instance();
     static bool Create(const char* resourceFile);
     static bool Destroy();
 
     bool LoadFile(const char* filename, vector<char>* buf);
     bool LoadPartial(const char* filename, size_t ofs, size_t len, vector<char>* buf);
     bool LoadInplace(const char* filename, size_t ofs, size_t len, void* buf);
-    ObjectHandle LoadTexture(
-        const char* filename,
+    ObjectHandle LoadTexture(const char* filename,
         const char* friendlyName = nullptr,
         bool srgb = false,
         D3DX11_IMAGE_INFO* info = nullptr);
 
     ObjectHandle LoadTextureFromMemory(const char* buf, size_t len, bool srgb, D3DX11_IMAGE_INFO* info);
 
-    AddFileWatchResult AddFileWatch(
-      const string& filename,
-      bool initial_callback,
-      const cbFileChanged& cb);
+    AddFileWatchResult AddFileWatch(const string& filename, bool initial_callback, const cbFileChanged& cb);
 
   private:
-
     bool Init();
     bool LoadPackedFile(const char* filename, vector<char>* buf);
     bool LoadPackedInplace(const char* filename, size_t ofs, size_t len, void* buf);
     int HashLookup(const char* key);
 
-    struct PackedFileInfo {
+    struct PackedFileInfo
+    {
       int offset;
       int compressedSize;
       int finalSize;

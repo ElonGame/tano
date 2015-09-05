@@ -140,6 +140,7 @@ float4 PsLines(PsLinesIn p) : SV_Target
   float dist = distance(pt, projPt);
 
   float3 params = lineParams.xyz;
+  // fade comes from the text fade-in/fade-out settings
   float fade = lineParams.w;
 
   float t = smoothstep(0, params.x, dist);

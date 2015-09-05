@@ -16,8 +16,6 @@
 #include "../shaders/out/plexus_pslines.cbuffers.hpp"
 #include "../particle_emitters.hpp"
 
-#define WITH_RADIAL_PARTICLES 1
-
 namespace tano
 {
   class Intro : public BaseEffect
@@ -52,11 +50,7 @@ namespace tano
     void UpdateParticleEmitters(float dt);
     void CopyOutParticleEmitters();
 
-#if WITH_RADIAL_PARTICLES
     SimpleAppendBuffer<RadialParticleEmitter, 24> _particleEmitters;
-#else
-    SimpleAppendBuffer<ParticleEmitter, 24> _particleEmitters;
-#endif
 
     GpuBundle _backgroundBundle;
     ConstantBufferBundle<void, cb::IntroBackgroundF> _cbBackground;
@@ -95,7 +89,7 @@ namespace tano
     SimpleAppendBuffer<V3, 1024> _randomPoints;
     GpuBundle _plexusLineBundle;
 
-    bool _drawText = false;
+    bool _drawText = true;
     float _lineFade = 1.0f;
     float _curTime = 0;
 

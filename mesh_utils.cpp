@@ -383,10 +383,9 @@ namespace tano
       return da < db;
     };
 
-    // iterate over all the neighbours, and calc distance etc
-    for (int i = 0; i < num; ++i)
-      idx[i] = i;
+    Range(idx, 0, num);
 
+    // iterate over all the neighbours, and calc distance etc
     for (int i = 0; i < num; ++i)
     {
       int numValid = 0;

@@ -141,6 +141,7 @@ bool App::Init(HINSTANCE hinstance)
 #if WITH_UNPACKED_RESOUCES
   INIT_FATAL(RESOURCE_MANAGER_STATIC::Create("resources.txt", _appRoot.c_str()));
   RESOURCE_MANAGER.AddPath("D:/OneDrive/tano");
+  RESOURCE_MANAGER.AddPath("C:/OneDrive/tano");
 #else
   INIT_FATAL(RESOURCE_MANAGER_STATIC::Create("resources.dat"));
 #endif

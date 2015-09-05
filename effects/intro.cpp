@@ -32,6 +32,102 @@ namespace
   bool extended = false;
 }
 
+template <typename T>
+void* BlockAllocate(int headerSize, int numBlocks, int dataOffset)
+{
+  char* mem = g_ScratchMemory.Alloc(numBlocks * (headerSize + dataSize));
+  for (int i = 0; i < numBlocks; ++i)
+  {
+
+  }
+}
+
+//------------------------------------------------------------------------------
+void CreateTriangles(const V3* vtx, int numVerts, vector<u32>* tris)
+{
+  V3 minBounds = vtx[0];
+  V3 maxBounds = vtx[1];
+  for (int i = 0; i < numVerts; ++i)
+  {
+    minBounds = Min(minBounds, vtx[i]);
+    maxBounds = Max(maxBounds, vtx[i]);
+  }
+
+  // create a number of buckets between min/max
+  int numBuckets = 10;
+  struct Bucket
+  {
+    V3 center;
+    int cnt;
+    int* vtx;
+  };
+
+  int vtxSizeInBytes = sizeof(int) * numVerts;
+  int bucketSizeInBytes = sizeof(Bucket) + vtxSizeInBytes;
+  Bucket* buckets = (Bucket*)g_ScratchMemory.Alloc(numBuckets * bucketSizeInBytes);
+  char* ptr = (char*)buckets;
+  int* vtxPtr = (int*)(ptr + numBuckets * sizeof(Bucket));
+  for (int i = 0; i < numBuckets; ++i)
+  {
+    Bucket* b = &buckets[i];
+    b->center = lerp(minBounds, maxBounds, i / (float)(numBuckets-1));
+    b->cnt = 0;
+    b->vtx = vtxPtr;
+    vtxPtr += numVerts;
+  }
+
+  // assign each vtx to a bucket
+  for (int i = 0; i < numVerts; ++i)
+  {
+    float bucketDist = DistanceSquared(buckets[0].center, vtx[i]);
+    int bucketIdx = 0;
+    for (int j = 1; j < numBuckets; ++j)
+    {
+      float cand = DistanceSquared(buckets[j].center, vtx[i]);
+      if (cand < bucketDist)
+      {
+        bucketIdx = j;
+        bucketDist = cand;
+      }
+    }
+
+    Bucket* b = &buckets[bucketIdx];
+    b->vtx[b->cnt++] = i;
+  }
+
+  struct SortedEdge
+  {
+    float dist;
+    int a, b;
+  };
+
+  SortedEdge* sortedEdges = g_ScratchMemory.Alloc<SortedEdge>(numVerts*numVerts);
+
+  for (int k = 0; k < numBuckets; ++k)
+  {
+    Bucket* b = &buckets[k];
+    int* verts = b->vtx;
+    int vertexCount = b->cnt;
+    int cnt = 0;
+    for (int i = 0; i < vertexCount; i += 5)
+    {
+      for (int j = i+1; j < vertexCount; j += 5)
+      {
+        int ii = verts[i];
+        int jj = verts[j];
+        sortedEdges[cnt++] = SortedEdge{ DistanceSquared(vtx[ii], vtx[jj]), ii, jj };
+      }
+    }
+
+    sort(sortedEdges, sortedEdges + cnt, [](const SortedEdge& lhs, const SortedEdge& rhs) {
+      return lhs.dist < rhs.dist;
+    });
+  }
+
+  int a = 10;
+}
+
+
 static int MAX_NUM_PARTICLES = 128 * 1024;
 
 //------------------------------------------------------------------------------
@@ -118,7 +214,9 @@ void Intro::GenRandomPoints(float kernelSize)
   V3* tmp = g_ScratchMemory.Alloc<V3>(_randomPoints.Capacity());
   for (int i = 0; i < _randomPoints.Capacity(); ++i)
   {
-    V3 v(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(-1.f, 1.f));
+    float xSpread = 0.5f;
+    float ySpread = 0.5f;
+    V3 v(randf(-xSpread, xSpread), randf(-ySpread, ySpread), randf(-1.f, 1.f));
     v = Normalize(v);
     tmp[i] = v;
   }
@@ -148,6 +246,7 @@ bool Intro::OnConfigChanged(const vector<char>& buf)
   return ParseIntroSettings(InputBuffer(buf), &_settings);
 }
 
+//------------------------------------------------------------------------------
 Vector4 ColorToVector4(const Color& c)
 {
   return Vector4(c.x, c.y, c.z, c.w);
@@ -185,18 +284,10 @@ bool Intro::Init()
   INIT_RESOURCE_FATAL(_csParticleBlur, GRAPHICS.LoadComputeShaderFromFile("shaders/out/intro.blur", "BoxBlurY"));
 
   // Create default emitter
-#if WITH_RADIAL_PARTICLES
   for (int i = 0; i < 20; ++i)
   {
     _particleEmitters.Append(RadialParticleEmitter()).Create(V3(0, 0, 0), 25.f * (i+1), _settings.num_particles);
   }
-#else
-  for (int i = 0; i < 10; ++i)
-  {
-    _particleEmitters.Append(ParticleEmitter()).Create(V3(0, 0, 0), _settings.num_particles);
-  }
-#endif
-
 
   GenRandomPoints(_settings.deform.blur_kernel);
 
@@ -213,9 +304,7 @@ bool Intro::Init()
     _textWriter.GenerateTris(text[i], TextWriter::TextOutline, &t.outline);
     _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap);
     _textWriter.GenerateIndexedTris(text[i], TextWriter::TextCap1, &t.verts, &t.indices);
-    // TODO(magnus): Can I just swap here?
-    t.transformedVerts.resize(t.verts.size());
-    copy(t.verts.begin(), t.verts.end(), t.transformedVerts.begin());
+    t.transformedVerts = t.verts;
 
     int num = (u32)_textData[i].verts.size();
     _textData[i].neighbours = new int[num * num];
@@ -285,12 +374,6 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
     _cbPlexus.gs0.viewProj = viewProj.Transpose();
     _cbPlexus.gs0.cameraPos = pos;
   }
-  //view = _textCamera._view;
-  //proj = _textCamera._proj;
-  //viewProj = view * proj;
-  //_cbPlexus.gs0.viewProj = viewProj.Transpose();
-  //_cbPlexus.gs0.cameraPos = _textCamera._pos;
-
 }
 
 //------------------------------------------------------------------------------
@@ -320,23 +403,16 @@ bool Intro::Update(const UpdateState& state)
 
   UpdateCameraMatrix(state);
 
-  //if (g_KeyUpTrigger.IsTriggered('1'))
-  //{
-  //  float s = 500;
-  //  V3 center(randf(-s, s), randf(-s, s), 0);
-  //  _particleEmitters.Append(ParticleEmitter()).Create(center, _settings.num_particles);
-  //}
-
   float ms = state.localTime.TotalMicroseconds() / (float)1e6;
 
-  TextData* t = nullptr;
+  _curText = nullptr;
   float scale;
   V3 ptOfs(0, 0, 0);
   float ptScale = 1;
   BLACKBOARD.SetNamespace("intro");
   if (Inside(ms, BLACKBOARD.GetFloatVar("text0FadeInStart"), BLACKBOARD.GetFloatVar("text0FadeOutEnd")))
   {
-    t = &_textData[0];
+    _curText = &_textData[0];
     scale = ms - BLACKBOARD.GetFloatVar("text0FadeInStart");
     float delta = BLACKBOARD.GetFloatVar("text0FadeInEnd") - BLACKBOARD.GetFloatVar("text0FadeInStart");
     _lineFade = min(fnCalcFade(ms, "text0FadeInStart", "text0FadeInEnd", false),
@@ -347,7 +423,7 @@ bool Intro::Update(const UpdateState& state)
   }
   else if (Inside(ms, BLACKBOARD.GetFloatVar("text1FadeInStart"), BLACKBOARD.GetFloatVar("text1FadeOutEnd")))
   {
-    t = &_textData[1];
+    _curText = &_textData[1];
     scale = ms - BLACKBOARD.GetFloatVar("text1FadeInStart");
     float delta = BLACKBOARD.GetFloatVar("text1FadeInEnd") - BLACKBOARD.GetFloatVar("text1FadeInStart");
     _lineFade = min(fnCalcFade(ms, "text1FadeInStart", "text1FadeInEnd", false),
@@ -358,7 +434,7 @@ bool Intro::Update(const UpdateState& state)
   }
   else if (Inside(ms, BLACKBOARD.GetFloatVar("text2FadeInStart"), BLACKBOARD.GetFloatVar("text2FadeOutEnd")))
   {
-    t = &_textData[2];
+    _curText = &_textData[2];
     scale = ms - BLACKBOARD.GetFloatVar("text2FadeInStart");
     float delta = BLACKBOARD.GetFloatVar("text2FadeInEnd") - BLACKBOARD.GetFloatVar("text2FadeInStart");
     _lineFade = min(fnCalcFade(ms, "text2FadeInStart", "text2FadeInEnd", false),
@@ -368,22 +444,27 @@ bool Intro::Update(const UpdateState& state)
     ptScale = BLACKBOARD.GetFloatVar("text2Scale");
   }
 
-  _drawText = false;
-  _curText = nullptr;
-  if (t)
+  if (_curText)
   {
-    _drawText = true;
-    _curText = t;
-    scale = (1 - scale) * BLACKBOARD.GetFloatVar("maxStrength");
+    for (size_t i = 0; i < _curText->verts.size(); ++i)
+    {
+      float tt = 1 - SmoothStep(0, 1, scale);
+      _curText->transformedVerts[i] = _curText->verts[i] + tt * 1500 * V3(0, 0, -1);
+    }
 
-    DistortVerts(t->transformedVerts.data(),
-        t->verts.data(),
-        (int)t->verts.size(),
-        _randomPoints.Data(),
-        _settings.deform.perlin_scale,
-        scale,
-        ptOfs,
-        ptScale);
+    vector<u32> tris;
+    CreateTriangles(_curText->transformedVerts.data(), (int)_curText->transformedVerts.size(), &tris);
+
+    //scale = (1 - scale) * BLACKBOARD.GetFloatVar("maxStrength");
+
+    //DistortVerts(_curText->transformedVerts.data(),
+    //    _curText->verts.data(),
+    //    (int)_curText->verts.size(),
+    //    _randomPoints.Data(),
+    //    _settings.deform.perlin_scale,
+    //    scale,
+    //    ptOfs,
+    //    ptScale);
   }
 
   BLACKBOARD.ClearNamespace();
@@ -410,11 +491,7 @@ void Intro::UpdateParticleEmitters(float dt)
 
   SimpleAppendBuffer<TaskId, 32> tasks;
 
-#if WITH_RADIAL_PARTICLES
   typedef RadialParticleEmitter::EmitterKernelData EmitterKernelData;
-#else
-  typedef ParticleEmitter::EmitterKernelData EmitterKernelData;
-#endif
 
   for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
@@ -423,12 +500,7 @@ void Intro::UpdateParticleEmitters(float dt)
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(EmitterKernelData);
-#if WITH_RADIAL_PARTICLES
     tasks.Append(SCHEDULER.AddTask(kd, RadialParticleEmitter::UpdateEmitter));
-#else
-    tasks.Append(SCHEDULER.AddTask(kd, ParticleEmitter::UpdateEmitter));
-#endif
-
   }
 
   for (const TaskId& taskId : tasks)
@@ -441,12 +513,7 @@ void Intro::CopyOutParticleEmitters()
 {
   rmt_ScopedCPUSample(Particles_CopyOut);
 
-#if WITH_RADIAL_PARTICLES
   typedef RadialParticleEmitter::EmitterKernelData EmitterKernelData;
-#else
-  typedef ParticleEmitter::EmitterKernelData EmitterKernelData;
-#endif
-
 
   ObjectHandle vb = _particleBundle.objects._vb;
   V4* vtx = _ctx->MapWriteDiscard<V4>(_particleBundle.objects._vb);
@@ -462,11 +529,7 @@ void Intro::CopyOutParticleEmitters()
     kd.data = data;
     kd.size = sizeof(ParticleEmitter::EmitterKernelData);
 
-#if WITH_RADIAL_PARTICLES
     tasks.Append(SCHEDULER.AddTask(kd, RadialParticleEmitter::CopyOutEmitter));
-#else
-    tasks.Append(SCHEDULER.AddTask(kd, ParticleEmitter::CopyOutEmitter));
-#endif
 
     _numSpawnedParticles += _particleEmitters[i]._spawnedParticles;
   }
@@ -495,6 +558,7 @@ bool Intro::FixedUpdate(const FixedUpdateState& state)
 
   return true;
 }
+
 
 //------------------------------------------------------------------------------
 bool Intro::Render()
@@ -526,7 +590,6 @@ bool Intro::Render()
     _ctx->UnsetRenderTargets(0, 1);
     fullscreen->BlurVertCustom(rtColor, rtBlur2, rtBlur2._desc, _csParticleBlur, 20, 1);
   }
-
 
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
   if (_drawText && _curText)

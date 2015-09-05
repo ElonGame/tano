@@ -167,11 +167,11 @@ __time64_t ResourceManager::ModifiedDate(const char* filename)
 }
 
 //------------------------------------------------------------------------------
-string ResourceManager::ResolveFilename(const char* filename, bool fullPath)
+string ResourceManager::ResolveFilename(const char* filename, bool returnFullPath)
 {
   if (bristol::FileExists(filename))
   {
-    if (fullPath)
+    if (returnFullPath)
     {
       char buf[MAX_PATH];
       GetFullPathNameA(filename, MAX_PATH, buf, NULL);
