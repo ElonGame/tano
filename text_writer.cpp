@@ -244,7 +244,10 @@ void TextWriter::GenerateIndexedTris(
         size_t prev = edges->size();
         u32 num = elem->numSelectedEdges;
         edges->resize(prev + num);
-        copy(elem->selectedEdges, elem->selectedEdges + num, edges->begin() + prev);
+        for (u32 j = 0; j < num; ++j)
+        {
+          (*edges)[j + prev] = elem->selectedEdges[j] + prevVerts;
+        }
       }
 
       for (u32 j = 0; j < numIndices; ++j)

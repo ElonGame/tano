@@ -611,10 +611,10 @@ bool Intro::Render()
       int i = 0;
       for (u32 idx : _curText->edges)
       {
-        *vtx = _curText->transformedVerts[idx];
+        *vtx = _curText->verts[idx];
         vtx++;
       }
-      numLines = _curText->edges.size() / 2;
+      numLines = _curText->edges.size();
     }
     else
     {
