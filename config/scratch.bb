@@ -4,7 +4,7 @@ namespace intro
     float moveSpeed = 15.0;
     float rotSpeed = 3.0;
 
-    vec3 lineParams = { 5.0, 1.25, 1500 };
+    vec3 lineParams = { 2.0, 1.25, 1500 };
 
     vec3 text0pos = { 0, -200, 0 };
     float text0Scale = 1.25;
@@ -14,15 +14,15 @@ namespace intro
     float text0FadeOutStart = 7;
     float text0FadeOutEnd = 8.3;
 
-    vec3 text1pos = { 0, 50, 0 };
-    float text1Scale = 1.25;
+    vec3 text1pos = { 0, -200, 0 };
+    float text1Scale = 1.00;
     float text1FadeInStart = 8.3;
     float text1FadeInEnd = 11;
     float text1FadeOutStart = 14;
     float text1FadeOutEnd = 16;
 
-    vec3 text2pos = { 600, -500, 0 };
-    float text2Scale = 0.6;
+    vec3 text2pos = { 0, -200, 0 };
+    float text2Scale = 1.00;
     float text2FadeInStart = 16.6;
     float text2FadeInEnd = 18.9;
     float text2FadeOutStart = 23;

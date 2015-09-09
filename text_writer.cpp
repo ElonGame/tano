@@ -38,6 +38,9 @@ namespace
 //------------------------------------------------------------------------------
 void TextWriter::Letter::CalcBounds()
 {
+  if (!cap1)
+    return;
+
   u32 numIndices = cap1->numIndices;
 
   float minX = FLT_MAX;

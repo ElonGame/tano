@@ -253,6 +253,37 @@ Vector4 ColorToVector4(const Color& c)
 }
 
 //------------------------------------------------------------------------------
+void Intro::CreateKeyframes(TextData* textData)
+{
+  int numVerts = (int)textData->verts.size();
+  int numKeyframes = textData->numKeyframes;
+
+  textData->keyframes.resize(numVerts * numKeyframes);
+
+  for (int i = 0; i < numVerts; ++i)
+  {
+    V3 pos = textData->verts[i];
+    float angle = 0;
+    float speed = 5;
+    for (int j = 0; j < numKeyframes; ++j)
+    {
+      float v = stb_perlin_noise3(
+        pos.x / keyframeScale,
+        pos.y / keyframeScale,
+        pos.z / keyframeScale);
+
+      speed += v;
+      angle += v / 5;
+
+      pos.x += speed * cos(angle);
+      pos.y += speed * sin(angle);
+
+      textData->keyframes[i*numKeyframes+j] = pos;
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
 bool Intro::Init()
 {
   BEGIN_INIT_SEQUENCE();
@@ -292,7 +323,7 @@ bool Intro::Init()
   GenRandomPoints(_settings.deform.blur_kernel);
 
   // Text setup
-  INIT(_textWriter.Init("gfx/text2.boba"));
+  INIT(_textWriter.Init("gfx/text3.boba"));
   const char* text[] = {
       "neurotica efs", "radio silence", "solskogen",
   };
@@ -301,8 +332,8 @@ bool Intro::Init()
   for (int i = 0; i < ELEMS_IN_ARRAY(text); ++i)
   {
     TextData& t = _textData[i];
-    _textWriter.GenerateTris(text[i], TextWriter::TextOutline, &t.outline);
-    _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap);
+    //_textWriter.GenerateTris(text[i], TextWriter::TextOutline, &t.outline);
+    //_textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap);
     _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &t.verts, &t.indices, &t.edges);
     t.transformedVerts = t.verts;
 
@@ -310,6 +341,8 @@ bool Intro::Init()
     _textData[i].neighbours = new int[num * num];
     memset(_textData[i].neighbours, 0xff, num * num * sizeof(int));
     CalcTextNeighbours(num, _textData[i].indices, _textData[i].neighbours);
+
+    CreateKeyframes(&t);
 
     maxVerts = max(maxVerts, (int)_textData[i].outline.size());
   }
@@ -465,6 +498,11 @@ bool Intro::Update(const UpdateState& state)
         scale,
         ptOfs,
         ptScale);
+
+    for (int i = 0; i < (int)_curText->verts.size(); ++i)
+    {
+      _curText->transformedVerts[i] = _curText->keyframes[i*_curText->numKeyframes+9];
+    }
   }
 
   BLACKBOARD.ClearNamespace();
@@ -605,26 +643,12 @@ bool Intro::Render()
     ObjectHandle vb = _plexusLineBundle.objects._vb;
     V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
 
-    int numLines = 0;
-    if (_curText->edges.size())
-    {
-      int i = 0;
-      for (u32 idx : _curText->edges)
-      {
-        *vtx = _curText->verts[idx];
-        vtx++;
-      }
-      numLines = _curText->edges.size();
-    }
-    else
-    {
-      numLines = CalcPlexusGrouping(vtx,
-        _curText->transformedVerts.data(),
-        (int)_curText->transformedVerts.size(),
-        _curText->neighbours,
-        (int)_curText->transformedVerts.size(),
-        _settings.plexus);
-    }
+    int numLines = CalcPlexusGrouping(vtx,
+      _curText->transformedVerts.data(),
+      (int)_curText->transformedVerts.size(),
+      _curText->neighbours,
+      (int)_curText->transformedVerts.size(),
+      _settings.plexus);
 
     _ctx->Unmap(vb);
     _ctx->SetBundle(_plexusLineBundle);

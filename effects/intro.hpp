@@ -50,6 +50,7 @@ namespace tano
     void UpdateParticleEmitters(float dt);
     void CopyOutParticleEmitters();
 
+
     SimpleAppendBuffer<RadialParticleEmitter, 24> _particleEmitters;
 
     GpuBundle _backgroundBundle;
@@ -79,8 +80,15 @@ namespace tano
       vector<V3> transformedVerts;
       vector<int> indices;
       vector<u32> edges;
+      int numKeyframes = 20;
+      vector<V3> keyframes;
       int* neighbours;
     };
+
+    float keyframeSpeed = 3;
+    float keyframeScale = 10;
+    void CreateKeyframes(TextData* textData);
+
     TextData _textData[3];
     TextData* _curText = nullptr;
 
