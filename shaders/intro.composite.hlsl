@@ -20,7 +20,7 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 bgBlur = Texture3.Sample(PointSampler, uv);
 
   float lum = Luminance(bgBlur.rgb);
-  backgroundCol = backgroundCol + pow(bgBlur, 2);
+  backgroundCol = backgroundCol + pow(bgBlur, 1.5);
 
   float4 linesR = Texture1.Sample(PointSampler, uv);
   float4 linesBlurR = Texture2.Sample(PointSampler, uv);
@@ -44,8 +44,8 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 
   float4 tmp = (1 + time.w) * float4(tmpR.x, tmpG.y, tmpB.z, tmpR.w);
   float4 fadeTmp = (1 - smoothstep(0, 1, time.y)) * tmp;
-  float lumBlur = pow(abs(Luminance(linesBlurR.rgb)), 1.2);
-  float4 col = 0.2 * backgroundCol + linesR * 0.1 + float4(0.7, 0.7, 0.3, 1) * lumBlur;
+  float lumBlur = pow(abs(Luminance(linesBlurR.rgb)), 1.5);
+  float4 col = 0.1 * backgroundCol + linesR * 0.2 + float4(0.4, 0.4, 0.3, 1) * lumBlur;
 
   float exposure = tonemap.x;
   float minWhite = tonemap.y;

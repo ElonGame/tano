@@ -38,7 +38,6 @@ void* BlockAllocate(int headerSize, int numBlocks, int dataOffset)
   char* mem = g_ScratchMemory.Alloc(numBlocks * (headerSize + dataSize));
   for (int i = 0; i < numBlocks; ++i)
   {
-
   }
 }
 
@@ -70,7 +69,7 @@ void CreateTriangles(const V3* vtx, int numVerts, vector<u32>* tris)
   for (int i = 0; i < numBuckets; ++i)
   {
     Bucket* b = &buckets[i];
-    b->center = lerp(minBounds, maxBounds, i / (float)(numBuckets-1));
+    b->center = lerp(minBounds, maxBounds, i / (float)(numBuckets - 1));
     b->cnt = 0;
     b->vtx = vtxPtr;
     vtxPtr += numVerts;
@@ -101,7 +100,7 @@ void CreateTriangles(const V3* vtx, int numVerts, vector<u32>* tris)
     int a, b;
   };
 
-  SortedEdge* sortedEdges = g_ScratchMemory.Alloc<SortedEdge>(numVerts*numVerts);
+  SortedEdge* sortedEdges = g_ScratchMemory.Alloc<SortedEdge>(numVerts * numVerts);
 
   for (int k = 0; k < numBuckets; ++k)
   {
@@ -111,22 +110,24 @@ void CreateTriangles(const V3* vtx, int numVerts, vector<u32>* tris)
     int cnt = 0;
     for (int i = 0; i < vertexCount; i += 5)
     {
-      for (int j = i+1; j < vertexCount; j += 5)
+      for (int j = i + 1; j < vertexCount; j += 5)
       {
         int ii = verts[i];
         int jj = verts[j];
-        sortedEdges[cnt++] = SortedEdge{ DistanceSquared(vtx[ii], vtx[jj]), ii, jj };
+        sortedEdges[cnt++] = SortedEdge{DistanceSquared(vtx[ii], vtx[jj]), ii, jj};
       }
     }
 
-    sort(sortedEdges, sortedEdges + cnt, [](const SortedEdge& lhs, const SortedEdge& rhs) {
-      return lhs.dist < rhs.dist;
-    });
+    sort(sortedEdges,
+        sortedEdges + cnt,
+        [](const SortedEdge& lhs, const SortedEdge& rhs)
+        {
+          return lhs.dist < rhs.dist;
+        });
   }
 
   int a = 10;
 }
-
 
 static int MAX_NUM_PARTICLES = 128 * 1024;
 
@@ -255,10 +256,7 @@ Vector4 ColorToVector4(const Color& c)
 //------------------------------------------------------------------------------
 float Noise3(const V3& v, float scale)
 {
-  return stb_perlin_noise3(
-    v.x / scale,
-    v.y / scale,
-    v.z / scale);
+  return stb_perlin_noise3(v.x / scale, v.y / scale, v.z / scale);
 }
 
 //------------------------------------------------------------------------------
@@ -284,10 +282,10 @@ void Intro::CreateKeyframes(TextData* textData)
       pos.y += step * speed * sin(angle);
 
       float v = Noise3(pos, scale);
-      speed += 0.5f ;
+      speed += 0.5f;
       angle += XM_2PI * v / angleScale;
 
-      textData->keyframes[i*numKeyframes+(numKeyframes-1-j)] = pos;
+      textData->keyframes[i * numKeyframes + (numKeyframes - 1 - j)] = pos;
     }
   }
 }
@@ -321,12 +319,14 @@ bool Intro::Init()
   // clang-format on
 
   INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
-  INIT_RESOURCE_FATAL(_csParticleBlur, GRAPHICS.LoadComputeShaderFromFile("shaders/out/intro.blur", "BoxBlurY"));
+  INIT_RESOURCE_FATAL(
+      _csParticleBlur, GRAPHICS.LoadComputeShaderFromFile("shaders/out/intro.blur", "BoxBlurY"));
 
   // Create default emitter
   for (int i = 0; i < 20; ++i)
   {
-    _particleEmitters.Append(RadialParticleEmitter()).Create(V3(0, 0, 0), 25.f * (i+1), _settings.num_particles);
+    _particleEmitters.Append(RadialParticleEmitter())
+        .Create(V3(0, 0, 0), 25.f * (i + 1), _settings.num_particles);
   }
 
   GenRandomPoints(_settings.deform.blur_kernel);
@@ -344,7 +344,7 @@ bool Intro::Init()
 
     t.vb = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, 128 * 1024, true, nullptr, sizeof(V3));
     //_textWriter.GenerateTris(text[i], TextWriter::TextOutline, &t.outline);
-    //_textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap);
+    _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap);
     _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &t.verts, &t.indices, &t.edges);
     t.transformedVerts = t.verts;
 
@@ -367,7 +367,6 @@ bool Intro::Init()
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
     .DepthStencilDesc(depthDescDepthDisabled)
-    //.DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
   // clang-format on
 
@@ -398,7 +397,6 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
 
   _cbParticle.gs0.world = Matrix::Identity();
   _cbParticle.gs0.viewProj = viewProj.Transpose();
-
 
   {
     float x = distance * sin(angle);
@@ -475,6 +473,19 @@ void Intro::UpdateText(const UpdateState& state, TextData* textData, const char*
   V3 ptOfs = BLACKBOARD.GetVec3Var(textPos);
   float ptScale = BLACKBOARD.GetFloatVar(textScale);
 
+#if 0
+  scale = (1 - scale) * BLACKBOARD.GetFloatVar("intro.maxStrength");
+
+  DistortVerts(textData->transformedVerts.data(),
+    textData->verts.data(),
+    (int)textData->verts.size(),
+    _randomPoints.Data(),
+    _settings.deform.perlin_scale,
+    scale,
+    ptOfs,
+    ptScale);
+#else
+
   int numKeyframes = _settings.num_keyframes;
   int idx0 = max(0, min(numKeyframes - 1, (int)(scale * numKeyframes)));
   int idx1 = max(0, min(numKeyframes - 1, idx0 + 1));
@@ -482,10 +493,11 @@ void Intro::UpdateText(const UpdateState& state, TextData* textData, const char*
 
   for (int i = 0; i < (int)textData->verts.size(); ++i)
   {
-    V3 v0 = textData->keyframes[i*numKeyframes + idx0];
-    V3 v1 = textData->keyframes[i*numKeyframes + idx1];
+    V3 v0 = textData->keyframes[i * numKeyframes + idx0];
+    V3 v1 = textData->keyframes[i * numKeyframes + idx1];
     textData->transformedVerts[i] = ptOfs + ptScale * lerp(v0, v1, frac);
   }
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -507,75 +519,6 @@ bool Intro::Update(const UpdateState& state)
   UpdateText(state, &_textData[0], "text0");
   UpdateText(state, &_textData[1], "text1");
   UpdateText(state, &_textData[2], "text2");
-
-//  if (Inside(ms, BLACKBOARD.GetFloatVar("text0FadeInStart"), BLACKBOARD.GetFloatVar("text0FadeOutEnd")))
-//  {
-//    _curText = &_textData[0];
-//    float scale = ms - BLACKBOARD.GetFloatVar("text0FadeInStart");
-//    float delta = BLACKBOARD.GetFloatVar("text0FadeInEnd") - BLACKBOARD.GetFloatVar("text0FadeInStart");
-//    _lineFade = min(fnCalcFade(ms, "text0FadeInStart", "text0FadeInEnd", false),
-//        fnCalcFade(ms, "text0FadeOutStart", "text0FadeOutEnd", true));
-//    float scale = Clamp(0.f, 1.f, scale / delta);
-//    V3 ptOfs = BLACKBOARD.GetVec3Var("text0pos");
-//    float ptScale = BLACKBOARD.GetFloatVar("text0Scale");
-//  }
-//
-//  if (Inside(ms, BLACKBOARD.GetFloatVar("text1FadeInStart"), BLACKBOARD.GetFloatVar("text1FadeOutEnd")))
-//  {
-//    _curText = &_textData[1];
-//    scale = ms - BLACKBOARD.GetFloatVar("text1FadeInStart");
-//    float delta = BLACKBOARD.GetFloatVar("text1FadeInEnd") - BLACKBOARD.GetFloatVar("text1FadeInStart");
-//    _lineFade = min(fnCalcFade(ms, "text1FadeInStart", "text1FadeInEnd", false),
-//        fnCalcFade(ms, "text1FadeOutStart", "text1FadeOutEnd", true));
-//    scale = Clamp(0.f, 1.f, scale / delta);
-//    ptOfs = BLACKBOARD.GetVec3Var("text1pos");
-//    ptScale = BLACKBOARD.GetFloatVar("text1Scale");
-//  }
-//
-//  if (Inside(ms, BLACKBOARD.GetFloatVar("text2FadeInStart"), BLACKBOARD.GetFloatVar("text2FadeOutEnd")))
-//  {
-//    _curText = &_textData[2];
-//    scale = ms - BLACKBOARD.GetFloatVar("text2FadeInStart");
-//    float delta = BLACKBOARD.GetFloatVar("text2FadeInEnd") - BLACKBOARD.GetFloatVar("text2FadeInStart");
-//    _lineFade = min(fnCalcFade(ms, "text2FadeInStart", "text2FadeInEnd", false),
-//        fnCalcFade(ms, "text2FadeOutStart", "text2FadeOutStart", true));
-//    scale = Clamp(0.f, 1.f, scale / delta);
-//    ptOfs = BLACKBOARD.GetVec3Var("text2pos");
-//    ptScale = BLACKBOARD.GetFloatVar("text2Scale");
-//  }
-//
-//  if (_curText)
-//  {
-//    // interpolate between the keyframes
-//#if 1
-//    //scale = (1 - scale);
-//    int numKeyframes = _settings.num_keyframes;
-//    int idx0 = max(0, min(numKeyframes - 1, (int)(scale * numKeyframes)));
-//    int idx1 = max(0, min(numKeyframes - 1, idx0 + 1));
-//    float frac =  scale * numKeyframes - (float)idx0;
-//
-//    for (int i = 0; i < (int)_curText->verts.size(); ++i)
-//    {
-//      V3 v0 = _curText->keyframes[i*numKeyframes + idx0];
-//      V3 v1 = _curText->keyframes[i*numKeyframes + idx1];
-//      _curText->transformedVerts[i] = ptOfs + ptScale * lerp(v0, v1, frac);
-//    }
-//#else
-//    scale = (1 - scale) * BLACKBOARD.GetFloatVar("maxStrength");
-//
-//    DistortVerts(_curText->transformedVerts.data(),
-//      _curText->verts.data(),
-//      (int)_curText->verts.size(),
-//      _randomPoints.Data(),
-//      _settings.deform.perlin_scale,
-//      scale,
-//      ptOfs,
-//      ptScale);
-//#endif
-//
-//  }
-
-  BLACKBOARD.ClearNamespace();
 
   _cbComposite.ps0.time.x = ms;
   _cbComposite.ps0.tonemap = Vector4(1, 1, 0, 0);
@@ -604,7 +547,7 @@ void Intro::UpdateParticleEmitters(float dt)
   for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
     EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-    *data = EmitterKernelData{ &_particleEmitters[i], dt, nullptr };
+    *data = EmitterKernelData{&_particleEmitters[i], dt, nullptr};
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(EmitterKernelData);
@@ -613,7 +556,6 @@ void Intro::UpdateParticleEmitters(float dt)
 
   for (const TaskId& taskId : tasks)
     SCHEDULER.Wait(taskId);
-
 }
 
 //------------------------------------------------------------------------------
@@ -632,7 +574,7 @@ void Intro::CopyOutParticleEmitters()
   for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
     EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-    *data = EmitterKernelData{ &_particleEmitters[i], 0, vtx + i * _particleEmitters[i]._spawnedParticles };
+    *data = EmitterKernelData{&_particleEmitters[i], 0, vtx + i * _particleEmitters[i]._spawnedParticles};
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(ParticleEmitter::EmitterKernelData);
@@ -646,7 +588,6 @@ void Intro::CopyOutParticleEmitters()
     SCHEDULER.Wait(taskId);
 
   _ctx->Unmap(vb);
-
 }
 
 //------------------------------------------------------------------------------
@@ -666,7 +607,6 @@ bool Intro::FixedUpdate(const FixedUpdateState& state)
 
   return true;
 }
-
 
 //------------------------------------------------------------------------------
 bool Intro::Render()
@@ -719,11 +659,11 @@ bool Intro::Render()
       V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
 
       int numLines = CalcPlexusGrouping(vtx,
-        cur->transformedVerts.data(),
-        (int)cur->transformedVerts.size(),
-        cur->neighbours,
-        (int)cur->transformedVerts.size(),
-        _settings.plexus);
+          cur->transformedVerts.data(),
+          (int)cur->transformedVerts.size(),
+          cur->neighbours,
+          (int)cur->transformedVerts.size(),
+          _settings.plexus);
 
       _ctx->Unmap(vb);
       _ctx->SetBundle(_plexusLineBundle);

@@ -7,21 +7,21 @@ namespace intro
     vec3 lineParams = { 5.0, 1.25, 500 };
 
     vec3 text0Pos = { 0, 300, 0 };
-    float text0Scale = 1.25;
+    float text0Scale = 0.75;
     float text0FadeInStart = 6;
     float text0FadeInEnd = 12;
     float text0FadeOutStart = 20;
     float text0FadeOutEnd = 22;
 
     vec3 text1Pos = { 0, 0, 0 };
-    float text1Scale = 1.25;
+    float text1Scale = 0.75;
     float text1FadeInStart = 8;
     float text1FadeInEnd = 14;
     float text1FadeOutStart = 20;
     float text1FadeOutEnd = 22;
 
     vec3 text2Pos = { 0, -300, 0 };
-    float text2Scale = 1.25;
+    float text2Scale = 0.75;
     float text2FadeInStart = 10;
     float text2FadeInEnd = 16;
     float text2FadeOutStart = 20;

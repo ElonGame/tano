@@ -92,7 +92,6 @@ namespace tano
     void UpdateText(const UpdateState& state, TextData* textData, const char* prefix);
 
     TextData _textData[3];
-    //TextData* _curText = nullptr;
 
     float _particlesStart, _particlesEnd;
 
@@ -101,7 +100,6 @@ namespace tano
     GpuBundle _plexusLineBundle;
 
     bool _drawText = true;
-    //float _lineFade = 1.0f;
     float _curTime = 0;
 
     FreeflyCamera _textCamera;

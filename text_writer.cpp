@@ -243,6 +243,7 @@ void TextWriter::GenerateIndexedTris(
       indices->resize(indices->size() + numIndices);
       verts->resize(verts->size() + numVerts);
 
+      if (edges)
       {
         size_t prev = edges->size();
         u32 num = elem->numSelectedEdges;
