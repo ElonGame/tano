@@ -4,29 +4,28 @@ namespace intro
     float moveSpeed = 15.0;
     float rotSpeed = 3.0;
 
-    vec3 lineParams = { 2.0, 1.25, 1500 };
+    vec3 lineParams = { 5.0, 1.25, 500 };
 
-    vec3 text0pos = { 0, -200, 0 };
+    vec3 text0Pos = { 0, 300, 0 };
     float text0Scale = 1.25;
-    float text0FadeInStart = 0;
-    float text0FadeInEnd = 4;
-    float text0MoveInEnd = 4;
-    float text0FadeOutStart = 7;
-    float text0FadeOutEnd = 8.3;
+    float text0FadeInStart = 6;
+    float text0FadeInEnd = 12;
+    float text0FadeOutStart = 20;
+    float text0FadeOutEnd = 22;
 
-    vec3 text1pos = { 0, -200, 0 };
-    float text1Scale = 1.00;
-    float text1FadeInStart = 8.3;
-    float text1FadeInEnd = 11;
-    float text1FadeOutStart = 14;
-    float text1FadeOutEnd = 16;
+    vec3 text1Pos = { 0, 0, 0 };
+    float text1Scale = 1.25;
+    float text1FadeInStart = 8;
+    float text1FadeInEnd = 14;
+    float text1FadeOutStart = 20;
+    float text1FadeOutEnd = 22;
 
-    vec3 text2pos = { 0, -200, 0 };
-    float text2Scale = 1.00;
-    float text2FadeInStart = 16.6;
-    float text2FadeInEnd = 18.9;
-    float text2FadeOutStart = 23;
-    float text2FadeOutEnd = 25;
+    vec3 text2Pos = { 0, -300, 0 };
+    float text2Scale = 1.25;
+    float text2FadeInStart = 10;
+    float text2FadeInEnd = 16;
+    float text2FadeOutStart = 20;
+    float text2FadeOutEnd = 22;
 
     float maxStrength = 5000;
 }

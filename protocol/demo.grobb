@@ -104,6 +104,10 @@ struct intro_settings
   plexus_deform deform;
   tonemap_reinhard_settings tonemap;
   freefly_camera_settings camera;
+  float angle_scale = 2;
+  float keyframe_scale = 5;
+  float keyframe_step = 100;
+  int num_keyframes = 50;
 };
 
 struct ray_marcher_settings

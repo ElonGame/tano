@@ -44,8 +44,8 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 
   float4 tmp = (1 + time.w) * float4(tmpR.x, tmpG.y, tmpB.z, tmpR.w);
   float4 fadeTmp = (1 - smoothstep(0, 1, time.y)) * tmp;
-  float lumBlur = pow(Luminance(linesBlurR.rgb), 1.2);
-  float4 col = 0.5 * backgroundCol + linesR * 0.1 + float4(0.7, 0.7, 0.3, 1) * lumBlur;
+  float lumBlur = pow(abs(Luminance(linesBlurR.rgb)), 1.2);
+  float4 col = 0.2 * backgroundCol + linesR * 0.1 + float4(0.7, 0.7, 0.3, 1) * lumBlur;
 
   float exposure = tonemap.x;
   float minWhite = tonemap.y;
@@ -53,7 +53,7 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 
   // vignette
   float r = 0.5 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
-  return smoothstep(0, 2, time.x) * r * col;
+  return smoothstep(0, 10, time.x) * r * col;
 }
 
 

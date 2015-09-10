@@ -29,7 +29,7 @@ namespace
   float angle = 0;
   float height = 0;
   float distance = 1300;
-  bool extended = false;
+  bool extended = true;
 }
 
 template <typename T>
@@ -253,32 +253,41 @@ Vector4 ColorToVector4(const Color& c)
 }
 
 //------------------------------------------------------------------------------
+float Noise3(const V3& v, float scale)
+{
+  return stb_perlin_noise3(
+    v.x / scale,
+    v.y / scale,
+    v.z / scale);
+}
+
+//------------------------------------------------------------------------------
 void Intro::CreateKeyframes(TextData* textData)
 {
   int numVerts = (int)textData->verts.size();
-  int numKeyframes = textData->numKeyframes;
+  int numKeyframes = _settings.num_keyframes;
 
   textData->keyframes.resize(numVerts * numKeyframes);
+
+  float scale = _settings.keyframe_scale;
+  float step = _settings.keyframe_step;
+  float angleScale = _settings.angle_scale;
 
   for (int i = 0; i < numVerts; ++i)
   {
     V3 pos = textData->verts[i];
-    float angle = 0;
-    float speed = 5;
+    float angle = XM_2PI * Noise3(pos, scale);
+    float speed = 0;
     for (int j = 0; j < numKeyframes; ++j)
     {
-      float v = stb_perlin_noise3(
-        pos.x / keyframeScale,
-        pos.y / keyframeScale,
-        pos.z / keyframeScale);
+      pos.x += step * speed * cos(angle);
+      pos.y += step * speed * sin(angle);
 
-      speed += v;
-      angle += v / 5;
+      float v = Noise3(pos, scale);
+      speed += 0.5f ;
+      angle += XM_2PI * v / angleScale;
 
-      pos.x += speed * cos(angle);
-      pos.y += speed * sin(angle);
-
-      textData->keyframes[i*numKeyframes+j] = pos;
+      textData->keyframes[i*numKeyframes+(numKeyframes-1-j)] = pos;
     }
   }
 }
@@ -332,6 +341,8 @@ bool Intro::Init()
   for (int i = 0; i < ELEMS_IN_ARRAY(text); ++i)
   {
     TextData& t = _textData[i];
+
+    t.vb = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, 128 * 1024, true, nullptr, sizeof(V3));
     //_textWriter.GenerateTris(text[i], TextWriter::TextOutline, &t.outline);
     //_textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap);
     _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &t.verts, &t.indices, &t.edges);
@@ -356,7 +367,7 @@ bool Intro::Init()
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
     .DepthStencilDesc(depthDescDepthDisabled)
-    .DynamicVb(128 * 1024, sizeof(V3))
+    //.DynamicVb(128 * 1024, sizeof(V3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
   // clang-format on
 
@@ -410,14 +421,36 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-bool Intro::Update(const UpdateState& state)
+void Intro::UpdateText(const UpdateState& state, TextData* textData, const char* prefix)
 {
-  static AvgStopWatch stopWatch;
-  stopWatch.Start();
+  float ms = state.localTime.TotalMicroseconds() / (float)1e6;
 
-  UpdateParticleEmitters(state.delta.TotalSecondsAsFloat());
+  char fadeInStart[64], fadeInEnd[64];
+  char fadeOutStart[64], fadeOutEnd[64];
+  char textPos[64], textScale[64];
 
-  _curTime = state.localTime.TotalMicroseconds() / (float)1e6;
+  sprintf(fadeInStart, "intro.%sFadeInStart", prefix);
+  sprintf(fadeInEnd, "intro.%sFadeInEnd", prefix);
+  sprintf(fadeOutStart, "intro.%sFadeOutStart", prefix);
+  sprintf(fadeOutEnd, "intro.%sFadeOutEnd", prefix);
+  sprintf(textPos, "intro.%sPos", prefix);
+  sprintf(textScale, "intro.%sScale", prefix);
+
+  if (ms < BLACKBOARD.GetFloatVar(fadeInStart))
+  {
+    textData->state = TextData::STATE_INACTIVE;
+  }
+  else if (ms >= BLACKBOARD.GetFloatVar(fadeOutEnd))
+  {
+    textData->state = TextData::STATE_DONE;
+  }
+  else
+  {
+    textData->state = TextData::STATE_ACTIVE;
+  }
+
+  if (textData->state != TextData::STATE_ACTIVE)
+    return;
 
   auto fnCalcFade = [](float ms, const char* s, const char* e, bool invert)
   {
@@ -432,78 +465,115 @@ bool Intro::Update(const UpdateState& state)
     return 1.0f;
   };
 
+  float scale = ms - BLACKBOARD.GetFloatVar(fadeInStart);
+  float delta = BLACKBOARD.GetFloatVar(fadeInEnd) - BLACKBOARD.GetFloatVar(fadeInStart);
+  if (textData->state == TextData::STATE_ACTIVE)
+    textData->fade = fnCalcFade(ms, fadeInStart, fadeInEnd, false);
+  else
+    textData->fade = 1;
+  scale = Clamp(0.f, 1.f, scale / delta);
+  V3 ptOfs = BLACKBOARD.GetVec3Var(textPos);
+  float ptScale = BLACKBOARD.GetFloatVar(textScale);
+
+  int numKeyframes = _settings.num_keyframes;
+  int idx0 = max(0, min(numKeyframes - 1, (int)(scale * numKeyframes)));
+  int idx1 = max(0, min(numKeyframes - 1, idx0 + 1));
+  float frac = scale * numKeyframes - (float)idx0;
+
+  for (int i = 0; i < (int)textData->verts.size(); ++i)
+  {
+    V3 v0 = textData->keyframes[i*numKeyframes + idx0];
+    V3 v1 = textData->keyframes[i*numKeyframes + idx1];
+    textData->transformedVerts[i] = ptOfs + ptScale * lerp(v0, v1, frac);
+  }
+}
+
+//------------------------------------------------------------------------------
+bool Intro::Update(const UpdateState& state)
+{
+  static AvgStopWatch stopWatch;
+  stopWatch.Start();
+
+  UpdateParticleEmitters(state.delta.TotalSecondsAsFloat());
+
+  _curTime = state.localTime.TotalMicroseconds() / (float)1e6;
+
   rmt_ScopedCPUSample(ParticleTunnel_Update);
 
   UpdateCameraMatrix(state);
 
   float ms = state.localTime.TotalMicroseconds() / (float)1e6;
 
-  _curText = nullptr;
-  float scale;
-  V3 ptOfs(0, 0, 0);
-  float ptScale = 1;
-  BLACKBOARD.SetNamespace("intro");
-  if (Inside(ms, BLACKBOARD.GetFloatVar("text0FadeInStart"), BLACKBOARD.GetFloatVar("text0FadeOutEnd")))
-  {
-    _curText = &_textData[0];
-    scale = ms - BLACKBOARD.GetFloatVar("text0FadeInStart");
-    float delta = BLACKBOARD.GetFloatVar("text0FadeInEnd") - BLACKBOARD.GetFloatVar("text0FadeInStart");
-    _lineFade = min(fnCalcFade(ms, "text0FadeInStart", "text0FadeInEnd", false),
-        fnCalcFade(ms, "text0FadeOutStart", "text0FadeOutEnd", true));
-    scale = Clamp(0.f, 1.f, scale / delta);
-    ptOfs = BLACKBOARD.GetVec3Var("text0pos");
-    ptScale = BLACKBOARD.GetFloatVar("text0Scale");
-  }
-  else if (Inside(ms, BLACKBOARD.GetFloatVar("text1FadeInStart"), BLACKBOARD.GetFloatVar("text1FadeOutEnd")))
-  {
-    _curText = &_textData[1];
-    scale = ms - BLACKBOARD.GetFloatVar("text1FadeInStart");
-    float delta = BLACKBOARD.GetFloatVar("text1FadeInEnd") - BLACKBOARD.GetFloatVar("text1FadeInStart");
-    _lineFade = min(fnCalcFade(ms, "text1FadeInStart", "text1FadeInEnd", false),
-        fnCalcFade(ms, "text1FadeOutStart", "text1FadeOutEnd", true));
-    scale = Clamp(0.f, 1.f, scale / delta);
-    ptOfs = BLACKBOARD.GetVec3Var("text1pos");
-    ptScale = BLACKBOARD.GetFloatVar("text1Scale");
-  }
-  else if (Inside(ms, BLACKBOARD.GetFloatVar("text2FadeInStart"), BLACKBOARD.GetFloatVar("text2FadeOutEnd")))
-  {
-    _curText = &_textData[2];
-    scale = ms - BLACKBOARD.GetFloatVar("text2FadeInStart");
-    float delta = BLACKBOARD.GetFloatVar("text2FadeInEnd") - BLACKBOARD.GetFloatVar("text2FadeInStart");
-    _lineFade = min(fnCalcFade(ms, "text2FadeInStart", "text2FadeInEnd", false),
-        fnCalcFade(ms, "text2FadeOutStart", "text2FadeOutStart", true));
-    scale = Clamp(0.f, 1.f, scale / delta);
-    ptOfs = BLACKBOARD.GetVec3Var("text2pos");
-    ptScale = BLACKBOARD.GetFloatVar("text2Scale");
-  }
+  UpdateText(state, &_textData[0], "text0");
+  UpdateText(state, &_textData[1], "text1");
+  UpdateText(state, &_textData[2], "text2");
 
-  if (_curText)
-  {
-    //for (size_t i = 0; i < _curText->verts.size(); ++i)
-    //{
-    //  float tt = 1 - SmoothStep(0, 1, scale);
-    //  _curText->transformedVerts[i] = ptScale * _curText->verts[i] + ptOfs + tt * 1500 * V3(0, 0, -1);
-    //}
-
-    //vector<u32> tris;
-    //CreateTriangles(_curText->transformedVerts.data(), (int)_curText->transformedVerts.size(), &tris);
-
-    scale = (1 - scale) * BLACKBOARD.GetFloatVar("maxStrength");
-
-    DistortVerts(_curText->transformedVerts.data(),
-        _curText->verts.data(),
-        (int)_curText->verts.size(),
-        _randomPoints.Data(),
-        _settings.deform.perlin_scale,
-        scale,
-        ptOfs,
-        ptScale);
-
-    for (int i = 0; i < (int)_curText->verts.size(); ++i)
-    {
-      _curText->transformedVerts[i] = _curText->keyframes[i*_curText->numKeyframes+9];
-    }
-  }
+//  if (Inside(ms, BLACKBOARD.GetFloatVar("text0FadeInStart"), BLACKBOARD.GetFloatVar("text0FadeOutEnd")))
+//  {
+//    _curText = &_textData[0];
+//    float scale = ms - BLACKBOARD.GetFloatVar("text0FadeInStart");
+//    float delta = BLACKBOARD.GetFloatVar("text0FadeInEnd") - BLACKBOARD.GetFloatVar("text0FadeInStart");
+//    _lineFade = min(fnCalcFade(ms, "text0FadeInStart", "text0FadeInEnd", false),
+//        fnCalcFade(ms, "text0FadeOutStart", "text0FadeOutEnd", true));
+//    float scale = Clamp(0.f, 1.f, scale / delta);
+//    V3 ptOfs = BLACKBOARD.GetVec3Var("text0pos");
+//    float ptScale = BLACKBOARD.GetFloatVar("text0Scale");
+//  }
+//
+//  if (Inside(ms, BLACKBOARD.GetFloatVar("text1FadeInStart"), BLACKBOARD.GetFloatVar("text1FadeOutEnd")))
+//  {
+//    _curText = &_textData[1];
+//    scale = ms - BLACKBOARD.GetFloatVar("text1FadeInStart");
+//    float delta = BLACKBOARD.GetFloatVar("text1FadeInEnd") - BLACKBOARD.GetFloatVar("text1FadeInStart");
+//    _lineFade = min(fnCalcFade(ms, "text1FadeInStart", "text1FadeInEnd", false),
+//        fnCalcFade(ms, "text1FadeOutStart", "text1FadeOutEnd", true));
+//    scale = Clamp(0.f, 1.f, scale / delta);
+//    ptOfs = BLACKBOARD.GetVec3Var("text1pos");
+//    ptScale = BLACKBOARD.GetFloatVar("text1Scale");
+//  }
+//
+//  if (Inside(ms, BLACKBOARD.GetFloatVar("text2FadeInStart"), BLACKBOARD.GetFloatVar("text2FadeOutEnd")))
+//  {
+//    _curText = &_textData[2];
+//    scale = ms - BLACKBOARD.GetFloatVar("text2FadeInStart");
+//    float delta = BLACKBOARD.GetFloatVar("text2FadeInEnd") - BLACKBOARD.GetFloatVar("text2FadeInStart");
+//    _lineFade = min(fnCalcFade(ms, "text2FadeInStart", "text2FadeInEnd", false),
+//        fnCalcFade(ms, "text2FadeOutStart", "text2FadeOutStart", true));
+//    scale = Clamp(0.f, 1.f, scale / delta);
+//    ptOfs = BLACKBOARD.GetVec3Var("text2pos");
+//    ptScale = BLACKBOARD.GetFloatVar("text2Scale");
+//  }
+//
+//  if (_curText)
+//  {
+//    // interpolate between the keyframes
+//#if 1
+//    //scale = (1 - scale);
+//    int numKeyframes = _settings.num_keyframes;
+//    int idx0 = max(0, min(numKeyframes - 1, (int)(scale * numKeyframes)));
+//    int idx1 = max(0, min(numKeyframes - 1, idx0 + 1));
+//    float frac =  scale * numKeyframes - (float)idx0;
+//
+//    for (int i = 0; i < (int)_curText->verts.size(); ++i)
+//    {
+//      V3 v0 = _curText->keyframes[i*numKeyframes + idx0];
+//      V3 v1 = _curText->keyframes[i*numKeyframes + idx1];
+//      _curText->transformedVerts[i] = ptOfs + ptScale * lerp(v0, v1, frac);
+//    }
+//#else
+//    scale = (1 - scale) * BLACKBOARD.GetFloatVar("maxStrength");
+//
+//    DistortVerts(_curText->transformedVerts.data(),
+//      _curText->verts.data(),
+//      (int)_curText->verts.size(),
+//      _randomPoints.Data(),
+//      _settings.deform.perlin_scale,
+//      scale,
+//      ptOfs,
+//      ptScale);
+//#endif
+//
+//  }
 
   BLACKBOARD.ClearNamespace();
 
@@ -630,29 +700,36 @@ bool Intro::Render()
   }
 
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  if (_drawText && _curText)
+  if (_drawText)
   {
     // Render lines
     _ctx->SetRenderTarget(rtLines, GRAPHICS.GetDepthStencil(), &black);
-
-    RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
     V3 params = BLACKBOARD.GetVec3Var("intro.lineParams");
-    _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, _lineFade);
-    _cbPlexus.Set(_ctx, 0);
 
-    ObjectHandle vb = _plexusLineBundle.objects._vb;
-    V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
+    for (int i = 0; i < 3; ++i)
+    {
+      TextData* cur = &_textData[i];
+      if (cur->state == TextData::STATE_INACTIVE)
+        continue;
 
-    int numLines = CalcPlexusGrouping(vtx,
-      _curText->transformedVerts.data(),
-      (int)_curText->transformedVerts.size(),
-      _curText->neighbours,
-      (int)_curText->transformedVerts.size(),
-      _settings.plexus);
+      _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, cur->fade);
+      _cbPlexus.Set(_ctx, 0);
 
-    _ctx->Unmap(vb);
-    _ctx->SetBundle(_plexusLineBundle);
-    _ctx->Draw(numLines, 0);
+      ObjectHandle vb = cur->vb;
+      V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
+
+      int numLines = CalcPlexusGrouping(vtx,
+        cur->transformedVerts.data(),
+        (int)cur->transformedVerts.size(),
+        cur->neighbours,
+        (int)cur->transformedVerts.size(),
+        _settings.plexus);
+
+      _ctx->Unmap(vb);
+      _ctx->SetBundle(_plexusLineBundle);
+      _ctx->SetVertexBuffer(vb);
+      _ctx->Draw(numLines, 0);
+    }
     _ctx->UnsetRenderTargets(0, 1);
   }
 
@@ -690,6 +767,20 @@ void Intro::RenderParameterSet()
   ImGui::Checkbox("plexus", &extended);
   if (extended)
   {
+    bool recalcKeyframes = false;
+    recalcKeyframes |= ImGui::SliderFloat("angle scale", &_settings.angle_scale, 1, 20);
+    recalcKeyframes |= ImGui::SliderFloat("kf step", &_settings.keyframe_step, 1, 50);
+    recalcKeyframes |= ImGui::SliderFloat("kf scale", &_settings.keyframe_scale, 1, 100);
+    recalcKeyframes |= ImGui::SliderInt("kf count", &_settings.num_keyframes, 20, 100);
+
+    if (recalcKeyframes)
+    {
+      for (int i = 0; i < 3; ++i)
+      {
+        CreateKeyframes(&_textData[i]);
+      }
+    }
+
     ImGui::SliderFloat("eps", &_settings.plexus.eps, 0.1f, 25.0f);
     ImGui::SliderFloat("min-dist", &_settings.plexus.min_dist, 0.1f, 25.0f);
     ImGui::SliderFloat("max-dist", &_settings.plexus.max_dist, 10.0, 1500.0f);

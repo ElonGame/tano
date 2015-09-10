@@ -6,13 +6,13 @@
   num_particles: 500;
   text_min_dist: 500.000000;
   text_max_dist: 2000.000000;
-  blur_radius: 15.000000;
+  blur_radius: 18.000000;
   plexus: {
     eps: 0.010000;
     min_dist: 0.100000;
-    max_dist: 200.000000;
+    max_dist: 724.899048;
     num_neighbours: 10;
-    num_nearest: 2;
+    num_nearest: 5;
   };
   sphere: {
     radius: 600.000000;
@@ -31,16 +31,20 @@
   };
   camera: {
     camera: {
-      pos: { 0.000000, 138.066406, -487.255432 };
-      dir: { 0.000000, -0.459529, 0.888163 };
-      right: { 1.000000, 0.000000, -0.000000 };
-      up: { 0.000000, 0.888163, 0.459529 };
+      pos: { 38.525749, 72.354019, -352.032837 };
+      dir: { -0.196264, -0.459529, 0.866206 };
+      right: { 0.975279, -0.000000, 0.220978 };
+      up: { -0.101546, 0.888163, 0.448169 };
       fov: 1.047000;
       near_plane: 1.000000;
       far_plane: 2000.000000;
     };
-    yaw: 0.000000;
+    yaw: -0.222817;
     pitch: 0.477465;
     roll: 0.000000;
   };
+  angle_scale: 5.510000;
+  keyframe_scale: 10.000000;
+  keyframe_step: 9.414001;
+  num_keyframes: 20;
 };

@@ -80,17 +80,19 @@ namespace tano
       vector<V3> transformedVerts;
       vector<int> indices;
       vector<u32> edges;
-      int numKeyframes = 20;
       vector<V3> keyframes;
       int* neighbours;
+      enum { STATE_INACTIVE, STATE_ACTIVE, STATE_DONE };
+      int state = STATE_INACTIVE;
+      float fade = 1;
+      ObjectHandle vb;
     };
 
-    float keyframeSpeed = 3;
-    float keyframeScale = 10;
     void CreateKeyframes(TextData* textData);
+    void UpdateText(const UpdateState& state, TextData* textData, const char* prefix);
 
     TextData _textData[3];
-    TextData* _curText = nullptr;
+    //TextData* _curText = nullptr;
 
     float _particlesStart, _particlesEnd;
 
@@ -99,7 +101,7 @@ namespace tano
     GpuBundle _plexusLineBundle;
 
     bool _drawText = true;
-    float _lineFade = 1.0f;
+    //float _lineFade = 1.0f;
     float _curTime = 0;
 
     FreeflyCamera _textCamera;

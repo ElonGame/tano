@@ -267,7 +267,7 @@ void TextWriter::GenerateIndexedTris(
         vMax = Max(v, vMax);
       }
 
-      xOfs += letter.width * 1.05f;
+      xOfs += letter.width * 1.15f;
     }
 
     lineInfo.push_back({triStart, (u32)verts->size(), vMin.x, vMax.x, vMin.y, vMax.y});
