@@ -99,17 +99,17 @@ bool Landscape::Init()
     // Landscape
     u32 vertexFlags = VF_POS | VF_NORMAL;
     u32 vertexSize = sizeof(PosNormal);
-    INIT(_landscapeGpuObjects.CreateDynamicVb(1024 * 1024 * 6 * vertexSize, vertexSize));
+    INIT_FATAL(_landscapeGpuObjects.CreateDynamicVb(1024 * 1024 * 6 * vertexSize, vertexSize));
 
     u32 maxQuads = 1024 * 1024;
     vector<u32> indices = GenerateQuadIndices(maxQuads);
-    INIT(_landscapeGpuObjects.CreateIndexBuffer(
+    INIT_FATAL(_landscapeGpuObjects.CreateIndexBuffer(
         (u32)indices.size() * sizeof(u32), DXGI_FORMAT_R32_UINT, GenerateQuadIndices(maxQuads).data()));
 
-    INIT(
+    INIT_FATAL(
         _landscapeGpuObjects.LoadVertexShader("shaders/out/landscape.landscape", "VsLandscape", vertexFlags));
-    INIT(_landscapeGpuObjects.LoadGeometryShader("shaders/out/landscape.landscape", "GsLandscape"));
-    INIT(_landscapeGpuObjects.LoadPixelShader("shaders/out/landscape.landscape", "PsLandscape"));
+    INIT_FATAL(_landscapeGpuObjects.LoadGeometryShader("shaders/out/landscape.landscape", "GsLandscape"));
+    INIT_FATAL(_landscapeGpuObjects.LoadPixelShader("shaders/out/landscape.landscape", "PsLandscape"));
 
     // Blend desc that doesn't write to the emissive channel
     CD3D11_BLEND_DESC blendDescAlphaNoEmissive = blendDescBlendSrcAlpha;
@@ -123,33 +123,33 @@ bool Landscape::Init()
     // blendDescNoEmissive.RenderTarget[1].BlendEnable = TRUE;
     blendDescNoEmissive.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
-    INIT(_landscapeState.Create(nullptr, &blendDescAlphaNoEmissive, &rasterizeDescCullNone));
-    INIT(_landscapeLowerState.Create(nullptr, &blendDescNoEmissive, &rasterizeDescCullNone));
+    INIT_FATAL(_landscapeState.Create(nullptr, &blendDescAlphaNoEmissive, &rasterizeDescCullNone));
+    INIT_FATAL(_landscapeLowerState.Create(nullptr, &blendDescNoEmissive, &rasterizeDescCullNone));
   }
 
   // clang-format off
-  INIT(_skyBundle.Create(BundleOptions()
+  INIT_FATAL(_skyBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/landscape.sky", "PsSky")));
 
-  INIT(_compositeBundle.Create(BundleOptions()
+  INIT_FATAL(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/landscape.composite", "PsComposite")));
 
-  INIT(_lensFlareBundle.Create(BundleOptions()
+  INIT_FATAL(_lensFlareBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/landscape.lensflare", "PsLensFlare")));
   // clang-format on
 
-  INIT(_cbLensFlare.Create());
-  INIT(_cbComposite.Create());
-  INIT(_cbSky.Create());
-  INIT(_cbLandscape.Create());
-  INIT(_cbParticle.Create());
+  INIT_FATAL(_cbLensFlare.Create());
+  INIT_FATAL(_cbComposite.Create());
+  INIT_FATAL(_cbSky.Create());
+  INIT_FATAL(_cbLandscape.Create());
+  INIT_FATAL(_cbParticle.Create());
 
   // Particles
-  INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
+  INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
 
   vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
       CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT)};

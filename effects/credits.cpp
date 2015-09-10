@@ -115,7 +115,7 @@ bool Credits::Init()
   INIT_RESOURCE(_csBlur, GRAPHICS.LoadComputeShaderFromFile("shaders/out/credits.blur", "BoxBlurY"));
 
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
-  INIT_RESOURCE(_creditsTexture, RESOURCE_MANAGER.LoadTexture("gfx/credits.png"));
+  INIT_RESOURCE(_creditsTexture, RESOURCE_MANAGER.LoadTexture("gfx/abstract1.jpg"));
 
   //INIT(InitParticles());
   INIT(_cbComposite.Create());

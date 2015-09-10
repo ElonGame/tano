@@ -42,11 +42,12 @@ bool Blob::Init()
 
   _camera.FromProtocol(_settings.camera);
 
-  MeshLoader meshLoader;
-  INIT_FATAL(meshLoader.Load("gfx/displace_blob.boba"));
-  CreateScene(meshLoader,
-    SceneOptions().TransformToWorldSpace(),
-    &_scene);
+  // TODO(magnus): broken for now
+  //MeshLoader meshLoader;
+  //INIT_FATAL(meshLoader.Load("gfx/displace_blob.boba"));
+  //CreateScene(meshLoader,
+  //  SceneOptions().TransformToWorldSpace(),
+  //  &_scene);
 
     // clang-format off
   INIT_FATAL(_compositeBundle.Create(BundleOptions()

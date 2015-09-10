@@ -1,10 +1,4 @@
 {
-  camera: {
-    yaw: 0.000000;
-    pitch: 0.000000;
-    roll: 0.000000;
-    pos: { 0.000000, 10.000000, 30.000000 };
-  };
   boids: {
     separation_scale: 10.000000;
     cohesion_scale: 10.000000;
@@ -19,7 +13,7 @@
     num_flocks: 25;
     boids_per_flock: 500;
   };
-  particle_texture: 'gfx/particle3.png';
+  particle_texture: 'gfx/particle_orange.png';
   tonemap: {
     shoulder: 0.843000;
     max_white: 1.268000;
