@@ -65,8 +65,7 @@ void TextWriter::Letter::CalcBounds()
 //------------------------------------------------------------------------------
 bool TextWriter::Init(const char* filename)
 {
-  string resolvedNamed = RESOURCE_MANAGER.ResolveFilename(filename, false);
-  if (!_loader.Load(resolvedNamed.c_str()))
+  if (!_loader.Load(filename))
     return false;
 
   u32 numLetters = 'Z' - 'A' + 1;
@@ -158,7 +157,7 @@ void TextWriter::GenerateTris(const char* str, TextSegment segment, vector<V3>* 
 
       vtxIdx += numIndices;
 
-      xOfs += letter.width * 1.05f;
+      xOfs += letter.width * 1.15f;
     }
 
     lineInfo.push_back({triStart, (u32)verts->size(), vMin.x, vMax.x, vMin.y, vMax.y});

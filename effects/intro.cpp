@@ -260,12 +260,12 @@ float Noise3(const V3& v, float scale)
 }
 
 //------------------------------------------------------------------------------
-void Intro::CreateKeyframes(TextData* textData)
+void Intro::CreateKeyframes(TextData::Segment* segment)
 {
-  int numVerts = (int)textData->verts.size();
+  int numVerts = (int)segment->verts.size();
   int numKeyframes = _settings.num_keyframes;
 
-  textData->keyframes.resize(numVerts * numKeyframes);
+  segment->keyframes.resize(numVerts * numKeyframes);
 
   float scale = _settings.keyframe_scale;
   float step = _settings.keyframe_step;
@@ -273,7 +273,7 @@ void Intro::CreateKeyframes(TextData* textData)
 
   for (int i = 0; i < numVerts; ++i)
   {
-    V3 pos = textData->verts[i];
+    V3 pos = segment->verts[i];
     float angle = XM_2PI * Noise3(pos, scale);
     float speed = 0;
     for (int j = 0; j < numKeyframes; ++j)
@@ -285,7 +285,7 @@ void Intro::CreateKeyframes(TextData* textData)
       speed += 0.5f;
       angle += XM_2PI * v / angleScale;
 
-      textData->keyframes[i * numKeyframes + (numKeyframes - 1 - j)] = pos;
+      segment->keyframes[i * numKeyframes + (numKeyframes - 1 - j)] = pos;
     }
   }
 }
@@ -316,6 +316,23 @@ bool Intro::Init()
   INIT(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/intro.composite", "PsComposite")));
+
+  INIT(_textPolyBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/intro.textPoly", "VsMesh")
+    .PixelShader("shaders/out/intro.textPoly", "PsMesh")
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))));
+
+  INIT(_plexusLineBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/intro.plexus", "VsLines")
+    .GeometryShader("shaders/out/intro.plexus", "GsLines")
+    .PixelShader("shaders/out/intro.plexus", "PsLines")
+    .VertexFlags(VF_POS)
+    .RasterizerDesc(rasterizeDescCullNone)
+    .BlendDesc(blendDescBlendOneOne)
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
+
   // clang-format on
 
   INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
@@ -342,38 +359,37 @@ bool Intro::Init()
   {
     TextData& t = _textData[i];
 
+    _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &t.outline.verts, &t.outline.indices);
+    _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap.verts);
+
     t.vb = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, 128 * 1024, true, nullptr, sizeof(V3));
-    //_textWriter.GenerateTris(text[i], TextWriter::TextOutline, &t.outline);
-    _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap);
-    _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &t.verts, &t.indices, &t.edges);
-    t.transformedVerts = t.verts;
+    t.vbTri = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, 128 * 1024, true, nullptr, 2 * sizeof(V3));
 
-    int num = (u32)_textData[i].verts.size();
-    _textData[i].neighbours = new int[num * num];
-    memset(_textData[i].neighbours, 0xff, num * num * sizeof(int));
-    CalcTextNeighbours(num, _textData[i].indices, _textData[i].neighbours);
+    auto fnFinalize = [this, &maxVerts](TextData::Segment& segment, bool calcNeighours) {
 
-    CreateKeyframes(&t);
+      segment.transformedVerts = segment.verts;
+      if (calcNeighours)
+      {
+        int num = (u32)segment.verts.size();
+        segment.neighbours = new int[num * num];
+        memset(segment.neighbours, 0xff, num * num * sizeof(int));
+        CalcTextNeighbours(num, segment.indices, segment.neighbours);
+      }
+      CreateKeyframes(&segment);
 
-    maxVerts = max(maxVerts, (int)_textData[i].outline.size());
+      maxVerts = max(maxVerts, (int)segment.verts.size());
+
+    };
+
+    fnFinalize(t.outline, true);
+    fnFinalize(t.cap, false);
   }
-
-  // clang-format off
-  INIT(_plexusLineBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/intro.plexus", "VsLines")
-    .GeometryShader("shaders/out/intro.plexus", "GsLines")
-    .PixelShader("shaders/out/intro.plexus", "PsLines")
-    .VertexFlags(VF_POS)
-    .RasterizerDesc(rasterizeDescCullNone)
-    .BlendDesc(blendDescBlendOneOne)
-    .DepthStencilDesc(depthDescDepthDisabled)
-    .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
-  // clang-format on
 
   // Generic setup
   INIT(_cbBackground.Create());
   INIT(_cbComposite.Create());
   INIT(_cbParticle.Create());
+  INIT(_cbTextPoly.Create());
   _cbBackground.ps0.inner = ColorToVector4(_settings.inner_color);
   _cbBackground.ps0.outer = ColorToVector4(_settings.outer_color);
 
@@ -415,6 +431,9 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
 
     _cbPlexus.gs0.viewProj = viewProj.Transpose();
     _cbPlexus.gs0.cameraPos = pos;
+
+    _cbTextPoly.vs0.viewProj = viewProj.Transpose();
+    _cbTextPoly.vs0.objWorld = Matrix::Identity();
   }
 }
 
@@ -491,12 +510,17 @@ void Intro::UpdateText(const UpdateState& state, TextData* textData, const char*
   int idx1 = max(0, min(numKeyframes - 1, idx0 + 1));
   float frac = scale * numKeyframes - (float)idx0;
 
-  for (int i = 0; i < (int)textData->verts.size(); ++i)
-  {
-    V3 v0 = textData->keyframes[i * numKeyframes + idx0];
-    V3 v1 = textData->keyframes[i * numKeyframes + idx1];
-    textData->transformedVerts[i] = ptOfs + ptScale * lerp(v0, v1, frac);
-  }
+  auto fnInterpolate = [=](TextData::Segment& segment) {
+    for (int i = 0; i < (int)segment.verts.size(); ++i)
+    {
+      V3 v0 = segment.keyframes[i * numKeyframes + idx0];
+      V3 v1 = segment.keyframes[i * numKeyframes + idx1];
+      segment.transformedVerts[i] = ptOfs + ptScale * lerp(v0, v1, frac);
+    }
+  };
+
+  fnInterpolate(textData->outline);
+  fnInterpolate(textData->cap);
 #endif
 }
 
@@ -642,10 +666,48 @@ bool Intro::Render()
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
   if (_drawText)
   {
-    // Render lines
     _ctx->SetRenderTarget(rtLines, GRAPHICS.GetDepthStencil(), &black);
     V3 params = BLACKBOARD.GetVec3Var("intro.lineParams");
 
+    // tris
+    _ctx->SetBundle(_textPolyBundle);
+
+    for (int i = 0; i < 3; ++i)
+    {
+      TextData* cur = &_textData[i];
+      if (cur->state == TextData::STATE_INACTIVE)
+        continue;
+
+      float f = cur->fade;
+      _cbTextPoly.ps0.params = Vector4(f, f, f, f);
+      _cbTextPoly.Set(_ctx, 0);
+
+      ObjectHandle vb = cur->vbTri;
+      V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
+      V3* src = cur->cap.transformedVerts.data();
+      int num = (int)cur->cap.transformedVerts.size() / 3;
+      for (int j = 0; j < num; ++j)
+      {
+        V3& v0 = src[j * 3 + 0];
+        V3& v1 = src[j * 3 + 1];
+        V3& v2 = src[j * 3 + 2];
+
+        V3 n = Cross(v1 - v0, v2 - v0);
+        vtx[j * 6 + 0] = v0;
+        vtx[j * 6 + 1] = n;
+        vtx[j * 6 + 2] = v1;
+        vtx[j * 6 + 3] = n;
+        vtx[j * 6 + 4] = v2;
+        vtx[j * 6 + 5] = n;
+      }
+      //memcpy(vtx, cur->cap.transformedVerts.data(), cur->cap.transformedVerts.size() * sizeof(V3));
+      _ctx->Unmap(vb);
+      _ctx->SetVertexBuffer(vb);
+      _ctx->Draw((int)cur->cap.transformedVerts.size(), 0);
+    }
+
+    // lines
+    _ctx->SetBundle(_plexusLineBundle);
     for (int i = 0; i < 3; ++i)
     {
       TextData* cur = &_textData[i];
@@ -659,17 +721,17 @@ bool Intro::Render()
       V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
 
       int numLines = CalcPlexusGrouping(vtx,
-          cur->transformedVerts.data(),
-          (int)cur->transformedVerts.size(),
-          cur->neighbours,
-          (int)cur->transformedVerts.size(),
-          _settings.plexus);
+        cur->outline.transformedVerts.data(),
+        (int)cur->outline.transformedVerts.size(),
+        cur->outline.neighbours,
+        (int)cur->outline.transformedVerts.size(),
+        _settings.plexus);
 
       _ctx->Unmap(vb);
-      _ctx->SetBundle(_plexusLineBundle);
       _ctx->SetVertexBuffer(vb);
       _ctx->Draw(numLines, 0);
     }
+
     _ctx->UnsetRenderTargets(0, 1);
   }
 
@@ -717,7 +779,8 @@ void Intro::RenderParameterSet()
     {
       for (int i = 0; i < 3; ++i)
       {
-        CreateKeyframes(&_textData[i]);
+        CreateKeyframes(&_textData[i].cap);
+        CreateKeyframes(&_textData[i].outline);
       }
     }
 

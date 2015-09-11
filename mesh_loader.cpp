@@ -1,4 +1,5 @@
 #include "mesh_loader.hpp"
+#include "resource_manager.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -6,7 +7,7 @@ using namespace bristol;
 //------------------------------------------------------------------------------
 bool MeshLoader::Load(const char* filename)
 {
-  if (!LoadFile(filename, &buf))
+  if (!RESOURCE_MANAGER.LoadFile(filename, &buf))
     return false;
 
   const protocol::SceneBlob* scene = (const protocol::SceneBlob*)&buf[0];

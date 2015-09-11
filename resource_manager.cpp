@@ -107,51 +107,6 @@ bool ResourceManager::LoadFile(const char* filename, vector<char>* buf)
     return true;
   }
 }
-
-//------------------------------------------------------------------------------
-bool ResourceManager::LoadPartial(
-    const char* filename,
-    u32 ofs,
-    u32 len,
-    vector<char>* buf)
-{
-  buf->resize(len);
-  return LoadInplace(filename, ofs, len, buf->data());
-}
-
-//------------------------------------------------------------------------------
-bool ResourceManager::LoadInplace(
-    const char* filename,
-    u32 ofs,
-    u32 len,
-    void* buf)
-{
-  const string& fullPath = ResolveFilename(filename, true);
-  _readFiles.insert(FileInfo(filename, fullPath));
-
-  ScopedHandle h(CreateFileA(fullPath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 
-      FILE_ATTRIBUTE_NORMAL, NULL));
-  if (h.handle() == INVALID_HANDLE_VALUE)
-    return false;
-
-  DWORD size = GetFileSize(h, NULL);
-  if (ofs + len > size)
-    return false;
-
-  DWORD res;
-  if (SetFilePointer(h, ofs, 0, FILE_BEGIN) == INVALID_SET_FILE_POINTER) 
-  {
-    return false;
-  }
-
-  if (!ReadFile(h, buf, len, &res, NULL)) 
-  {
-    DWORD err = GetLastError();
-    return false;
-  }
-  return true;
-}
-
 //------------------------------------------------------------------------------
 bool ResourceManager::FileExists(const char* filename)
 {
@@ -393,47 +348,12 @@ int PackedResourceManager::HashLookup(const char* key)
 }
 
 //------------------------------------------------------------------------------
-bool PackedResourceManager::LoadPackedFile(const char* filename, vector<char>* buf)
+bool PackedResourceManager::LoadFile(const char* filename, vector<char>* buf)
 {
   PackedFileInfo* p = &_fileInfo[HashLookup(filename)];
   buf->resize(p->finalSize);
   int res = LZ4_uncompress(&_fileBuffer[p->offset], buf->data(), p->finalSize);
   return res == p->compressedSize;
-}
-
-//------------------------------------------------------------------------------
-bool PackedResourceManager::LoadPackedInplace(const char* filename, size_t ofs, size_t len, void* buf)
-{
-  vector<char> tmp;
-  if (!LoadPackedFile(filename, &tmp))
-    return false;
-
-  memcpy(buf, tmp.data() + ofs, len);
-  return true;
-}
-
-//------------------------------------------------------------------------------
-bool PackedResourceManager::LoadFile(const char* filename, vector<char>* buf)
-{
-  return LoadPackedFile(filename, buf);
-}
-
-//------------------------------------------------------------------------------
-bool PackedResourceManager::LoadPartial(const char* filename, size_t ofs, size_t len, vector<char>* buf)
-{
-  // this is kinda cheesy..
-  vector<char> tmp;
-  if (!LoadPackedFile(filename, &tmp))
-    return false;
-  buf->resize(len);
-  copy(begin(tmp) + ofs, begin(tmp) + ofs + len, begin(*buf));
-  return true;
-}
-
-//------------------------------------------------------------------------------
-bool PackedResourceManager::LoadInplace(const char* filename, size_t ofs, size_t len, void* buf)
-{
-  return LoadPackedInplace(filename, ofs, len, buf);
 }
 
 //------------------------------------------------------------------------------
@@ -444,7 +364,7 @@ ObjectHandle PackedResourceManager::LoadTexture(
     D3DX11_IMAGE_INFO* info)
 {
   vector<char> tmp;
-  LoadPackedFile(filename, &tmp);
+  LoadFile(filename, &tmp);
   return GRAPHICS.LoadTextureFromMemory(
     tmp.data(), 
     (u32)tmp.size(), 
@@ -460,15 +380,15 @@ ObjectHandle PackedResourceManager::LoadTextureFromMemory(
 }
 
 //------------------------------------------------------------------------------
-AddFileWatchResult PackedResourceManager::AddFileWatch(
+FileWatcherWin32::AddFileWatchResult PackedResourceManager::AddFileWatch(
     const string& filename,
     bool initialCallback,
-    const cbFileChanged& cb)
+    const FileWatcherWin32::cbFileChanged& cb)
 {
   // Invoke the callback directly
-  AddFileWatchResult res;
+  FileWatcherWin32::AddFileWatchResult res;
   res.watchId = 0;
-  res.initialResult = cb(filename, 0);
+  res.initialResult = cb(filename);
   return res;
 }
 

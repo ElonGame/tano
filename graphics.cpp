@@ -969,7 +969,7 @@ ObjectHandle Graphics::LoadVertexShaderFromFile(const string& filenameBase,
 
             if (inputLayout)
             {
-              INIT_RESOURCE(*inputLayout, GRAPHICS.CreateInputLayout(localElementDesc, buf));
+              INIT_RESOURCE_FATAL(*inputLayout, GRAPHICS.CreateInputLayout(localElementDesc, buf));
             }
 
             END_INIT_SEQUENCE();

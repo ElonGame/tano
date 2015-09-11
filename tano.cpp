@@ -282,8 +282,9 @@ bool App::LoadSettings()
   BEGIN_INIT_SEQUENCE();
 
   vector<char> buf;
-  INIT(RESOURCE_MANAGER.LoadFile(PathJoin(_appRoot.c_str(), "app.gb").c_str(), &buf));
-  INIT(ParseAppSettings(InputBuffer(buf.data(), buf.size()), &_settings));
+  //INIT(RESOURCE_MANAGER.LoadFile(PathJoin(_appRoot.c_str(), "app.gb").c_str(), &buf));
+  INIT_FATAL(RESOURCE_MANAGER.LoadFile("app.gb", &buf));
+  INIT_FATAL(ParseAppSettings(InputBuffer(buf.data(), buf.size()), &_settings));
 
   END_INIT_SEQUENCE();
 }

@@ -14,6 +14,8 @@
 #include "../shaders/out/intro.particle_gsparticle.cbuffers.hpp"
 #include "../shaders/out/plexus_gslines.cbuffers.hpp"
 #include "../shaders/out/plexus_pslines.cbuffers.hpp"
+#include "../shaders/out/intro.textpoly_vsmesh.cbuffers.hpp"
+#include "../shaders/out/intro.textpoly_psmesh.cbuffers.hpp"
 #include "../particle_emitters.hpp"
 
 namespace tano
@@ -62,6 +64,9 @@ namespace tano
 
     ConstantBufferBundle<void, cb::PlexusPS, cb::PlexusGS> _cbPlexus;
 
+    ConstantBufferBundle<cb::IntroTextpolyV, cb::IntroTextpolyP> _cbTextPoly;
+    GpuBundle _textPolyBundle;
+
     string _configName;
     
     ObjectHandle _csParticleBlur;
@@ -74,21 +79,25 @@ namespace tano
     TextWriter _textWriter;
     struct TextData
     {
-      vector<V3> outline;
-      vector<V3> cap;
-      vector<V3> verts;
-      vector<V3> transformedVerts;
-      vector<int> indices;
-      vector<u32> edges;
-      vector<V3> keyframes;
-      int* neighbours;
+      struct Segment
+      {
+        vector<V3> verts;
+        vector<V3> transformedVerts;
+        vector<int> indices;
+        vector<V3> keyframes;
+        int* neighbours = nullptr;
+      };
+
+      Segment outline;
+      Segment cap;
       enum { STATE_INACTIVE, STATE_ACTIVE, STATE_DONE };
       int state = STATE_INACTIVE;
       float fade = 1;
       ObjectHandle vb;
+      ObjectHandle vbTri;
     };
 
-    void CreateKeyframes(TextData* textData);
+    void CreateKeyframes(TextData::Segment* textData);
     void UpdateText(const UpdateState& state, TextData* textData, const char* prefix);
 
     TextData _textData[3];

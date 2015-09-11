@@ -17,12 +17,9 @@ namespace tano
     static bool Create(const char* outputFilename, const char* appRoot);
     static bool Destroy();
 
-    string ResolveFilename(const char* filename, bool returnFullPath);
     bool FileExists(const char* filename);
     __time64_t ModifiedDate(const char* filename);
     bool LoadFile(const char* filename, vector<char>* buf);
-    bool LoadPartial(const char* filename, u32 ofs, u32 len, vector<char>* buf);
-    bool LoadInplace(const char* filename, u32 ofs, u32 len, void* buf);
 
     // file is opened relateive to the app root
     FILE* OpenWriteFile(const char* filename);
@@ -47,6 +44,11 @@ namespace tano
     void Tick();
 
   private:
+
+    // Note, this is private because we don't want clients to actually know
+    // the resolved path, but instead just use their friendly paths to identify
+    // files (and call resman's LoadFile)
+    string ResolveFilename(const char* filename, bool returnFullPath);
 
     FileWatcherWin32 _fileWatcher;
 
@@ -88,8 +90,6 @@ namespace tano
     static bool Destroy();
 
     bool LoadFile(const char* filename, vector<char>* buf);
-    bool LoadPartial(const char* filename, size_t ofs, size_t len, vector<char>* buf);
-    bool LoadInplace(const char* filename, size_t ofs, size_t len, void* buf);
     ObjectHandle LoadTexture(const char* filename,
         const char* friendlyName = nullptr,
         bool srgb = false,
@@ -97,12 +97,11 @@ namespace tano
 
     ObjectHandle LoadTextureFromMemory(const char* buf, size_t len, bool srgb, D3DX11_IMAGE_INFO* info);
 
-    AddFileWatchResult AddFileWatch(const string& filename, bool initial_callback, const cbFileChanged& cb);
+    FileWatcherWin32::AddFileWatchResult AddFileWatch(
+      const string& filename, bool initial_callback, const FileWatcherWin32::cbFileChanged& cb);
 
   private:
     bool Init();
-    bool LoadPackedFile(const char* filename, vector<char>* buf);
-    bool LoadPackedInplace(const char* filename, size_t ofs, size_t len, void* buf);
     int HashLookup(const char* key);
 
     struct PackedFileInfo

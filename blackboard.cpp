@@ -26,7 +26,7 @@ bool Blackboard::Create(const char* filename, const char* datafile)
 //------------------------------------------------------------------------------
 void Blackboard::Destory()
 {
-#if WITH_BLACKBOARD_SAVE && WITH_BLACKBOARD_TCP
+#if WITH_BLACKBOARD_SAVE && WITH_BLACKBOARD_TCP && WITH_UNPACKED_RESOUCES
   _instance->SaveData();
 #endif
   delete exch_null(_instance);
@@ -100,7 +100,7 @@ void Blackboard::Reset()
 }
 
 //------------------------------------------------------------------------------
-#if WITH_BLACKBOARD_SAVE && WITH_BLACKBOARD_TCP
+#if WITH_BLACKBOARD_SAVE && WITH_BLACKBOARD_TCP && WITH_UNPACKED_RESOUCES
 void Blackboard::SaveData()
 {
   FILE* f = RESOURCE_MANAGER.OpenWriteFile(_datafile.c_str());

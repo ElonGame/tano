@@ -54,7 +54,7 @@ namespace tano
     bool ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack);
     void Reset();
 
-#if WITH_BLACKBOARD_SAVE && WITH_BLACKBOARD_TCP
+#if WITH_BLACKBOARD_SAVE && WITH_BLACKBOARD_TCP && WITH_UNPACKED_RESOUCES
     void SaveData();
 #endif
     void LoadData();

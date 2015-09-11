@@ -402,10 +402,9 @@ bool Tunnel::Init()
   INIT(_cbMesh.Create());
   INIT(_cbGreets.Create());
 
-  // TODO(magnus): broken for now
-  //MeshLoader loader;
-  //INIT_FATAL(loader.Load("gfx/newblob2.boba"));
-  //INIT_FATAL(CreateScene(loader, SceneOptions(), &_scene));
+  MeshLoader loader;
+  INIT_FATAL(loader.Load("gfx/newblob2.boba"));
+  INIT_FATAL(CreateScene(loader, SceneOptions(), &_scene));
 
   INIT_FATAL(_greetsBlock.Init());
 
