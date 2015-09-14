@@ -126,12 +126,12 @@ void FreeflyCamera::Update(const FixedUpdateState& updateState)
 
 //------------------------------------------------------------------------------
 FollowCam::FollowCam()
-  : _seek(50, 50)
+  : _seek(30, 30)
 {
   _particle.Init(1);
   _particle._bodies.pos[0] = { 0, 0, 0 };
   _particle.AddKinematics(&_seek, 1);
-  _particle._maxSpeed = 50;
+  _particle._maxSpeed = 30;
 }
 
 //------------------------------------------------------------------------------

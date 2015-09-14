@@ -318,8 +318,8 @@ bool Intro::Init()
     .PixelShader("shaders/out/intro.composite", "PsComposite")));
 
   INIT(_textPolyBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/intro.textPoly", "VsMesh")
-    .PixelShader("shaders/out/intro.textPoly", "PsMesh")
+    .VertexShader("shaders/out/intro.textpoly", "VsMesh")
+    .PixelShader("shaders/out/intro.textpoly", "PsMesh")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))));
 
@@ -351,7 +351,7 @@ bool Intro::Init()
   // Text setup
   INIT(_textWriter.Init("gfx/text3.boba"));
   const char* text[] = {
-      "neurotica efs", "radio silence", "solskogen",
+      "neurotica efs", "radio silence", "demosplash",
   };
 
   int maxVerts = 0;
@@ -663,6 +663,8 @@ bool Intro::Render()
     fullscreen->BlurVertCustom(rtColor, rtBlur2, rtBlur2._desc, _csParticleBlur, 20, 1);
   }
 
+  float beatHi = BLACKBOARD.GetFloatVar("Beat-Hi", _curTime);
+
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
   if (_drawText)
   {
@@ -678,8 +680,8 @@ bool Intro::Render()
       if (cur->state == TextData::STATE_INACTIVE)
         continue;
 
-      float f = cur->fade;
-      _cbTextPoly.ps0.params = Vector4(f, f, f, f);
+      float ff = cur->fade;
+      _cbTextPoly.ps0.params = Vector4(ff, beatHi, ff, ff);
       _cbTextPoly.Set(_ctx, 0);
 
       ObjectHandle vb = cur->vbTri;
@@ -700,7 +702,6 @@ bool Intro::Render()
         vtx[j * 6 + 4] = v2;
         vtx[j * 6 + 5] = n;
       }
-      //memcpy(vtx, cur->cap.transformedVerts.data(), cur->cap.transformedVerts.size() * sizeof(V3));
       _ctx->Unmap(vb);
       _ctx->SetVertexBuffer(vb);
       _ctx->Draw((int)cur->cap.transformedVerts.size(), 0);

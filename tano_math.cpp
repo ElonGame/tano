@@ -93,68 +93,68 @@ namespace tano
     return h1 * p1 + h2 * p2 + h3 * t1 + h4 * t2;
   }
 
+  ////------------------------------------------------------------------------------
+  //void CardinalSpline::Create(const V3* pts, int numPoints)
+  //{
+  //  int numSteps = 50;
+  //  float sInc = 1.0f / numSteps;
+  //  float a = 0.5f;
+
+  //  controlPoints.resize(numPoints);
+  //  copy(pts, pts + numPoints, controlPoints.begin());
+  //  spline.reserve(numPoints * numSteps);
+
+  //  for (int i = 0; i < numPoints - 1; ++i)
+  //  {
+  //    V3 p0 = controlPoints[max(0, i - 1)];
+  //    V3 p1 = controlPoints[i];
+  //    V3 p2 = controlPoints[i + 1];
+  //    V3 p3 = controlPoints[min(numPoints - 1, i + 2)];
+
+  //    V3 t1 = a*(p2 - p0);
+  //    V3 t2 = a*(p3 - p1);
+
+  //    float s = 0;
+  //    for (int j = 0; j < numSteps; ++j)
+  //    {
+  //      // P = h1 * P1 + h2 * P2 + h3 * T1 + h4 * T2;
+  //      float s2 = s*s;
+  //      float s3 = s2*s;
+  //      float h1 = +2 * s3 - 3 * s2 + 1;
+  //      float h2 = -2 * s3 + 3 * s2;
+  //      float h3 = s3 - 2 * s2 + s;
+  //      float h4 = s3 - s2;
+
+  //      spline.push_back(h1 * p1 + h2 * p2 + h3 * t1 + h4 * t2);
+  //      s += sInc;
+  //    }
+  //  }
+  //}
+
+  ////------------------------------------------------------------------------------
+  //V3 CardinalSpline::Interpolate()
+  //{
+  //  int numPts = (int)controlPoints.size();
+  //  int intTime = (int)curTime;
+  //  float fracTime = curTime - intTime;
+  //  int idx = intTime % numPts;
+
+  //  V3 p0 = controlPoints[max(0, idx - 1)];
+  //  V3 p1 = controlPoints[idx];
+  //  V3 p2 = controlPoints[idx + 1];
+  //  V3 p3 = controlPoints[min(numPts - 1, idx + 2)];
+
+  //  return CardinalSplineBlend(p0, p1, p2, p3, fracTime);
+  //}
+
+  ////------------------------------------------------------------------------------
+  //void CardinalSpline::Update(float dt)
+  //{
+  //  curTime += dt * speed;
+  //}
+
   //------------------------------------------------------------------------------
-  void CardinalSpline::Create(const V3* pts, int numPoints)
-  {
-    int numSteps = 50;
-    float sInc = 1.0f / numSteps;
-    float a = 0.5f;
-
-    controlPoints.resize(numPoints);
-    copy(pts, pts + numPoints, controlPoints.begin());
-    spline.reserve(numPoints * numSteps);
-
-    for (int i = 0; i < numPoints - 1; ++i)
-    {
-      V3 p0 = controlPoints[max(0, i - 1)];
-      V3 p1 = controlPoints[i];
-      V3 p2 = controlPoints[i + 1];
-      V3 p3 = controlPoints[min(numPoints - 1, i + 2)];
-
-      V3 t1 = a*(p2 - p0);
-      V3 t2 = a*(p3 - p1);
-
-      float s = 0;
-      for (int j = 0; j < numSteps; ++j)
-      {
-        // P = h1 * P1 + h2 * P2 + h3 * T1 + h4 * T2;
-        float s2 = s*s;
-        float s3 = s2*s;
-        float h1 = +2 * s3 - 3 * s2 + 1;
-        float h2 = -2 * s3 + 3 * s2;
-        float h3 = s3 - 2 * s2 + s;
-        float h4 = s3 - s2;
-
-        spline.push_back(h1 * p1 + h2 * p2 + h3 * t1 + h4 * t2);
-        s += sInc;
-      }
-    }
-  }
-
-  //------------------------------------------------------------------------------
-  V3 CardinalSpline::Interpolate()
-  {
-    int numPts = (int)controlPoints.size();
-    int intTime = (int)curTime;
-    float fracTime = curTime - intTime;
-    int idx = intTime % numPts;
-
-    V3 p0 = controlPoints[max(0, idx - 1)];
-    V3 p1 = controlPoints[idx];
-    V3 p2 = controlPoints[idx + 1];
-    V3 p3 = controlPoints[min(numPts - 1, idx + 2)];
-
-    return CardinalSplineBlend(p0, p1, p2, p3, fracTime);
-  }
-
-  //------------------------------------------------------------------------------
-  void CardinalSpline::Update(float dt)
-  {
-    curTime += dt * speed;
-  }
-
-  //------------------------------------------------------------------------------
-  void CardinalSpline2::Create(const V3* pts, int numPoints, float scale)
+  void CardinalSpline::Create(const V3* pts, int numPoints, float scale)
   {
     assert(scale != 0);
     _scale = scale;
@@ -163,7 +163,7 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  V3 CardinalSpline2::Interpolate(float t) const
+  V3 CardinalSpline::Interpolate(float t) const
   {
     int numPoints = (int)_controlPoints.size();
     t /= _scale;

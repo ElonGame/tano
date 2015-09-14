@@ -100,6 +100,7 @@ namespace tano
     struct FlockKernelData
     {
       Flock* flock;
+      V3 target;
       float waypointRadius;
       FixedUpdateState updateState;
     };
@@ -168,7 +169,7 @@ namespace tano
     GpuBundle _boidsBundle;
     bool _renderLandscape = true;
     bool _renderBoids = true;
-    bool _useFreeFlyCamera = false;
+    bool _useFreeFlyCamera = true;
 
     BehaviorSeparataion* _behaviorSeparataion = nullptr;
     BehaviorCohesion* _behaviorCohesion = nullptr;
@@ -179,5 +180,8 @@ namespace tano
     FollowCam _followCamera;
     Camera* _curCamera = &_followCamera;
     int _followFlock = 0;
+
+    CardinalSpline _spline;
+
   };
 }

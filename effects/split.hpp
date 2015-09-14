@@ -38,7 +38,7 @@ namespace tano
       vector<V3> verts;
       vector<Vector3> completeRings;
       vector<Vector3> inprogressRing;
-      CardinalSpline2 spline;
+      CardinalSpline spline;
 
       // last reference frame
       V3 frameD, frameN, frameT;

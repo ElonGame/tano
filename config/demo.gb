@@ -1,6 +1,6 @@
 {
   soundtrack: 'music.ogg';
-  silent: false;
+  silent: true;
   
   effects: [
     {
@@ -9,18 +9,26 @@
       start_time: 0;
       end_time: 22500;
       settings: 'config/intro.gb';
-      force: true;
     },
     {
       name: 'landscape';
       factory: 'landscape';
       start_time: 22500;
-      end_time: 1300000;
+      end_time: 53000;
       settings: 'config/landscape.gb';
+      force: true;
+    },
+    {
+      name: 'split';
+      factory: 'split';
+      start_time: 53000;
+      end_time: 1300000;
+      settings: 'config/split.gb';
     },
     {
       name: 'plexus';
       factory: 'plexus';
+      start_time: 53000;
       start_time: 1300000;
       end_time: 1300000;
       settings: 'config/plexus.gb';
@@ -45,13 +53,6 @@
       start_time: 1300000;
       end_time: 1300000;
       settings: 'config/particle_trail.gb';
-    },
-    {
-      name: 'split';
-      factory: 'split';
-      start_time: 1300000;
-      end_time: 1300000;
-      settings: 'config/split.gb';
     },
     {
       name: 'blob';

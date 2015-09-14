@@ -10,6 +10,7 @@ cbuffer V : register(b0)
   matrix world;
   matrix viewProj;
   float3 cameraPos;
+  float4 musicParams;
 };
 
 struct VsLandscapeIn
@@ -48,6 +49,8 @@ VsLandscapeOut VsLandscape(VsLandscapeIn v)
   if (pos.z == cameraPos.z)
     pos.z += 0.01;
 
+  pos.y *= (1 + musicParams.y / 5);
+
   res.pos = mul(float4(pos, 1), worldViewProj);
   res.normal = mul(float4(v.normal, 0), world).xyz;
   float3 dir = pos - cameraPos;
@@ -55,11 +58,6 @@ VsLandscapeOut VsLandscape(VsLandscapeIn v)
   res.rayDir = dir * 1/res.distance;
   return res;
 }
-
-static float4 LightVector = float4( 0, 0, 1, 0);
-static float4 FillColor = float4(0.1, 0.2, 0.4, 1);
-static float4 WireColor = float4(1, 1, 1, 1);
-static float LineWidth = 2.5;
 
 float2 projToWindow(in float4 pos)
 {
@@ -235,6 +233,9 @@ static float4 ColorCases[] = {
     { 0, 0, 1, 1 }
 }; 
 
+static float4 WireColor = float4(1, 1, 1, 1);
+static float LineWidth = 2;
+
 // entry-point: ps
 PsColBrightnessOut PsLandscape(PsLandscapeIn p)
 {
@@ -243,15 +244,20 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
     //return ColorCases[p.Case];
 
     // Map the computed distance to the [0,2] range on the border of the line.
-    dist = clamp((dist - (0.5*LineWidth - 1)), 0, 2);
+    dist = clamp((dist - (0.5*LineWidth - 1)), 0, 3);
 
     // Alpha is computed from the function exp2(-2(x)^2).
     dist *= dist;
     float alpha = exp2(-2*dist);
+    //float alpha = saturate(1 - pow(dist / 10, 0.3));
 
-    float3 amb = float3(0.05, 0.05, 0.05);
+    float3 amb = float3(0.01, 0.01, 0.01);
     float dff = saturate(dot(-SUN_DIR, p.normal));
-    float3 col = amb + dff * float3(0.8, 0.1, 0.25);
+
+    float3 diffuseCol = float3(130, 45, 130) / 255;
+    //float3 diffuseCol = float3(0.8, 0.1, 0.25);
+
+    float3 col = (amb + dff) * diffuseCol;
 
     col = lerp(col, WireColor.rgb, alpha);
 
@@ -264,6 +270,6 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
     res.col = float4(col, 0.9);
     float lum = Luminance(col.rgb);
     res.emissive.rgb = 0;
-    res.emissive.a = smoothstep(0.7, 1, lum);
+    res.emissive.a = smoothstep(0.3, 1, 2 * lum);
     return res;
 }

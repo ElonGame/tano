@@ -100,6 +100,12 @@ float4x4 RotateZ(float angle)
 }
 
 //------------------------------------------------------
+float4 ToFloat4(float4 col, float a)
+{
+  return float4(col.rgb, a);
+}
+
+//------------------------------------------------------
 float Luminance(float3 col)
 {
   return 0.2126 * col.r + 0.7152 * col.g + 0.0722 * col.b;

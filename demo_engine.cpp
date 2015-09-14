@@ -121,6 +121,11 @@ bool DemoEngine::Start()
 
   _timer.Start();
 
+  if (_forceEffect)
+  {
+    SetPos(_forceEffect->StartTime());
+  }
+
   return true;
 }
 
@@ -161,11 +166,16 @@ void DemoEngine::AdjustPos(const TimeDuration& delta)
 //------------------------------------------------------------------------------
 void DemoEngine::SetPos(const TimeDuration& pos)
 {
-  _timer.SetElapsed(pos);
+  TimeDuration clampedPos(pos);
+  if (_forceEffect)
+  {
+    clampedPos.Clamp(_forceEffect->StartTime().GetTimestamp());
+  }
+  _timer.SetElapsed(clampedPos);
 #if WITH_MUSIC
   if (_stream)
   {
-    QWORD pp = BASS_ChannelSeconds2Bytes(_stream, pos.TotalMilliseconds() / 1e3);
+    QWORD pp = BASS_ChannelSeconds2Bytes(_stream, clampedPos.TotalMilliseconds() / 1e3);
     BASS_ChannelSetPosition(_stream, pp, BASS_POS_BYTE);
   }
 #endif
@@ -312,7 +322,8 @@ void DemoEngine::UpdateEffects()
   // If a force effect is set, just tick this guy
   if (_forceEffect)
   {
-    curState.localTime = current;
+    curState.localTime = current - _forceEffect->StartTime();
+    curState.globalTime = current;
 
     if (_initForceEffect)
     {

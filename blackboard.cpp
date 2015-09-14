@@ -412,11 +412,16 @@ V3 Blackboard::GetVec3Var(const string& name, float t)
 template <typename T>
 T Blackboard::GetValueAtTime(float t, const Keyframes<T>* keyframes)
 {
-  if (t <= keyframes->firstTime)
-    return keyframes->firstValue;
+  // if both first and last time are 0, then the animation isn't keyframed, so
+  // we need to skip this optimization
+  if (keyframes->values.empty() || (keyframes->firstTime != 0 && keyframes->lastTime != 0))
+  {
+    if (t <= keyframes->firstTime)
+      return keyframes->firstValue;
 
-  if (t >= keyframes->lastTime)
-    return keyframes->lastValue;
+    if (t >= keyframes->lastTime)
+      return keyframes->lastValue;
+  }
 
   float relT = t - keyframes->firstTime;
 

@@ -25,7 +25,7 @@ static int NUM_INITIAL_SEGMENTS = 10;
 //------------------------------------------------------------------------------
 void AddRing(float curT,
     const V3& prevT,
-    const CardinalSpline2& spline,
+    const CardinalSpline& spline,
     float scale,
     V3* newD,
     V3* newN,

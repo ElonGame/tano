@@ -309,23 +309,8 @@ namespace tano
   V3 PointOnHemisphere(const V3& axis);
   V3 RandomVector(float scaleX = 1, float scaleY = 1, float scaleZ = 1);
 
-
   //------------------------------------------------------------------------------
-  // TODO: meh, this is just specialized crap..
   struct CardinalSpline
-  {
-    void Create(const V3* pts, int numPoints);
-    V3 Interpolate();
-    void Update(float dt);
-
-    float curTime = 0;
-    float speed = 1;
-    vector<V3> spline;
-    vector<V3> controlPoints;
-  };
-
-  //------------------------------------------------------------------------------
-  struct CardinalSpline2
   {
     void Create(const V3* pts, int numPoints, float scale = 1.f);
     V3 Interpolate(float t) const;

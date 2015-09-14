@@ -37,12 +37,6 @@ struct freefly_camera_settings
   float roll = 0;
 };
 
-struct tonemap_settings
-{
-  float shoulder = 0.5;
-  float max_white = 5.0;
-};
-
 struct tonemap_reinhard_settings
 {
   float exposure = 1;
@@ -150,8 +144,7 @@ struct landscape_settings
   freefly_camera_settings camera;
   boid_settings boids;
   string particle_texture;
-  tonemap_settings tonemap;
-  tonemap_reinhard_settings tonemap2;
+  tonemap_reinhard_settings tonemap;
   lens_flare_settings lens_flare;
 };
 

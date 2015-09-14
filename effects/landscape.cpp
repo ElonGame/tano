@@ -29,11 +29,11 @@ static const float NOISE_HEIGHT = 50;
 static const float NOISE_SCALE_X = 0.01f;
 static const float NOISE_SCALE_Z = 0.01f;
 
-#define DEBUG_DRAW_PATH 0
+#define DEBUG_DRAW_PATH 1
 
 int Landscape::Chunk::nextId = 1;
-CardinalSpline spline;
 
+//------------------------------------------------------------------------------
 struct BehaviorGravity : public ParticleKinematics
 {
   BehaviorGravity(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
@@ -114,13 +114,10 @@ bool Landscape::Init()
     // Blend desc that doesn't write to the emissive channel
     CD3D11_BLEND_DESC blendDescAlphaNoEmissive = blendDescBlendSrcAlpha;
     blendDescAlphaNoEmissive.IndependentBlendEnable = TRUE;
-    // blendDescAlphaNoEmissive.RenderTarget[1].BlendEnable = TRUE;
     blendDescAlphaNoEmissive.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
     CD3D11_BLEND_DESC blendDescNoEmissive = CD3D11_BLEND_DESC(CD3D11_DEFAULT());
-    ;
     blendDescNoEmissive.IndependentBlendEnable = TRUE;
-    // blendDescNoEmissive.RenderTarget[1].BlendEnable = TRUE;
     blendDescNoEmissive.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
     INIT_FATAL(_landscapeState.Create(nullptr, &blendDescAlphaNoEmissive, &rasterizeDescCullNone));
@@ -140,30 +137,16 @@ bool Landscape::Init()
   INIT_FATAL(_lensFlareBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/landscape.lensflare", "PsLensFlare")));
-  // clang-format on
-
-  INIT_FATAL(_cbLensFlare.Create());
-  INIT_FATAL(_cbComposite.Create());
-  INIT_FATAL(_cbSky.Create());
-  INIT_FATAL(_cbLandscape.Create());
-  INIT_FATAL(_cbParticle.Create());
-
-  // Particles
-  INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
-
-  vector<D3D11_INPUT_ELEMENT_DESC> inputs = {
-      CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT)};
 
   CD3D11_BLEND_DESC particleBlendDesc(blendDescBlendOneOne);
   particleBlendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
-  // clang-format off
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024 * 6, sizeof(Vector4))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
     .GeometryShader("shaders/out/landscape.particle", "GsParticle")
     .PixelShader("shaders/out/landscape.particle", "PsParticle")
-    .InputElements(inputs)
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
     .BlendDesc(particleBlendDesc)
@@ -174,12 +157,21 @@ bool Landscape::Init()
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
     .GeometryShader("shaders/out/landscape.particle", "GsParticle")
     .PixelShader("shaders/out/landscape.particle", "PsParticle")
-    .InputElements(inputs)
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
     .BlendDesc(particleBlendDesc)
     .RasterizerDesc(rasterizeDescCullNone)));
   // clang-format on
+
+  INIT_FATAL(_cbLensFlare.Create());
+  INIT_FATAL(_cbComposite.Create());
+  INIT_FATAL(_cbSky.Create());
+  INIT_FATAL(_cbLandscape.Create());
+  INIT_FATAL(_cbParticle.Create());
+
+  // Particles
+  INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
 
   Reset();
 
@@ -211,7 +203,7 @@ void Landscape::InitBoids()
   int numPts = 100;
   float angleInc = 2 * XM_PI / numPts;
   float angle = 0;
-  float radius = 500;
+  float radius = 50;
   for (int i = 0; i < numPts; ++i)
   {
     V3 pt;
@@ -222,7 +214,7 @@ void Landscape::InitBoids()
     angle += angleInc;
   }
 
-  spline.Create(controlPoints.data(), (int)controlPoints.size());
+  _spline.Create(controlPoints.data(), (int)controlPoints.size());
 
   for (int i = 0; i < _settings.boids.num_flocks; ++i)
   {
@@ -237,11 +229,12 @@ void Landscape::InitBoids()
     flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
     flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
 
-    int pointIdx = rand() % spline.controlPoints.size();
+    int pointIdx = rand() % _spline._controlPoints.size();
 
-    XMVECTOR center = XMLoadFloat3(&XMFLOAT3(spline.controlPoints[pointIdx].x,
-                                       spline.controlPoints[pointIdx].y,
-                                       spline.controlPoints[pointIdx].z));
+    XMVECTOR center = XMLoadFloat3(&XMFLOAT3(
+      _spline._controlPoints[pointIdx].x,
+      _spline._controlPoints[pointIdx].y,
+      _spline._controlPoints[pointIdx].z));
 
     // Init the boids
     XMVECTOR* pos = flock->boids._bodies.pos;
@@ -296,8 +289,9 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
   FlockKernelData* flockData = (FlockKernelData*)data.kernelData.data;
   Flock* flock = flockData->flock;
 
-  V3 pp = spline.Interpolate();
+  V3 pp = flockData->target;
   flock->seek->target = XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z));
+
   flock->boids.Update(flockData->updateState, false);
 }
 
@@ -310,10 +304,11 @@ void Landscape::UpdateBoids(const FixedUpdateState& state)
 
   SimpleAppendBuffer<TaskId, 2048> chunkTasks;
 
+  V3 splineTarget = _spline.Interpolate(state.localTime.TotalSecondsAsFloat());
   for (Flock* flock : _flocks)
   {
     FlockKernelData* data = (FlockKernelData*)g_ScratchMemory.Alloc(sizeof(FlockKernelData));
-    *data = FlockKernelData{flock, _settings.boids.waypoint_radius, state};
+    *data = FlockKernelData{flock, splineTarget, _settings.boids.waypoint_radius, state};
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(FlockKernelData);
@@ -322,13 +317,20 @@ void Landscape::UpdateBoids(const FixedUpdateState& state)
 
   for (const TaskId& taskId : chunkTasks)
     SCHEDULER.Wait(taskId);
-
-  spline.Update(dt);
 }
 
 //------------------------------------------------------------------------------
 bool Landscape::Update(const UpdateState& state)
 {
+  float t = state.localTime.TotalSecondsAsFloat();
+//  _spline.Update(dt);
+  V3 pp = _spline.Interpolate(t);
+
+  if (!_useFreeFlyCamera)
+  {
+    _followCamera.SetFollowTarget(XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z)));
+  }
+
   UpdateCameraMatrix(state);
   return true;
 }
@@ -354,10 +356,11 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
     if (g_KeyUpTrigger.IsTriggered('2'))
       _followFlock = (_followFlock - 1) % _flocks.Size();
 
-    if (_followFlock != -1 && _followFlock < _flocks.Size())
-    {
-      _followCamera.SetFollowTarget(_flocks[_followFlock]->boids._center);
-    }
+    // disabled for now: following the spline instead
+    //if (_followFlock != -1 && _followFlock < _flocks.Size())
+    //{
+    //  _followCamera.SetFollowTarget(_flocks[_followFlock]->boids._center);
+    //}
   }
 
   if (g_KeyUpTrigger.IsTriggered('7'))
@@ -389,6 +392,11 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   _cbLandscape.vs0.world = Matrix::Identity();
   _cbLandscape.vs0.viewProj = viewProj.Transpose();
   _cbLandscape.vs0.cameraPos = _curCamera->_pos;
+
+  float beatHi = BLACKBOARD.GetFloatVar("Beat-Hi", state.globalTime.TotalSecondsAsFloat());
+  float beatLo = BLACKBOARD.GetFloatVar("Beat-Lo", state.globalTime.TotalSecondsAsFloat());
+  _cbLandscape.vs0.musicParams = Vector4(beatHi, beatLo, 0, 0);
+
   _cbLandscape.gs0.dim = dim;
 
   // The depth value written to the z-buffer is after the w-divide,
@@ -405,7 +413,8 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 
 #if DEBUG_DRAW_PATH
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
-  DEBUG_API.AddDebugSphere(ToVector3(spline.Interpolate()), 10, Color(1, 1, 1));
+  float t = state.localTime.TotalSecondsAsFloat();
+  DEBUG_API.AddDebugSphere(ToVector3(_spline.Interpolate(t)), 10, Color(1, 1, 1));
 #endif
 }
 
@@ -731,10 +740,10 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
 {
 
 #if DEBUG_DRAW_PATH
-  for (int i = 0; i < spline.spline.size() - 1; ++i)
+  for (int i = 0; i < _spline._controlPoints.size() - 1; ++i)
   {
-    Vector3 p0(spline.spline[i].x, spline.spline[i].y, spline.spline[i].z);
-    Vector3 p1(spline.spline[i + 1].x, spline.spline[i + 1].y, spline.spline[i + 1].z);
+    Vector3 p0(_spline._controlPoints[i].x, _spline._controlPoints[i].y, _spline._controlPoints[i].z);
+    Vector3 p1(_spline._controlPoints[i + 1].x, _spline._controlPoints[i + 1].y, _spline._controlPoints[i + 1].z);
     DEBUG_API.AddDebugLine(p0, p1, Color(1, 1, 1));
   }
 #endif
@@ -775,10 +784,10 @@ bool Landscape::Render()
       DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
   ScopedRenderTarget rtBloomEmissive(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-  _cbComposite.ps0.tonemap = Vector4(_settings.tonemap.shoulder,
-      _settings.tonemap.max_white,
-      _settings.tonemap2.exposure,
-      _settings.tonemap2.min_white);
+  _cbComposite.ps0.tonemap = Vector4(
+      _settings.tonemap.exposure,
+      _settings.tonemap.min_white,
+      0, 0);
 
   // We're using 2 render targets here. One for color, and one for bloom/emissive
   ObjectHandle renderTargets[] = {rtColor, rtBloomEmissive};
@@ -918,53 +927,59 @@ void Landscape::RenderParameterSet()
     }
   };
 
-  ImGui::SliderFloat("spline-speed", &spline.speed, 0, 20);
+  //ImGui::SliderFloat("spline-speed", &_spline.speed, 0, 20);
 
-  ImGui::SliderFloat("dispersion", &_settings.lens_flare.dispersion, 0, 2);
-  ImGui::SliderInt("Num ghosts", &_settings.lens_flare.num_ghosts, 1, 10);
-  ImGui::SliderFloat("Halo width", &_settings.lens_flare.halo_width, 0, 3);
-  ImGui::SliderFloat("Strength", &_settings.lens_flare.strength, 0, 1);
+  static bool lensFlareConfig = false;
+  ImGui::Checkbox("lens flare config", &lensFlareConfig);
+  if (lensFlareConfig)
+  {
+    ImGui::SliderFloat("dispersion", &_settings.lens_flare.dispersion, 0, 2);
+    ImGui::SliderInt("Num ghosts", &_settings.lens_flare.num_ghosts, 1, 10);
+    ImGui::SliderFloat("Halo width", &_settings.lens_flare.halo_width, 0, 3);
+    ImGui::SliderFloat("Strength", &_settings.lens_flare.strength, 0, 1);
 
-  ImGui::SliderFloat("scale", &_settings.lens_flare.scale_bias.scale, 0, 3);
-  ImGui::SliderFloat("bias", &_settings.lens_flare.scale_bias.bias, 0, 1);
-  ImGui::Separator();
+    ImGui::SliderFloat("scale", &_settings.lens_flare.scale_bias.scale, 0, 3);
+    ImGui::SliderFloat("bias", &_settings.lens_flare.scale_bias.bias, 0, 1);
+  }
 
-  ImGui::SliderFloat("Shoulder", &_settings.tonemap.shoulder, 0, 1);
-  ImGui::SliderFloat("Max White", &_settings.tonemap.max_white, 0.5f, 10);
-
-  ImGui::SliderFloat("Exposure", &_settings.tonemap2.exposure, 0.1f, 20.0f);
-  ImGui::SliderFloat("Min White", &_settings.tonemap2.min_white, 0.1f, 20.0f);
+  ImGui::SliderFloat("Exposure", &_settings.tonemap.exposure, 0.1f, 20.0f);
+  ImGui::SliderFloat("Min White", &_settings.tonemap.min_white, 0.1f, 20.0f);
 
   ImGui::Separator();
 
   ImGui::Checkbox("Render landscape", &_renderLandscape);
   ImGui::Checkbox("Render boids", &_renderBoids);
-  ImGui::InputInt("NumVerts", (int*)&_numUpperIndices);
-  ImGui::InputInt("NumFlocks", &_settings.boids.num_flocks);
-  ImGui::InputInt("BoidsPerFlock", &_settings.boids.boids_per_flock);
-  bool newWeights = false;
-  newWeights |= ImGui::SliderFloat("Separation", &_settings.boids.separation_scale, 0, 100);
-  newWeights |= ImGui::SliderFloat("Cohension", &_settings.boids.cohesion_scale, 0, 100);
-  newWeights |= ImGui::SliderFloat("Alignment", &_settings.boids.alignment_scale, 0, 100);
-  newWeights |= ImGui::SliderFloat("Wander", &_settings.boids.wander_scale, 0, 100);
-  newWeights |= ImGui::SliderFloat("Follow", &_settings.boids.follow_scale, 0, 100);
-
-  if (newWeights)
+  static bool boidConfig = false;
+  ImGui::Checkbox("boid config", &boidConfig);
+  if (boidConfig)
   {
-    BoidSettings& b = _settings.boids;
-    float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
-    UpdateWeight(_behaviorSeparataion, _settings.boids.separation_scale / sum);
-    UpdateWeight(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
-    UpdateWeight(_behaviorAlignment, _settings.boids.alignment_scale / sum);
-    for (Flock* flock : _flocks)
-      UpdateWeight(flock->seek, _settings.boids.wander_scale / sum);
-    UpdateWeight(_landscapeFollow, _settings.boids.follow_scale / sum);
-  }
+    //ImGui::InputInt("NumVerts", (int*)&_numUpperIndices);
+    ImGui::InputInt("NumFlocks", &_settings.boids.num_flocks);
+    ImGui::InputInt("BoidsPerFlock", &_settings.boids.boids_per_flock);
+    bool newWeights = false;
+    newWeights |= ImGui::SliderFloat("Separation", &_settings.boids.separation_scale, 0, 100);
+    newWeights |= ImGui::SliderFloat("Cohension", &_settings.boids.cohesion_scale, 0, 100);
+    newWeights |= ImGui::SliderFloat("Alignment", &_settings.boids.alignment_scale, 0, 100);
+    newWeights |= ImGui::SliderFloat("Wander", &_settings.boids.wander_scale, 0, 100);
+    newWeights |= ImGui::SliderFloat("Follow", &_settings.boids.follow_scale, 0, 100);
 
-  ImGui::SliderFloat("MaxSpeed", &_settings.boids.max_speed, 10.f, 1000.f);
-  ImGui::SliderFloat("MaxForce", &_settings.boids.max_force, 10.f, 1000.f);
-  ImGui::SliderFloat("SepDist", &_settings.boids.separation_distance, 1.f, 100.f);
-  ImGui::SliderFloat("CohDist", &_settings.boids.cohesion_distance, 1.f, 100.f);
+    if (newWeights)
+    {
+      BoidSettings& b = _settings.boids;
+      float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
+      UpdateWeight(_behaviorSeparataion, _settings.boids.separation_scale / sum);
+      UpdateWeight(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
+      UpdateWeight(_behaviorAlignment, _settings.boids.alignment_scale / sum);
+      for (Flock* flock : _flocks)
+        UpdateWeight(flock->seek, _settings.boids.wander_scale / sum);
+      UpdateWeight(_landscapeFollow, _settings.boids.follow_scale / sum);
+    }
+
+    ImGui::SliderFloat("MaxSpeed", &_settings.boids.max_speed, 10.f, 1000.f);
+    ImGui::SliderFloat("MaxForce", &_settings.boids.max_force, 10.f, 1000.f);
+    ImGui::SliderFloat("SepDist", &_settings.boids.separation_distance, 1.f, 100.f);
+    ImGui::SliderFloat("CohDist", &_settings.boids.cohesion_distance, 1.f, 100.f);
+  }
 
   // todo: move to init
   UpdateDist(DynParticles::DistSeperation, _settings.boids.separation_distance);
@@ -987,12 +1002,6 @@ void Landscape::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void Landscape::Reset()
 {
-  _freeflyCamera._pos = Vector3(0.f, 10.f, 30.f);
-  _freeflyCamera._pitch = 0.f;
-  _freeflyCamera._yaw = 0.f;
-  _freeflyCamera._roll = 0.f;
-  //_freeflyCamera._yaw = XM_PI;
-
   InitBoids();
 }
 

@@ -106,8 +106,8 @@ namespace tano
     ConstantBufferBundle<cb::TunnelGreetsV, cb::TunnelGreetsP> _cbGreets;
 
     float _dist = 0;
-    CardinalSpline2 _spline;
-    CardinalSpline2 _cameraSpline;
+    CardinalSpline _spline;
+    CardinalSpline _cameraSpline;
     TunnelSettings _settings;
     //Camera _camera;
     FreeflyCamera _camera;

@@ -39,7 +39,9 @@ VsMeshOut VsMesh(VsMeshIn v)
 float4 PsMesh(VsMeshOut p) : SV_Target
 {
   float fade = params.x;
+  fade += smoothstep(0.5, 1, params.y);
   float3 n = normalize(p.normal);
   float3 lightDir = float3(0, 0, -1);
   return fade * saturate(dot(normalize(p.normal), float3(0,0,-1)));
 }
+
