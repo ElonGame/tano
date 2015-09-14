@@ -1,7 +1,7 @@
 {
   camera: {
     camera: {
-      pos: { -14.663151, 116.355476, -58.675991 };
+      pos: { -13.336849, 116.355476, -57.324009 };
       dir: { 0.038384, -0.797474, 0.602131 };
       right: { 0.997974, 0.000000, -0.063618 };
       up: { 0.050734, 0.603353, 0.795859 };
@@ -17,8 +17,8 @@
     separation_scale: 0.000000;
     cohesion_scale: 0.000000;
     alignment_scale: 0.000000;
-    wander_scale: 0.000000;
-    follow_scale: 100.000008;
+    wander_scale: 100.000008;
+    follow_scale: 0.000000;
     cohesion_distance: 500.000000;
     separation_distance: 45.500004;
     max_speed: 10.000000;

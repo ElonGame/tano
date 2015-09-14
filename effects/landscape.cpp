@@ -224,9 +224,9 @@ void Landscape::InitBoids()
     float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
     // Each flock gets its own seek behavior, because they need per flock information
     flock->boids.AddKinematics(flock->seek, _settings.boids.wander_scale / sum);
-    flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
-    flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
-    flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
+    //flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
+    //flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
+    //flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
     flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
 
     int pointIdx = rand() % _spline._controlPoints.size();
@@ -738,16 +738,6 @@ void Landscape::RasterizeLandscape()
 //------------------------------------------------------------------------------
 void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHandle)
 {
-
-#if DEBUG_DRAW_PATH
-  for (int i = 0; i < _spline._controlPoints.size() - 1; ++i)
-  {
-    Vector3 p0(_spline._controlPoints[i].x, _spline._controlPoints[i].y, _spline._controlPoints[i].z);
-    Vector3 p1(_spline._controlPoints[i + 1].x, _spline._controlPoints[i + 1].y, _spline._controlPoints[i + 1].z);
-    DEBUG_API.AddDebugLine(p0, p1, Color(1, 1, 1));
-  }
-#endif
-
   XMVECTOR* boidPos = _ctx->MapWriteDiscard<XMVECTOR>(_boidsBundle.objects._vb);
 
   int numBoids = 0;
@@ -897,6 +887,15 @@ bool Landscape::Render()
       fullscreen->Copy(rtLensFlare, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
     }
   }
+
+#if DEBUG_DRAW_PATH
+  for (int i = 0; i < _spline._controlPoints.size() - 1; ++i)
+  {
+    Vector3 p0(_spline._controlPoints[i].x, _spline._controlPoints[i].y, _spline._controlPoints[i].z);
+    Vector3 p1(_spline._controlPoints[i + 1].x, _spline._controlPoints[i + 1].y, _spline._controlPoints[i + 1].z);
+    DEBUG_API.AddDebugLine(p0, p1, Color(1, 1, 1));
+  }
+#endif
 
   return true;
 }

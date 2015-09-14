@@ -96,7 +96,7 @@ void DynParticles::Update(const FixedUpdateState& updateState, bool alwaysUpdate
   }
 
   {
-    int UPDATE_FRAMES = 25;
+    int UPDATE_FRAMES = 1;
     float f = (_tickCount % UPDATE_FRAMES) / (float)UPDATE_FRAMES;
     int bodiesPerFrame = max(1, numBodies / UPDATE_FRAMES);
     int start = (int)(f * numBodies);
