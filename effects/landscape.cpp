@@ -29,6 +29,8 @@ static const float NOISE_HEIGHT = 50;
 static const float NOISE_SCALE_X = 0.01f;
 static const float NOISE_SCALE_Z = 0.01f;
 
+static const float SPLINE_RADIUS = 500;
+
 #define DEBUG_DRAW_PATH 1
 
 int Landscape::Chunk::nextId = 1;
@@ -48,7 +50,9 @@ struct BehaviorGravity : public ParticleKinematics
 
     for (int i = 0; i < numBodies; ++i)
     {
-      force[i] = XMVectorAdd(force[i], g);
+      force[i] = XMVectorAdd(
+        force[i],
+        XMVectorAdd(force[i], g));
     }
   }
 };
@@ -179,6 +183,8 @@ bool Landscape::Init()
   _followCamera.AddKinematic(new BehaviorLandscapeFollow(b.max_force, b.max_speed));
   _followCamera.AddKinematic(new BehaviorGravity(b.max_force, b.max_speed));
 
+  _flockCamera.flock = _flocks[0];  
+
   END_INIT_SEQUENCE();
 }
 
@@ -203,12 +209,11 @@ void Landscape::InitBoids()
   int numPts = 100;
   float angleInc = 2 * XM_PI / numPts;
   float angle = 0;
-  float radius = 50;
   for (int i = 0; i < numPts; ++i)
   {
     V3 pt;
-    pt.x = radius * sin(angle);
-    pt.z = radius * cos(angle);
+    pt.x = SPLINE_RADIUS * sin(angle);
+    pt.z = SPLINE_RADIUS * cos(angle);
     pt.y = 20 + NoiseAtPoint(pt);
     controlPoints.push_back(pt);
     angle += angleInc;
@@ -278,7 +283,9 @@ void BehaviorLandscapeFollow::Update(
     if (d < clearance)
     {
       float f = 1 - Clamp(0.f, 1.f, d / clearance);
-      force[i] = XMVectorScale(XMVectorAdd(force[i], XMVectorScale(pushForce, f)), weight);
+      force[i] = XMVectorAdd(
+        force[i],
+        XMVectorScale(XMVectorAdd(force[i], XMVectorScale(pushForce, f)), weight));
     }
   }
 }
@@ -304,7 +311,7 @@ void Landscape::UpdateBoids(const FixedUpdateState& state)
 
   SimpleAppendBuffer<TaskId, 2048> chunkTasks;
 
-  V3 splineTarget = _spline.Interpolate(state.localTime.TotalSecondsAsFloat());
+  V3 splineTarget = _spline.Interpolate(state.localTime.TotalSecondsAsFloat() * _settings.spline_speed);
   for (Flock* flock : _flocks)
   {
     FlockKernelData* data = (FlockKernelData*)g_ScratchMemory.Alloc(sizeof(FlockKernelData));
@@ -323,13 +330,9 @@ void Landscape::UpdateBoids(const FixedUpdateState& state)
 bool Landscape::Update(const UpdateState& state)
 {
   float t = state.localTime.TotalSecondsAsFloat();
-//  _spline.Update(dt);
-  V3 pp = _spline.Interpolate(t);
+  V3 pp = _spline.Interpolate(t * _settings.spline_speed);
 
-  if (!_useFreeFlyCamera)
-  {
-    _followCamera.SetFollowTarget(XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z)));
-  }
+  _followCamera.SetFollowTarget(XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z)));
 
   UpdateCameraMatrix(state);
   return true;
@@ -338,8 +341,8 @@ bool Landscape::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Landscape::FixedUpdate(const FixedUpdateState& state)
 {
-  _curCamera->Update(state);
   UpdateBoids(state);
+  _curCamera->Update(state);
   return true;
 }
 
@@ -356,11 +359,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
     if (g_KeyUpTrigger.IsTriggered('2'))
       _followFlock = (_followFlock - 1) % _flocks.Size();
 
-    // disabled for now: following the spline instead
-    //if (_followFlock != -1 && _followFlock < _flocks.Size())
-    //{
-    //  _followCamera.SetFollowTarget(_flocks[_followFlock]->boids._center);
-    //}
+    _flockCamera.flock = _flocks[_followFlock];
   }
 
   if (g_KeyUpTrigger.IsTriggered('7'))
@@ -371,11 +370,6 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 
   if (g_KeyUpTrigger.IsTriggered('9'))
     _drawFlags ^= 0x4;
-
-  if (_useFreeFlyCamera || _flocks.Empty())
-    _curCamera = &_freeflyCamera;
-  else
-    _curCamera = &_followCamera;
 
   Matrix view = _curCamera->_view;
   Matrix proj = _curCamera->_proj;
@@ -393,8 +387,11 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   _cbLandscape.vs0.viewProj = viewProj.Transpose();
   _cbLandscape.vs0.cameraPos = _curCamera->_pos;
 
-  float beatHi = BLACKBOARD.GetFloatVar("Beat-Hi", state.globalTime.TotalSecondsAsFloat());
-  float beatLo = BLACKBOARD.GetFloatVar("Beat-Lo", state.globalTime.TotalSecondsAsFloat());
+  // XXX: move scratch to shared
+  //float beatHi = BLACKBOARD.GetFloatVar("Beat-Hi", state.globalTime.TotalSecondsAsFloat());
+  //float beatLo = BLACKBOARD.GetFloatVar("Beat-Lo", state.globalTime.TotalSecondsAsFloat());
+  float beatHi = 0;
+  float beatLo = 0;
   _cbLandscape.vs0.musicParams = Vector4(beatHi, beatLo, 0, 0);
 
   _cbLandscape.gs0.dim = dim;
@@ -414,7 +411,8 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 #if DEBUG_DRAW_PATH
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
   float t = state.localTime.TotalSecondsAsFloat();
-  DEBUG_API.AddDebugSphere(ToVector3(_spline.Interpolate(t)), 10, Color(1, 1, 1));
+  DEBUG_API.AddDebugSphere(ToVector3(
+    _spline.Interpolate(t * _settings.spline_speed)), 10, Color(1, 1, 1));
 #endif
 }
 
@@ -674,30 +672,9 @@ void Landscape::RasterizeLandscape()
   float* landscapeBuf = _ctx->MapWriteDiscard<float>(_landscapeGpuObjects._vb);
   V3* particleBuf = _ctx->MapWriteDiscard<V3>(_particleBundle.objects._vb);
 
-  static int chunkNum = -1;
-#if 0
-  if (g_KeyUpTrigger.IsTriggered('4'))
-  {
-    if (chunkNum > -1)
-      --chunkNum;
-  }
-
-  if (g_KeyUpTrigger.IsTriggered('5'))
-    ++chunkNum;
-#endif
-
   u32 numParticles = 0;
-  int idx = 0;
   for (const Chunk* chunk : chunks)
   {
-    if (chunkNum != -1)
-    {
-      idx++;
-      if (idx != chunkNum)
-        continue;
-    }
-    idx++;
-
     memcpy(landscapeBuf, chunk->upperData, Chunk::UPPER_DATA_SIZE * sizeof(float));
     landscapeBuf += Chunk::UPPER_DATA_SIZE;
 
@@ -711,7 +688,7 @@ void Landscape::RasterizeLandscape()
     }
   }
 
-  u32 numChunks = chunkNum == -1 ? (u32)chunks.Size() : 1;
+  u32 numChunks = (u32)chunks.Size();
 
   _numUpperIndices = numChunks * Chunk::UPPER_INDICES;
   _numParticles = numParticles;
@@ -926,7 +903,7 @@ void Landscape::RenderParameterSet()
     }
   };
 
-  //ImGui::SliderFloat("spline-speed", &_spline.speed, 0, 20);
+  ImGui::SliderFloat("spline-speed", &_settings.spline_speed, 0, 20);
 
   static bool lensFlareConfig = false;
   ImGui::Checkbox("lens flare config", &lensFlareConfig);
@@ -1026,4 +1003,13 @@ const char* Landscape::Name()
 void Landscape::Register()
 {
   DEMO_ENGINE.RegisterFactory(Name(), Landscape::Create);
+}
+
+//------------------------------------------------------------------------------
+void Landscape::FlockCamera::Update(const FixedUpdateState& state)
+{
+  _pos = flock->boids._center;
+  Vector3 target = flock->seek->target;
+  _dir = Normalize(target - _pos);
+  Camera::Update(state);
 }

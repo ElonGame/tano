@@ -142,6 +142,7 @@ struct lens_flare_settings
 struct landscape_settings
 {
   freefly_camera_settings camera;
+  float spline_speed = 1;
   boid_settings boids;
   string particle_texture;
   tonemap_reinhard_settings tonemap;

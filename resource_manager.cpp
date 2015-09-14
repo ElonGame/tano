@@ -229,7 +229,8 @@ ObjectHandle ResourceManager::LoadTextureFromMemory(
 //------------------------------------------------------------------------------
 FILE* ResourceManager::OpenWriteFile(const char* filename)
 {
-  FILE* f = fopen(PathJoin(_appRoot.c_str(), filename).c_str(), "wb");
+  string resolvedName = ResolveFilename(filename, false);
+  FILE* f = fopen(resolvedName.c_str(), "wb");
   if (!f)
     return nullptr;
 

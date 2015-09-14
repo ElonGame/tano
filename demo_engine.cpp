@@ -325,6 +325,7 @@ void DemoEngine::UpdateEffects()
     curState.localTime = current - _forceEffect->StartTime();
     curState.globalTime = current;
 
+    fixedState.localTime = current - _forceEffect->StartTime();
     if (_initForceEffect)
     {
       _initForceEffect = false;

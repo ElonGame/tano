@@ -132,6 +132,12 @@ namespace tano
       BehaviorSeek* seek = nullptr;
     };
 
+    struct FlockCamera : public Camera
+    {
+      virtual void Update(const FixedUpdateState& state);
+      Flock* flock;
+    };
+
     SimpleAppendBuffer<Flock*, 128> _flocks;
 
     ConstantBufferBundle<void, cb::LandscapeLensflareP> _cbLensFlare;
@@ -169,7 +175,6 @@ namespace tano
     GpuBundle _boidsBundle;
     bool _renderLandscape = true;
     bool _renderBoids = true;
-    bool _useFreeFlyCamera = true;
 
     BehaviorSeparataion* _behaviorSeparataion = nullptr;
     BehaviorCohesion* _behaviorCohesion = nullptr;
@@ -178,7 +183,8 @@ namespace tano
 
     FreeflyCamera _freeflyCamera;
     FollowCam _followCamera;
-    Camera* _curCamera = &_followCamera;
+    FlockCamera _flockCamera;
+    Camera* _curCamera = &_freeflyCamera;
     int _followFlock = 0;
 
     CardinalSpline _spline;
