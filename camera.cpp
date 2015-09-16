@@ -144,11 +144,11 @@ FollowCam::~FollowCam()
 void FollowCam::Update(const FixedUpdateState& state)
 {
   _particle.Update(state, true);
-  XMVECTOR* pos = _particle._bodies.pos;
-  XMVECTOR* vel = _particle._bodies.vel;
+  V3* pos = _particle._bodies.pos;
+  V3* vel = _particle._bodies.vel;
 
-  _pos = Vector3(pos[0]);
-  Vector3 target = _pos + Vector3(vel[0]);
+  _pos = ToVector3(pos[0]);
+  Vector3 target = _pos + ToVector3(vel[0]);
   _view = Matrix::CreateLookAt(_pos, target, _up);
 }
 
@@ -161,7 +161,7 @@ void FollowCam::SetMaxSpeedAndForce(float maxSpeed, float maxForce)
 }
 
 //------------------------------------------------------------------------------
-void FollowCam::SetFollowTarget(const FXMVECTOR& followTarget)
+void FollowCam::SetFollowTarget(const V3& followTarget)
 {
   _seek.target = followTarget;
 }

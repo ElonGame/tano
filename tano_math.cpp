@@ -4,6 +4,8 @@ using namespace bristol;
 
 namespace tano
 {
+  V3 V3::Zero = {0, 0, 0};
+
   //------------------------------------------------------------------------------
   V3 FromSpherical(float r, float phi, float theta)
   {

@@ -52,6 +52,7 @@ vector<FlockTiming> FLOCK_TIMING = {
 };
 
 #define DEBUG_DRAW_PATH 0
+#define PROFILE_UPDATES 0
 
 int Landscape::Chunk::nextId = 1;
 
@@ -62,18 +63,18 @@ struct BehaviorGravity : public ParticleKinematics
   virtual void Update(
       DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state) override
   {
-    float gravity = BLACKBOARD.GetFloatVar("landscape.gravity");
-    XMVECTOR* force = bodies->force;
-    int numBodies = bodies->numBodies;
+    //float gravity = BLACKBOARD.GetFloatVar("landscape.gravity");
+    //V3* force = bodies->force;
+    //int numBodies = bodies->numBodies;
 
-    XMVECTOR g = XMVectorReplicate(gravity);
+    //XMVECTOR g = XMVectorReplicate(gravity);
 
-    for (int i = 0; i < numBodies; ++i)
-    {
-      force[i] = XMVectorAdd(
-        force[i],
-        XMVectorAdd(force[i], g));
-    }
+    //for (int i = 0; i < numBodies; ++i)
+    //{
+    //  force[i] = XMVectorAdd(
+    //    force[i],
+    //    XMVectorAdd(force[i], g));
+    //}
   }
 };
 
@@ -115,6 +116,23 @@ bool Landscape::OnConfigChanged(const vector<char>& buf)
 //------------------------------------------------------------------------------
 bool Landscape::Init()
 {
+#if PROFILE_UPDATES
+  StopWatch s;
+  s.Start(); 
+  Reset();
+
+  FixedUpdateState state;
+  state.delta = 1.0f / 100.f;
+  for (int i = 0; i < 10000; ++i)
+  {
+    UpdateBoids(state);
+  }
+
+  double elapsed = s.Stop();
+  LOG_INFO("Elapsed: ", elapsed);
+  return false;
+#endif
+
   BEGIN_INIT_SEQUENCE();
 
   _freeflyCamera.FromProtocol(_settings.camera);
@@ -256,23 +274,27 @@ void Landscape::InitBoids()
 
     int pointIdx = rand() % _spline._controlPoints.size();
 
-    XMVECTOR center = XMLoadFloat3(&XMFLOAT3(
+    V3 center = V3(
       _spline._controlPoints[pointIdx].x,
       _spline._controlPoints[pointIdx].y,
-      _spline._controlPoints[pointIdx].z));
+      _spline._controlPoints[pointIdx].z);
 
     // Init the boids
-    XMVECTOR* pos = flock->boids._bodies.pos;
-    XMVECTOR* force = flock->boids._bodies.force;
+    V3* pos = flock->boids._bodies.pos;
+    V3* force = flock->boids._bodies.force;
     for (int i = 0; i < flock->boids._bodies.numBodies; ++i)
     {
       V3 pp(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
       float h = NoiseAtPoint(pp);
+#if 0
       XMVECTOR tmp = XMLoadFloat3(&XMFLOAT3(pp.x, h, pp.z));
       pos[i] = XMVectorAdd(center, tmp);
-      // pos[i].y = 20 + NoiseAtPoint(pos[i]);
       tmp = XMLoadFloat3(&XMFLOAT3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f)));
       force[i] = XMVectorScale(tmp, 10); // V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+#else
+      pos[i] = center + V3(pp.x, h, pp.z);
+      force[i] = 1.0f / 10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+#endif
     }
 
     _flocks.Append(flock);
@@ -285,29 +307,29 @@ void BehaviorLandscapeFollow::Update(
 {
   // NOTE! This is called from the schedular threads, so setting namespace
   // on the blackboard will probably break :)
-  float clearance = BLACKBOARD.GetFloatVar("landscape.landscapeClearance");
-  XMVECTOR* pos = bodies->pos;
-  XMVECTOR* acc = bodies->acc;
-  XMVECTOR* vel = bodies->vel;
-  XMVECTOR* force = bodies->force;
-  int numBodies = bodies->numBodies;
+  //float clearance = BLACKBOARD.GetFloatVar("landscape.landscapeClearance");
+  //XMVECTOR* pos = bodies->pos;
+  //XMVECTOR* acc = bodies->acc;
+  //XMVECTOR* vel = bodies->vel;
+  //XMVECTOR* force = bodies->force;
+  //int numBodies = bodies->numBodies;
 
-  XMFLOAT3 vv(0, BLACKBOARD.GetFloatVar("landscape.pushForce"), 0);
-  XMVECTOR pushForce = XMLoadFloat3(&vv);
-  for (int i = start; i < end; ++i)
-  {
-    V3 v;
-    XMStoreFloat3((XMFLOAT3*)&v, pos[i]);
-    float h = NoiseAtPoint(v);
-    float d = v.y - h;
-    if (d < clearance)
-    {
-      float f = 1 - Clamp(0.f, 1.f, d / clearance);
-      force[i] = XMVectorAdd(
-        force[i],
-        XMVectorScale(XMVectorAdd(force[i], XMVectorScale(pushForce, f)), weight));
-    }
-  }
+  //XMFLOAT3 vv(0, BLACKBOARD.GetFloatVar("landscape.pushForce"), 0);
+  //XMVECTOR pushForce = XMLoadFloat3(&vv);
+  //for (int i = start; i < end; ++i)
+  //{
+  //  V3 v;
+  //  XMStoreFloat3((XMFLOAT3*)&v, pos[i]);
+  //  float h = NoiseAtPoint(v);
+  //  float d = v.y - h;
+  //  if (d < clearance)
+  //  {
+  //    float f = 1 - Clamp(0.f, 1.f, d / clearance);
+  //    force[i] = XMVectorAdd(
+  //      force[i],
+  //      XMVectorScale(XMVectorAdd(force[i], XMVectorScale(pushForce, f)), weight));
+  //  }
+  //}
 }
 
 //------------------------------------------------------------------------------
@@ -317,7 +339,7 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
   Flock* flock = flockData->flock;
 
   V3 pp = flockData->target;
-  flock->seek->target = XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z));
+  flock->seek->target = pp; // XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z));
 
   flock->boids.Update(flockData->updateState, false);
 }
@@ -352,7 +374,8 @@ bool Landscape::Update(const UpdateState& state)
   float t = state.localTime.TotalSecondsAsFloat();
   V3 pp = _spline.Interpolate(t * _settings.spline_speed);
 
-  _followCamera.SetFollowTarget(XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z)));
+  //_followCamera.SetFollowTarget(XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z)));
+  _followCamera.SetFollowTarget(pp);
 
   UpdateCameraMatrix(state);
   return true;
@@ -373,7 +396,7 @@ bool Landscape::FixedUpdate(const FixedUpdateState& state)
       _curFlockIdx++;
       _followFlock = FLOCK_TIMING[_curFlockIdx].idx;
       _flockCamera.flock = _flocks[_followFlock];
-      _flockCamera._pos = _flockCamera.flock->boids._center;
+      _flockCamera._pos = ToVector3(_flockCamera.flock->boids._center);
       _flockCamera._pos.x += randf(-20, 20);
       _flockCamera._pos.y += randf(5, 10);
       _flockCamera._pos.z += randf(5, 20);
@@ -417,7 +440,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
     {
       _followFlock = (_followFlock + 1) % _flocks.Size();
       _flockCamera.flock = _flocks[_followFlock];
-      _flockCamera._pos = _flockCamera.flock->boids._center;
+      _flockCamera._pos = ToVector3(_flockCamera.flock->boids._center);
       _flockCamera._pos.x += randf(-20, 20);
       _flockCamera._pos.y += randf(5, 10);
       _flockCamera._pos.z += randf(5, 20);
@@ -427,7 +450,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
     {
       _followFlock = (_followFlock - 1) % _flocks.Size();
       _flockCamera.flock = _flocks[_followFlock];
-      _flockCamera._pos = _flockCamera.flock->boids._center;
+      _flockCamera._pos = ToVector3(_flockCamera.flock->boids._center);
       _flockCamera._pos.x += randf(-20, 20);
       _flockCamera._pos.y += randf(5, 10);
       _flockCamera._pos.z += randf(5, 20);
@@ -802,8 +825,8 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
   int numBoids = 0;
   for (const Flock* flock : _flocks)
   {
-    XMVECTOR* pos = flock->boids._bodies.pos;
-    memcpy(boidPos, pos, flock->boids._bodies.numBodies * sizeof(XMVECTOR));
+    V3* pos = flock->boids._bodies.pos;
+    memcpy(boidPos, pos, flock->boids._bodies.numBodies * sizeof(V3));
     boidPos += flock->boids._bodies.numBodies;
     numBoids += flock->boids._bodies.numBodies;
   }
@@ -1090,7 +1113,7 @@ void Landscape::Register()
 //------------------------------------------------------------------------------
 void Landscape::FlockCamera::Update(const FixedUpdateState& state)
 {
-  Vector3 targetPos = flock->seek->target;
+  Vector3 targetPos = ToVector3(flock->seek->target);
   //Vector3 curPos = flock->boids._center;
   Vector3 curPos = _pos;
 

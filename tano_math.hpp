@@ -74,6 +74,7 @@ namespace tano
 
   struct V3
   {
+    static V3 Zero;
     V3() {}
 #if WITH_INVALID_CHECK 
     V3(float x, float y, float z) : x(x), y(y), z(z) { IsNan(); }

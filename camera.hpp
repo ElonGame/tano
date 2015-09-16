@@ -50,7 +50,7 @@ namespace tano
     FollowCam();
     ~FollowCam();
     virtual void Update(const FixedUpdateState& state) override;
-    void SetFollowTarget(const FXMVECTOR& followTarget);
+    void SetFollowTarget(const V3& followTarget);
     void AddKinematic(ParticleKinematics* k, float weight = 1);
     void SetMaxSpeedAndForce(float maxSpeed, float maxForce);
 
