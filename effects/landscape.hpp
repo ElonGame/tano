@@ -184,10 +184,12 @@ namespace tano
     FreeflyCamera _freeflyCamera;
     FollowCam _followCamera;
     FlockCamera _flockCamera;
-    Camera* _curCamera = &_freeflyCamera;
+    Camera* _curCamera = &_flockCamera;
     int _followFlock = 0;
 
     CardinalSpline _spline;
-
+    bool _firstTick = false;
+    int _curFlockIdx = -1;
+    float _flockFade = 1;
   };
 }

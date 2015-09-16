@@ -59,6 +59,19 @@ namespace tano
     return V2(a.x - b.x, a.y - b.y);
   }
 
+  struct V3;
+  float Dot(const V3& a, const V3& b);
+  float Distance(const V3& a, const V3& b);
+  float DistanceSquared(const V3& a, const V3& b);
+  float Length(const V3& a);
+  float LengthSquared(const V3& a);
+  V3 Normalize(const V3& v);
+  V3 operator*(float s, const V3& v);
+  V3 operator*=(float s, const V3& v);
+  V3 operator*(const V3& v, float s);
+  V3 operator-(const V3& a, const V3& b);
+  V3 operator+(const V3& a, const V3& b);
+
   struct V3
   {
     V3() {}
@@ -73,22 +86,18 @@ namespace tano
     V3& operator+=(const V3& v) { x += v.x; y += v.y; z += v.z; return *this; }
     V3& operator-=(const V3& v) { x -= v.x; y -= v.y; z -= v.z; return *this; }
     V3& operator/=(float s) { x /= s; y /= s; z /= s; return *this; }
+    V3& operator*=(float s) { x *= s; y *= s; z *= s; return *this; }
 
+    bool operator==(const V3& rhs) { return x == rhs.x && y == rhs.y && z == rhs.z; }
     void IsNan() { assert(!isnan(x)); assert(!isnan(y)); assert(!isnan(z)); }
+
+    float Length() const { return tano::Length(*this); }
+    float LengthSqr() const { return tano::LengthSquared(*this); }
 
     float x, y, z;
   };
 
   inline float Dot(const V3& a, const V3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-  float Distance(const V3& a, const V3& b);
-  float DistanceSquared(const V3& a, const V3& b);
-  float Length(const V3& a);
-  float LengthSquared(const V3& a);
-  V3 Normalize(const V3& v);
-  V3 operator*(float s, const V3& v);
-  V3 operator*(const V3& v, float s);
-  V3 operator-(const V3& a, const V3& b);
-  V3 operator+(const V3& a, const V3& b);
 
   inline float Distance(const V3& a, const V3& b)
   {

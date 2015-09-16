@@ -21,16 +21,19 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 lensFlare = Texture3.Sample(LinearSampler, uv);
 
   // float4 col = bgCol + 1 * emm.a * bgColBlurred + 0.3 * lensFlare;
-  float4 col = bgCol + 1.5 * pow(bgColBlurred, 1 + 2 * emm.a) + 0.5 * lensFlare;
+  float4 col = bgCol + 1.5 * pow(saturate(bgColBlurred), 1 + 2 * emm.a) + 0.5 * lensFlare;
 
   float exposure = tonemap.x;
   float minWhite = tonemap.y;
+  float fade = tonemap.z;
 
   col = ToneMapReinhard(col, exposure, minWhite);
+
+  float r = 0.7 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
+  col = fade * r * col;
   
    // gamma correction
   col = pow(abs(col), 1.0/2.2);
 
-  float r = 0.7 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
-  return r * col;
+  return col;
 }

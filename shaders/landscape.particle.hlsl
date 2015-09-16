@@ -14,7 +14,7 @@ cbuffer G : register(b0)
 
 struct VsParticleIn
 {
-  float4 pos : Position;
+  float3 pos : Position;
 };
 
 struct VsParticleOut
@@ -36,9 +36,7 @@ static float2 uvsVtx[4] = {
 // entry-point: vs
 VsParticleIn VsParticle(VsParticleIn v)
 {
-  VsParticleIn res;
-  res.pos = v.pos;
-  return res;
+  return v;
 }
 
 [maxvertexcount(4)]
@@ -97,8 +95,8 @@ PsColBrightnessOut PsParticle(VsParticleOut p)
   // Texture1 = zbuffer
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
-  col.g *= 0.6;
-  col.b *= 0.1;
+  // col.g *= 0.6;
+  // col.b *= 0.1;
   float zBuf = Texture1.Load(int3(p.pos.x, p.pos.y, 0)).r;
 
   // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))

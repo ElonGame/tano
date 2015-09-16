@@ -1,9 +1,9 @@
 {
   camera: {
     camera: {
-      pos: { -19.256821, 336.458862, -218.863983 };
-      dir: { 0.051158, -0.594480, 0.802482 };
-      right: { 0.997974, 0.000000, -0.063620 };
+      pos: { -16.743179, 336.458862, -215.136017 };
+      dir: { 0.051158, 0.594480, 0.802482 };
+      right: { 0.997974, 0.000000, 0.063620 };
       up: { 0.037821, 0.804111, 0.593275 };
       fov: 1.047000;
       near_plane: 1.000000;
@@ -13,16 +13,16 @@
     pitch: 0.636618;
     roll: 0.000000;
   };
-  spline_speed: 0.303000;
+  spline_speed: 1.515000;
   boids: {
-    separation_scale: 18.182001;
-    cohesion_scale: 1.010000;
+    separation_scale: 0.505000;
+    cohesion_scale: 6.061000;
     alignment_scale: 6.061000;
-    wander_scale: 10.606001;
-    follow_scale: 7.071000;
+    wander_scale: 30.000000;
+    follow_scale: 20.000000;
     cohesion_distance: 500.000000;
     separation_distance: 45.500004;
-    max_speed: 10.000000;
+    max_speed: 25.000000;
     max_force: 10.000000;
     waypoint_radius: 10.000000;
     num_flocks: 15;

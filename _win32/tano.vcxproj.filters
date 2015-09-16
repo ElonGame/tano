@@ -489,6 +489,9 @@
     <ClInclude Include="..\particle_emitters.hpp">
       <Filter>inc</Filter>
     </ClInclude>
+    <ClInclude Include="..\smooth_driver.hpp">
+      <Filter>inc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="tano.rc">

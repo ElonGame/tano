@@ -175,13 +175,19 @@ def parse_cbuffer(basename, entry_point, out_name, ext):
 
     cbuffers = []
     cur_cbuffer = None
+    cur_input_sig = None
     try:
         with open(filename) as f:
             lines = f.readlines()
     except:
         return
 
+    skip_count = 0
     for line in lines:
+        if skip_count:
+            skip_count -= 1
+            continue
+
         if not line.startswith('//'):
             continue
         line = line[3:]
@@ -199,6 +205,24 @@ def parse_cbuffer(basename, entry_point, out_name, ext):
             cbuffers.append(cur_cbuffer)
             cur_cbuffer = None
             continue
+        elif line.startswith('Input signature:'):
+            cur_input_sig = True
+            skip_count = 3
+            continue
+
+        if cur_input_sig:
+            if not line:
+                # done with current input sig
+                cur_input_sig = None
+                continue
+            else:
+                line = line.split()
+                # the 'use' field isn't always set (for sys values?)
+                used = None
+                if len(line) == 6:
+                    name, index, mask, register, sys_value, format = line
+                else:
+                    name, index, mask, register, sys_value, format, used = line
 
         if not cur_cbuffer:
             continue

@@ -17,6 +17,7 @@
 #include "../perlin2d.hpp"
 #include "../stop_watch.hpp"
 #include "../blackboard.hpp"
+#include "../smooth_driver.hpp"
 
 using namespace tano;
 using namespace tano::scheduler;
@@ -24,14 +25,33 @@ using namespace bristol;
 using namespace DirectX;
 
 static const Vector3 ZERO3(0, 0, 0);
-static const float GRID_SIZE = 10;
+static const float GRID_SIZE = 5;
 static const float NOISE_HEIGHT = 50;
 static const float NOISE_SCALE_X = 0.01f;
 static const float NOISE_SCALE_Z = 0.01f;
 
 static const float SPLINE_RADIUS = 500;
 
-#define DEBUG_DRAW_PATH 1
+struct FlockTiming
+{
+  float time;
+  int idx;
+};
+
+static const float FLOCK_FADE = 0.5f;
+
+vector<FlockTiming> FLOCK_TIMING = { 
+  { 0.0f, 0 },
+  { 5.0f, 2 },
+  { 10.0f, 6 },
+  { 15.0f, 8 },
+  { 20.0f, 3 },
+  { 25.0f, 9 },
+  { 30.0f, 1 },
+  { 1000, 0 },
+};
+
+#define DEBUG_DRAW_PATH 0
 
 int Landscape::Chunk::nextId = 1;
 
@@ -146,11 +166,11 @@ bool Landscape::Init()
   particleBlendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
   INIT(_particleBundle.Create(BundleOptions()
-    .DynamicVb(1024 * 1024 * 6, sizeof(Vector4))
+    .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
     .GeometryShader("shaders/out/landscape.particle", "GsParticle")
     .PixelShader("shaders/out/landscape.particle", "PsParticle")
-    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
     .BlendDesc(particleBlendDesc)
@@ -183,7 +203,7 @@ bool Landscape::Init()
   _followCamera.AddKinematic(new BehaviorLandscapeFollow(b.max_force, b.max_speed));
   _followCamera.AddKinematic(new BehaviorGravity(b.max_force, b.max_speed));
 
-  _flockCamera.flock = _flocks[0];  
+  _flockCamera.flock = _flocks[0];
 
   END_INIT_SEQUENCE();
 }
@@ -229,9 +249,9 @@ void Landscape::InitBoids()
     float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
     // Each flock gets its own seek behavior, because they need per flock information
     flock->boids.AddKinematics(flock->seek, _settings.boids.wander_scale / sum);
-    //flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
-    //flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
-    //flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
+    flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
+    flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
+    flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
     flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
 
     int pointIdx = rand() % _spline._controlPoints.size();
@@ -342,6 +362,46 @@ bool Landscape::Update(const UpdateState& state)
 bool Landscape::FixedUpdate(const FixedUpdateState& state)
 {
   UpdateBoids(state);
+
+  if (_curFlockIdx < (int)FLOCK_TIMING.size() - 1)
+  {
+    float tt = state.localTime.TotalSecondsAsFloat();
+    float next = FLOCK_TIMING[_curFlockIdx+1].time;
+    if (_curFlockIdx == -1 || tt >= next)
+    {
+      // time to swap flock!
+      _curFlockIdx++;
+      _followFlock = FLOCK_TIMING[_curFlockIdx].idx;
+      _flockCamera.flock = _flocks[_followFlock];
+      _flockCamera._pos = _flockCamera.flock->boids._center;
+      _flockCamera._pos.x += randf(-20, 20);
+      _flockCamera._pos.y += randf(5, 10);
+      _flockCamera._pos.z += randf(5, 20);
+    }
+    else
+    {
+      float cur = FLOCK_TIMING[_curFlockIdx].time;
+      if (next - tt < FLOCK_FADE)
+      {
+        // fade to black
+        _flockFade = (next - tt) / FLOCK_FADE;
+      }
+      else if (tt - cur < FLOCK_FADE)
+      {
+        _flockFade = (tt - cur) / FLOCK_FADE;
+      }
+      else
+      {
+        _flockFade = 1;
+      }
+    }
+  }
+  
+
+  //if (_firstTick)
+  //{
+  //  _firstTick = false;
+  //}
   _curCamera->Update(state);
   return true;
 }
@@ -354,12 +414,24 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   if (!_flocks.Empty())
   {
     if (g_KeyUpTrigger.IsTriggered('1'))
+    {
       _followFlock = (_followFlock + 1) % _flocks.Size();
+      _flockCamera.flock = _flocks[_followFlock];
+      _flockCamera._pos = _flockCamera.flock->boids._center;
+      _flockCamera._pos.x += randf(-20, 20);
+      _flockCamera._pos.y += randf(5, 10);
+      _flockCamera._pos.z += randf(5, 20);
+    }
 
     if (g_KeyUpTrigger.IsTriggered('2'))
+    {
       _followFlock = (_followFlock - 1) % _flocks.Size();
-
-    _flockCamera.flock = _flocks[_followFlock];
+      _flockCamera.flock = _flocks[_followFlock];
+      _flockCamera._pos = _flockCamera.flock->boids._center;
+      _flockCamera._pos.x += randf(-20, 20);
+      _flockCamera._pos.y += randf(5, 10);
+      _flockCamera._pos.z += randf(5, 20);
+    }
   }
 
   if (g_KeyUpTrigger.IsTriggered('7'))
@@ -678,15 +750,26 @@ void Landscape::RasterizeLandscape()
     memcpy(landscapeBuf, chunk->upperData, Chunk::UPPER_DATA_SIZE * sizeof(float));
     landscapeBuf += Chunk::UPPER_DATA_SIZE;
 
-    for (int i = 0; i < CHUNK_SIZE; i += 2)
+    for (int i = 0 ; i < Chunk::UPPER_VERTS; ++i)
     {
-      for (int j = 0; j < CHUNK_SIZE; j += 2)
-      {
-        *particleBuf++ = chunk->noiseValues[i * (CHUNK_SIZE + 1) + j];
-        numParticles++;
-      }
+      particleBuf->x = chunk->upperData[i * 6 + 0];
+      particleBuf->y = chunk->upperData[i * 6 + 1];
+      particleBuf->z = chunk->upperData[i * 6 + 2];
+      ++particleBuf;
     }
+
+    numParticles += Chunk::UPPER_VERTS;
+
+    //for (int i = 0; i < CHUNK_SIZE; i += 2)
+    //{
+    //  for (int j = 0; j < CHUNK_SIZE; j += 2)
+    //  {
+    //    *particleBuf++ = chunk->noiseValues[i * (CHUNK_SIZE + 1) + j];
+    //    numParticles++;
+    //  }
+    //}
   }
+  _ctx->Unmap(_particleBundle.objects._vb);
 
   u32 numChunks = (u32)chunks.Size();
 
@@ -708,7 +791,6 @@ void Landscape::RasterizeLandscape()
       });
 #endif
 
-  _ctx->Unmap(_particleBundle.objects._vb);
   _ctx->Unmap(_landscapeGpuObjects._vb);
 }
 
@@ -754,7 +836,7 @@ bool Landscape::Render()
   _cbComposite.ps0.tonemap = Vector4(
       _settings.tonemap.exposure,
       _settings.tonemap.min_white,
-      0, 0);
+      _flockFade, 0);
 
   // We're using 2 render targets here. One for color, and one for bloom/emissive
   ObjectHandle renderTargets[] = {rtColor, rtBloomEmissive};
@@ -1008,8 +1090,24 @@ void Landscape::Register()
 //------------------------------------------------------------------------------
 void Landscape::FlockCamera::Update(const FixedUpdateState& state)
 {
-  _pos = flock->boids._center;
-  Vector3 target = flock->seek->target;
-  _dir = Normalize(target - _pos);
+  Vector3 targetPos = flock->seek->target;
+  //Vector3 curPos = flock->boids._center;
+  Vector3 curPos = _pos;
+
+  Vector3 dir = Normalize(targetPos - curPos);
+  Vector3 targetVel = 10 * dir;
+
+  V3 cc(curPos.x, curPos.y, curPos.z);
+  V3 vv(targetVel.x, targetVel.y, targetVel.z);
+  V3 tt(targetPos.x, targetPos.y, targetPos.z);
+
+  SmoothDriver::DriveCubic(&cc, &vv, &tt, &vv, 50, state.delta);
+
+  _pos = ToVector3(cc);
+  _dir = ToVector3(Normalize(vv));
+
+  //_pos = flock->boids._center;
+  //Vector3 target = flock->seek->target;
+  //_dir = Normalize(target - _pos);
   Camera::Update(state);
 }
