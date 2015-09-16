@@ -98,7 +98,7 @@ namespace tano
       int start, int end,
       float weight, 
       const FixedUpdateState& state) override;
-    V3 target = XMVectorZero();
+    V3 target = V3::Zero;
   };
 
   //------------------------------------------------------------------------------

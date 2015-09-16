@@ -36,13 +36,6 @@ void DynParticles::Init(int numBodies)
   {
     _bodies.pos[i] = _bodies.vel[i] = _bodies.acc[i] = _bodies.force[i] = V3::Zero;
   }
-
-  /*for (int i = 0; i < DistCount; ++i)
-  {
-    _bodies.distMeasures[i].values = new DistMeasureEntry[numBodies*numBodies];
-  }
-*/
-  /*UpdateDistMatrix*/(0, numBodies);
 }
 
 //------------------------------------------------------------------------------
@@ -52,11 +45,6 @@ void DynParticles::Reset()
   SAFE_ADELETE(_bodies.vel);
   SAFE_ADELETE(_bodies.acc);
   SAFE_ADELETE(_bodies.force);
-
-  //for (int i = 0; i < DistCount; ++i)
-  //{
-  //  SAFE_ADELETE(_bodies.distMeasures[i].values);
-  //}
 }
 
 //------------------------------------------------------------------------------
@@ -96,7 +84,7 @@ void DynParticles::Update(const FixedUpdateState& updateState, bool alwaysUpdate
   }
 
   {
-    int UPDATE_FRAMES = 10;
+    int UPDATE_FRAMES = 1;
     float f = (_tickCount % UPDATE_FRAMES) / (float)UPDATE_FRAMES;
     int bodiesPerFrame = max(1, numBodies / UPDATE_FRAMES);
     int start = (int)(f * numBodies);
@@ -222,6 +210,7 @@ void BehaviorSeek::Update(
 void BehaviorSeparataion::Update(
   DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
+  return;
   V3* pos = bodies->pos;
   V3* acc = bodies->acc;
   V3* vel = bodies->vel;
@@ -233,13 +222,16 @@ void BehaviorSeparataion::Update(
     // return a force away from any close boids
     //V3 avg = XMVectorZero();
     V3 avg = V3::Zero;
+    V3 curPos = pos[i];
 
     for (int j = 0; j < numBodies; ++j)
     {
-      V3 delta = pos[i] - pos[j];
-      float dist = LengthSquared(delta);
+      // vector away from j
+      V3 away = Normalize(curPos - pos[j]);
+      avg += away;
+      //float dist = LengthSquared(away);
       //avg = XMVectorAdd(avg, XMVectorScale(XMVectorSubtract(pos[i], pos[j]), invDist * invDist));
-      avg += 1.0f / dist * delta;
+      //avg += 1.0f / dist * delta;
       //avg = XMVectorAdd(avg, XMVectorScale(XMVectorSubtract(pos[i], pos[j]), invDist * invDist));
     }
 
@@ -280,6 +272,8 @@ void BehaviorSeparataion::Update(
 void BehaviorCohesion::Update(
   DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
+  return;
+
   V3* pos = bodies->pos;
   V3* acc = bodies->acc;
   V3* vel = bodies->vel;
@@ -290,10 +284,11 @@ void BehaviorCohesion::Update(
   {
     // Return a force towards the average boid position
     V3 avg = V3::Zero;
-
+    V3 curPos = pos[i];
     for (int j = 0; j < numBodies; j++)
     {
-      avg += pos[j];
+      V3 towards = Normalize(pos[j] - curPos);
+      avg += towards;
     }
 
     avg *= 1.0f / numBodies;
@@ -314,7 +309,7 @@ void BehaviorCohesion::Update(
 
     //avg = XMVectorDivide(avg, XMVectorReplicate((float)numCounted));
 
-    V3 desiredVel = maxSpeed * Normalize(avg - pos[i]);
+    V3 desiredVel = maxSpeed * Normalize(avg);
     force[i] += weight * ClampVector(desiredVel - vel[i], maxForce);
 
     //XMVECTOR desiredVel = XMVectorScale(XMVector3Normalize(XMVectorSubtract(avg, pos[i])), maxSpeed);
@@ -330,6 +325,8 @@ void BehaviorCohesion::Update(
 void BehaviorAlignment::Update(
   DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
+  return;
+
   V3* pos = bodies->pos;
   V3* acc = bodies->acc;
   V3* vel = bodies->vel;

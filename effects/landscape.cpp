@@ -51,7 +51,7 @@ vector<FlockTiming> FLOCK_TIMING = {
   { 1000, 0 },
 };
 
-#define DEBUG_DRAW_PATH 0
+#define DEBUG_DRAW_PATH 1
 #define PROFILE_UPDATES 0
 
 int Landscape::Chunk::nextId = 1;
@@ -267,10 +267,10 @@ void Landscape::InitBoids()
     float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
     // Each flock gets its own seek behavior, because they need per flock information
     flock->boids.AddKinematics(flock->seek, _settings.boids.wander_scale / sum);
-    flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
-    flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
-    flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
-    flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
+    //flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
+    //flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
+    //flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
+    //flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
 
     int pointIdx = rand() % _spline._controlPoints.size();
 
@@ -293,7 +293,7 @@ void Landscape::InitBoids()
       force[i] = XMVectorScale(tmp, 10); // V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
 #else
       pos[i] = center + V3(pp.x, h, pp.z);
-      force[i] = 1.0f / 10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      force[i] = V3::Zero; //10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
 #endif
     }
 
@@ -307,29 +307,29 @@ void BehaviorLandscapeFollow::Update(
 {
   // NOTE! This is called from the schedular threads, so setting namespace
   // on the blackboard will probably break :)
-  //float clearance = BLACKBOARD.GetFloatVar("landscape.landscapeClearance");
-  //XMVECTOR* pos = bodies->pos;
-  //XMVECTOR* acc = bodies->acc;
-  //XMVECTOR* vel = bodies->vel;
-  //XMVECTOR* force = bodies->force;
-  //int numBodies = bodies->numBodies;
+  float clearance = BLACKBOARD.GetFloatVar("landscape.landscapeClearance");
+  V3* pos = bodies->pos;
+  V3* acc = bodies->acc;
+  V3* vel = bodies->vel;
+  V3* force = bodies->force;
+  int numBodies = bodies->numBodies;
 
-  //XMFLOAT3 vv(0, BLACKBOARD.GetFloatVar("landscape.pushForce"), 0);
-  //XMVECTOR pushForce = XMLoadFloat3(&vv);
-  //for (int i = start; i < end; ++i)
-  //{
-  //  V3 v;
-  //  XMStoreFloat3((XMFLOAT3*)&v, pos[i]);
-  //  float h = NoiseAtPoint(v);
-  //  float d = v.y - h;
-  //  if (d < clearance)
-  //  {
-  //    float f = 1 - Clamp(0.f, 1.f, d / clearance);
-  //    force[i] = XMVectorAdd(
-  //      force[i],
-  //      XMVectorScale(XMVectorAdd(force[i], XMVectorScale(pushForce, f)), weight));
-  //  }
-  //}
+  V3 pushForce(0, BLACKBOARD.GetFloatVar("landscape.pushForce"), 0);
+  for (int i = start; i < end; ++i)
+  {
+    V3 curPos = pos[i];
+    float h = NoiseAtPoint(curPos);
+    float d = curPos.y - h;
+    if (d < clearance)
+    {
+      force[i] += weight * ClampVector(pushForce - vel[i], maxForce);
+
+      //float f = 1 - Clamp(0.f, 1.f, d / clearance);
+      //force[i] = XMVectorAdd(
+      //  force[i],
+      //  XMVectorScale(XMVectorAdd(force[i], XMVectorScale(pushForce, f)), weight));
+    }
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -386,45 +386,43 @@ bool Landscape::FixedUpdate(const FixedUpdateState& state)
 {
   UpdateBoids(state);
 
-  if (_curFlockIdx < (int)FLOCK_TIMING.size() - 1)
+  if (_curCamera == &_flockCamera)
   {
-    float tt = state.localTime.TotalSecondsAsFloat();
-    float next = FLOCK_TIMING[_curFlockIdx+1].time;
-    if (_curFlockIdx == -1 || tt >= next)
+    if (_curFlockIdx < (int)FLOCK_TIMING.size() - 1)
     {
-      // time to swap flock!
-      _curFlockIdx++;
-      _followFlock = FLOCK_TIMING[_curFlockIdx].idx;
-      _flockCamera.flock = _flocks[_followFlock];
-      _flockCamera._pos = ToVector3(_flockCamera.flock->boids._center);
-      _flockCamera._pos.x += randf(-20, 20);
-      _flockCamera._pos.y += randf(5, 10);
-      _flockCamera._pos.z += randf(5, 20);
-    }
-    else
-    {
-      float cur = FLOCK_TIMING[_curFlockIdx].time;
-      if (next - tt < FLOCK_FADE)
+      float tt = state.localTime.TotalSecondsAsFloat();
+      float next = FLOCK_TIMING[_curFlockIdx + 1].time;
+      if (_curFlockIdx == -1 || tt >= next)
       {
-        // fade to black
-        _flockFade = (next - tt) / FLOCK_FADE;
-      }
-      else if (tt - cur < FLOCK_FADE)
-      {
-        _flockFade = (tt - cur) / FLOCK_FADE;
+        // time to swap flock!
+        _curFlockIdx++;
+        _followFlock = FLOCK_TIMING[_curFlockIdx].idx;
+        _flockCamera.flock = _flocks[_followFlock];
+        _flockCamera._pos = ToVector3(_flockCamera.flock->boids._center);
+        _flockCamera._pos.x += randf(-20, 20);
+        _flockCamera._pos.y += randf(5, 10);
+        _flockCamera._pos.z += randf(5, 20);
       }
       else
       {
-        _flockFade = 1;
+        float cur = FLOCK_TIMING[_curFlockIdx].time;
+        if (next - tt < FLOCK_FADE)
+        {
+          // fade to black
+          _flockFade = (next - tt) / FLOCK_FADE;
+        }
+        else if (tt - cur < FLOCK_FADE)
+        {
+          _flockFade = (tt - cur) / FLOCK_FADE;
+        }
+        else
+        {
+          _flockFade = 1;
+        }
       }
     }
   }
   
-
-  //if (_firstTick)
-  //{
-  //  _firstTick = false;
-  //}
   _curCamera->Update(state);
   return true;
 }
