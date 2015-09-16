@@ -41,7 +41,7 @@ struct FlockTiming
 static const float FLOCK_FADE = 0.5f;
 
 vector<FlockTiming> FLOCK_TIMING = { 
-  { 0.0f, 0 },
+  { 0.0f, 5 },
   { 5.0f, 2 },
   { 10.0f, 6 },
   { 15.0f, 8 },
@@ -195,11 +195,11 @@ bool Landscape::Init()
     .RasterizerDesc(rasterizeDescCullNone)));
 
   INIT(_boidsBundle.Create(BundleOptions()
-    .DynamicVb(1024 * 1024 * 6, sizeof(Vector4))
+    .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
     .GeometryShader("shaders/out/landscape.particle", "GsParticle")
     .PixelShader("shaders/out/landscape.particle", "PsParticle")
-    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
     .BlendDesc(particleBlendDesc)
@@ -267,10 +267,10 @@ void Landscape::InitBoids()
     float sum = b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
     // Each flock gets its own seek behavior, because they need per flock information
     flock->boids.AddKinematics(flock->seek, _settings.boids.wander_scale / sum);
-    //flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
-    //flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
+    flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
+    flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
     //flock->boids.AddKinematics(_behaviorAlignment, _settings.boids.alignment_scale / sum);
-    //flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
+    flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
 
     int pointIdx = rand() % _spline._controlPoints.size();
 
@@ -314,21 +314,25 @@ void BehaviorLandscapeFollow::Update(
   V3* force = bodies->force;
   int numBodies = bodies->numBodies;
 
-  V3 pushForce(0, BLACKBOARD.GetFloatVar("landscape.pushForce"), 0);
+  float ff = BLACKBOARD.GetFloatVar("landscape.pushForce");
+  V3 pushForce(0, ff, 0);
   for (int i = start; i < end; ++i)
   {
     V3 curPos = pos[i];
-    float h = NoiseAtPoint(curPos);
-    float d = curPos.y - h;
-    if (d < clearance)
-    {
-      force[i] += weight * ClampVector(pushForce - vel[i], maxForce);
+    V3 curVel = vel[i];
+    float h = NoiseAtPoint(curPos + V3(curVel.x, 0, curVel.z));
+    //float h = NoiseAtPoint(curPos);
 
-      //float f = 1 - Clamp(0.f, 1.f, d / clearance);
-      //force[i] = XMVectorAdd(
-      //  force[i],
-      //  XMVectorScale(XMVectorAdd(force[i], XMVectorScale(pushForce, f)), weight));
-    }
+    V3 target = curPos;
+    target.y = h + clearance;
+
+    float dist = Distance(curPos, target);
+    float scale = 1;
+    if (dist < 20)
+      scale = dist / 20;
+
+    V3 desiredVel = maxSpeed * Normalize(target - curPos);
+    force[i] += weight * ClampVector(desiredVel - vel[i], scale * ff);
   }
 }
 
@@ -376,6 +380,21 @@ bool Landscape::Update(const UpdateState& state)
 
   //_followCamera.SetFollowTarget(XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z)));
   _followCamera.SetFollowTarget(pp);
+
+  const BoidSettings& b = _settings.boids;
+  float ks = b.separation_scale * sinf(state.localTime.TotalSecondsAsFloat());
+  float kc = b.cohesion_scale * cosf(state.localTime.TotalSecondsAsFloat());
+
+  float sum = b.wander_scale + ks + kc + b.alignment_scale + b.follow_scale;
+
+  for (Flock* f : _flocks)
+  {
+    f->boids.UpdateWeight(_behaviorSeparataion, ks / sum);
+    f->boids.UpdateWeight(_behaviorCohesion, kc / sum);
+    f->boids.UpdateWeight(_behaviorAlignment, b.alignment_scale / sum);
+    f->boids.UpdateWeight(_landscapeFollow, b.follow_scale / sum);
+    f->boids.UpdateWeight(f->seek, b.wander_scale / sum);
+  }
 
   UpdateCameraMatrix(state);
   return true;
@@ -432,28 +451,28 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 {
   const IoState& ioState = TANO.GetIoState();
 
-  if (!_flocks.Empty())
-  {
-    if (g_KeyUpTrigger.IsTriggered('1'))
-    {
-      _followFlock = (_followFlock + 1) % _flocks.Size();
-      _flockCamera.flock = _flocks[_followFlock];
-      _flockCamera._pos = ToVector3(_flockCamera.flock->boids._center);
-      _flockCamera._pos.x += randf(-20, 20);
-      _flockCamera._pos.y += randf(5, 10);
-      _flockCamera._pos.z += randf(5, 20);
-    }
+  //if (!_flocks.Empty())
+  //{
+  //  if (g_KeyUpTrigger.IsTriggered('1'))
+  //  {
+  //    _followFlock = (_followFlock + 1) % _flocks.Size();
+  //    _flockCamera.flock = _flocks[_followFlock];
+  //    _flockCamera._pos = ToVector3(_flockCamera.flock->boids._center);
+  //    _flockCamera._pos.x += randf(-20, 20);
+  //    _flockCamera._pos.y += randf(5, 10);
+  //    _flockCamera._pos.z += randf(5, 20);
+  //  }
 
-    if (g_KeyUpTrigger.IsTriggered('2'))
-    {
-      _followFlock = (_followFlock - 1) % _flocks.Size();
-      _flockCamera.flock = _flocks[_followFlock];
-      _flockCamera._pos = ToVector3(_flockCamera.flock->boids._center);
-      _flockCamera._pos.x += randf(-20, 20);
-      _flockCamera._pos.y += randf(5, 10);
-      _flockCamera._pos.z += randf(5, 20);
-    }
-  }
+  //  if (g_KeyUpTrigger.IsTriggered('2'))
+  //  {
+  //    _followFlock = (_followFlock - 1) % _flocks.Size();
+  //    _flockCamera.flock = _flocks[_followFlock];
+  //    _flockCamera._pos = ToVector3(_flockCamera.flock->boids._center);
+  //    _flockCamera._pos.x += randf(-20, 20);
+  //    _flockCamera._pos.y += randf(5, 10);
+  //    _flockCamera._pos.z += randf(5, 20);
+  //  }
+  //}
 
   if (g_KeyUpTrigger.IsTriggered('7'))
     _drawFlags ^= 0x1;
@@ -818,7 +837,7 @@ void Landscape::RasterizeLandscape()
 //------------------------------------------------------------------------------
 void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHandle)
 {
-  XMVECTOR* boidPos = _ctx->MapWriteDiscard<XMVECTOR>(_boidsBundle.objects._vb);
+  V3* boidPos = _ctx->MapWriteDiscard<V3>(_boidsBundle.objects._vb);
 
   int numBoids = 0;
   for (const Flock* flock : _flocks)

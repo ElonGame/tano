@@ -163,7 +163,10 @@ bool App::Init(HINSTANCE hinstance)
   width = (int)(0.75f * width);
   height = (int)(0.75f * height);
 
-  GRAPHICS.CreateDefaultSwapChain(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, WndProc, hinstance);
+  int bbWidth = width / BACKBUFFER_SCALE;
+  int bbHeight = height / BACKBUFFER_SCALE;
+
+  GRAPHICS.CreateDefaultSwapChain(width, height, bbWidth, bbHeight, DXGI_FORMAT_R8G8B8A8_UNORM, WndProc, hinstance);
 
 #if WITH_IMGUI
   INIT_FATAL(InitImGui());

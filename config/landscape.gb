@@ -1,32 +1,32 @@
 {
   camera: {
     camera: {
-      pos: { 160.028717, 68.564110, 271.430206 };
-      dir: { -0.922653, -0.000002, -0.385631 };
-      right: { -0.385631, -0.000000, 0.922653 };
-      up: { -0.000002, 1.000000, -0.000001 };
+      pos: { 322.569153, 179.300720, 110.034698 };
+      dir: { 0.643972, -0.459531, -0.611662 };
+      right: { -0.688683, -0.000000, -0.725062 };
+      up: { 0.333188, 0.888162, -0.316471 };
       fov: 1.047000;
       near_plane: 1.000000;
       far_plane: 2000.000000;
     };
-    yaw: 10.599683;
-    pitch: 0.000002;
+    yaw: 14.896839;
+    pitch: 0.477467;
     roll: 0.000000;
   };
-  spline_speed: 1.515000;
+  spline_speed: 0.808000;
   boids: {
-    separation_scale: 0.000000;
-    cohesion_scale: 0.000000;
+    separation_scale: 5.000000;
+    cohesion_scale: 5.000000;
     alignment_scale: 0.000000;
     wander_scale: 10.000000;
-    follow_scale: 0.000000;
+    follow_scale: 10.000000;
     cohesion_distance: 500.000000;
     separation_distance: 45.500004;
     max_speed: 25.000000;
-    max_force: 10.000000;
+    max_force: 20.000000;
     waypoint_radius: 10.000000;
-    num_flocks: 2;
-    boids_per_flock: 250;
+    num_flocks: 15;
+    boids_per_flock: 100;
   };
   particle_texture: 'gfx/particle_white.png';
   tonemap: {

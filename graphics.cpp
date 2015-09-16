@@ -796,8 +796,14 @@ ObjectHandle Graphics::CreateSamplerState(const D3D11_SAMPLER_DESC& desc)
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateSwapChain(
-    const TCHAR* name, u32 width, u32 height, DXGI_FORMAT format, WNDPROC wndProc, HINSTANCE instance)
+ObjectHandle Graphics::CreateSwapChain(const char* name,
+  u32 windowWidth,
+  u32 windowHeight,
+  u32 backBufferWidth,
+  u32 backBufferHeight,
+  DXGI_FORMAT format,
+  WNDPROC wndProc,
+  HINSTANCE instance)
 {
   // TODO: this should probably be moved into the SwapChain class
   // Register the window class
@@ -821,10 +827,19 @@ ObjectHandle Graphics::CreateSwapChain(
 #endif
 
   // Create/resize the window
-  HWND hwnd = CreateWindow(name, g_AppWindowTitle, windowStyle, CW_USEDEFAULT, CW_USEDEFAULT, width, height,
-      NULL, NULL, instance, NULL);
+  HWND hwnd = CreateWindow(name,
+      g_AppWindowTitle,
+      windowStyle,
+      CW_USEDEFAULT,
+      CW_USEDEFAULT,
+      windowWidth,
+      windowHeight,
+      NULL,
+      NULL,
+      instance,
+      NULL);
 
-  SetClientSize(hwnd, width, height);
+  SetClientSize(hwnd, windowWidth, windowHeight);
 
 // if doing borderless, center the window as well
 #if BORDERLESS_WINDOW
@@ -844,8 +859,8 @@ ObjectHandle Graphics::CreateSwapChain(
   IDXGISwapChain* sc = 0;
   ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
   swapChainDesc.BufferCount            = 2;
-  swapChainDesc.BufferDesc.Width       = width;
-  swapChainDesc.BufferDesc.Height      = height;
+  swapChainDesc.BufferDesc.Width       = backBufferWidth;
+  swapChainDesc.BufferDesc.Height      = backBufferHeight;
   swapChainDesc.BufferDesc.Format      = format;
   swapChainDesc.BufferDesc.RefreshRate = SelectedDisplayMode().RefreshRate;
   swapChainDesc.BufferUsage            = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -861,7 +876,7 @@ ObjectHandle Graphics::CreateSwapChain(
   swapChain->_hwnd      = hwnd;
   swapChain->_desc      = swapChainDesc;
   swapChain->_swapChain = sc;
-  if (!swapChain->CreateBackBuffers(width, height, format))
+  if (!swapChain->CreateBackBuffers(backBufferWidth, backBufferHeight, format))
     return emptyHandle;
 
   return ObjectHandle(ObjectHandle::kSwapChain, _swapChains.Append(swapChain));
@@ -892,11 +907,17 @@ FullscreenEffect* Graphics::GetFullscreenEffect()
 }
 
 //------------------------------------------------------------------------------
-void Graphics::CreateDefaultSwapChain(
-    u32 width, u32 height, DXGI_FORMAT format, WNDPROC wndProc, HINSTANCE instance)
+void Graphics::CreateDefaultSwapChain(u32 windowWidth,
+    u32 windowHeight,
+    u32 backBufferWidth,
+    u32 backBufferHeight,
+    DXGI_FORMAT format,
+    WNDPROC wndProc,
+    HINSTANCE instance)
 {
-  _defaultSwapChainHandle = CreateSwapChain("default", width, height, format, wndProc, instance);
-  _defaultSwapChain       = _swapChains.Get(_defaultSwapChainHandle);
+  _defaultSwapChainHandle = CreateSwapChain(
+      "default", windowWidth, windowHeight, backBufferWidth, backBufferHeight, format, wndProc, instance);
+  _defaultSwapChain = _swapChains.Get(_defaultSwapChainHandle);
 }
 
 //------------------------------------------------------------------------------

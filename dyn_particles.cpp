@@ -210,7 +210,6 @@ void BehaviorSeek::Update(
 void BehaviorSeparataion::Update(
   DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
-  return;
   V3* pos = bodies->pos;
   V3* acc = bodies->acc;
   V3* vel = bodies->vel;
@@ -272,8 +271,6 @@ void BehaviorSeparataion::Update(
 void BehaviorCohesion::Update(
   DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
-  return;
-
   V3* pos = bodies->pos;
   V3* acc = bodies->acc;
   V3* vel = bodies->vel;
@@ -325,8 +322,6 @@ void BehaviorCohesion::Update(
 void BehaviorAlignment::Update(
   DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
 {
-  return;
-
   V3* pos = bodies->pos;
   V3* acc = bodies->acc;
   V3* vel = bodies->vel;

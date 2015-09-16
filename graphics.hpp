@@ -48,8 +48,14 @@ namespace tano
     ObjectHandle CreateBlendState(const D3D11_BLEND_DESC& desc);
     ObjectHandle CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC& desc);
     ObjectHandle CreateSamplerState(const D3D11_SAMPLER_DESC& desc);
-    ObjectHandle CreateSwapChain(
-        const TCHAR* name, u32 width, u32 height, DXGI_FORMAT format, WNDPROC wndProc, HINSTANCE instance);
+    ObjectHandle CreateSwapChain(const char* name,
+        u32 windowWidth,
+        u32 windowHeight,
+        u32 backBufferWidth,
+        u32 backBufferHeight,
+        DXGI_FORMAT format,
+        WNDPROC wndProc,
+        HINSTANCE instance);
 
     D3D_FEATURE_LEVEL FeatureLevel() const { return _featureLevel; }
 
@@ -96,8 +102,13 @@ namespace tano
 
     ID3D11Device* Device() { return _device.p; }
 
-    void CreateDefaultSwapChain(
-        u32 width, u32 height, DXGI_FORMAT format, WNDPROC wndProc, HINSTANCE instance);
+    void CreateDefaultSwapChain(u32 windowWidth,
+        u32 windowHeight,
+        u32 backBufferWidth,
+        u32 backBufferHeight,
+        DXGI_FORMAT format,
+        WNDPROC wndProc,
+        HINSTANCE instance);
 
     void ClearRenderTarget(ObjectHandle h);
     void Present();

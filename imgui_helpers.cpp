@@ -261,8 +261,8 @@ namespace tano
         return true;
       case WM_MOUSEMOVE:
         // Mouse position, in pixels (set to -1,-1 if no mouse / on another screen, etc.)
-        io.MousePos.x = (signed short)(lParam);
-        io.MousePos.y = (signed short)(lParam >> 16);
+        io.MousePos.x = (float)((signed short)(lParam) / BACKBUFFER_SCALE);
+        io.MousePos.y = (float)((signed short)(lParam >> 16) / BACKBUFFER_SCALE);
         return true;
       case WM_CHAR:
         // You can also use ToAscii()+GetKeyboardState() to retrieve characters.

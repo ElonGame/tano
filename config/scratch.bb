@@ -32,9 +32,9 @@ namespace intro
 
 namespace landscape
 {
-    float landscapeClearance = 30;
+    float landscapeClearance = 5;
     float gravity = -5;
-    float pushForce = 20;
+    float pushForce = 1;
 }
 
 namespace plexus
