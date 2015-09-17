@@ -60,8 +60,7 @@ int Landscape::Chunk::nextId = 1;
 struct BehaviorGravity : public ParticleKinematics
 {
   BehaviorGravity(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
-  virtual void Update(
-      DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state) override
+  virtual void Update(const ParticleKinematics::UpdateParams& params)
   {
     //float gravity = BLACKBOARD.GetFloatVar("landscape.gravity");
     //V3* force = bodies->force;
@@ -286,15 +285,8 @@ void Landscape::InitBoids()
     {
       V3 pp(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
       float h = NoiseAtPoint(pp);
-#if 0
-      XMVECTOR tmp = XMLoadFloat3(&XMFLOAT3(pp.x, h, pp.z));
-      pos[i] = XMVectorAdd(center, tmp);
-      tmp = XMLoadFloat3(&XMFLOAT3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f)));
-      force[i] = XMVectorScale(tmp, 10); // V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-#else
       pos[i] = center + V3(pp.x, h, pp.z);
       force[i] = V3::Zero; //10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
-#endif
     }
 
     _flocks.Append(flock);
@@ -302,26 +294,24 @@ void Landscape::InitBoids()
 }
 
 //------------------------------------------------------------------------------
-void BehaviorLandscapeFollow::Update(
-    DynParticles::Bodies* bodies, int start, int end, float weight, const FixedUpdateState& state)
+void BehaviorLandscapeFollow::Update(const ParticleKinematics::UpdateParams& params)
 {
   // NOTE! This is called from the schedular threads, so setting namespace
   // on the blackboard will probably break :)
   float clearance = BLACKBOARD.GetFloatVar("landscape.landscapeClearance");
-  V3* pos = bodies->pos;
-  V3* acc = bodies->acc;
-  V3* vel = bodies->vel;
-  V3* force = bodies->force;
-  int numBodies = bodies->numBodies;
+  V3* pos = params.bodies->pos;
+  V3* acc = params.bodies->acc;
+  V3* vel = params.bodies->vel;
+  V3* force = params.bodies->force;
+  int numBodies = params.bodies->numBodies;
 
   float ff = BLACKBOARD.GetFloatVar("landscape.pushForce");
   V3 pushForce(0, ff, 0);
-  for (int i = start; i < end; ++i)
+  for (int i = params.start; i < params.end; ++i)
   {
     V3 curPos = pos[i];
     V3 curVel = vel[i];
     float h = NoiseAtPoint(curPos + V3(curVel.x, 0, curVel.z));
-    //float h = NoiseAtPoint(curPos);
 
     V3 target = curPos;
     target.y = h + clearance;
@@ -332,7 +322,7 @@ void BehaviorLandscapeFollow::Update(
       scale = dist / 20;
 
     V3 desiredVel = maxSpeed * Normalize(target - curPos);
-    force[i] += weight * ClampVector(desiredVel - vel[i], scale * ff);
+    force[i] += params.weight * ClampVector(desiredVel - vel[i], scale * ff);
   }
 }
 
@@ -1017,14 +1007,6 @@ void Landscape::RenderParameterSet()
     }
   };
 
-  auto UpdateDist = [this](DynParticles::DistMeasureType type, float w)
-  {
-    for (Flock* f : _flocks)
-    {
-      f->boids.SetDistCutOff(type, w);
-    }
-  };
-
   ImGui::SliderFloat("spline-speed", &_settings.spline_speed, 0, 20);
 
   static bool lensFlareConfig = false;
@@ -1078,10 +1060,6 @@ void Landscape::RenderParameterSet()
     ImGui::SliderFloat("SepDist", &_settings.boids.separation_distance, 1.f, 100.f);
     ImGui::SliderFloat("CohDist", &_settings.boids.cohesion_distance, 1.f, 100.f);
   }
-
-  // todo: move to init
-  UpdateDist(DynParticles::DistSeperation, _settings.boids.separation_distance);
-  UpdateDist(DynParticles::DistCohesion, _settings.boids.cohesion_distance);
 
   if (ImGui::Button("Reset"))
     Reset();
