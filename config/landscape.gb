@@ -25,7 +25,7 @@
     max_speed: 25.000000;
     max_force: 20.000000;
     waypoint_radius: 10.000000;
-    num_flocks: 15;
+    num_flocks: 10;
     boids_per_flock: 500;
   };
   particle_texture: 'gfx/particle_white.png';

@@ -257,7 +257,7 @@ bool Split::Update(const UpdateState& state)
 {
   UpdateCameraMatrix(state);
 
-  _pathy.CreateTubesIncremental(state.globalTime.TotalSecondsAsFloat());
+  _pathy.CreateTubesIncremental(state.localTime.TotalSecondsAsFloat());
 
   {
     ObjectHandle handle = _meshBundle.objects._vb;

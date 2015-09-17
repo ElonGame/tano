@@ -51,7 +51,7 @@ vector<FlockTiming> FLOCK_TIMING = {
   { 1000, 0 },
 };
 
-#define DEBUG_DRAW_PATH 1
+#define DEBUG_DRAW_PATH 0
 #define PROFILE_UPDATES 0
 
 int Landscape::Chunk::nextId = 1;
@@ -222,6 +222,15 @@ bool Landscape::Init()
 
   _flockCamera.flock = _flocks[0];
 
+  {
+    FixedUpdateState state;
+    state.delta = 1.0f / 100;
+    for (int i = 0; i < 250; ++i)
+    {
+      UpdateBoids(state);
+    }
+  }
+
   END_INIT_SEQUENCE();
 }
 
@@ -286,7 +295,7 @@ void Landscape::InitBoids()
       V3 pp(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
       float h = NoiseAtPoint(pp);
       pos[i] = center + V3(pp.x, h, pp.z);
-      force[i] = V3::Zero; //10 * V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      force[i] = V3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
     }
 
     _flocks.Append(flock);

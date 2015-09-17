@@ -83,7 +83,7 @@ void DynParticles::Update(const FixedUpdateState& updateState, bool alwaysUpdate
     maxPos = Max(maxPos, pos[i]);
   }
 
-  _center /= (float)numBodies;
+  _center = 1.f / numBodies * center;
 
   // sort the bodies into the correct bucket
   for (int i = 0; i < TOTAL_NUM_BUCKETS; ++i)

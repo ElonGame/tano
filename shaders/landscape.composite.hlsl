@@ -27,11 +27,12 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float minWhite = tonemap.y;
   float fade = tonemap.z;
 
-  col = ToneMapReinhard(col, exposure, minWhite);
+  //col = fade * col;
+  col = ToneMapReinhard(col, fade * exposure, minWhite);
 
   float r = 0.7 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
-  col = fade * r * col;
-  
+  col = r * col;
+
    // gamma correction
   col = pow(abs(col), 1.0/2.2);
 
