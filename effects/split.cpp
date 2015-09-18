@@ -21,6 +21,7 @@ using namespace bristol;
 static int SEGMENT_SPLITS = 10;
 static int ROTATION_SEGMENTS = 10;
 static int NUM_INITIAL_SEGMENTS = 10;
+static float INITIAL_SPREAD = 25;
 
 //------------------------------------------------------------------------------
 void AddRing(float curT,
@@ -66,12 +67,15 @@ void Pathy::Create()
   verts.clear();
   float delta = 1.f / SEGMENT_SPLITS;
 
+  float speedMean = BLACKBOARD.GetFloatVar("split.speedMean");
+  float speedVar = BLACKBOARD.GetFloatVar("split.speedVar");
+
   for (int i = 0; i < NUM_INITIAL_SEGMENTS; ++i)
   {
-    float ss = 50;
+    float ss = INITIAL_SPREAD;
     float x = randf(-ss, ss);
     float z = randf(-ss, ss);
-    Segment* s = new Segment{Vector3(x, 0, z), 1, 0, 0, 0};
+    Segment* s = new Segment{Vector3(x, 0, z), 1, GaussianRand(speedMean, speedMean), 0, 0, 0};
     segments.push_back(s);
     segmentStart.push_back(SegmentStart{time, s});
   }
@@ -103,6 +107,7 @@ void Pathy::Create()
       {
         Segment* s = new Segment{cur,
             scale * childScale,
+            scale * GaussianRand(speedMean, speedVar),
             angleX + GaussianRand(angleXMean, angleXVariance),
             angleY + GaussianRand(angleYMean, angleYVariance),
             angleZ + GaussianRand(angleZMean, angleZVariance)};
@@ -155,35 +160,43 @@ void Pathy::Create()
 }
 
 //------------------------------------------------------------------------------
-void Pathy::CreateTubesIncremental(float time)
+void Pathy::CreateTubesIncremental(float orgTime)
 {
   tubeVerts.clear();
 
   for (SegmentStart start : segmentStart)
   {
+    Segment* s = start.segment;
+    float time = orgTime * s->speed;
     if (start.time > time)
     {
       break;
     }
 
-    Segment* s = start.segment;
-
     float delta = 1.f / SEGMENT_SPLITS;
-    float endTime = time - start.time;
-    int numTicks = (int)(endTime / delta);
+    float elapsedTime = time - start.time;
+    int numTicks = (int)(elapsedTime / delta);
 
     if (numTicks > s->lastNumTicks)
     {
       s->lastNumTicks = numTicks;
 
       // add a new full ring
-      AddRing(numTicks * delta, s->frameT, s->spline, s->scale, &s->frameD, &s->frameN, &s->frameT, &s->completeRings);
+      AddRing(numTicks * delta,
+          s->frameT,
+          s->spline,
+          s->scale,
+          &s->frameD,
+          &s->frameN,
+          &s->frameT,
+          &s->completeRings);
     }
 
     s->inprogressRing.clear();
-    float ss = (endTime - (int)(endTime / delta) * delta) / delta;
+    float ss = (elapsedTime - (int)(elapsedTime / delta) * delta) / delta;
     ss = 1;
-    AddRing(endTime, s->frameT, s->spline, s->scale, &s->frameD, &s->frameN, &s->frameT, &s->inprogressRing);
+    AddRing(
+        elapsedTime, s->frameT, s->spline, s->scale, &s->frameD, &s->frameN, &s->frameT, &s->inprogressRing);
 
     Append(s->completeRings, &tubeVerts);
     Append(s->inprogressRing, &tubeVerts);
@@ -195,7 +208,7 @@ V3* Pathy::CopyOut(V3* buf)
 {
   assert(verts.size() <= TOTAL_POINTS);
 
-  //memcpy(buf, verts.data(), verts.size() * sizeof(V3));
+  // memcpy(buf, verts.data(), verts.size() * sizeof(V3));
   memcpy(buf, tubeVerts.data(), tubeVerts.size() * sizeof(V3));
   return buf + verts.size();
 }
@@ -224,13 +237,18 @@ bool Split::Init()
   BEGIN_INIT_SEQUENCE();
 
   // clang-format off
-  INIT(_backgroundBundle.Create(BundleOptions()
+  INIT_FATAL(_backgroundBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/trail.background", "PsBackground")));
 
-  INIT(_compositeBundle.Create(BundleOptions()
+  INIT_FATAL(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/trail.composite", "PsComposite")));
+
+  INIT_FATAL(_skyBundle.Create(BundleOptions()
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/split.sky", "PsSky")));
 
   INIT_FATAL(_meshBundle.Create(BundleOptions()
     .RasterizerDesc(rasterizeDescWireframe)
@@ -241,11 +259,12 @@ bool Split::Init()
     .StaticIb(CreateCylinderIndices(ROTATION_SEGMENTS, 1000))
     .VertexShader("shaders/out/split.mesh", "VsMesh")
     .PixelShader("shaders/out/split.mesh", "PsMesh")));
-    // clang-format on
+  // clang-format on
 
-  INIT(_cbComposite.Create());
-  INIT(_cbBackground.Create());
-  INIT(_cbMesh.Create());
+  INIT_FATAL(_cbComposite.Create());
+  INIT_FATAL(_cbBackground.Create());
+  INIT_FATAL(_cbMesh.Create());
+  INIT_FATAL(_cbSky.Create());
 
   _pathy.Create();
 
@@ -288,6 +307,13 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
 
   _cbMesh.vs0.viewProj = viewProj.Transpose();
   _cbMesh.vs1.objWorld = Matrix::Identity();
+
+  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+  Vector4 dim((float)desc.width, (float)desc.height, 0, 0);
+  _cbSky.ps0.dim = dim;
+  _cbSky.ps0.cameraPos = _camera._pos;
+  _cbSky.ps0.cameraLookAt = _camera._pos + _camera._dir;
+
 }
 
 //------------------------------------------------------------------------------
@@ -300,39 +326,22 @@ bool Split::Render()
 
   ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-  _ctx->SetRenderTarget(rtColor, &black);
-
+  //_ctx->SetRenderTarget(rtColor, &black);
+  _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
   {
-    // Render the background
-    _cbBackground.Set(_ctx, 0);
-    _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
-    _ctx->SetBundle(_backgroundBundle);
+    // sky
+    _cbSky.Set(_ctx, 0);
+    _ctx->SetBundle(_skyBundle);
     _ctx->Draw(3, 0);
   }
 
-#if 0
-  {
-    // lines
-    RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-    _cbPlexus.gs0.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
-    V3 params = BLACKBOARD.GetVec3Var("particle_trail.lineParams");
-    _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
-    _cbPlexus.Set(_ctx, 0);
-    _ctx->SetBundle(_lineBundle);
-    for (Pathy::Line& line : _pathy.lines)
-    {
-      _ctx->Draw(line.size, line.startOfs);
-    }
-  }
-  {
-    int n = (int)_pathy.tubeVerts.size();
-    _cbParticle.gs0.numParticles.x = (float)n;
-    _cbParticle.Set(_ctx, 0);
-    _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
-    _ctx->SetShaderResource(_particleTexture);
-    _ctx->Draw(n, 0);
-  }
-#endif
+  //{
+  //  // Render the background
+  //  _cbBackground.Set(_ctx, 0);
+  //  _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
+  //  _ctx->SetBundle(_backgroundBundle);
+  //  _ctx->Draw(3, 0);
+  //}
 
   {
     _cbMesh.Set(_ctx, 0);

@@ -37,6 +37,12 @@ namespace landscape
     float pushForce = 2;
 }
 
+namespace split
+{
+    float speedMean = 0.5;
+    float speedVar = 0.25;
+}
+
 namespace plexus
 {
     vec3 lineParams = { 5.0, 0.25, 150 };

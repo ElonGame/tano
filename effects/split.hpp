@@ -6,6 +6,7 @@
 #include "../shaders/out/trail.composite_pscomposite.cbuffers.hpp"
 #include "../shaders/out/trail.background_psbackground.cbuffers.hpp"
 #include "../shaders/out/split.mesh_vsmesh.cbuffers.hpp"
+#include "../shaders/out/split.sky_pssky.cbuffers.hpp"
 
 namespace tano
 {
@@ -27,11 +28,12 @@ namespace tano
 
     struct Segment
     {
-      Segment(const Vector3& cur, float scale, float angleX, float angleY, float angleZ)
-          : cur(cur), scale(scale), angleX(angleX), angleY(angleY), angleZ(angleZ)
+      Segment(const Vector3& cur, float scale, float speed, float angleX, float angleY, float angleZ)
+          : cur(cur), scale(scale), speed(speed), angleX(angleX), angleY(angleY), angleZ(angleZ)
       {
       }
       Vector3 cur;
+      float speed;
       float scale;
       float angleX, angleY, angleZ;
       int lastNumTicks = 0;
@@ -116,6 +118,8 @@ namespace tano
       cb::SplitMeshO, void, void> _cbMesh;
 
     GpuBundle _meshBundle;
+    ConstantBufferBundle<void, cb::SplitSkyF> _cbSky;
+    GpuBundle _skyBundle;
 
     SplitSettings _settings;
     FreeflyCamera _camera;

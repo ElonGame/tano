@@ -487,9 +487,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   Matrix viewProj = view * proj;
 
   RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-
   Vector4 dim((float)desc.width, (float)desc.height, 0, 0);
-
   _cbSky.ps0.dim = dim;
   _cbSky.ps0.cameraPos = _curCamera->_pos;
   _cbSky.ps0.cameraLookAt = _curCamera->_pos + _curCamera->_dir;
