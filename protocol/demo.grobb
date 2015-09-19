@@ -43,14 +43,10 @@ struct tonemap_reinhard_settings
   float min_white = 1;
 };
 
-struct full_tonemap_settings
+struct base_settings
 {
-  bool enabled = false;
-  float shoulder = 0.8;
-  float toe = 0.2;
-  float white_point = 5.0;
-  float black_point = 0.1;
-  float cross_over = 0.2;
+    tonemap_reinhard_settings tonemap;
+    freefly_camera_settings camera;
 };
 
 struct scale_bias
@@ -83,7 +79,7 @@ struct plexus_sphere
   int layers = 14;
 };
 
-struct intro_settings
+struct intro_settings : base_settings
 {
   string texture;
   color tint;
@@ -96,20 +92,18 @@ struct intro_settings
   plexus_grouping plexus;
   plexus_sphere sphere;
   plexus_deform deform;
-  tonemap_reinhard_settings tonemap;
-  freefly_camera_settings camera;
   float angle_scale = 2;
   float keyframe_scale = 5;
   float keyframe_step = 100;
   int num_keyframes = 50;
 };
 
-struct ray_marcher_settings
+struct ray_marcher_settings : base_settings
 {
   
 };
 
-struct cluster_settings
+struct cluster_settings : base_settings
 {
   
 };
@@ -139,13 +133,11 @@ struct lens_flare_settings
   float strength = 0.1;
 };
 
-struct landscape_settings
+struct landscape_settings : base_settings
 {
-  freefly_camera_settings camera;
   float spline_speed = 1;
   boid_settings boids;
   string particle_texture;
-  tonemap_reinhard_settings tonemap;
   lens_flare_settings lens_flare;
 };
 
@@ -155,14 +147,12 @@ struct blob_settings
   freefly_camera_settings camera;
 };
 
-struct credits_settings
+struct credits_settings : base_settings
 {
   float blur_amount = 245;
   string particle_texture;
-  freefly_camera_settings camera;
   float damping = 0.01;
   vec3 gravity = {0, -1, 0};
-  tonemap_reinhard_settings tonemap;
 };
 
 struct noise_settings
@@ -176,13 +166,11 @@ struct noise_settings
   float turbulence = 10;
 };
 
-struct plexus_settings
+struct plexus_settings : base_settings
 {
-  full_tonemap_settings tonemap;
   plexus_grouping plexus;
   plexus_sphere sphere;
   plexus_deform deform;
-  freefly_camera_settings camera;
   noise_settings noise;
 };
 
@@ -191,28 +179,22 @@ struct sample_settings
   tonemap_reinhard_settings tonemap;  
 };
 
-struct tunnel_settings
+struct tunnel_settings : base_settings
 {
-  tonemap_reinhard_settings tonemap;
   plexus_grouping plexus;
 };
 
-struct fluid_settings
+struct fluid_settings : base_settings
 {
-  tonemap_reinhard_settings tonemap;
 };
 
-struct particle_trail_settings
+struct particle_trail_settings : base_settings
 {
-  freefly_camera_settings camera;
-  tonemap_reinhard_settings tonemap;
   float lorenz_a = 10.0;
   float lorenz_b = 28.0;
   float lorenz_c = 2.67;
 };
 
-struct split_settings
+struct split_settings : base_settings
 {
-  freefly_camera_settings camera;
-  tonemap_reinhard_settings tonemap;
 };

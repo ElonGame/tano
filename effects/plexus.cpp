@@ -134,17 +134,6 @@ void Plexus::UpdateNoise()
   recalc |= ImGui::SliderFloat("opacity factor", &_settings.noise.opacity_factor, 0.1f, 2.0f);
   recalc |= ImGui::SliderFloat("turbulence", &_settings.noise.turbulence, 1, 500);
 
-  ImGui::Separator();
-  recalc |= ImGui::Checkbox("tonemap enabled", &_settings.tonemap.enabled);
-  if (_settings.tonemap.enabled)
-  {
-    recalc |= ImGui::SliderFloat("black-point", &_settings.tonemap.black_point, 0, 1);
-    recalc |= ImGui::SliderFloat("white-point", &_settings.tonemap.white_point, 0.5, 20);
-    recalc |= ImGui::SliderFloat("cross-over", &_settings.tonemap.cross_over, 0, 20);
-    recalc |= ImGui::SliderFloat("toe", &_settings.tonemap.toe, 0, 1);
-    recalc |= ImGui::SliderFloat("shoulder", &_settings.tonemap.shoulder, 0, 1);
-  }
-
   ImGui::Image((void*)&_perlinTexture, ImVec2((float)NOISE_WIDTH, (float)NOISE_HEIGHT));
 
   ImGui::End();
@@ -187,6 +176,7 @@ void Plexus::UpdateNoise()
     layerOpacity *= _settings.noise.opacity_factor;
   }
 
+#if 0
   const FullTonemapSettings& t = _settings.tonemap;
   u32* p = _ctx->MapWriteDiscard<u32>(_perlinTexture);
   for (int i = 0; i < NOISE_HEIGHT; ++i)
@@ -221,6 +211,7 @@ void Plexus::UpdateNoise()
     }
   }
   _ctx->Unmap(_perlinTexture);
+#endif
 }
 
 //------------------------------------------------------------------------------

@@ -14,6 +14,7 @@
 #include "../generated/output_buffer.hpp"
 #include "../fullscreen_effect.hpp"
 #include "../mesh_utils.hpp"
+#include "../debug_api.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -31,7 +32,7 @@ void AddRing(float curT,
     V3* newD,
     V3* newN,
     V3* newT,
-    vector<Vector3>* out)
+    vector<PN>* out)
 {
   float delta = 1.f / SEGMENT_SPLITS;
 
@@ -51,10 +52,23 @@ void AddRing(float curT,
   float angleInc = XM_2PI / ROTATION_SEGMENTS;
   for (int k = 0; k < ROTATION_SEGMENTS; ++k)
   {
-    Matrix mtx = Matrix::CreateFromAxisAngle(ToVector3(d), angle);
-    Vector3 vv = ToVector3(pos) + Vector3::Transform(ToVector3(V3(scale * 1, 0, 0)), mtx);
+    Vector3 pp = ToVector3(pos);
+    Vector3 dd = ToVector3(d);
+    dd.Normalize();
+    Matrix mtx = Matrix::CreateFromAxisAngle(dd, angle);
+    Vector3 xx = scale * ToVector3(n);
+    //Vector3 rr = ToVector3(V3(scale * 1, 0, 0));
+    Vector3 rr = xx;
+    rr.Normalize();
+    rr = Vector3::Transform(rr, mtx);
+    Vector3 vv = pp + Vector3::Transform(xx, mtx);
+    //Vector3 nn = vv - pp;
+    //nn.Normalize();
     angle += angleInc;
-    out->push_back(vv);
+    out->push_back(PN{V3(vv), V3(rr)});
+
+    DEBUG_API.AddDebugLine(vv, vv+rr, Color(1, 1, 0), Color(1, 0, 1));
+
   }
 }
 
@@ -192,6 +206,13 @@ void Pathy::CreateTubesIncremental(float orgTime)
           &s->completeRings);
     }
 
+    {
+      V3 p0 = s->spline.Interpolate(elapsedTime);
+      DEBUG_API.AddDebugLine(ToVector3(p0), ToVector3(p0 + s->frameD), Color(1, 0, 0));
+      DEBUG_API.AddDebugLine(ToVector3(p0), ToVector3(p0 + s->frameN), Color(0, 1, 0));
+      DEBUG_API.AddDebugLine(ToVector3(p0), ToVector3(p0 + s->frameT), Color(0, 0, 1));
+    }
+
     s->inprogressRing.clear();
     float ss = (elapsedTime - (int)(elapsedTime / delta) * delta) / delta;
     ss = 1;
@@ -208,8 +229,7 @@ V3* Pathy::CopyOut(V3* buf)
 {
   assert(verts.size() <= TOTAL_POINTS);
 
-  // memcpy(buf, verts.data(), verts.size() * sizeof(V3));
-  memcpy(buf, tubeVerts.data(), tubeVerts.size() * sizeof(V3));
+  memcpy(buf, tubeVerts.data(), tubeVerts.size() * sizeof(PN));
   return buf + verts.size();
 }
 
@@ -251,11 +271,12 @@ bool Split::Init()
     .PixelShader("shaders/out/split.sky", "PsSky")));
 
   INIT_FATAL(_meshBundle.Create(BundleOptions()
-    .RasterizerDesc(rasterizeDescWireframe)
+    //.RasterizerDesc(rasterizeDescWireframe)
 //     .BlendDesc(blendDescBlendOneOne)
-     .DepthStencilDesc(depthDescDepthDisabled)
-    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
-    .DynamicVb(10 * 1024 * 1024, sizeof(V3))
+     //.DepthStencilDesc(depthDescDepthDisabled)
+     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
+     .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
+    .DynamicVb(10 * 1024 * 1024, 2 * sizeof(V3))
     .StaticIb(CreateCylinderIndices(ROTATION_SEGMENTS, 1000))
     .VertexShader("shaders/out/split.mesh", "VsMesh")
     .PixelShader("shaders/out/split.mesh", "PsMesh")));
@@ -314,6 +335,8 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
   _cbSky.ps0.cameraPos = _camera._pos;
   _cbSky.ps0.cameraLookAt = _camera._pos + _camera._dir;
 
+  DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
+
 }
 
 //------------------------------------------------------------------------------
@@ -334,14 +357,6 @@ bool Split::Render()
     _ctx->SetBundle(_skyBundle);
     _ctx->Draw(3, 0);
   }
-
-  //{
-  //  // Render the background
-  //  _cbBackground.Set(_ctx, 0);
-  //  _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
-  //  _ctx->SetBundle(_backgroundBundle);
-  //  _ctx->Draw(3, 0);
-  //}
 
   {
     _cbMesh.Set(_ctx, 0);

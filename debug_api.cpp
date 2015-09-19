@@ -165,17 +165,25 @@ void DebugApi::SetTransform(const Matrix& world, const Matrix& viewProj)
 //------------------------------------------------------------------------------
 void DebugApi::AddDebugLine(const Vector3& start, const Vector3& end, const Color& color)
 {
+  return AddDebugLine(start, end, color, color);
+}
+
+//------------------------------------------------------------------------------
+void DebugApi::AddDebugLine(const Vector3& start, const Vector3& end, const Color& startColor, const Color& endColor)
+{
   // if no line chunk is present, then there was no call to SetTransform, and we can bail
+  if (_lineChunks.empty())
+    return;
   assert(!_lineChunks.empty());
 
   LineChunk& chunk = _lineChunks.back();
   chunk.numVertices += 2;
 
   _vertices[_numVerts + 0].pos = start;
-  _vertices[_numVerts + 0].col = color;
+  _vertices[_numVerts + 0].col = startColor;
 
   _vertices[_numVerts + 1].pos = end;
-  _vertices[_numVerts + 1].col = color;
+  _vertices[_numVerts + 1].col = endColor;
 
   _numVerts += 2;
 }

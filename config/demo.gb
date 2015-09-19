@@ -1,6 +1,6 @@
 {
   soundtrack: 'music.ogg';
-  silent: false;
+  silent: true;
   
   effects: [
     {

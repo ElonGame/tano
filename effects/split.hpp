@@ -10,6 +10,12 @@
 
 namespace tano
 {
+  struct PN
+  {
+    V3 pos;
+    V3 normal;
+  };
+
   struct Pathy
   {
     enum
@@ -24,7 +30,7 @@ namespace tano
     void CreateTubesIncremental(float t);
 
     vector<V3> verts;
-    vector<Vector3> tubeVerts;
+    vector<PN> tubeVerts;
 
     struct Segment
     {
@@ -38,8 +44,8 @@ namespace tano
       float angleX, angleY, angleZ;
       int lastNumTicks = 0;
       vector<V3> verts;
-      vector<Vector3> completeRings;
-      vector<Vector3> inprogressRing;
+      vector<PN> completeRings;
+      vector<PN> inprogressRing;
       CardinalSpline spline;
 
       // last reference frame

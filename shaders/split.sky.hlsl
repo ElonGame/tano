@@ -1,4 +1,5 @@
 #include "common.hlsl"
+#include "split.common.hlsl"
 
 cbuffer F : register(b0)
 {
@@ -6,19 +7,6 @@ cbuffer F : register(b0)
   float3 cameraPos;
   float3 cameraLookAt;
 };
-
-static float3 FOG_COLOR = float3(16, 24, 37) / 255;
-static float3 SUN_COLOR = float3(128, 100, 120) / 255;
-static float3 SUN_DIR = normalize(float3(0, -0.2, -1));
-static float3 SUN_POS = float3(0, 0, 2000);
-static float SUN_POWER = 30;
-
-float3 FogColor(float3 rayDir)
-{
-  float sunAmount = max(0, dot(rayDir, -SUN_DIR));
-  float3 fogColor = lerp(FOG_COLOR, SUN_COLOR, pow(sunAmount, SUN_POWER));
-  return fogColor;
-}
 
 // entry-point: ps
 float4 PsSky(VSQuadOut p) : SV_Target

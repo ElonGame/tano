@@ -16,6 +16,7 @@ namespace tano
 
     void SetTransform(const Matrix& world, const Matrix& viewProj);
     void AddDebugLine(const Vector3& start, const Vector3& end, const Color& color);
+    void AddDebugLine(const Vector3& start, const Vector3& end, const Color& startColor, const Color& endColor);
     void AddDebugSphere(const Vector3& center, float radius, const Color& color);
     void AddDebugCube(const Vector3& center, const Vector3& extents, const Color& color);
 
