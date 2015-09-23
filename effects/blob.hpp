@@ -47,6 +47,5 @@ namespace tano
     ConstantBufferBundle<void, cb::BlobComposeF> _cbComposite;
 
     BlobSettings _settings;
-    FreeflyCamera _camera;
   };
 }

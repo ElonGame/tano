@@ -134,7 +134,6 @@ namespace tano
     GpuState _clothState;
     GpuObjects _clothGpuObjects;
     CreditsSettings _settings;
-    FreeflyCamera _camera;
 
     FreeflyCamera _textCamera;
     ObjectHandle _csBlur;

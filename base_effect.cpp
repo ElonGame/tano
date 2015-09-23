@@ -181,3 +181,9 @@ void BaseEffect::LoadParameterVersion(int version)
 
   OnConfigChanged(buf);
 }
+
+//------------------------------------------------------------------------------
+void BaseEffect::CommonUpdate(float deltaTime)
+{
+  _freeflyCamera.Update(deltaTime);
+}

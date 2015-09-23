@@ -101,7 +101,7 @@ namespace tano
       Flock* flock;
       V3 target;
       float waypointRadius;
-      FixedUpdateState updateState;
+      float deltaTime;
     };
 
     struct ChunkKernelData

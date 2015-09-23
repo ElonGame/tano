@@ -62,7 +62,7 @@ void DynParticles::Reset()
 }
 
 //------------------------------------------------------------------------------
-void DynParticles::Update(const FixedUpdateState& updateState, bool alwaysUpdate)
+void DynParticles::Update(float deltaTime, bool alwaysUpdate)
 {
   if (!_bodies.numBodies)
     return;
@@ -122,17 +122,16 @@ void DynParticles::Update(const FixedUpdateState& updateState, bool alwaysUpdate
 
     for (Kinematic& k : _kinematics)
     {
-      ParticleKinematics::UpdateParams params{ &_bodies, start, end, k.weight, updateState, this };
+      ParticleKinematics::UpdateParams params{ &_bodies, start, end, k.weight, deltaTime, this };
       k.kinematic->Update(params);
     }
   }
 
-  float dt = updateState.delta;
   for (int i = 0; i < numBodies; ++i)
   {
     _bodies.acc[i] = _bodies.force[i];
-    _bodies.vel[i] = ClampVector(_bodies.vel[i] + dt * _bodies.acc[i], _maxSpeed);
-    _bodies.pos[i] += dt * _bodies.vel[i];
+    _bodies.vel[i] = ClampVector(_bodies.vel[i] + deltaTime * _bodies.acc[i], _maxSpeed);
+    _bodies.pos[i] += deltaTime * _bodies.vel[i];
   }
 
   _tickCount++;

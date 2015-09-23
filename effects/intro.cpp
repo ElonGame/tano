@@ -295,7 +295,7 @@ bool Intro::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  _camera.FromProtocol(_settings.camera);
+  _freeflyCamera.FromProtocol(_settings.camera);
 
   // clang-format off
   INIT(_backgroundBundle.Create(BundleOptions()
@@ -407,8 +407,8 @@ bool Intro::Init()
 //------------------------------------------------------------------------------
 void Intro::UpdateCameraMatrix(const UpdateState& state)
 {
-  Matrix view = _camera._view;
-  Matrix proj = _camera._proj;
+  Matrix view = _freeflyCamera._view;
+  Matrix proj = _freeflyCamera._proj;
   Matrix viewProj = view * proj;
 
   _cbParticle.gs0.world = Matrix::Identity();
@@ -622,12 +622,10 @@ bool Intro::FixedUpdate(const FixedUpdateState& state)
   rmt_ScopedCPUSample(Particles_Update);
   float dt = state.delta;
 
-  _camera.Update(state);
-
   float zz = -1000;
   _textCamera._pos.z = zz;
   _textCamera._fov = atan(100.f / fabsf(zz));
-  _textCamera.Update(state);
+  _textCamera.Update(state.delta);
 
   return true;
 }
@@ -815,7 +813,7 @@ void Intro::RenderParameterSet()
 #if WITH_IMGUI
 void Intro::SaveParameterSet(bool inc)
 {
-  _camera.ToProtocol(&_settings.camera);
+  _freeflyCamera.ToProtocol(&_settings.camera);
   SaveSettings(_settings, inc);
 }
 #endif

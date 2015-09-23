@@ -112,6 +112,5 @@ namespace tano
     float _curTime = 0;
 
     FreeflyCamera _textCamera;
-    FreeflyCamera _camera;
   };
 }

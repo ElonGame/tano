@@ -119,7 +119,8 @@ bool DemoEngine::Start()
     }
   }
 
-  _timer.Start();
+  _demoTimer.Start();
+  _globalTimer.Start();
 
   if (_forceEffect)
   {
@@ -138,7 +139,7 @@ void DemoEngine::SetPaused(bool pause)
     if (_stream)
       BASS_ChannelPause(_stream);
 #endif
-    _timer.Stop();
+    _demoTimer.Stop();
   }
   else
   {
@@ -146,20 +147,20 @@ void DemoEngine::SetPaused(bool pause)
     if (_stream)
       BASS_ChannelPlay(_stream, false);
 #endif
-    _timer.Start();
+    _demoTimer.Start();
   }
 }
 
 //------------------------------------------------------------------------------
 bool DemoEngine::Paused() const
 {
-  return !_timer.IsRunning();
+  return !_demoTimer.IsRunning();
 }
 
 //------------------------------------------------------------------------------
 void DemoEngine::AdjustPos(const TimeDuration& delta)
 {
-  _timer.Adjust(delta);
+  _demoTimer.Adjust(delta);
   ReclassifyEffects();
 }
 
@@ -171,7 +172,7 @@ void DemoEngine::SetPos(const TimeDuration& pos)
   {
     clampedPos.Clamp(_forceEffect->StartTime().GetTimestamp());
   }
-  _timer.SetElapsed(clampedPos);
+  _demoTimer.SetElapsed(clampedPos);
 #if WITH_MUSIC
   if (_stream)
   {
@@ -185,7 +186,7 @@ void DemoEngine::SetPos(const TimeDuration& pos)
 //------------------------------------------------------------------------------
 TimeDuration DemoEngine::Pos()
 {
-  return _timer.Peek();
+  return _demoTimer.Peek();
 }
 
 //------------------------------------------------------------------------------
@@ -203,7 +204,7 @@ void DemoEngine::SetDuration(const TimeDuration& duration)
 //------------------------------------------------------------------------------
 void DemoEngine::ReclassifyEffects()
 {
-  TimeDuration currentTime = _timer.Elapsed(nullptr);
+  TimeDuration currentTime = _demoTimer.Elapsed(nullptr);
 
   sort(_effects.begin(), _effects.end(), [](const BaseEffect* a, const BaseEffect* b) 
   { 
@@ -298,10 +299,14 @@ bool DemoEngine::Tick()
 //------------------------------------------------------------------------------
 void DemoEngine::UpdateEffects()
 {
-  TimeDuration delta, current;
-  current = _timer.Elapsed(&delta);
 
-  bool paused = !_timer.IsRunning();
+  TimeDuration globalDelta;
+  _globalTimer.Elapsed(&globalDelta);
+
+  TimeDuration delta, current;
+  current = _demoTimer.Elapsed(&delta);
+
+  bool paused = !_demoTimer.IsRunning();
 
   // calc the number of ticks to step
   _updatedAcc += TimeDurationToFloat(delta);
@@ -318,6 +323,12 @@ void DemoEngine::UpdateEffects()
   fixedState.localTime = current;
   fixedState.delta = UPDATE_INTERVAL;
   fixedState.paused = paused;
+
+  // do the common update for all effects (right now just updating the freefly camera)
+  for (BaseEffect* effect : _effects)
+  {
+    effect->CommonUpdate(globalDelta.TotalSecondsAsFloat());
+  }
 
   // If a force effect is set, just tick this guy
   if (_forceEffect)
@@ -537,12 +548,12 @@ void DemoEngine::RocketPauseCb(void* context, int flag)
     if (flag)
     {
       BASS_ChannelPause(h);
-      self->_timer.Stop();
+      self->_demoTimer.Stop();
     }
     else
     {
       BASS_ChannelPlay(h, false);
-      self->_timer.Start();
+      self->_demoTimer.Start();
     }
   }
 }
@@ -555,7 +566,7 @@ void DemoEngine::RocketSetRowCb(void* context, int row)
   if (HSTREAM h = self->_stream)
   {
     double time = row / ROWS_PER_SECOND;
-    self->_timer.SetElapsed(TimeDuration::Microseconds((s64)(1e6 * time)));
+    self->_demoTimer.SetElapsed(TimeDuration::Microseconds((s64)(1e6 * time)));
     QWORD pos = BASS_ChannelSeconds2Bytes(h, time);
     BASS_ChannelSetPosition(h, pos, BASS_POS_BYTE);
   }

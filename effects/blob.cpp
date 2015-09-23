@@ -40,7 +40,7 @@ bool Blob::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  _camera.FromProtocol(_settings.camera);
+  _freeflyCamera.FromProtocol(_settings.camera);
 
   // TODO(magnus): broken for now
   //MeshLoader meshLoader;
@@ -81,21 +81,20 @@ bool Blob::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Blob::FixedUpdate(const FixedUpdateState& state)
 {
-  _camera.Update(state);
   return true;
 }
 
 //------------------------------------------------------------------------------
 void Blob::UpdateCameraMatrix(const UpdateState& state)
 {
-  Matrix view = _camera._view;
-  Matrix proj = _camera._proj;
+  Matrix view = _freeflyCamera._view;
+  Matrix proj = _freeflyCamera._proj;
 
   Matrix viewProj = view * proj;
 
   _cbMesh.vs0.view = view.Transpose();
   _cbMesh.vs0.viewProj = viewProj.Transpose();
-  _cbMesh.ps0.cameraPos = _camera._pos;
+  _cbMesh.ps0.cameraPos = _freeflyCamera._pos;
 
   _cbMesh.vs1.objWorld = Matrix::Identity();
 }
@@ -187,7 +186,7 @@ void Blob::RenderParameterSet()
 #if WITH_IMGUI
 void Blob::SaveParameterSet(bool inc)
 {
-  _camera.ToProtocol(&_settings.camera);
+  _freeflyCamera.ToProtocol(&_settings.camera);
   SaveSettings(_settings, inc);
 }
 #endif
@@ -195,8 +194,8 @@ void Blob::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void Blob::Reset()
 {
-  _camera._pos = Vector3(0.f, 0.f, 0.f);
-  _camera._pitch = _camera._yaw = _camera._roll = 0.f;
+  _freeflyCamera._pos = Vector3(0.f, 0.f, 0.f);
+  _freeflyCamera._pitch = _freeflyCamera._yaw = _freeflyCamera._roll = 0.f;
 }
 
 //------------------------------------------------------------------------------

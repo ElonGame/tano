@@ -62,7 +62,7 @@ bool Credits::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  _camera.FromProtocol(_settings.camera);
+  _freeflyCamera.FromProtocol(_settings.camera);
 
   {
     // setup text camera
@@ -604,7 +604,6 @@ bool Credits::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Credits::FixedUpdate(const FixedUpdateState& state)
 {
-  _camera.Update(state);
   //UpdateParticles(state);
   return true;
 }
@@ -626,8 +625,8 @@ void Credits::UpdateCameraMatrix(const UpdateState& state)
   }
 
   {
-    proj = _camera._proj;
-    view = _camera._view;
+    proj = _freeflyCamera._proj;
+    view = _freeflyCamera._view;
     viewProj = view * proj;
     _cbParticle.gs0.world = Matrix::Identity();
     _cbParticle.gs0.viewProj = viewProj.Transpose();
@@ -717,7 +716,7 @@ void Credits::RenderParameterSet()
 #if WITH_IMGUI
 void Credits::SaveParameterSet(bool inc)
 {
-  _camera.ToProtocol(&_settings.camera);
+  _freeflyCamera.ToProtocol(&_settings.camera);
   SaveSettings(_settings, inc);
 }
 #endif
@@ -725,8 +724,8 @@ void Credits::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void Credits::Reset()
 {
-  _camera._pos = Vector3(0.f, 0.f, -10.f);
-  _camera._pitch = _camera._yaw = _camera._roll = 0.f;
+  _freeflyCamera._pos = Vector3(0.f, 0.f, -10.f);
+  _freeflyCamera._pitch = _freeflyCamera._yaw = _freeflyCamera._roll = 0.f;
 }
 
 //------------------------------------------------------------------------------

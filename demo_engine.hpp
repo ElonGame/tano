@@ -70,7 +70,8 @@ namespace tano
     TimeDuration _duration;
     TimeDuration _accumulated;
 
-    Timer _timer;
+    Timer _demoTimer;
+    Timer _globalTimer;
 
     string _configFile;
     DemoSettings _settings;

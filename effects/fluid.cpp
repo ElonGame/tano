@@ -93,7 +93,7 @@ bool Fluid::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Fluid::FixedUpdate(const FixedUpdateState& state)
 {
-  _camera.Update(state);
+  _camera.Update(state.delta);
   return true;
 }
 

@@ -86,7 +86,7 @@ bool Plexus::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
-  _camera.FromProtocol(_settings.camera);
+  _freeflyCamera.FromProtocol(_settings.camera);
 
   GenRandomPoints(_settings.deform.blur_kernel);
 
@@ -390,15 +390,14 @@ bool Plexus::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Plexus::FixedUpdate(const FixedUpdateState& state)
 {
-  _camera.Update(state);
   return true;
 }
 
 //------------------------------------------------------------------------------
 void Plexus::UpdateCameraMatrix(const UpdateState& state)
 {
-  Matrix view = _camera._view;
-  Matrix proj = _camera._proj;
+  Matrix view = _freeflyCamera._view;
+  Matrix proj = _freeflyCamera._proj;
 
   Matrix viewProj = view * proj;
 
@@ -414,7 +413,7 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
   // Matrix mtx = Matrix::Identity();
   _cbPlexus.gs0.world = mtx.Transpose();
   _cbPlexus.gs0.viewProj = viewProj.Transpose();
-  _cbPlexus.gs0.cameraPos = _camera._pos;
+  _cbPlexus.gs0.cameraPos = _freeflyCamera._pos;
 }
 
 //------------------------------------------------------------------------------
@@ -489,7 +488,7 @@ void Plexus::RenderParameterSet()
 #if WITH_IMGUI
 void Plexus::SaveParameterSet(bool inc)
 {
-  _camera.ToProtocol(&_settings.camera);
+  _freeflyCamera.ToProtocol(&_settings.camera);
   SaveSettings(_settings);
 }
 #endif
@@ -497,8 +496,8 @@ void Plexus::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void Plexus::Reset()
 {
-  _camera._pos = Vector3(0.f, 0.f, 0.f);
-  _camera._pitch = _camera._yaw = _camera._roll = 0.f;
+  _freeflyCamera._pos = Vector3(0.f, 0.f, 0.f);
+  _freeflyCamera._pitch = _freeflyCamera._yaw = _freeflyCamera._roll = 0.f;
 }
 
 //------------------------------------------------------------------------------

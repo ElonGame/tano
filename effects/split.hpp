@@ -63,7 +63,7 @@ namespace tano
     float angleZMean = 0.f;
     float angleZVariance = 1.f;
 
-    float childProb = 0.75f;
+    float childProb = 1; //0.75f;
     float childScale = 0.50f;
 
     int maxChildren = 512;
@@ -128,6 +128,5 @@ namespace tano
     GpuBundle _skyBundle;
 
     SplitSettings _settings;
-    FreeflyCamera _camera;
   };
 }

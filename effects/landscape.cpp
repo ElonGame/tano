@@ -344,7 +344,7 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
   V3 pp = flockData->target;
   flock->seek->target = pp; // XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z));
 
-  flock->boids.Update(flockData->updateState, false);
+  flock->boids.Update(flockData->deltaTime, false);
 }
 
 //------------------------------------------------------------------------------
@@ -360,7 +360,7 @@ void Landscape::UpdateBoids(const FixedUpdateState& state)
   for (Flock* flock : _flocks)
   {
     FlockKernelData* data = (FlockKernelData*)g_ScratchMemory.Alloc(sizeof(FlockKernelData));
-    *data = FlockKernelData{flock, splineTarget, _settings.boids.waypoint_radius, state};
+    *data = FlockKernelData{flock, splineTarget, _settings.boids.waypoint_radius, state.delta};
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(FlockKernelData);
@@ -441,7 +441,7 @@ bool Landscape::FixedUpdate(const FixedUpdateState& state)
     }
   }
   
-  _curCamera->Update(state);
+  _curCamera->Update(state.delta);
   return true;
 }
 
@@ -1134,5 +1134,5 @@ void Landscape::FlockCamera::Update(const FixedUpdateState& state)
   //_pos = flock->boids._center;
   //Vector3 target = flock->seek->target;
   //_dir = Normalize(target - _pos);
-  Camera::Update(state);
+  Camera::Update(state.delta);
 }

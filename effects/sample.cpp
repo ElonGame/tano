@@ -50,7 +50,7 @@ bool Sample::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Sample::FixedUpdate(const FixedUpdateState& state)
 {
-  _camera.Update(state);
+  _camera.Update(state.delta);
   return true;
 }
 

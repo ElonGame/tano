@@ -62,7 +62,7 @@ Camera::Camera()
 }
 
 //------------------------------------------------------------------------------
-void Camera::Update(const FixedUpdateState& state)
+void Camera::Update(float deltaTime)
 {
   _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
   Vector3 target = _pos + _dir;
@@ -70,7 +70,7 @@ void Camera::Update(const FixedUpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-void FreeflyCamera::Update(const FixedUpdateState& updateState)
+void FreeflyCamera::Update(float deltaTime)
 {
   const IoState& state = TANO.GetIoState();
 
@@ -141,9 +141,9 @@ FollowCam::~FollowCam()
 }
 
 //------------------------------------------------------------------------------
-void FollowCam::Update(const FixedUpdateState& state)
+void FollowCam::Update(float deltaTime)
 {
-  _particle.Update(state, true);
+  _particle.Update(deltaTime, true);
   V3* pos = _particle._bodies.pos;
   V3* vel = _particle._bodies.vel;
 

@@ -11,7 +11,7 @@ namespace tano
   {
     Camera();
     virtual ~Camera() {}
-    virtual void Update(const FixedUpdateState& state);
+    virtual void Update(float deltaTime);
 
     void FromProtocol(const CameraSettings& settings);
     void ToProtocol(CameraSettings* settings);
@@ -34,7 +34,7 @@ namespace tano
   //------------------------------------------------------------------------------
   struct FreeflyCamera : public Camera
   {
-    virtual void Update(const FixedUpdateState& state) override;
+    virtual void Update(float deltaTime) override;
 
     void FromProtocol(const FreeflyCameraSettings& settings);
     void ToProtocol(FreeflyCameraSettings* settings);
@@ -49,7 +49,7 @@ namespace tano
   {
     FollowCam();
     ~FollowCam();
-    virtual void Update(const FixedUpdateState& state) override;
+    virtual void Update(float deltaTime) override;
     void SetFollowTarget(const V3& followTarget);
     void AddKinematic(ParticleKinematics* k, float weight = 1);
     void SetMaxSpeedAndForce(float maxSpeed, float maxForce);

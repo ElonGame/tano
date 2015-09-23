@@ -625,7 +625,7 @@ bool Tunnel::FixedUpdate(const FixedUpdateState& state)
     useFreeFly = !useFreeFly;
 
   //_camera.SetFollowTarget(ToVector3(pos));
-  _camera.Update(state);
+  _camera.Update(state.delta);
   return true;
 }
 

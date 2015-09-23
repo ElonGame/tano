@@ -15,7 +15,7 @@ namespace tano
     void Reset();
     void AddKinematics(ParticleKinematics* kinematics, float weight);
     void UpdateWeight(ParticleKinematics* kinematics, float weight);
-    void Update(const FixedUpdateState& FixedUpdateState, bool alwaysUpdate);
+    void Update(float deltaTime, bool alwaysUpdate);
 
     struct Bodies
     {
@@ -64,7 +64,7 @@ namespace tano
       DynParticles::Bodies* bodies;
       int start, end;
       float weight;
-      const FixedUpdateState& state;
+      float deltaTime;
       const DynParticles* p;
     };
 

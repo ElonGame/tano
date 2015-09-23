@@ -21,7 +21,7 @@ using namespace bristol;
 
 static int SEGMENT_SPLITS = 10;
 static int ROTATION_SEGMENTS = 10;
-static int NUM_INITIAL_SEGMENTS = 10;
+static int NUM_INITIAL_SEGMENTS = 15;
 static float INITIAL_SPREAD = 25;
 
 //------------------------------------------------------------------------------
@@ -247,7 +247,7 @@ Split::~Split()
 bool Split::OnConfigChanged(const vector<char>& buf)
 {
   bool res = ParseSplitSettings(InputBuffer(buf), &_settings);
-  _camera.FromProtocol(_settings.camera);
+  _freeflyCamera.FromProtocol(_settings.camera);
   return res;
 }
 
@@ -314,26 +314,26 @@ bool Split::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Split::FixedUpdate(const FixedUpdateState& state)
 {
-  _camera.Update(state);
   return true;
 }
 
 //------------------------------------------------------------------------------
 void Split::UpdateCameraMatrix(const UpdateState& state)
 {
-  Matrix view = _camera._view;
-  Matrix proj = _camera._proj;
+  Matrix view = _freeflyCamera._view;
+  Matrix proj = _freeflyCamera._proj;
 
   Matrix viewProj = view * proj;
 
   _cbMesh.vs0.viewProj = viewProj.Transpose();
+  _cbMesh.vs0.cameraPos = _freeflyCamera._pos;
   _cbMesh.vs1.objWorld = Matrix::Identity();
 
   RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
   Vector4 dim((float)desc.width, (float)desc.height, 0, 0);
   _cbSky.ps0.dim = dim;
-  _cbSky.ps0.cameraPos = _camera._pos;
-  _cbSky.ps0.cameraLookAt = _camera._pos + _camera._dir;
+  _cbSky.ps0.cameraPos = _freeflyCamera._pos;
+  _cbSky.ps0.cameraLookAt = _freeflyCamera._pos + _freeflyCamera._dir;
 
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
 
@@ -422,7 +422,7 @@ void Split::RenderParameterSet()
 #if WITH_IMGUI
 void Split::SaveParameterSet(bool inc)
 {
-  _camera.ToProtocol(&_settings.camera);
+  _freeflyCamera.ToProtocol(&_settings.camera);
   SaveSettings(_settings, inc);
 }
 #endif
@@ -430,8 +430,8 @@ void Split::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void Split::Reset()
 {
-  _camera._pos = Vector3(0.f, 0.f, 0.f);
-  _camera._pitch = _camera._yaw = _camera._roll = 0.f;
+  _freeflyCamera._pos = Vector3(0.f, 0.f, 0.f);
+  _freeflyCamera._pitch = _freeflyCamera._yaw = _freeflyCamera._roll = 0.f;
 }
 
 //------------------------------------------------------------------------------

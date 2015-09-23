@@ -2,6 +2,7 @@
 
 #include "object_handle.hpp"
 #include "update_state.hpp"
+#include "camera.hpp"
 
 namespace tano
 {
@@ -35,6 +36,7 @@ namespace tano
 
     u32 GetId() const { return _id; }
 
+    void CommonUpdate(float deltaTime);
 
 #if WITH_IMGUI
     void RegisterParameters();
@@ -94,5 +96,7 @@ namespace tano
     int _currentConfigVersion = -1;
     vector<int> _configFileVersions;
     unordered_map<int, string> _configVersionToFilename;
+
+    FreeflyCamera _freeflyCamera;
   };
 }

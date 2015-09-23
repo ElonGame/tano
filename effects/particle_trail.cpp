@@ -163,7 +163,7 @@ bool ParticleTrail::FixedUpdate(const FixedUpdateState& state)
 
   _taily.AddPos(LorenzUpdate(a, b, c, h, _taily.cur));
 
-  _camera.Update(state);
+  _camera.Update(state.delta);
   return true;
 }
 
