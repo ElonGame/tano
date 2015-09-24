@@ -17,6 +17,7 @@ namespace tano
   CD3D11_BLEND_DESC blendDescWeightedBlendResolve;
 
   CD3D11_RASTERIZER_DESC rasterizeDescCullNone;
+  CD3D11_RASTERIZER_DESC rasterizeDescCullFrontFace;
   CD3D11_RASTERIZER_DESC rasterizeDescWireframe;
   
   CD3D11_DEPTH_STENCIL_DESC depthDescDepthDisabled;
@@ -70,6 +71,9 @@ namespace tano
 
     rasterizeDescCullNone = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
     rasterizeDescCullNone.CullMode = D3D11_CULL_NONE;
+
+    rasterizeDescCullFrontFace = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
+    rasterizeDescCullFrontFace.CullMode = D3D11_CULL_FRONT;
 
     rasterizeDescWireframe = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
     rasterizeDescWireframe.FillMode = D3D11_FILL_WIREFRAME;

@@ -270,10 +270,13 @@ bool Split::Init()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/split.sky", "PsSky")));
 
+  _meshFrontFace = GRAPHICS.CreateRasterizerState(rasterizeDescCullFrontFace);
+  _meshBackFace =  GRAPHICS.CreateRasterizerState(CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT()));
+
   INIT_FATAL(_meshBundle.Create(BundleOptions()
     //.RasterizerDesc(rasterizeDescWireframe)
-//     .BlendDesc(blendDescBlendOneOne)
-     //.DepthStencilDesc(depthDescDepthDisabled)
+     .BlendDesc(blendDescBlendSrcAlpha)
+     .DepthStencilDesc(depthDescDepthDisabled)
      .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
      .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
     .DynamicVb(10 * 1024 * 1024, 2 * sizeof(V3))
@@ -359,11 +362,19 @@ bool Split::Render()
   }
 
   {
+
+    vector<Pathy::Segment*> sortedSegments = _pathy.segments;
+    sort(sortedSegments.begin(), sortedSegments.end(), [](Pathy::Segment* lhs, Pathy::Segment* rhs)
+    {
+      return lhs->cur.z > rhs->cur.z;
+    });
+
     _cbMesh.Set(_ctx, 0);
     _cbMesh.Set(_ctx, 1);
     _ctx->SetBundle(_meshBundle);
     int startVtx = 0;
-    for (const Pathy::Segment* s : _pathy.segments)
+    _ctx->SetRasterizerState(_meshFrontFace);
+    for (const Pathy::Segment* s : sortedSegments)
     {
       // calc # faces at the current segment
       int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
@@ -371,6 +382,19 @@ bool Split::Render()
       _ctx->DrawIndexed(n, 0, startVtx);
       startVtx += numVerts;
     }
+
+    startVtx = 0;
+    _ctx->SetRasterizerState(_meshBackFace);
+
+    for (const Pathy::Segment* s : sortedSegments)
+    {
+      // calc # faces at the current segment
+      int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
+      int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
+      _ctx->DrawIndexed(n, 0, startVtx);
+      startVtx += numVerts;
+    }
+
   }
 
   {

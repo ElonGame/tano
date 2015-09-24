@@ -111,6 +111,9 @@ namespace tano
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
 
+    ObjectHandle _meshBackFace;
+    ObjectHandle _meshFrontFace;
+
     Pathy _pathy;
 
     GpuBundle _backgroundBundle;
