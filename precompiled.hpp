@@ -156,6 +156,19 @@
 #include "bristol/dx/graphics_utils.hpp"
 #include "bristol/dx/vertex_types.hpp"
 
+namespace parser
+{
+  typedef DirectX::SimpleMath::Vector2 vec2;
+  typedef DirectX::SimpleMath::Vector3 vec3;
+  typedef DirectX::SimpleMath::Vector4 vec4;
+  typedef DirectX::SimpleMath::Color color;
+}
+
+#define PARSER_WITH_VECTOR_TYPES 1
+#include "bristol/parser/input_buffer.hpp"
+#include "bristol/parser/parse_base.hpp"
+
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -240,6 +253,9 @@ namespace tano
   using bristol::TimeStamp;
   using bristol::TimeDuration;
   using bristol::RollingAverage;
+
+  using parser::InputBuffer;
+  using parser::OutputBuffer;
 }
 
 #pragma comment(lib, "DXGI.lib")

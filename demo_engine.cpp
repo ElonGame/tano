@@ -4,7 +4,6 @@
 #include "resource_manager.hpp"
 #include "tano.hpp"
 #include "init_sequence.hpp"
-#include "generated/input_buffer.hpp"
 #include "generated/demo.parse.hpp"
 #include "generated/demo.types.hpp"
 

@@ -10,8 +10,6 @@
 #include "../stop_watch.hpp"
 #include "../blackboard.hpp"
 #include "../generated/demo.parse.hpp"
-#include "../generated/input_buffer.hpp"
-#include "../generated/output_buffer.hpp"
 #include "../scheduler.hpp"
 #include "../mesh_utils.hpp"
 

@@ -6,8 +6,6 @@
 #include "../resource_manager.hpp"
 #include "../init_sequence.hpp"
 #include "../generated/demo.parse.hpp"
-#include "../generated/input_buffer.hpp"
-#include "../generated/output_buffer.hpp"
 #include "../mesh_utils.hpp"
 #include "../fullscreen_effect.hpp"
 #include "../debug_api.hpp"

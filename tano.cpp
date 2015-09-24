@@ -12,7 +12,6 @@
 #include "perlin2d.hpp"
 #include "blackboard.hpp"
 #include "generated/app.parse.hpp"
-#include "generated/input_buffer.hpp"
 #include "effects/intro.hpp"
 #include "effects/raymarcher.hpp"
 #include "effects/landscape.hpp"

@@ -1,7 +1,5 @@
 #include "blackboard.hpp"
 #include "resource_manager.hpp"
-#include "generated/input_buffer.hpp"
-#include "generated/parse_base.hpp"
 #include "init_sequence.hpp"
 
 using namespace tano;

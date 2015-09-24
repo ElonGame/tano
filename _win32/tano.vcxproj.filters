@@ -50,6 +50,9 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
+    <Filter Include="bristol\parser">
+      <UniqueIdentifier>{2b43d973-40ae-4be0-acf2-82ae3008d0db}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tano.cpp">
@@ -84,15 +87,6 @@
     </ClCompile>
     <ClCompile Include="..\sync\track.c">
       <Filter>sync</Filter>
-    </ClCompile>
-    <ClCompile Include="..\generated\input_buffer.cpp">
-      <Filter>generated</Filter>
-    </ClCompile>
-    <ClCompile Include="..\generated\output_buffer.cpp">
-      <Filter>generated</Filter>
-    </ClCompile>
-    <ClCompile Include="..\generated\parse_base.cpp">
-      <Filter>generated</Filter>
     </ClCompile>
     <ClCompile Include="..\generated\demo.parse.cpp">
       <Filter>generated</Filter>
@@ -238,6 +232,15 @@
     <ClCompile Include="..\particle_emitters.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\bristol\parser\input_buffer.cpp">
+      <Filter>bristol\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bristol\parser\output_buffer.cpp">
+      <Filter>bristol\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bristol\parser\parse_base.cpp">
+      <Filter>bristol\parser</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -284,15 +287,6 @@
     </ClInclude>
     <ClInclude Include="..\sync\track.h">
       <Filter>sync</Filter>
-    </ClInclude>
-    <ClInclude Include="..\generated\input_buffer.hpp">
-      <Filter>generated</Filter>
-    </ClInclude>
-    <ClInclude Include="..\generated\output_buffer.hpp">
-      <Filter>generated</Filter>
-    </ClInclude>
-    <ClInclude Include="..\generated\parse_base.hpp">
-      <Filter>generated</Filter>
     </ClInclude>
     <ClInclude Include="..\generated\demo.parse.hpp">
       <Filter>generated</Filter>
@@ -491,6 +485,15 @@
     </ClInclude>
     <ClInclude Include="..\smooth_driver.hpp">
       <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\parser\input_buffer.hpp">
+      <Filter>bristol\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\parser\output_buffer.hpp">
+      <Filter>bristol\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\parser\parse_base.hpp">
+      <Filter>bristol\parser</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

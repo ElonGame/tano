@@ -10,8 +10,6 @@
 #include "../stop_watch.hpp"
 #include "../blackboard.hpp"
 #include "../generated/demo.parse.hpp"
-#include "../generated/input_buffer.hpp"
-#include "../generated/output_buffer.hpp"
 #include "../fullscreen_effect.hpp"
 #include "../mesh_utils.hpp"
 #include "../mesh_loader.hpp"

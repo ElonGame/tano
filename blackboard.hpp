@@ -1,10 +1,13 @@
 #pragma once
 #include "tano_math.hpp"
 
-namespace tano
+namespace parser
 {
   struct InputBuffer;
+}
 
+namespace tano
+{
   class Blackboard
   {
   public:
@@ -51,7 +54,7 @@ namespace tano
     ~Blackboard();
 
     bool Init(const char* filename, const char* datafile);
-    bool ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack);
+    bool ParseBlackboard(parser::InputBuffer& buf, deque<string>& namespaceStack);
     void Reset();
 
 #if WITH_BLACKBOARD_SAVE && WITH_BLACKBOARD_TCP && WITH_UNPACKED_RESOUCES
