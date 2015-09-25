@@ -16,10 +16,10 @@ namespace tano
     void FromProtocol(const CameraSettings& settings);
     void ToProtocol(CameraSettings* settings);
 
-    Vector3 _pos = Vector3(0,0,0);
-    Vector3 _dir = Vector3(0, 0, 1);
-    Vector3 _right = Vector3(1, 0, 0);
-    Vector3 _up = Vector3(0,1,0);
+    vec3 _pos = vec3(0,0,0);
+    vec3 _dir = vec3(0, 0, 1);
+    vec3 _right = vec3(1, 0, 0);
+    vec3 _up = vec3(0,1,0);
 
     float _fov = XMConvertToRadians(60);
     float _aspectRatio;
@@ -50,7 +50,7 @@ namespace tano
     FollowCam();
     ~FollowCam();
     virtual void Update(float deltaTime) override;
-    void SetFollowTarget(const V3& followTarget);
+    void SetFollowTarget(const vec3& followTarget);
     void AddKinematic(ParticleKinematics* k, float weight = 1);
     void SetMaxSpeedAndForce(float maxSpeed, float maxForce);
 

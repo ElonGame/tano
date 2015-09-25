@@ -16,19 +16,19 @@ namespace tano
 
     void AddIntVar(const string& name, int value);
     void AddFloatVar(const string& name, float value);
-    void AddVec2Var(const string& name, const V2& value);
-    void AddVec3Var(const string& name, const V3& value);
-    void AddVec4Var(const string& name, const V4& value);
+    void AddVec2Var(const string& name, const vec2& value);
+    void AddVec3Var(const string& name, const vec3& value);
+    void AddVec4Var(const string& name, const vec4& value);
 
     int GetIntVar(const string& name);
     float GetFloatVar(const string& name);
-    V2 GetVec2Var(const string& name);
-    V3 GetVec3Var(const string& name);
-    V4 GetVec4Var(const string& name);
+    vec2 GetVec2Var(const string& name);
+    vec3 GetVec3Var(const string& name);
+    vec4 GetVec4Var(const string& name);
 
     float GetFloatVar(const string& name, float t);
-    V2 GetVec2Var(const string& name, float t);
-    V3 GetVec3Var(const string& name, float t);
+    vec2 GetVec2Var(const string& name, float t);
+    vec3 GetVec3Var(const string& name, float t);
 
     template <typename T>
     struct Keyframes;
@@ -89,9 +89,9 @@ namespace tano
 
     unordered_map<string, Keyframes<int>*> _intVars;
     unordered_map<string, Keyframes<float>*> _floatVars;
-    unordered_map<string, Keyframes<V2>*> _vec2Vars;
-    unordered_map<string, Keyframes<V3>*> _vec3Vars;
-    unordered_map<string, Keyframes<V4>*> _vec4Vars;
+    unordered_map<string, Keyframes<vec2>*> _vec2Vars;
+    unordered_map<string, Keyframes<vec3>*> _vec3Vars;
+    unordered_map<string, Keyframes<vec4>*> _vec4Vars;
 
     string _filename;
     string _datafile;

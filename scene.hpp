@@ -96,7 +96,7 @@ namespace tano
       vector<NullObject*> nullObjects;
       unordered_map<u32, Material*> materials;
       u8* userData = nullptr;
-      V3 minVerts, maxVerts;
+      vec3 minVerts, maxVerts;
     };
   }
 }

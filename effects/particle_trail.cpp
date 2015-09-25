@@ -18,7 +18,7 @@ using namespace bristol;
 static int MAX_NUM_PARTICLES = 32 * 1024;
 
 //------------------------------------------------------------------------------
-void Taily::AddPos(const V3& pos)
+void Taily::AddPos(const vec3& pos)
 {
   // copy out old cur
   tail[writePos] = cur;
@@ -29,11 +29,11 @@ void Taily::AddPos(const V3& pos)
 }
 
 //------------------------------------------------------------------------------
-V3* Taily::CopyOut(V3* buf)
+vec3* Taily::CopyOut(vec3* buf)
 {
   if (tailLength < MAX_TAIL_LENGTH)
   {
-    memcpy((void*)buf, tail, tailLength * sizeof(V3));
+    memcpy((void*)buf, tail, tailLength * sizeof(vec3));
     buf += tailLength;
     *buf++ = cur;
     return buf;
@@ -47,8 +47,8 @@ V3* Taily::CopyOut(V3* buf)
   // writePos = 2
   // MAX_TAIL_LENGTH = 7
   int n = MAX_TAIL_LENGTH - writePos;
-  memcpy(buf, tail + writePos, n * sizeof(V3));
-  memcpy(buf + n, tail, writePos * sizeof(V3));
+  memcpy(buf, tail + writePos, n * sizeof(vec3));
+  memcpy(buf + n, tail, writePos * sizeof(vec3));
   *(buf + MAX_TAIL_LENGTH) = cur;
   return buf + MAX_TAIL_LENGTH + 1;
 }
@@ -87,7 +87,7 @@ bool ParticleTrail::Init()
     .PixelShader("shaders/out/trail.particle", "PsParticle")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
-    .DynamicVb(MAX_NUM_PARTICLES, sizeof(V3))
+    .DynamicVb(MAX_NUM_PARTICLES, sizeof(vec3))
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescBlendOneOne)
     .RasterizerDesc(rasterizeDescCullNone)));
@@ -104,7 +104,7 @@ bool ParticleTrail::Init()
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
     .DepthStencilDesc(depthDescDepthDisabled)
-    .DynamicVb(128 * 1024, sizeof(V3))
+    .DynamicVb(128 * 1024, sizeof(vec3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP)));
 
   // clang-format on
@@ -120,9 +120,9 @@ bool ParticleTrail::Init()
 }
 
 //------------------------------------------------------------------------------
-V3 LorenzUpdate(float a, float b, float c, float h, const V3& prev)
+vec3 LorenzUpdate(float a, float b, float c, float h, const vec3& prev)
 {
-  return V3{prev.x + h * a * (prev.y - prev.x),
+  return vec3{prev.x + h * a * (prev.y - prev.x),
       prev.y + h * (prev.x * (b - prev.z) - prev.y),
       prev.z + h * (prev.x * prev.y - c * prev.z)};
 }
@@ -134,20 +134,20 @@ bool ParticleTrail::Update(const UpdateState& state)
 
   {
     ObjectHandle handle = _particleBundle.objects._vb;
-    V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
+    vec3* vtx = _ctx->MapWriteDiscard<vec3>(handle);
     _taily.CopyOut(vtx);
     _ctx->Unmap(handle);
   }
 
   {
     ObjectHandle handle = _lineBundle.objects._vb;
-    V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
+    vec3* vtx = _ctx->MapWriteDiscard<vec3>(handle);
     _taily.CopyOut(vtx);
     _ctx->Unmap(handle);
   }
 
-  _cbBackground.ps0.upper = ToVector4(BLACKBOARD.GetVec4Var("particle_trail.upper"));
-  _cbBackground.ps0.lower = ToVector4(BLACKBOARD.GetVec4Var("particle_trail.lower"));
+  _cbBackground.ps0.upper = BLACKBOARD.GetVec4Var("particle_trail.upper");
+  _cbBackground.ps0.lower = BLACKBOARD.GetVec4Var("particle_trail.lower");
   return true;
 }
 
@@ -215,9 +215,9 @@ bool ParticleTrail::Render()
     {
       // lines
       RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-      _cbPlexus.gs0.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
-      V3 params = BLACKBOARD.GetVec3Var("particle_trail.lineParams");
-      _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
+      _cbPlexus.gs0.dim = vec4((float)desc.width, (float)desc.height, 0, 0);
+      vec3 params = BLACKBOARD.GetVec3Var("particle_trail.lineParams");
+      _cbPlexus.ps0.lineParams = vec4(params.x, params.y, params.z, 1);
       _cbPlexus.Set(_ctx, 0);
       _ctx->SetBundle(_lineBundle);
       _ctx->Draw(_taily.tailLength-1, 0);
@@ -226,7 +226,7 @@ bool ParticleTrail::Render()
 
   {
     // composite
-    _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);
+    _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
     ObjectHandle inputs[] = {rtColor};
@@ -271,7 +271,7 @@ void ParticleTrail::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void ParticleTrail::Reset()
 {
-  _camera._pos = Vector3(0.f, 0.f, 0.f);
+  _camera._pos = vec3(0.f, 0.f, 0.f);
   _camera._pitch = _camera._yaw = _camera._roll = 0.f;
 }
 

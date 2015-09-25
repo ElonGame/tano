@@ -16,6 +16,7 @@
 
 using namespace tano;
 using namespace bristol;
+using namespace DirectX;
 
 static int SEGMENT_SPLITS = 10;
 static int ROTATION_SEGMENTS = 10;
@@ -24,23 +25,23 @@ static float INITIAL_SPREAD = 25;
 
 //------------------------------------------------------------------------------
 void AddRing(float curT,
-    const V3& prevT,
+    const vec3& prevT,
     const CardinalSpline& spline,
     float scale,
-    V3* newD,
-    V3* newN,
-    V3* newT,
+    vec3* newD,
+    vec3* newN,
+    vec3* newT,
     vector<PN>* out)
 {
   float delta = 1.f / SEGMENT_SPLITS;
 
-  V3 pos = spline.Interpolate(curT);
+  vec3 pos = spline.Interpolate(curT);
 
   // Propagate frame along spline, using method by Ken Sloan
-  V3 d = Normalize(spline.Interpolate(curT + delta) - pos);
+  vec3 d = Normalize(spline.Interpolate(curT + delta) - pos);
   // note, this uses t from the previous frame
-  V3 n = Cross(d, prevT);
-  V3 t = Cross(n, d);
+  vec3 n = Cross(d, prevT);
+  vec3 t = Cross(n, d);
 
   *newD = d;
   *newN = n;
@@ -50,20 +51,18 @@ void AddRing(float curT,
   float angleInc = XM_2PI / ROTATION_SEGMENTS;
   for (int k = 0; k < ROTATION_SEGMENTS; ++k)
   {
-    Vector3 pp = ToVector3(pos);
-    Vector3 dd = ToVector3(d);
-    dd.Normalize();
-    Matrix mtx = Matrix::CreateFromAxisAngle(dd, angle);
-    Vector3 xx = scale * ToVector3(n);
+    vec3 pp = pos;
+    vec3 dd = Normalize(d);
+    Matrix mtx = Matrix::CreateFromAxisAngle(ToVector3(dd), angle);
+    vec3 xx = scale * n;
     //Vector3 rr = ToVector3(V3(scale * 1, 0, 0));
-    Vector3 rr = xx;
-    rr.Normalize();
-    rr = Vector3::Transform(rr, mtx);
-    Vector3 vv = pp + Vector3::Transform(xx, mtx);
+    vec3 rr = Normalize(xx);
+    rr = FromVector3(Vector3::Transform(ToVector3(rr), mtx));
+    vec3 vv = pp + FromVector3(Vector3::Transform(ToVector3(xx), mtx));
     //Vector3 nn = vv - pp;
     //nn.Normalize();
     angle += angleInc;
-    out->push_back(PN{V3(vv), V3(rr)});
+    out->push_back(PN{vec3(vv), vec3(rr)});
 
     DEBUG_API.AddDebugLine(vv, vv+rr, Color(1, 1, 0), Color(1, 0, 1));
 
@@ -87,7 +86,7 @@ void Pathy::Create()
     float ss = INITIAL_SPREAD;
     float x = randf(-ss, ss);
     float z = randf(-ss, ss);
-    Segment* s = new Segment{Vector3(x, 0, z), 1, GaussianRand(speedMean, speedMean), 0, 0, 0};
+    Segment* s = new Segment{vec3(x, 0, z), 1, GaussianRand(speedMean, speedMean), 0, 0, 0};
     segments.push_back(s);
     segmentStart.push_back(SegmentStart{time, s});
   }
@@ -104,12 +103,12 @@ void Pathy::Create()
       float angleY = segment.angleY;
       float angleZ = segment.angleZ;
 
-      Vector3 cur = segment.cur;
+      vec3 cur = segment.cur;
       float scale = segment.scale;
       float curLen = len * scale;
       curLen = len;
 
-      segment.verts.push_back(V3(cur));
+      segment.verts.push_back(cur);
       numVerts++;
       if (numVerts >= TOTAL_POINTS)
         break;
@@ -129,7 +128,7 @@ void Pathy::Create()
       }
 
       Matrix mtx = Matrix::CreateFromYawPitchRoll(angleX, angleY, angleZ);
-      Vector3 delta = curLen * Vector3::Transform(Vector3(0, -1, 0), mtx);
+      vec3 delta = curLen * FromVector3(Vector3::Transform(Vector3(0, -1, 0), mtx));
 
       segment.angleX += GaussianRand(angleXMean, angleXVariance);
       segment.angleY += GaussianRand(angleYMean, angleYVariance);
@@ -205,10 +204,10 @@ void Pathy::CreateTubesIncremental(float orgTime)
     }
 
     {
-      V3 p0 = s->spline.Interpolate(elapsedTime);
-      DEBUG_API.AddDebugLine(ToVector3(p0), ToVector3(p0 + s->frameD), Color(1, 0, 0));
-      DEBUG_API.AddDebugLine(ToVector3(p0), ToVector3(p0 + s->frameN), Color(0, 1, 0));
-      DEBUG_API.AddDebugLine(ToVector3(p0), ToVector3(p0 + s->frameT), Color(0, 0, 1));
+      vec3 p0 = s->spline.Interpolate(elapsedTime);
+      DEBUG_API.AddDebugLine(p0, p0 + s->frameD, Color(1, 0, 0));
+      DEBUG_API.AddDebugLine(p0, p0 + s->frameN, Color(0, 1, 0));
+      DEBUG_API.AddDebugLine(p0, p0 + s->frameT, Color(0, 0, 1));
     }
 
     s->inprogressRing.clear();
@@ -223,7 +222,7 @@ void Pathy::CreateTubesIncremental(float orgTime)
 }
 
 //------------------------------------------------------------------------------
-V3* Pathy::CopyOut(V3* buf)
+vec3* Pathy::CopyOut(vec3* buf)
 {
   assert(verts.size() <= TOTAL_POINTS);
 
@@ -277,7 +276,7 @@ bool Split::Init()
      .DepthStencilDesc(depthDescDepthDisabled)
      .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
      .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
-    .DynamicVb(10 * 1024 * 1024, 2 * sizeof(V3))
+    .DynamicVb(10 * 1024 * 1024, 2 * sizeof(vec3))
     .StaticIb(CreateCylinderIndices(ROTATION_SEGMENTS, 1000))
     .VertexShader("shaders/out/split.mesh", "VsMesh")
     .PixelShader("shaders/out/split.mesh", "PsMesh")));
@@ -302,13 +301,13 @@ bool Split::Update(const UpdateState& state)
 
   {
     ObjectHandle handle = _meshBundle.objects._vb;
-    V3* vtx = _ctx->MapWriteDiscard<V3>(handle);
+    vec3* vtx = _ctx->MapWriteDiscard<vec3>(handle);
     _pathy.CopyOut(vtx);
     _ctx->Unmap(handle);
   }
 
-  _cbBackground.ps0.upper = ToVector4(BLACKBOARD.GetVec4Var("particle_trail.upper"));
-  _cbBackground.ps0.lower = ToVector4(BLACKBOARD.GetVec4Var("particle_trail.lower"));
+  _cbBackground.ps0.upper = BLACKBOARD.GetVec4Var("particle_trail.upper");
+  _cbBackground.ps0.lower = BLACKBOARD.GetVec4Var("particle_trail.lower");
   return true;
 }
 
@@ -331,13 +330,22 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
   _cbMesh.vs1.objWorld = Matrix::Identity();
 
   RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-  Vector4 dim((float)desc.width, (float)desc.height, 0, 0);
+  vec4 dim((float)desc.width, (float)desc.height, 0, 0);
   _cbSky.ps0.dim = dim;
   _cbSky.ps0.cameraPos = _freeflyCamera._pos;
   _cbSky.ps0.cameraLookAt = _freeflyCamera._pos + _freeflyCamera._dir;
 
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
 
+}
+
+//------------------------------------------------------------------------------
+template <typename Src, typename Dst>
+size_t CopyOut(Dst* dst, const vector<Src>& src)
+{
+  size_t len = src.size() * sizeof(Src);
+  memcpy(dst, src.data(), len);
+  return len;
 }
 
 //------------------------------------------------------------------------------
@@ -361,6 +369,36 @@ bool Split::Render()
 
   {
 
+    vec3 camPos = _freeflyCamera._pos;
+    vector<Pathy::Segment*> sortedSegments = _pathy.segments;
+    sort(sortedSegments.begin(), sortedSegments.end(), [&](Pathy::Segment* lhs, Pathy::Segment* rhs)
+    {
+      return DistanceSquared(vec3(camPos), vec3(lhs->cur)) > DistanceSquared(vec3(camPos), vec3(rhs->cur));
+    });
+
+    ObjectHandle handle = _meshBundle.objects._vb;
+    PN* vtx = _ctx->MapWriteDiscard<PN>(handle);
+    for (const Pathy::Segment* s : sortedSegments)
+    {
+      vtx += CopyOut(vtx, s->completeRings);
+      vtx += CopyOut(vtx, s->inprogressRing);
+    }
+    _ctx->Unmap(handle);
+
+    _cbMesh.Set(_ctx, 0);
+    _cbMesh.Set(_ctx, 1);
+    _ctx->SetBundle(_meshBundle);
+    int startVtx = 0;
+    for (const Pathy::Segment* s : sortedSegments)
+    {
+      // calc # faces at the current segment
+      int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
+      int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
+      _ctx->DrawIndexed(n, 0, startVtx);
+      startVtx += numVerts;
+    }
+
+#if 0
     vector<Pathy::Segment*> sortedSegments = _pathy.segments;
     sort(sortedSegments.begin(), sortedSegments.end(), [](Pathy::Segment* lhs, Pathy::Segment* rhs)
     {
@@ -392,12 +430,12 @@ bool Split::Render()
       _ctx->DrawIndexed(n, 0, startVtx);
       startVtx += numVerts;
     }
-
+#endif
   }
 
   {
     // composite
-    _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);
+    _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
     ObjectHandle inputs[] = {rtColor};
@@ -452,7 +490,7 @@ void Split::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void Split::Reset()
 {
-  _freeflyCamera._pos = Vector3(0.f, 0.f, 0.f);
+  _freeflyCamera._pos = vec3(0.f, 0.f, 0.f);
   _freeflyCamera._pitch = _freeflyCamera._yaw = _freeflyCamera._roll = 0.f;
 }
 

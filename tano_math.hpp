@@ -2,94 +2,93 @@
 
 #define WITH_INVALID_CHECK 0
 
-using namespace DirectX;
+//using namespace DirectX;
 
 namespace tano
 {
-  struct V2
+  struct vec2
   {
-    V2() {}
-    V2(float x, float y) : x(x), y(y) {}
+    vec2() {}
+    vec2(float x, float y) : x(x), y(y) {}
 
     float x, y;
   };
 
-  V2 Normalize(const V2& v);
-  float Dot(const V2& a, const V2& b);
-  V2 operator*(float s, const V2& v);
-  V2 operator+(const V2& a, const V2& b);
-  V2 operator-(const V2& a, const V2& b);
+  vec2 Normalize(const vec2& v);
+  float Dot(const vec2& a, const vec2& b);
+  vec2 operator*(float s, const vec2& v);
+  vec2 operator+(const vec2& a, const vec2& b);
+  vec2 operator-(const vec2& a, const vec2& b);
 
 
-  inline float Length(const V2& a)
+  inline float Length(const vec2& a)
   {
     return sqrt(a.x*a.x + a.y*a.y);
   }
 
-  inline float LengthSquared(const V2& a)
+  inline float LengthSquared(const vec2& a)
   {
     return a.x*a.x + a.y*a.y;
   }
 
-  inline V2 Normalize(const V2& v)
+  inline vec2 Normalize(const vec2& v)
   {
     float len = Length(v);
     if (len == 0)
-      return V2(0,0);
+      return vec2(0,0);
     return 1 / len * v;
   }
 
-  inline float Dot(const V2& a, const V2& b)
+  inline float Dot(const vec2& a, const vec2& b)
   {
     return a.x*b.x + a.y*b.y;
   }
 
-  inline V2 operator*(float s, const V2& v)
+  inline vec2 operator*(float s, const vec2& v)
   {
-    return V2(s*v.x, s*v.y);
+    return vec2(s*v.x, s*v.y);
   }
 
-  inline V2 operator+(const V2& a, const V2& b)
+  inline vec2 operator+(const vec2& a, const vec2& b)
   {
-    return V2(a.x+b.x, a.y+b.y);
+    return vec2(a.x+b.x, a.y+b.y);
   }
 
-  inline V2 operator-(const V2& a, const V2& b)
+  inline vec2 operator-(const vec2& a, const vec2& b)
   {
-    return V2(a.x - b.x, a.y - b.y);
+    return vec2(a.x - b.x, a.y - b.y);
   }
 
-  struct V3;
-  float Dot(const V3& a, const V3& b);
-  float Distance(const V3& a, const V3& b);
-  float DistanceSquared(const V3& a, const V3& b);
-  float Length(const V3& a);
-  float LengthSquared(const V3& a);
-  V3 Normalize(const V3& v);
-  V3 operator*(float s, const V3& v);
-  V3 operator*=(float s, const V3& v);
-  V3 operator*(const V3& v, float s);
-  V3 operator-(const V3& a, const V3& b);
-  V3 operator+(const V3& a, const V3& b);
+  struct vec3;
+  float Dot(const vec3& a, const vec3& b);
+  float Distance(const vec3& a, const vec3& b);
+  float DistanceSquared(const vec3& a, const vec3& b);
+  float Length(const vec3& a);
+  float LengthSquared(const vec3& a);
+  vec3 Normalize(const vec3& v);
+  vec3 operator*(float s, const vec3& v);
+  vec3 operator*=(float s, const vec3& v);
+  vec3 operator*(const vec3& v, float s);
+  vec3 operator-(const vec3& a, const vec3& b);
+  vec3 operator+(const vec3& a, const vec3& b);
 
-  struct V3
+  struct vec3
   {
-    static V3 Zero;
-    V3() {}
+    static vec3 Zero;
+    vec3() {}
 #if WITH_INVALID_CHECK 
-    V3(float x, float y, float z) : x(x), y(y), z(z) { IsNan(); }
-    explicit V3(const Vector3& v) : x(v.x), y(v.y), z(v.z) { IsNan(); }
+    vec3(float x, float y, float z) : x(x), y(y), z(z) { IsNan(); }
+    explicit vec3(const Vector3& v) : x(v.x), y(v.y), z(v.z) { IsNan(); }
 #else
-    V3(float x, float y, float z) : x(x), y(y), z(z) { }
-    explicit V3(const Vector3& v) : x(v.x), y(v.y), z(v.z) { }
+    vec3(float x, float y, float z) : x(x), y(y), z(z) { }
 #endif
 
-    V3& operator+=(const V3& v) { x += v.x; y += v.y; z += v.z; return *this; }
-    V3& operator-=(const V3& v) { x -= v.x; y -= v.y; z -= v.z; return *this; }
-    V3& operator/=(float s) { x /= s; y /= s; z /= s; return *this; }
-    V3& operator*=(float s) { x *= s; y *= s; z *= s; return *this; }
+    vec3& operator+=(const vec3& v) { x += v.x; y += v.y; z += v.z; return *this; }
+    vec3& operator-=(const vec3& v) { x -= v.x; y -= v.y; z -= v.z; return *this; }
+    vec3& operator/=(float s) { x /= s; y /= s; z /= s; return *this; }
+    vec3& operator*=(float s) { x *= s; y *= s; z *= s; return *this; }
 
-    bool operator==(const V3& rhs) { return x == rhs.x && y == rhs.y && z == rhs.z; }
+    bool operator==(const vec3& rhs) { return x == rhs.x && y == rhs.y && z == rhs.z; }
     void IsNan() { assert(!isnan(x)); assert(!isnan(y)); assert(!isnan(z)); }
 
     float Length() const { return tano::Length(*this); }
@@ -98,9 +97,9 @@ namespace tano
     float x, y, z;
   };
 
-  inline float Dot(const V3& a, const V3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+  inline float Dot(const vec3& a, const vec3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 
-  inline float Distance(const V3& a, const V3& b)
+  inline float Distance(const vec3& a, const vec3& b)
   {
     float dx = a.x - b.x;
     float dy = a.y - b.y;
@@ -109,7 +108,7 @@ namespace tano
     return sqrtf(dx*dx + dy*dy + dz*dz);
   }
 
-  inline float DistanceSquared(const V3& a, const V3& b)
+  inline float DistanceSquared(const vec3& a, const vec3& b)
   {
     float dx = a.x - b.x;
     float dy = a.y - b.y;
@@ -118,58 +117,58 @@ namespace tano
     return dx*dx + dy*dy + dz*dz;
   }
 
-  inline float Length(const V3& a)
+  inline float Length(const vec3& a)
   {
     return sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
   }
 
-  inline float LengthSquared(const V3& a)
+  inline float LengthSquared(const vec3& a)
   {
     return a.x*a.x + a.y*a.y + a.z*a.z;
   }
 
-  inline V3 Normalize(const V3& v)
+  inline vec3 Normalize(const vec3& v)
   {
     float len = Length(v);
     return len > 0 ? 1 / len * v : v;
   }
 
-  inline V3 operator*(float s, const V3& v)
+  inline vec3 operator*(float s, const vec3& v)
   {
-    return V3(s*v.x, s*v.y, s*v.z);
+    return vec3(s*v.x, s*v.y, s*v.z);
   }
 
-  inline V3 operator*(const V3& v, float s)
+  inline vec3 operator*(const vec3& v, float s)
   {
-    return V3(s*v.x, s*v.y, s*v.z);
+    return vec3(s*v.x, s*v.y, s*v.z);
   }
 
-  inline V3 operator-(const V3& a, const V3& b)
+  inline vec3 operator-(const vec3& a, const vec3& b)
   {
-    return V3(a.x - b.x, a.y - b.y, a.z - b.z);
+    return vec3(a.x - b.x, a.y - b.y, a.z - b.z);
   }
 
-  inline V3 operator+(const V3& a, const V3& b)
+  inline vec3 operator+(const vec3& a, const vec3& b)
   {
-    return V3(a.x + b.x, a.y + b.y, a.z + b.z);
+    return vec3(a.x + b.x, a.y + b.y, a.z + b.z);
   }
 
-  inline V3 Cross(const V3& a, const V3& b)
+  inline vec3 Cross(const vec3& a, const vec3& b)
   {
-    return V3(
+    return vec3(
       (a.y * b.z) - (a.z * b.y),
       (a.z * b.x) - (a.x * b.z),
       (a.x * b.y) - (a.y * b.x));
   }
 
-  inline V3 Min(const V3& a, const V3& b)
+  inline vec3 Min(const vec3& a, const vec3& b)
   {
-    return V3(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z));
+    return vec3(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z));
   }
 
-  inline V3 Max(const V3& a, const V3& b)
+  inline vec3 Max(const vec3& a, const vec3& b)
   {
-    return V3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z));
+    return vec3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z));
   }
 
 /*
@@ -182,7 +181,7 @@ namespace tano
     return maxLength / len * force;
   }
 */
-  inline V3 ClampVector(const V3& force, float maxLength)
+  inline vec3 ClampVector(const vec3& force, float maxLength)
   {
     float len = Length(force);
     if (len <= maxLength)
@@ -191,49 +190,7 @@ namespace tano
     return maxLength / len * force;
   }
 
-  inline XMVECTOR XM_CALLCONV XMVector3ClampLengthMax(FXMVECTOR V, float maxLength)
-  {
-    XMVECTOR LengthMax = XMVectorReplicate(maxLength);
-
-    assert((XMVectorGetY(LengthMax) == XMVectorGetX(LengthMax)) && (XMVectorGetZ(LengthMax) == XMVectorGetX(LengthMax)));
-    assert(XMVector3GreaterOrEqual(LengthMax, XMVectorZero()));
-
-    // ||r||^2
-    XMVECTOR LengthSq = XMVector3LengthSq(V);
-
-    const XMVECTOR Zero = XMVectorZero();
-
-    // 1/||r||
-    XMVECTOR RcpLength = XMVectorReciprocalSqrt(LengthSq);
-
-    // 0xffffffff on equal, 0 otherwise
-    XMVECTOR InfiniteLength = XMVectorEqualInt(LengthSq, g_XMInfinity.v);
-    XMVECTOR ZeroLength = XMVectorEqual(LengthSq, Zero);
-
-    // r/||r|| = r normalized
-    XMVECTOR Normal = XMVectorMultiply(V, RcpLength);
-
-    // ||r||^2 / ||r|| = ||r||
-    XMVECTOR Length = XMVectorMultiply(LengthSq, RcpLength);
-
-    // -0xff if not zero or inf
-    XMVECTOR Select = XMVectorEqualInt(InfiniteLength, ZeroLength);
-    Length = XMVectorSelect(LengthSq, Length, Select);
-    Normal = XMVectorSelect(LengthSq, Normal, Select);
-
-    XMVECTOR ControlMax = XMVectorGreater(Length, LengthMax);
-    XMVECTOR ClampLength = XMVectorSelect(Length, LengthMax, ControlMax);
-
-    XMVECTOR Result = XMVectorMultiply(Normal, ClampLength);
-
-    // Preserve the original vector (with no precision loss) if the length is shorter than max
-    XMVECTOR Control = XMVectorEqualInt(ControlMax, g_XMZero.v);
-    Result = XMVectorSelect(Result, V, Control);
-
-    return Result;
-  }
-
-  inline Vector3 Normalize(const Vector3& v)
+  /*inline Vector3 Normalize(const Vector3& v)
   {
     float len = v.Length();
     if (len == 0.f)
@@ -248,31 +205,36 @@ namespace tano
       (a.z * b.x) - (a.x * b.z),
       (a.x * b.y) - (a.y * b.x));
   }
-
-  inline Vector3 ToVector3(const V3& v)
+*/
+  inline Vector3 ToVector3(const vec3& v)
   {
     return Vector3(v.x, v.y, v.z);
   }
 
-  struct V4
+  inline vec3 FromVector3(const Vector3& v)
   {
-    V4() {}
-    V4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+    return vec3(v.x, v.y, v.z);
+  }
+
+  struct vec4
+  {
+    vec4() {}
+    vec4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 
     float x, y, z, w;
   };
 
-  inline V4 operator*(float s, const V4& v)
+  inline vec4 operator*(float s, const vec4& v)
   {
-    return V4(s * v.x, s * v.y, s * v.z, s * v.w);
+    return vec4(s * v.x, s * v.y, s * v.z, s * v.w);
   }
 
-  inline V4 operator+(const V4& a, const V4& b)
+  inline vec4 operator+(const vec4& a, const vec4& b)
   {
-    return V4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
+    return vec4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
   }
 
-  inline Vector4 ToVector4(const V4& v)
+  inline Vector4 ToVector4(const vec4& v)
   {
     return Vector4(v.x, v.y, v.z, v.w);
   }
@@ -287,9 +249,9 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
-  V3 FromSpherical(float r, float phi, float theta);
-  V3 FromSpherical(const Spherical& s);
-  Spherical ToSpherical(const V3& v);
+  vec3 FromSpherical(float r, float phi, float theta);
+  vec3 FromSpherical(const Spherical& s);
+  Spherical ToSpherical(const vec3& v);
 
   //------------------------------------------------------------------------------
   // This implements the tone mapping operator in the Insomniac paper
@@ -316,26 +278,26 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  V3 PointOnHemisphere(const V3& axis);
-  V3 RandomVector(float scaleX = 1, float scaleY = 1, float scaleZ = 1);
+  vec3 PointOnHemisphere(const vec3& axis);
+  vec3 RandomVector(float scaleX = 1, float scaleY = 1, float scaleZ = 1);
 
   //------------------------------------------------------------------------------
   struct CardinalSpline
   {
-    void Create(const V3* pts, int numPoints, float scale = 1.f);
-    V3 Interpolate(float t) const;
-    vector<V3> _controlPoints;
+    void Create(const vec3* pts, int numPoints, float scale = 1.f);
+    vec3 Interpolate(float t) const;
+    vector<vec3> _controlPoints;
     float _scale;
   };
 
   //------------------------------------------------------------------------------
-  inline V3 Abs(const V3& v)
+  inline vec3 Abs(const vec3& v)
   {
-    return V3(fabs(v.x), fabs(v.y), fabs(v.z));
+    return vec3(fabs(v.x), fabs(v.y), fabs(v.z));
   }
 
   //------------------------------------------------------------------------------
   // Returns a vector perpendicular to u, using the method by Hughes-Moller
-  V3 Perp(V3 u);
+  vec3 Perp(vec3 u);
 
 }

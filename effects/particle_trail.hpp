@@ -18,11 +18,11 @@ namespace tano
       MAX_TAIL_LENGTH = 16 * 1024
     };
 
-    void AddPos(const V3& pos);
-    V3* CopyOut(V3* buf);
+    void AddPos(const vec3& pos);
+    vec3* CopyOut(vec3* buf);
 
-    V3 cur = { 0.1f, 0, 0 };
-    V3 tail[MAX_TAIL_LENGTH];
+    vec3 cur = { 0.1f, 0, 0 };
+    vec3 tail[MAX_TAIL_LENGTH];
     int tailLength = 0;
     int writePos = 0;
   };

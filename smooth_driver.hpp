@@ -26,7 +26,7 @@ this header works on 3d values, but extension to N dimensions is trivial
 
 namespace SmoothDriver
 {
-  typedef tano::V3 Vec3;
+  typedef tano::vec3 Vec3;
 
 //=================================================================================
 

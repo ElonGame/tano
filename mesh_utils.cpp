@@ -129,8 +129,8 @@ namespace tano
         info.vertexCount += meshBlob->numVerts;
       }
 
-      V3 minVerts(+FLT_MAX, +FLT_MAX, +FLT_MAX);
-      V3 maxVerts(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+      vec3 minVerts(+FLT_MAX, +FLT_MAX, +FLT_MAX);
+      vec3 maxVerts(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 
       for (size_t m = 0; m < loader.meshes.size(); ++m)
       {
@@ -204,7 +204,7 @@ namespace tano
             fnCopy(meshBlob->verts, 3);
           }
 
-          V3 vv(verts[-3], verts[-2], verts[-1]);
+          vec3 vv(verts[-3], verts[-2], verts[-1]);
           minVerts = Min(minVerts, vv);
           maxVerts = Max(maxVerts, vv);
 
@@ -348,7 +348,7 @@ namespace tano
 
   //------------------------------------------------------------------------------
   int CalcPlexusGrouping(
-      V3* vtx, const V3* points, int num, int* neighbours, int maxNeighbours, const PlexusGrouping& config)
+      vec3* vtx, const vec3* points, int num, int* neighbours, int maxNeighbours, const PlexusGrouping& config)
   {
     u8* connected = g_ScratchMemory.Alloc<u8>(num * num);
     memset(connected, 0, num * num);
@@ -363,7 +363,7 @@ namespace tano
     u8* degree = g_ScratchMemory.Alloc<u8>(num);
     memset(degree, 0, num);
 
-    V3* orgVtx = vtx;
+    vec3* orgVtx = vtx;
 
     float minDist = config.min_dist;
     float maxDist = config.max_dist;
@@ -497,16 +497,16 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  V3* AddCube(V3* buf, const V3& pos, float scale)
+  vec3* AddCube(vec3* buf, const vec3& pos, float scale)
   {
-    *buf++ = pos + V3(-scale, -scale, -scale);
-    *buf++ = pos + V3(-scale, +scale, -scale);
-    *buf++ = pos + V3(+scale, +scale, -scale);
-    *buf++ = pos + V3(+scale, -scale, -scale);
-    *buf++ = pos + V3(-scale, -scale, +scale);
-    *buf++ = pos + V3(-scale, +scale, +scale);
-    *buf++ = pos + V3(+scale, +scale, +scale);
-    *buf++ = pos + V3(+scale, -scale, +scale);
+    *buf++ = pos + vec3(-scale, -scale, -scale);
+    *buf++ = pos + vec3(-scale, +scale, -scale);
+    *buf++ = pos + vec3(+scale, +scale, -scale);
+    *buf++ = pos + vec3(+scale, -scale, -scale);
+    *buf++ = pos + vec3(-scale, -scale, +scale);
+    *buf++ = pos + vec3(-scale, +scale, +scale);
+    *buf++ = pos + vec3(+scale, +scale, +scale);
+    *buf++ = pos + vec3(+scale, -scale, +scale);
     return buf;
   }
 
@@ -575,25 +575,25 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  V3* AddCubeWithNormal(V3* buf, const V3& pos, float scale)
+  vec3* AddCubeWithNormal(vec3* buf, const vec3& pos, float scale)
   {
-    V3 verts[] = {
-      {pos + V3(-scale, -scale, -scale)},
-      {pos + V3(-scale, +scale, -scale)},
-      {pos + V3(+scale, +scale, -scale)},
-      {pos + V3(+scale, -scale, -scale)},
-      {pos + V3(-scale, -scale, +scale)},
-      {pos + V3(-scale, +scale, +scale)},
-      {pos + V3(+scale, +scale, +scale)},
-      {pos + V3(+scale, -scale, +scale)},
+    vec3 verts[] = {
+      {pos + vec3(-scale, -scale, -scale)},
+      {pos + vec3(-scale, +scale, -scale)},
+      {pos + vec3(+scale, +scale, -scale)},
+      {pos + vec3(+scale, -scale, -scale)},
+      {pos + vec3(-scale, -scale, +scale)},
+      {pos + vec3(-scale, +scale, +scale)},
+      {pos + vec3(+scale, +scale, +scale)},
+      {pos + vec3(+scale, -scale, +scale)},
     };
 
-    V3 n0(0, 0, -1);
-    V3 n1(0, 0, +1);
-    V3 n2(-1, 0, 0);
-    V3 n3(+1, 0, 0);
-    V3 n4(0, +1, 0);
-    V3 n5(0, -1, 0);
+    vec3 n0(0, 0, -1);
+    vec3 n1(0, 0, +1);
+    vec3 n2(-1, 0, 0);
+    vec3 n3(+1, 0, 0);
+    vec3 n4(0, +1, 0);
+    vec3 n5(0, -1, 0);
 
     //    5----6
     //   /    /|
@@ -602,7 +602,7 @@ namespace tano
     //  |/   |/
     //  0----3
 
-    auto AddFace = [&](int a, int b, int c, int d, const V3& n){
+    auto AddFace = [&](int a, int b, int c, int d, const vec3& n){
       *buf++ = verts[a]; *buf++ = n;
       *buf++ = verts[b]; *buf++ = n;
       *buf++ = verts[c]; *buf++ = n;

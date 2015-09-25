@@ -108,7 +108,7 @@ bool TextWriter::Init(const char* filename)
 }
 
 //------------------------------------------------------------------------------
-void TextWriter::GenerateTris(const char* str, TextSegment segment, vector<V3>* verts)
+void TextWriter::GenerateTris(const char* str, TextSegment segment, vector<vec3>* verts)
 {
   // split text into rows
   vector<string> rows;
@@ -116,8 +116,8 @@ void TextWriter::GenerateTris(const char* str, TextSegment segment, vector<V3>* 
 
   vector<RowDim> lineInfo;
 
-  V3 vMin(+FLT_MAX, +FLT_MAX, +FLT_MAX);
-  V3 vMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+  vec3 vMin(+FLT_MAX, +FLT_MAX, +FLT_MAX);
+  vec3 vMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
   u32 vtxIdx = 0;
   for (const string& str : rows)
   {
@@ -149,7 +149,7 @@ void TextWriter::GenerateTris(const char* str, TextSegment segment, vector<V3>* 
       for (u32 j = 0; j < numIndices; ++j)
       {
         int vertIdx = elem->indices[j] * 3;
-        V3 v(elem->verts[vertIdx + 0] + xOfs, elem->verts[vertIdx + 1], elem->verts[vertIdx + 2]);
+        vec3 v(elem->verts[vertIdx + 0] + xOfs, elem->verts[vertIdx + 1], elem->verts[vertIdx + 2]);
         vMin = Min(v, vMin);
         vMax = Max(v, vMax);
         (*verts)[vtxIdx + j] = v;
@@ -201,7 +201,7 @@ void TextWriter::GenerateTris(const char* str, TextSegment segment, vector<V3>* 
 
 //------------------------------------------------------------------------------
 void TextWriter::GenerateIndexedTris(
-    const char* str, TextSegment segment, vector<V3>* verts, vector<int>* indices, vector<u32>* edges)
+    const char* str, TextSegment segment, vector<vec3>* verts, vector<int>* indices, vector<u32>* edges)
 {
 
   vector<string> rows;
@@ -209,8 +209,8 @@ void TextWriter::GenerateIndexedTris(
 
   vector<RowDim> lineInfo;
 
-  V3 vMin(+FLT_MAX, +FLT_MAX, +FLT_MAX);
-  V3 vMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+  vec3 vMin(+FLT_MAX, +FLT_MAX, +FLT_MAX);
+  vec3 vMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
   for (const string& str : rows)
   {
     float xOfs = 0;
@@ -261,7 +261,7 @@ void TextWriter::GenerateIndexedTris(
       // get max vertex dimensions
       for (u32 j = 0; j < numVerts; ++j)
       {
-        V3 v(elem->verts[j * 3 + 0] + xOfs, elem->verts[j * 3 + 1], elem->verts[j * 3 + 2]);
+        vec3 v(elem->verts[j * 3 + 0] + xOfs, elem->verts[j * 3 + 1], elem->verts[j * 3 + 2]);
         (*verts)[j + prevVerts] = v;
         vMin = Min(v, vMin);
         vMax = Max(v, vMax);

@@ -4,26 +4,26 @@ using namespace bristol;
 
 namespace tano
 {
-  V3 V3::Zero = {0, 0, 0};
+  vec3 vec3::Zero = {0, 0, 0};
 
   //------------------------------------------------------------------------------
-  V3 FromSpherical(float r, float phi, float theta)
+  vec3 FromSpherical(float r, float phi, float theta)
   {
     float yProj = r * sinf(theta);
-    return V3(yProj * cosf(phi), r * cosf(theta), yProj * sinf(phi));
+    return vec3(yProj * cosf(phi), r * cosf(theta), yProj * sinf(phi));
   }
 
   //------------------------------------------------------------------------------
-  V3 FromSpherical(const Spherical& s)
+  vec3 FromSpherical(const Spherical& s)
   {
     // phi is angle around x axis, ccw, starting at 0 at the x-axis
     // theta is angle around the z axis
     float yProj = s.r * sinf(s.theta);
-    return V3(yProj * cosf(s.phi), s.r * cosf(s.theta), yProj * sinf(s.phi));
+    return vec3(yProj * cosf(s.phi), s.r * cosf(s.theta), yProj * sinf(s.phi));
   }
 
   //------------------------------------------------------------------------------
-  Spherical ToSpherical(const V3& v)
+  Spherical ToSpherical(const vec3& v)
   {
     float r = Length(v);
     if (r == 0.f)
@@ -56,9 +56,9 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  V3 PointOnHemisphere(const V3& axis)
+  vec3 PointOnHemisphere(const vec3& axis)
   {
-    V3 tmp(randf(-1.f, +1.f), randf(-1.f, +1.f), randf(-1.f, +1.f));
+    vec3 tmp(randf(-1.f, +1.f), randf(-1.f, +1.f), randf(-1.f, +1.f));
     tmp = Normalize(tmp);
     if (Dot(axis, tmp) < 0)
       tmp = -1.f * tmp;
@@ -68,21 +68,21 @@ namespace tano
 
 
   //------------------------------------------------------------------------------
-  V3 RandomVector(float scaleX, float scaleY, float scaleZ)
+  vec3 RandomVector(float scaleX, float scaleY, float scaleZ)
   {
-    return V3(
+    return vec3(
       scaleX * randf(-1.f, +1.f),
       scaleY * randf(-1.f, +1.f),
       scaleZ * randf(-1.f, +1.f));
   }
 
   //------------------------------------------------------------------------------
-  V3 CardinalSplineBlend(const V3& p0, const V3& p1, const V3& p2, const V3& p3, float s)
+  vec3 CardinalSplineBlend(const vec3& p0, const vec3& p1, const vec3& p2, const vec3& p3, float s)
   {
     float a = 0.5f;
 
-    V3 t1 = a*(p2 - p0);
-    V3 t2 = a*(p3 - p1);
+    vec3 t1 = a*(p2 - p0);
+    vec3 t2 = a*(p3 - p1);
 
     // P = h1 * P1 + h2 * P2 + h3 * T1 + h4 * T2;
     float s2 = s*s;
@@ -156,7 +156,7 @@ namespace tano
   //}
 
   //------------------------------------------------------------------------------
-  void CardinalSpline::Create(const V3* pts, int numPoints, float scale)
+  void CardinalSpline::Create(const vec3* pts, int numPoints, float scale)
   {
     assert(scale != 0);
     _scale = scale;
@@ -165,17 +165,17 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  V3 CardinalSpline::Interpolate(float t) const
+  vec3 CardinalSpline::Interpolate(float t) const
   {
     int numPoints = (int)_controlPoints.size();
     t /= _scale;
     int i = (int)t;
 
     int m = numPoints - 1;
-    V3 p0 = _controlPoints[min(m, max(0, i - 1))];
-    V3 p1 = _controlPoints[min(m, max(0, i + 0))];
-    V3 p2 = _controlPoints[min(m, max(0, i + 1))];
-    V3 p3 = _controlPoints[min(m, max(0, i + 2))];
+    vec3 p0 = _controlPoints[min(m, max(0, i - 1))];
+    vec3 p1 = _controlPoints[min(m, max(0, i + 0))];
+    vec3 p2 = _controlPoints[min(m, max(0, i + 1))];
+    vec3 p3 = _controlPoints[min(m, max(0, i + 2))];
 
     float s = t - (float)i;
     return CardinalSplineBlend(p0, p1, p2, p3, s);
@@ -184,16 +184,16 @@ namespace tano
 
   //------------------------------------------------------------------------------
   // Returns a vector perpendicular to u, using the method by Hughes-Moller
-  V3 Perp(V3 u)
+  vec3 Perp(vec3 u)
   {
-    V3 a = Abs(u);
-    V3 v;
+    vec3 a = Abs(u);
+    vec3 v;
     if (a.x <= a.y && a.x <= a.z)
-      v = V3(0, -u.z, u.y);
+      v = vec3(0, -u.z, u.y);
     else if (a.y <= a.x && a.y <= a.z)
-      v = V3(-u.z, 0, u.x);
+      v = vec3(-u.z, 0, u.x);
     else
-      v = V3(-u.y, u.x, 0);
+      v = vec3(-u.y, u.x, 0);
 
     return Normalize(v);
   }

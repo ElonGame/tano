@@ -135,7 +135,7 @@ bool Blob::Render()
         scene::Mesh* mesh = buf->meshes[i];
 
         // colors are pre-mulitplied alpha
-        Vector4 meshColors[] = { Vector4(0, 0, 0.25f, 0.25f), Vector4(0, 0.5f, 0, 0.5f), Vector4(0.75f, 0, 0, 0.75f) };
+        vec4 meshColors[] = { vec4(0, 0, 0.25f, 0.25f), vec4(0, 0.5f, 0, 0.5f), vec4(0.75f, 0, 0, 0.75f) };
         _cbMesh.ps1.col = meshColors[i % 3];
         _cbMesh.Set(_ctx, 1);
         _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
@@ -148,7 +148,7 @@ bool Blob::Render()
     // composite
     _ctx->SetBundleWithSamplers(_compositeBundle, ShaderType::PixelShader);
 
-    _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);
+    _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
     ObjectHandle inputs[] = { rtOpacity, rtRevealage };
@@ -192,7 +192,7 @@ void Blob::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void Blob::Reset()
 {
-  _freeflyCamera._pos = Vector3(0.f, 0.f, 0.f);
+  _freeflyCamera._pos = vec3(0.f, 0.f, 0.f);
   _freeflyCamera._pitch = _freeflyCamera._yaw = _freeflyCamera._roll = 0.f;
 }
 

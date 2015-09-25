@@ -342,9 +342,9 @@ bool Tunnel::Init()
     int numPoints = 10000;
     float s = 20;
 
-    V3 cur(0, 0, 0);
-    vector<V3> controlPoints;
-    vector<V3> cameraControlPoints;
+    vec3 cur(0, 0, 0);
+    vector<vec3> controlPoints;
+    vector<vec3> cameraControlPoints;
 
     for (int i = 0; i < numPoints; ++i)
     {
@@ -352,7 +352,7 @@ bool Tunnel::Init()
       float yOfs = randf(-s, +s);
 
       controlPoints.push_back(cur);
-      cur += V3(xOfs, yOfs, Z_SPACING);
+      cur += vec3(xOfs, yOfs, Z_SPACING);
 
       if ((i % CAMERA_STEP) == 0)
         cameraControlPoints.push_back(cur);
@@ -371,7 +371,7 @@ bool Tunnel::Init()
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
     .DepthStencilDesc(depthDescDepthDisabled)
-    .DynamicVb(128 * 1024, sizeof(V3))
+    .DynamicVb(128 * 1024, sizeof(vec3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
   INIT_FATAL(_compositeBundle.Create(BundleOptions()
@@ -390,7 +390,7 @@ bool Tunnel::Init()
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
     .VertexShader("shaders/out/tunnel.greets", "VsGreets")
     .PixelShader("shaders/out/tunnel.greets", "PsGreets")
-    .DynamicVb(MAX_GREETS_HEIGHT*MAX_GREETS_WIDTH * 24 * 2, 2 * sizeof(V3))
+    .DynamicVb(MAX_GREETS_HEIGHT*MAX_GREETS_WIDTH * 24 * 2, 2 * sizeof(vec3))
     .StaticIb(GenerateCubeIndicesFaceted(MAX_GREETS_HEIGHT*MAX_GREETS_WIDTH)))
   );
   // clang-format on
@@ -416,7 +416,7 @@ void Tunnel::UpdateGreets(const UpdateState& state)
   _numGreetsCubes = 0;
 
   ObjectHandle handle = _greetsBundle.objects._vb;
-  V3* verts = _ctx->MapWriteDiscard<V3>(handle);
+  vec3* verts = _ctx->MapWriteDiscard<vec3>(handle);
 
   GreetsBlock::GreetsData* data = _greetsBlock._data[_greetsBlock.curText];
   int w = data->width;
@@ -425,7 +425,7 @@ void Tunnel::UpdateGreets(const UpdateState& state)
   float fh = (float)h;
 
   float s = 10;
-  V3 pos(-fw/2*s+s/2, fh/2*s-s/2, 300);
+  vec3 pos(-fw/2*s+s/2, fh/2*s-s/2, 300);
   float orgX = pos.x;
   for (int i = 0; i < h; ++i)
   {
@@ -450,9 +450,9 @@ void Tunnel::UpdateGreets(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Tunnel::Update(const UpdateState& state)
 {
-  V3 pos(V3(_camera._pos));
+  vec3 pos(vec3(_camera._pos));
 
-  V2 cameraParams = BLACKBOARD.GetVec2Var("tunnel.cameraParams");
+  vec2 cameraParams = BLACKBOARD.GetVec2Var("tunnel.cameraParams");
   _tunnelVerts.Clear();
 
   // NormalUpdate(state);
@@ -468,7 +468,7 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
   float radius = BLACKBOARD.GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
   int numSegments = BLACKBOARD.GetIntVar("tunnel.segments");
 
-  V3* points = g_ScratchMemory.Alloc<V3>(16 * 1024);
+  vec3* points = g_ScratchMemory.Alloc<vec3>(16 * 1024);
   int MAX_N = 16;
   int* neighbours = g_ScratchMemory.Alloc<int>(16 * 1024 * MAX_N);
 
@@ -482,13 +482,13 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
   int idx = 0;
   for (int j = 0; j < depth; ++j)
   {
-    V3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
+    vec3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
 
     float angle = 0;
     float angleInc = 2 * XM_PI / numSegments;
     for (int i = 0; i < numSegments; ++i)
     {
-      V3 p = pos + radius * V3(cosf(angle), sinf(angle), 0);
+      vec3 p = pos + radius * vec3(cosf(angle), sinf(angle), 0);
       points[idx] = p;
       // add neighbours
       int n = 0;
@@ -536,8 +536,8 @@ void Tunnel::NormalUpdate(const UpdateState& state)
   float radius = BLACKBOARD.GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
   int numSegments = BLACKBOARD.GetIntVar("tunnel.segments");
 
-  SimpleAppendBuffer<V3, 512> ring1, ring2;
-  SimpleAppendBuffer<V3, 512>* rings[] = {&ring1, &ring2};
+  SimpleAppendBuffer<vec3, 512> ring1, ring2;
+  SimpleAppendBuffer<vec3, 512>* rings[] = {&ring1, &ring2};
 
   float START_OFS = -2;
   int tmp = (int)((_camera._pos.z / Z_SPACING) / Z_SPACING * Z_SPACING);
@@ -545,14 +545,14 @@ void Tunnel::NormalUpdate(const UpdateState& state)
   // create the first 2 rings
   for (int j = 0; j < 2; ++j)
   {
-    V3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
+    vec3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
     float angle = 0;
     float angleInc = 2 * XM_PI / numSegments;
-    V3 prev = pos + radius * V3(cosf(angle), sinf(angle), 0);
+    vec3 prev = pos + radius * vec3(cosf(angle), sinf(angle), 0);
     for (int i = 0; i < numSegments; ++i)
     {
       angle += angleInc;
-      V3 p = pos + radius * V3(cosf(angle), sinf(angle), 0);
+      vec3 p = pos + radius * vec3(cosf(angle), sinf(angle), 0);
       rings[j]->Append(prev);
       rings[j]->Append(p);
       prev = p;
@@ -578,15 +578,15 @@ void Tunnel::NormalUpdate(const UpdateState& state)
     }
 
     ring0.Clear();
-    V3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
+    vec3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
 
     float angle = 0;
     float angleInc = 2 * XM_PI / numSegments;
-    V3 prev = pos + radius * V3(cosf(angle), sinf(angle), 0);
+    vec3 prev = pos + radius * vec3(cosf(angle), sinf(angle), 0);
     for (int i = 0; i < numSegments; ++i)
     {
       angle += angleInc;
-      V3 p = pos + radius * V3(cosf(angle), sinf(angle), 0);
+      vec3 p = pos + radius * vec3(cosf(angle), sinf(angle), 0);
       ring0.Append(prev);
       ring0.Append(p);
       prev = p;
@@ -605,16 +605,16 @@ bool Tunnel::FixedUpdate(const FixedUpdateState& state)
   float dirScale = BLACKBOARD.GetFloatVar("tunnel.dirScale");
   _dist += state.delta * speed;
 
-  V3 pos = _cameraSpline.Interpolate(_dist / CAMERA_STEP);
+  vec3 pos = _cameraSpline.Interpolate(_dist / CAMERA_STEP);
 
   static bool useFreeFly = true;
   if (!useFreeFly)
   {
-    _camera._pos = ToVector3(pos) + Vector3(5 * sinf(state.localTime.TotalSecondsAsFloat()),
+    _camera._pos = pos + vec3(5 * sinf(state.localTime.TotalSecondsAsFloat()),
       5 * cosf(state.localTime.TotalSecondsAsFloat()),
       0);
 
-    _camera._dir = Vector3(sinf(state.localTime.TotalSecondsAsFloat()) * dirScale,
+    _camera._dir = vec3(sinf(state.localTime.TotalSecondsAsFloat()) * dirScale,
       cosf(state.localTime.TotalSecondsAsFloat()) * dirScale,
       1);
   }
@@ -663,13 +663,13 @@ bool Tunnel::Render()
 #if 1
   {
     // tunnel
-    _cbLines.gs0.dim = Vector4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
-    V3 params = BLACKBOARD.GetVec3Var("tunnel.lineParams");
-    _cbLines.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
+    _cbLines.gs0.dim = vec4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
+    vec3 params = BLACKBOARD.GetVec3Var("tunnel.lineParams");
+    _cbLines.ps0.lineParams = vec4(params.x, params.y, params.z, 1);
     _cbLines.Set(_ctx, 0);
 
     ObjectHandle h = _linesBundle.objects._vb;
-    V3* verts = _ctx->MapWriteDiscard<V3>(h);
+    vec3* verts = _ctx->MapWriteDiscard<vec3>(h);
     memcpy(verts, _tunnelVerts.Data(), _tunnelVerts.DataSize());
     _ctx->Unmap(h);
 
@@ -716,7 +716,7 @@ bool Tunnel::Render()
 
   {
     // composite
-    _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);
+    _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
     ObjectHandle inputs[] = {rtColor, rtColor._dsHandle};
@@ -763,7 +763,7 @@ void Tunnel::SaveParameterSet()
 //------------------------------------------------------------------------------
 void Tunnel::Reset()
 {
-  _camera._pos = Vector3(0.f, 0.f, 0.f);
+  _camera._pos = vec3(0.f, 0.f, 0.f);
   //_camera._pitch = _camera._yaw = _camera._roll = 0.f;
 
   _greetsBlock.Init();

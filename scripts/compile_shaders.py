@@ -97,9 +97,9 @@ def generate_files(base, entry_points, obj_ext, asm_ext):
 # conversion between HLSL and my types
 known_types = {
     'float': {'type': 'float', 'alignment': 3},
-    'float2': {'type': 'Vector2', 'alignment': 2},
-    'float3': {'type': 'Vector3', 'alignment': 1},
-    'float4': {'type': 'Vector4'},
+    'float2': {'type': 'vec2', 'alignment': 2},
+    'float3': {'type': 'vec3', 'alignment': 1},
+    'float4': {'type': 'vec4'},
     'float4x4': {'type': 'Matrix'},
     'matrix': {'type': 'Matrix'},
 }
@@ -221,7 +221,7 @@ def parse_cbuffer(basename, entry_point, out_name, ext):
                 used = None
                 if len(line) == 6:
                     name, index, mask, register, sys_value, format = line
-                else:
+                elif len(line) == 7:
                     name, index, mask, register, sys_value, format, used = line
 
         if not cur_cbuffer:

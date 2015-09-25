@@ -81,10 +81,10 @@ namespace tano
     {
       struct Segment
       {
-        vector<V3> verts;
-        vector<V3> transformedVerts;
+        vector<vec3> verts;
+        vector<vec3> transformedVerts;
         vector<int> indices;
-        vector<V3> keyframes;
+        vector<vec3> keyframes;
         int* neighbours = nullptr;
       };
 
@@ -105,7 +105,7 @@ namespace tano
     float _particlesStart, _particlesEnd;
 
     int _numSpawnedParticles = 0;
-    SimpleAppendBuffer<V3, 1024> _randomPoints;
+    SimpleAppendBuffer<vec3, 1024> _randomPoints;
     GpuBundle _plexusLineBundle;
 
     bool _drawText = true;

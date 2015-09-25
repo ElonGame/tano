@@ -95,7 +95,7 @@ void Sample::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void Sample::Reset()
 {
-  _camera._pos = Vector3(0.f, 0.f, 0.f);
+  _camera._pos = vec3(0.f, 0.f, 0.f);
   _camera._pitch = _camera._yaw = _camera._roll = 0.f;
 }
 

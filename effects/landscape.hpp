@@ -74,7 +74,7 @@ namespace tano
     {
       Chunk() : id(nextId++) {}
       float x, y;
-      Vector3 center;
+      vec3 center;
       float dist = 0;
       int lastAccessed = 0;
       enum {
@@ -86,7 +86,7 @@ namespace tano
         UPPER_DATA_SIZE = UPPER_VERTS * 2 * 3,
         LOWER_DATA_SIZE = LOWER_VERTS * 2 * 3,
       };
-      V3 noiseValues[(CHUNK_SIZE+1)*(CHUNK_SIZE+1)];
+      vec3 noiseValues[(CHUNK_SIZE+1)*(CHUNK_SIZE+1)];
       float upperData[UPPER_DATA_SIZE];
       float lowerData[LOWER_DATA_SIZE];
       int id;
@@ -99,7 +99,7 @@ namespace tano
     struct FlockKernelData
     {
       Flock* flock;
-      V3 target;
+      vec3 target;
       float waypointRadius;
       float deltaTime;
     };

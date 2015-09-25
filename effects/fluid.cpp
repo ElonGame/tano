@@ -162,9 +162,9 @@ void FluidSim::Update(const UpdateState& state)
       int x = FLUID_SIZE_PADDED / 2 - size / 2 + j;
       int y = FLUID_SIZE_PADDED / 2 - size / 2 + i;
 
-      V2 aa((float)(i - size / 2), (float)(j - size / 2));
+      vec2 aa((float)(i - size / 2), (float)(j - size / 2));
       aa = Normalize(aa);
-      V2 bb = V2(cosf(angle), sinf(angle));
+      vec2 bb = vec2(cosf(angle), sinf(angle));
       float d = Dot(aa, bb);
 
       dOld[IX(x, y)] += diffuseStrength; // / 2 + (diffuseStrength / 2) * sinf(2 * angle);
@@ -586,7 +586,7 @@ void Fluid::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void Fluid::Reset()
 {
-  _camera._pos = Vector3(0.f, 0.f, 0.f);
+  _camera._pos = vec3(0.f, 0.f, 0.f);
   _camera._pitch = _camera._yaw = _camera._roll = 0.f;
 }
 

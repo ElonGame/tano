@@ -41,8 +41,8 @@ namespace tano
     void CalcPoints(bool recalcEdges);
     enum { MAX_POINTS = 16 * 1024 };
 
-    SimpleAppendBuffer<V3, MAX_POINTS> _points;
-    SimpleAppendBuffer<V3, MAX_POINTS> _tris;
+    SimpleAppendBuffer<vec3, MAX_POINTS> _points;
+    SimpleAppendBuffer<vec3, MAX_POINTS> _tris;
     int* _neighbours = nullptr;
 
     void UpdateNoise();

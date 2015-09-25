@@ -26,6 +26,7 @@
 
 using namespace tano;
 using namespace bristol;
+using namespace DirectX;
 
 namespace
 {
@@ -74,12 +75,6 @@ bool Credits::Init()
   rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
   INIT(_clothState.Create(nullptr, nullptr, &rasterDesc));
 
-  INIT(_cbPerFrame.Create());
-  int w, h;
-  GRAPHICS.GetBackBufferSize(&w, &h);
-  _cbPerFrame.dim.x = (float)w;
-  _cbPerFrame.dim.y = (float)h;
-
   INIT(_clothGpuObjects.LoadVertexShader("shaders/out/basic", "VsPos", VF_POS));
   INIT(_clothGpuObjects.LoadPixelShader("shaders/out/basic", "PsPos"));
 
@@ -98,7 +93,7 @@ bool Credits::Init()
     .PixelShader("shaders/out/credits.particle", "PsParticle")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
-    .DynamicVb(MAX_PARTICLES, sizeof(V4))
+    .DynamicVb(MAX_PARTICLES, sizeof(vec4))
     .DepthStencilDesc(depthDescDepthDisabled)
     //.BlendDesc(blendDescBlendOneOne)
     .BlendDesc(blendDescPreMultipliedAlpha)
@@ -168,7 +163,7 @@ void Credits::UpdateParticles(const FixedUpdateState& state)
         float dx = (float)xOfs;
         float dy = (float)yOfs;
         float r = Clamp(0.f, 1.f, s/2 - sqrtf(dx*dx+dy*dy));
-        _clothParticles[(_clothDimY/2+yOfs) * _clothDimX + _clothDimX/2+xOfs].acc = r * V3(0, 0, 50);
+        _clothParticles[(_clothDimY/2+yOfs) * _clothDimX + _clothDimX/2+xOfs].acc = r * vec3(0, 0, 50);
       }
     }
   }
@@ -178,10 +173,10 @@ void Credits::UpdateParticles(const FixedUpdateState& state)
   for (size_t i = 0; i < numParticles; ++i)
   {
     // verlet integration
-    V3 tmp = p->pos;
+    vec3 tmp = p->pos;
     p->pos += (1.0f - _settings.damping) * (p->pos - p->lastPos) + dt2 * p->acc;
     p->lastPos = tmp;
-    p->acc = V3(0, 0, 0);
+    p->acc = vec3(0, 0, 0);
     ++p;
   }
 
@@ -198,10 +193,10 @@ void Credits::UpdateParticles(const FixedUpdateState& state)
       const Constraint& c2 = c[j * 4 + 2];
       const Constraint& c3 = c[j * 4 + 3];
 
-      V3 v0 = (c0.p1->pos - c0.p0->pos);
-      V3 v1 = (c1.p1->pos - c1.p0->pos);
-      V3 v2 = (c2.p1->pos - c2.p0->pos);
-      V3 v3 = (c3.p1->pos - c3.p0->pos);
+      vec3 v0 = (c0.p1->pos - c0.p0->pos);
+      vec3 v1 = (c1.p1->pos - c1.p0->pos);
+      vec3 v2 = (c2.p1->pos - c2.p0->pos);
+      vec3 v3 = (c3.p1->pos - c3.p0->pos);
 
       float dist0 = max(0.001f, Length(v0));
       float dist1 = max(0.001f, Length(v1));
@@ -213,10 +208,10 @@ void Credits::UpdateParticles(const FixedUpdateState& state)
       float s2 = 1 - c2.restLength / dist2;
       float s3 = 1 - c3.restLength / dist3;
 
-      V3 dir0 = 0.5f * s0 * v0;
-      V3 dir1 = 0.5f * s1 * v1;
-      V3 dir2 = 0.5f * s2 * v2;
-      V3 dir3 = 0.5f * s3 * v3;
+      vec3 dir0 = 0.5f * s0 * v0;
+      vec3 dir1 = 0.5f * s1 * v1;
+      vec3 dir2 = 0.5f * s2 * v2;
+      vec3 dir3 = 0.5f * s3 * v3;
 
       c0.p0->pos += dir0;
       c0.p1->pos -= dir0;
@@ -231,8 +226,8 @@ void Credits::UpdateParticles(const FixedUpdateState& state)
 
   // top row is fixed
   float incX = CLOTH_SIZE / (_clothDimX - 1);
-  V3 top(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
-  V3 bottom(-CLOTH_SIZE / 2.f, -CLOTH_SIZE / 2.f, 0);
+  vec3 top(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
+  vec3 bottom(-CLOTH_SIZE / 2.f, -CLOTH_SIZE / 2.f, 0);
   for (int i = 0; i < _clothDimX; ++i)
   {
     _clothParticles[i].pos = top;
@@ -243,7 +238,7 @@ void Credits::UpdateParticles(const FixedUpdateState& state)
 
   _avgUpdate.AddSample(g_stopWatch.Stop());
 
-  V3* vtx = _ctx->MapWriteDiscard<V3>(_clothGpuObjects._vb);
+  vec3* vtx = _ctx->MapWriteDiscard<vec3>(_clothGpuObjects._vb);
   memcpy(vtx, _clothParticles.data(), _numClothParticles * sizeof(ClothParticle));
   _ctx->Unmap(_clothGpuObjects._vb);
 }
@@ -360,7 +355,7 @@ void Credits::GroupConstraints()
     for (int j = 0; j < dimX; ++j)
     {
       u32 idx0 = i*dimX + j;
-      V3* p0 = &_clothParticles[idx0].pos;
+      vec3* p0 = &_clothParticles[idx0].pos;
 
       static int ofs[] = {
         -1, +0,
@@ -383,7 +378,7 @@ void Credits::GroupConstraints()
             continue;
 
           u32 idx1 = yy*dimX + xx;
-          V3* p1 = &_clothParticles[idx1].pos;
+          vec3* p1 = &_clothParticles[idx1].pos;
 
           _constraints.push_back(Constraint(idx0, idx1, Distance(*p0, *p1)));
         }
@@ -486,8 +481,8 @@ void Credits::ResetParticles()
   float incX = CLOTH_SIZE / (_clothDimX - 1);
   float incY = CLOTH_SIZE / (_clothDimY - 1);
 
-  V3 org(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
-  V3 cur = org;
+  vec3 org(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
+  vec3 cur = org;
   ClothParticle* p = &_clothParticles[0];
 
   for (int i = 0; i < _clothDimY; ++i)
@@ -497,7 +492,7 @@ void Credits::ResetParticles()
     {
       p->pos = cur;
       p->lastPos = cur;
-      p->acc = V3(0, 0, 0);
+      p->acc = vec3(0, 0, 0);
       cur.x += incX;
       ++p;
     }
@@ -545,7 +540,7 @@ void Credits::InitParticleSpline(const vector<int>& indices)
       GaussianRand(speed, speedVar),
       -width,
       GaussianRand(height, heightVar),
-      GaussianRand(XM_2PI, angleVar),
+      GaussianRand(DirectX::XM_2PI, angleVar),
       XM_2PI / s,
       0,
       GaussianRand(fadeSpeed, fadeSpeedVar)};
@@ -574,7 +569,7 @@ void Credits::UpdateParticleSpline(float dt)
     s.angle += dt * s.angleInc;
     s.fade += dt * s.fadeInc;
 
-    _particles[i] = V4{s.pos, s.height * sinf(s.angle), 0, cosf(s.fade)};
+    _particles[i] = vec4{s.pos, s.height * sinf(s.angle), 0, cosf(s.fade)};
 
     if (s.pos > width)
       deadParticles.push_back(i);
@@ -591,8 +586,8 @@ void Credits::UpdateParticleSpline(float dt)
 //------------------------------------------------------------------------------
 bool Credits::Update(const UpdateState& state)
 {
-  _cbBackground.ps0.upper = ToVector4(BLACKBOARD.GetVec4Var("credits.upper"));
-  _cbBackground.ps0.lower = ToVector4(BLACKBOARD.GetVec4Var("credits.lower"));
+  _cbBackground.ps0.upper = BLACKBOARD.GetVec4Var("credits.upper");
+  _cbBackground.ps0.lower = BLACKBOARD.GetVec4Var("credits.lower");
 
   UpdateCameraMatrix(state);
   UpdateParticleSpline(state.delta.TotalSecondsAsFloat());
@@ -611,24 +606,11 @@ void Credits::UpdateCameraMatrix(const UpdateState& state)
 {
 
   Matrix view, proj, viewProj;
-  {
-    view = _textCamera._view;
-    proj = _textCamera._proj;
-    viewProj = view * proj;
-    _cbPerFrame.world = Matrix::Identity();
-    _cbPerFrame.view = view.Transpose();
-    _cbPerFrame.proj = proj.Transpose();
-    _cbPerFrame.viewProj = viewProj.Transpose();
-    _cbPerFrame.cameraPos = _textCamera._pos;
-  }
-
-  {
-    proj = _freeflyCamera._proj;
-    view = _freeflyCamera._view;
-    viewProj = view * proj;
-    _cbParticle.gs0.world = Matrix::Identity();
-    _cbParticle.gs0.viewProj = viewProj.Transpose();
-  }
+  proj = _freeflyCamera._proj;
+  view = _freeflyCamera._view;
+  viewProj = view * proj;
+  _cbParticle.gs0.world = Matrix::Identity();
+  _cbParticle.gs0.viewProj = viewProj.Transpose();
 
 }
 
@@ -647,8 +629,8 @@ bool Credits::Render()
 
   {
     ObjectHandle h = _particleBundle.objects._vb;
-    V4* vtx = _ctx->MapWriteDiscard<V4>(h);
-    memcpy(vtx, _particles.data(), (int)_particles.size() * sizeof(V4));
+    vec4* vtx = _ctx->MapWriteDiscard<vec4>(h);
+    memcpy(vtx, _particles.data(), (int)_particles.size() * sizeof(vec4));
     _ctx->Unmap(h);
 
     // Render particles
@@ -667,7 +649,7 @@ bool Credits::Render()
 
   {
     // composite
-    _cbComposite.ps0.tonemap = Vector2(_settings.tonemap.exposure, _settings.tonemap.min_white);
+    _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
     ObjectHandle inputs[] = { rtColor, rtBlur, _creditsTexture };
@@ -722,7 +704,7 @@ void Credits::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void Credits::Reset()
 {
-  _freeflyCamera._pos = Vector3(0.f, 0.f, -10.f);
+  _freeflyCamera._pos = vec3(0.f, 0.f, -10.f);
   _freeflyCamera._pitch = _freeflyCamera._yaw = _freeflyCamera._roll = 0.f;
 }
 

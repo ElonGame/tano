@@ -101,7 +101,7 @@ namespace tano
     ConstantBufferBundle<void, cb::TunnelLinesPS, cb::TunnelLinesGS> _cbLines;
     ConstantBufferBundle<void, cb::TunnelCompositeF> _cbComposite;
 
-    SimpleAppendBuffer<V3, 64 * 1024> _tunnelVerts;
+    SimpleAppendBuffer<vec3, 64 * 1024> _tunnelVerts;
 
     ConstantBufferBundle<cb::TunnelGreetsV, cb::TunnelGreetsP> _cbGreets;
 

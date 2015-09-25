@@ -53,27 +53,11 @@ namespace tano
     void UpdateParticleSpline(float dt);
     void InitParticleSpline(const vector<int>& indices);
 
-    struct CBufferPerFrame
-    {
-      Matrix world;
-      Matrix view;
-      Matrix proj;
-      Matrix viewProj;
-      Vector4 dim;
-      Vector3 cameraPos;
-      float pad1;
-      Vector3 cameraLookAt;
-      float pad2;
-      Vector3 cameraUp;
-      float pad3;
-    };
-    ConstantBuffer<CBufferPerFrame> _cbPerFrame;
-
     struct ClothParticle
     {
-      V3 pos;
-      V3 lastPos;
-      V3 acc;
+      vec3 pos;
+      vec3 lastPos;
+      vec3 acc;
     };
 
     struct Constraint
@@ -105,7 +89,7 @@ namespace tano
 
     vector<ParticleState> _particleState;
 
-    vector<V4> _particles;
+    vector<vec4> _particles;
 
     vector<ClothParticle> _clothParticles;
     vector<Constraint> _constraints;

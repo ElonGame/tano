@@ -5,7 +5,7 @@ using namespace bristol;
 
 static const int GRID_SIZE = 256;
 
-static V2 gradients[GRID_SIZE];
+static vec2 gradients[GRID_SIZE];
 static int permutation[GRID_SIZE];
 
 //------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ void Perlin2D::Init()
 {
   // create random gradients
   for (int i = 0; i < GRID_SIZE; ++i)
-    gradients[i] = Normalize(V2(randf(-1.f, 1.f), randf(-1.f, 1.f)));
+    gradients[i] = Normalize(vec2(randf(-1.f, 1.f), randf(-1.f, 1.f)));
 
   // create permutation table
   for (int i = 0; i < GRID_SIZE; ++i)
@@ -45,23 +45,23 @@ float Perlin2D::Value(float x, float y)
   // g00  g01
   // g10  g11
 
-  V2 g00 = gradients[permutation[(permutation[x0 & 0xff] + y0) & 0xff]];
-  V2 g01 = gradients[permutation[(permutation[x1 & 0xff] + y0) & 0xff]];
+  vec2 g00 = gradients[permutation[(permutation[x0 & 0xff] + y0) & 0xff]];
+  vec2 g01 = gradients[permutation[(permutation[x1 & 0xff] + y0) & 0xff]];
 
-  V2 g10 = gradients[permutation[(permutation[x0 & 0xff] + y1) & 0xff]];
-  V2 g11 = gradients[permutation[(permutation[x1 & 0xff] + y1) & 0xff]];
+  vec2 g10 = gradients[permutation[(permutation[x0 & 0xff] + y1) & 0xff]];
+  vec2 g11 = gradients[permutation[(permutation[x1 & 0xff] + y1) & 0xff]];
 
   // get vectors from corners to center
-  V2 p(x, y);
-  V2 c00((float)x0, (float)y0);
-  V2 c01((float)x1, (float)y0);
-  V2 c10((float)x0, (float)y1);
-  V2 c11((float)x1, (float)y1);
+  vec2 p(x, y);
+  vec2 c00((float)x0, (float)y0);
+  vec2 c01((float)x1, (float)y0);
+  vec2 c10((float)x0, (float)y1);
+  vec2 c11((float)x1, (float)y1);
 
-  V2 v00 = p - c00;
-  V2 v01 = p - c01;
-  V2 v10 = p - c10;
-  V2 v11 = p - c11;
+  vec2 v00 = p - c00;
+  vec2 v01 = p - c01;
+  vec2 v10 = p - c10;
+  vec2 v11 = p - c11;
 
   // dot products
   float d00 = Dot(v00, g00);

@@ -29,19 +29,19 @@ void DynParticles::Init(int numBodies)
 {
   Reset();
   _bodies.numBodies = numBodies;
-  _bodies.pos = new V3[numBodies];
-  _bodies.vel = new V3[numBodies];
-  _bodies.acc = new V3[numBodies];
-  _bodies.force = new V3[numBodies];
+  _bodies.pos = new vec3[numBodies];
+  _bodies.vel = new vec3[numBodies];
+  _bodies.acc = new vec3[numBodies];
+  _bodies.force = new vec3[numBodies];
 
   _buckets = new Bucket[TOTAL_NUM_BUCKETS];
   for (int i = 0; i < TOTAL_NUM_BUCKETS; ++i)
     _buckets[i].data = new u16[numBodies];
 
-  V3 zero(0,0,0);
+  vec3 zero(0,0,0);
   for (int i = 0; i < numBodies; ++i)
   {
-    _bodies.pos[i] = _bodies.vel[i] = _bodies.acc[i] = _bodies.force[i] = V3::Zero;
+    _bodies.pos[i] = _bodies.vel[i] = _bodies.acc[i] = _bodies.force[i] = vec3::Zero;
   }
 }
 
@@ -68,14 +68,14 @@ void DynParticles::Update(float deltaTime, bool alwaysUpdate)
     return;
 
   int numBodies = _bodies.numBodies;
-  V3* pos = _bodies.pos;
-  V3* acc = _bodies.acc;
-  V3* vel = _bodies.vel;
-  V3* force = _bodies.force;
+  vec3* pos = _bodies.pos;
+  vec3* acc = _bodies.acc;
+  vec3* vel = _bodies.vel;
+  vec3* force = _bodies.force;
 
-  V3 center = V3::Zero;
-  V3 minPos = pos[0];
-  V3 maxPos = pos[0];
+  vec3 center = vec3::Zero;
+  vec3 minPos = pos[0];
+  vec3 maxPos = pos[0];
   for (int i = 0; i < numBodies; ++i)
   {
     center += pos[i];
@@ -95,7 +95,7 @@ void DynParticles::Update(float deltaTime, bool alwaysUpdate)
   _validBuckets.clear();
   for (int i = 0; i < numBodies; ++i)
   {
-    V3 p = pos[i];
+    vec3 p = pos[i];
     int xx = (int)((NUM_BUCKETS - 1) * (p.x - minPos.x) / dx);
     int zz = (int)((NUM_BUCKETS - 1) * (p.z - minPos.z) / dz);
     int idx = zz * NUM_BUCKETS + xx;
@@ -160,14 +160,14 @@ void DynParticles::UpdateWeight(ParticleKinematics* kinematics, float weight)
 //------------------------------------------------------------------------------
 void BehaviorSeek::Update(const ParticleKinematics::UpdateParams& params)
 {
-  V3* pos = params.bodies->pos;
-  V3* vel = params.bodies->vel;
-  V3* force = params.bodies->force;
+  vec3* pos = params.bodies->pos;
+  vec3* vel = params.bodies->vel;
+  vec3* force = params.bodies->force;
   int numBodies = params.bodies->numBodies;
 
   for (int i = params.start; i < params.end; ++i)
   {
-    V3 desiredVel = maxSpeed * Normalize(target - pos[i]);
+    vec3 desiredVel = maxSpeed * Normalize(target - pos[i]);
     force[i] += params.weight * ClampVector(desiredVel - vel[i], maxForce);
   }
 }
@@ -175,10 +175,10 @@ void BehaviorSeek::Update(const ParticleKinematics::UpdateParams& params)
 //------------------------------------------------------------------------------
 void BehaviorSeparataion::Update(const ParticleKinematics::UpdateParams& params)
 {
-  V3* pos = params.bodies->pos;
-  V3* acc = params.bodies->acc;
-  V3* vel = params.bodies->vel;
-  V3* force = params.bodies->force;
+  vec3* pos = params.bodies->pos;
+  vec3* acc = params.bodies->acc;
+  vec3* vel = params.bodies->vel;
+  vec3* force = params.bodies->force;
   int numBodies = params.bodies->numBodies;
 
   for (DynParticles::Bucket* bucket : params.p->_validBuckets)
@@ -186,19 +186,19 @@ void BehaviorSeparataion::Update(const ParticleKinematics::UpdateParams& params)
     for (int iIdx = 0; iIdx < bucket->count; ++iIdx)
     {
       int i = bucket->data[iIdx];
-      V3 avg = V3::Zero;
-      V3 curPos = pos[i];
+      vec3 avg = vec3::Zero;
+      vec3 curPos = pos[i];
 
       for (int jIdx = 0; jIdx < bucket->count; ++jIdx)
       {
         int j = bucket->data[jIdx];
-        V3 away = Normalize(curPos - pos[j]);
+        vec3 away = Normalize(curPos - pos[j]);
         avg += away;
       }
       avg *= 1.0f / numBodies;
 
       // Reynolds uses: steering = desired - current (current + steering = desired)
-      V3 desiredVel = maxSpeed * Normalize(avg);
+      vec3 desiredVel = maxSpeed * Normalize(avg);
       force[i] += params.weight * ClampVector(desiredVel - vel[i], maxForce);
     }
   }
@@ -207,10 +207,10 @@ void BehaviorSeparataion::Update(const ParticleKinematics::UpdateParams& params)
 //------------------------------------------------------------------------------
 void BehaviorCohesion::Update(const ParticleKinematics::UpdateParams& params)
 {
-  V3* pos = params.bodies->pos;
-  V3* acc = params.bodies->acc;
-  V3* vel = params.bodies->vel;
-  V3* force = params.bodies->force;
+  vec3* pos = params.bodies->pos;
+  vec3* acc = params.bodies->acc;
+  vec3* vel = params.bodies->vel;
+  vec3* force = params.bodies->force;
   int numBodies = params.bodies->numBodies;
 
   for (DynParticles::Bucket* bucket : params.p->_validBuckets)
@@ -220,19 +220,19 @@ void BehaviorCohesion::Update(const ParticleKinematics::UpdateParams& params)
       int i = bucket->data[iIdx];
 
       // Return a force towards the average boid position
-      V3 avg = V3::Zero;
-      V3 curPos = pos[i];
+      vec3 avg = vec3::Zero;
+      vec3 curPos = pos[i];
 
       for (int jIdx = 0; jIdx < bucket->count; ++jIdx)
       {
         int j = bucket->data[jIdx];
-        V3 towards = Normalize(pos[j] - curPos);
+        vec3 towards = Normalize(pos[j] - curPos);
         avg += towards;
       }
       avg *= 1.0f / numBodies;
 
       // Reynolds uses: steering = desired - current (current + steering = desired)
-      V3 desiredVel = maxSpeed * Normalize(avg);
+      vec3 desiredVel = maxSpeed * Normalize(avg);
       force[i] += params.weight * ClampVector(desiredVel - vel[i], maxForce);
     }
   }
@@ -241,10 +241,10 @@ void BehaviorCohesion::Update(const ParticleKinematics::UpdateParams& params)
 //------------------------------------------------------------------------------
 void BehaviorAlignment::Update(const ParticleKinematics::UpdateParams& params)
 {
-  V3* pos = params.bodies->pos;
-  V3* acc = params.bodies->acc;
-  V3* vel = params.bodies->vel;
-  V3* force = params.bodies->force;
+  vec3* pos = params.bodies->pos;
+  vec3* acc = params.bodies->acc;
+  vec3* vel = params.bodies->vel;
+  vec3* force = params.bodies->force;
   int numBodies = params.bodies->numBodies;
 
   for (DynParticles::Bucket* bucket : params.p->_validBuckets)
@@ -254,7 +254,7 @@ void BehaviorAlignment::Update(const ParticleKinematics::UpdateParams& params)
       int i = bucket->data[iIdx];
 
       // return a force to align the boids velocity with the average velocity
-      V3 avg = V3::Zero;
+      vec3 avg = vec3::Zero;
 
       for (int jIdx = 0; jIdx < bucket->count; ++jIdx)
       {
@@ -264,7 +264,7 @@ void BehaviorAlignment::Update(const ParticleKinematics::UpdateParams& params)
       avg *= 1.0f / numBodies;
 
       // Reynolds uses: steering = desired - current (current + steering = desired)
-      V3 desiredVel = maxSpeed * Normalize(avg);
+      vec3 desiredVel = maxSpeed * Normalize(avg);
       force[i] += params.weight * ClampVector(desiredVel - vel[i], maxForce);
     }
   }

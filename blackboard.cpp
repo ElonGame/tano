@@ -152,21 +152,21 @@ void Blackboard::AddFloatVar(const string& name, float value)
 }
 
 //------------------------------------------------------------------------------
-void Blackboard::AddVec2Var(const string& name, const V2& value)
+void Blackboard::AddVec2Var(const string& name, const vec2& value)
 {
-  _vec2Vars[name] = new Keyframes<V2>(value);
+  _vec2Vars[name] = new Keyframes<vec2>(value);
 }
 
 //------------------------------------------------------------------------------
-void Blackboard::AddVec3Var(const string& name, const V3& value)
+void Blackboard::AddVec3Var(const string& name, const vec3& value)
 {
-  _vec3Vars[name] = new Keyframes<V3>(value);
+  _vec3Vars[name] = new Keyframes<vec3>(value);
 }
 
 //------------------------------------------------------------------------------
-void Blackboard::AddVec4Var(const string& name, const V4& value)
+void Blackboard::AddVec4Var(const string& name, const vec4& value)
 {
-  _vec4Vars[name] = new Keyframes<V4>(value);
+  _vec4Vars[name] = new Keyframes<vec4>(value);
 }
 
 //------------------------------------------------------------------------------
@@ -182,19 +182,19 @@ float Blackboard::GetFloatVar(const string& name)
 }
 
 //------------------------------------------------------------------------------
-V2 Blackboard::GetVec2Var(const string& name)
+vec2 Blackboard::GetVec2Var(const string& name)
 {
   return GetVar(name, 0, _vec2Vars);
 }
 
 //------------------------------------------------------------------------------
-V3 Blackboard::GetVec3Var(const string& name)
+vec3 Blackboard::GetVec3Var(const string& name)
 {
   return GetVar(name, 0, _vec3Vars);
 }
 
 //------------------------------------------------------------------------------
-V4 Blackboard::GetVec4Var(const string& name)
+vec4 Blackboard::GetVec4Var(const string& name)
 {
   return GetVar(name, 0, _vec4Vars);
 }
@@ -304,9 +304,9 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
       CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
-      Vector2 tmp;
+      vec2 tmp;
       ParseVec2(buf, &tmp);
-      AddVec2Var(fnFullName(id), V2(tmp.x, tmp.y));
+      AddVec2Var(fnFullName(id), tmp);
 
       buf.SkipWhitespace();
       CHECKED_OP(buf.Expect(';'));
@@ -319,9 +319,9 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
       CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
-      Vector3 tmp;
+      vec3 tmp;
       ParseVec3(buf, &tmp);
-      AddVec3Var(fnFullName(id), V3(tmp.x, tmp.y, tmp.z));
+      AddVec3Var(fnFullName(id), tmp);
 
       buf.SkipWhitespace();
       CHECKED_OP(buf.Expect(';'));
@@ -334,9 +334,9 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
       CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
-      Vector4 tmp;
+      vec4 tmp;
       ParseVec4(buf, &tmp);
-      AddVec4Var(fnFullName(id), V4(tmp.x, tmp.y, tmp.z, tmp.w));
+      AddVec4Var(fnFullName(id), tmp);
 
       buf.SkipWhitespace();
       CHECKED_OP(buf.Expect(';'));
@@ -395,13 +395,13 @@ float Blackboard::GetFloatVar(const string& name, float t)
 }
 
 //------------------------------------------------------------------------------
-V2 Blackboard::GetVec2Var(const string& name, float t)
+vec2 Blackboard::GetVec2Var(const string& name, float t)
 {
   return GetVar(name, t, _vec2Vars);
 }
 
 //------------------------------------------------------------------------------
-V3 Blackboard::GetVec3Var(const string& name, float t)
+vec3 Blackboard::GetVec3Var(const string& name, float t)
 {
   return GetVar(name, t, _vec3Vars);
 }

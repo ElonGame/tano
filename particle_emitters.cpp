@@ -5,6 +5,7 @@
 using namespace tano;
 using namespace tano::scheduler;
 using namespace bristol;
+using namespace DirectX;
 
 //------------------------------------------------------------------------------
 template <typename T>
@@ -27,7 +28,7 @@ void CopyOutEmitter(const scheduler::TaskData& data)
 }
 
 //------------------------------------------------------------------------------
-void ParticleEmitter::Create(const V3& center, int numParticles)
+void ParticleEmitter::Create(const vec3& center, int numParticles)
 {
   _center = center;
   _numParticles = numParticles;
@@ -99,9 +100,9 @@ void ParticleEmitter::Update(float dt)
 }
 
 //------------------------------------------------------------------------------
-void ParticleEmitter::CopyToBuffer(V4* vtx)
+void ParticleEmitter::CopyToBuffer(vec4* vtx)
 {
-  memcpy(vtx, _pos, _numParticles * sizeof(V4));
+  memcpy(vtx, _pos, _numParticles * sizeof(vec4));
 }
 
 //------------------------------------------------------------------------------
@@ -117,7 +118,7 @@ void ParticleEmitter::CopyOutEmitter(const TaskData& data)
 }
 
 //------------------------------------------------------------------------------
-void RadialParticleEmitter::Create(const V3& center, float radius, int numParticles)
+void RadialParticleEmitter::Create(const vec3& center, float radius, int numParticles)
 {
   _center = center;
   _radius = radius;
@@ -219,9 +220,9 @@ void RadialParticleEmitter::Update(float dt)
 }
 
 //------------------------------------------------------------------------------
-void RadialParticleEmitter::CopyToBuffer(V4* vtx)
+void RadialParticleEmitter::CopyToBuffer(vec4* vtx)
 {
-  memcpy(vtx, _pos, _spawnedParticles * sizeof(V4));
+  memcpy(vtx, _pos, _spawnedParticles * sizeof(vec4));
 }
 
 //------------------------------------------------------------------------------

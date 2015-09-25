@@ -9,7 +9,7 @@ namespace tano
 
   struct PlexusGrouping;
   int CalcPlexusGrouping(
-      V3* vtx, const V3* points, int num, int* neighbours, int maxNeighbours, const PlexusGrouping& config);
+      vec3* vtx, const vec3* points, int num, int* neighbours, int maxNeighbours, const PlexusGrouping& config);
 
   struct SceneOptions
   {
@@ -74,8 +74,8 @@ namespace tano
   vector<u32> GenerateCubeIndicesFaceted(int numCubes);
   vector<u32> CreateCylinderIndices(int numRingSegments, int numHeightSegments);
 
-  V3* AddCube(V3* buf, const V3& pos, float scale);
-  V3* AddCubeWithNormal(V3* buf, const V3& pos, float scale);
+  vec3* AddCube(vec3* buf, const vec3& pos, float scale);
+  vec3* AddCubeWithNormal(vec3* buf, const vec3& pos, float scale);
 
   void GeneratePlaneIndices(int width, int height, vector<u32>* out);
 

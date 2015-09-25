@@ -56,15 +56,15 @@ bool DebugApi::Init(GraphicsContext* ctx)
 }
 
 //------------------------------------------------------------------------------
-void AddVertex(vector<Vector3>* verts, const Vector3& v)
+void AddVertex(vector<vec3>* verts, const vec3& v)
 {
   // project point onto the until sphere
   float len = v.Length();
-  verts->push_back(v / len);
+  verts->push_back(1.f / len * v);
 }
 
 //------------------------------------------------------------------------------
-void ExpandTriangle(vector<Vector3>* expanded, const vector<Vector3>& verts, int a, int b, int c)
+void ExpandTriangle(vector<vec3>* expanded, const vector<vec3>& verts, int a, int b, int c)
 {
   expanded->push_back(verts[a]);
   expanded->push_back(verts[b]);
@@ -78,7 +78,7 @@ void ExpandTriangle(vector<Vector3>* expanded, const vector<Vector3>& verts, int
 void DebugApi::CreateDebugGeometry()
 {
   float t = (1.f + sqrtf(5)) / 2;
-  vector<Vector3> verts;
+  vector<vec3> verts;
   AddVertex(&verts, { -1, +t, 0 });
   AddVertex(&verts, { +1, +t, 0 });
   AddVertex(&verts, { -1, -t, 0 });
@@ -94,7 +94,7 @@ void DebugApi::CreateDebugGeometry()
   AddVertex(&verts, { -t, 0, -1 });
   AddVertex(&verts, { -t, 0, +1 });
 
-  vector<Vector3> expanded;
+  vector<vec3> expanded;
   ExpandTriangle(&expanded, verts, 0, 11, 5);
   ExpandTriangle(&expanded, verts, 0, 5, 1);
   ExpandTriangle(&expanded, verts, 0, 1, 7);
@@ -163,13 +163,13 @@ void DebugApi::SetTransform(const Matrix& world, const Matrix& viewProj)
 }
 
 //------------------------------------------------------------------------------
-void DebugApi::AddDebugLine(const Vector3& start, const Vector3& end, const Color& color)
+void DebugApi::AddDebugLine(const vec3& start, const vec3& end, const Color& color)
 {
   return AddDebugLine(start, end, color, color);
 }
 
 //------------------------------------------------------------------------------
-void DebugApi::AddDebugLine(const Vector3& start, const Vector3& end, const Color& startColor, const Color& endColor)
+void DebugApi::AddDebugLine(const vec3& start, const vec3& end, const Color& startColor, const Color& endColor)
 {
   // if no line chunk is present, then there was no call to SetTransform, and we can bail
   if (_lineChunks.empty())
@@ -189,13 +189,13 @@ void DebugApi::AddDebugLine(const Vector3& start, const Vector3& end, const Colo
 }
 
 //------------------------------------------------------------------------------
-void DebugApi::AddDebugSphere(const Vector3& center, float radius, const Color& color)
+void DebugApi::AddDebugSphere(const vec3& center, float radius, const Color& color)
 {
   assert(!_lineChunks.empty());
   LineChunk& chunk = _lineChunks.back();
 
   int i = _numVerts;
-  for (const Vector3& p : _unitSphere)
+  for (const vec3& p : _unitSphere)
   {
     _vertices[i].pos = center + radius * p;
     _vertices[i].col = color;
@@ -207,7 +207,7 @@ void DebugApi::AddDebugSphere(const Vector3& center, float radius, const Color& 
 }
 
 //------------------------------------------------------------------------------
-void DebugApi::AddDebugCube(const Vector3& center, const Vector3& extents, const Color& color)
+void DebugApi::AddDebugCube(const vec3& center, const vec3& extents, const Color& color)
 {
   assert(!_lineChunks.empty());
   LineChunk& chunk = _lineChunks.back();

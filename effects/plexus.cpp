@@ -55,15 +55,15 @@ Plexus::~Plexus()
 {
 }
 
-SimpleAppendBuffer<V3, 1024> g_randomPoints;
+SimpleAppendBuffer<vec3, 1024> g_randomPoints;
 
 //------------------------------------------------------------------------------
 void GenRandomPoints(float kernelSize)
 {
-  V3* tmp = g_ScratchMemory.Alloc<V3>(g_randomPoints.Capacity());
+  vec3* tmp = g_ScratchMemory.Alloc<vec3>(g_randomPoints.Capacity());
   for (int i = 0; i < g_randomPoints.Capacity(); ++i)
   {
-    V3 v(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(-1.f, 1.f));
+    vec3 v(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(-1.f, 1.f));
     v = Normalize(v);
     tmp[i] = v;
   }
@@ -99,7 +99,7 @@ bool Plexus::Init()
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
-    .DynamicVb(128 * 1024, sizeof(V3))
+    .DynamicVb(128 * 1024, sizeof(vec3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
   // clang-format on
 
@@ -246,10 +246,10 @@ void Plexus::PointsTest(const UpdateState& state)
         bool edgeUp = k > 0;
         bool edgeDown = k < stacks - 1;
 
-        V3 pt = FromSpherical(r, phi, theta);
+        vec3 pt = FromSpherical(r, phi, theta);
 
         float s = fabs(1024 * stb_perlin_noise3(pt.x / perlinScale, pt.y / perlinScale, pt.z / perlinScale));
-        V3 v = g_randomPoints[IntMod((int)s, 1024)];
+        vec3 v = g_randomPoints[IntMod((int)s, 1024)];
         pt = pt + _settings.deform.noise_strength * v;
 
         _points.Append(pt);
@@ -302,7 +302,7 @@ void Plexus::CalcPoints(bool recalcEdges)
         bool edgeUp = k > 0;
         bool edgeDown = k < stacks - 1;
 
-        V3 pt = FromSpherical(r, phi, theta);
+        vec3 pt = FromSpherical(r, phi, theta);
         float s = _settings.deform.noise_strength * stb_perlin_noise3(pt.x, pt.y, pt.z);
         pt = pt + s * pt;
 
@@ -424,13 +424,13 @@ bool Plexus::Render()
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
 
   RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
-  _cbPlexus.gs0.dim = Vector4((float)desc.width, (float)desc.height, 0, 0);
-  V3 params = BLACKBOARD.GetVec3Var("plexus.lineParams");
-  _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, 1);
+  _cbPlexus.gs0.dim = vec4((float)desc.width, (float)desc.height, 0, 0);
+  vec3 params = BLACKBOARD.GetVec3Var("plexus.lineParams");
+  _cbPlexus.ps0.lineParams = vec4(params.x, params.y, params.z, 1);
   _cbPlexus.Set(_ctx, 0);
 
   ObjectHandle vb = _plexusLineBundle.objects._vb;
-  V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
+  vec3* vtx = _ctx->MapWriteDiscard<vec3>(vb);
   int numLines = CalcPlexusGrouping(
     vtx, _points.Data(), _points.Size(), _neighbours, _points.Size(), _settings.plexus);
   _ctx->Unmap(vb);
@@ -494,7 +494,7 @@ void Plexus::SaveParameterSet(bool inc)
 //------------------------------------------------------------------------------
 void Plexus::Reset()
 {
-  _freeflyCamera._pos = Vector3(0.f, 0.f, 0.f);
+  _freeflyCamera._pos = vec3(0.f, 0.f, 0.f);
   _freeflyCamera._pitch = _freeflyCamera._yaw = _freeflyCamera._roll = 0.f;
 }
 

@@ -11,11 +11,11 @@ namespace tano
   //------------------------------------------------------------------------------
   struct ParticleEmitter
   {
-    void Create(const V3& center, int numParticles);
+    void Create(const vec3& center, int numParticles);
     void Destroy();
     void Update(float dt);
     void CreateParticle(int idx, float s);
-    void CopyToBuffer(V4* vtx);
+    void CopyToBuffer(vec4* vtx);
 
     XMVECTOR* _pos = nullptr;
     XMVECTOR* _vel = nullptr;
@@ -23,13 +23,13 @@ namespace tano
     int* _deadParticles = nullptr;
 
     int _numParticles = 0;
-    V3 _center = { 0, 0, 0 };
+    vec3 _center = { 0, 0, 0 };
 
     struct EmitterKernelData
     {
       ParticleEmitter* emitter;
       float dt;
-      V4* vtx;
+      vec4* vtx;
     };
 
     static void UpdateEmitter(const scheduler::TaskData& data);
@@ -39,11 +39,11 @@ namespace tano
   //------------------------------------------------------------------------------
   struct RadialParticleEmitter
   {
-    void Create(const V3& center, float radius, int numParticles);
+    void Create(const vec3& center, float radius, int numParticles);
     void Destroy();
     void Update(float dt);
     void CreateParticle(int idx, float s);
-    void CopyToBuffer(V4* vtx);
+    void CopyToBuffer(vec4* vtx);
 
     XMVECTOR* _pos = nullptr;
     float* _angle = nullptr;
@@ -54,13 +54,13 @@ namespace tano
     int _spawnedParticles = 0;
     int _numParticles = 0;
     float _radius = 10;
-    V3 _center = { 0, 0, 0 };
+    vec3 _center = { 0, 0, 0 };
 
     struct EmitterKernelData
     {
       RadialParticleEmitter* emitter;
       float dt;
-      V4* vtx;
+      vec4* vtx;
     };
 
     static void UpdateEmitter(const scheduler::TaskData& data);

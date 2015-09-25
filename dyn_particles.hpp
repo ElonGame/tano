@@ -20,10 +20,10 @@ namespace tano
     struct Bodies
     {
       int numBodies = 0;
-      V3* pos = nullptr;
-      V3* vel = nullptr;
-      V3* acc = nullptr;
-      V3* force = nullptr;
+      vec3* pos = nullptr;
+      vec3* vel = nullptr;
+      vec3* acc = nullptr;
+      vec3* force = nullptr;
     };
 
     struct Kinematics
@@ -40,7 +40,7 @@ namespace tano
 
     vector<Kinematic> _kinematics;
     Bodies _bodies;
-    V3 _center = {0, 0, 0};
+    vec3 _center = {0, 0, 0};
     float _maxSpeed = 10.f;
     int _tickCount = 0;
 
@@ -78,7 +78,7 @@ namespace tano
   {
     BehaviorSeek(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
     virtual void Update(const UpdateParams& params) override;
-    V3 target = V3::Zero;
+    vec3 target = vec3::Zero;
   };
 
   //------------------------------------------------------------------------------

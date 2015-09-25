@@ -12,8 +12,8 @@ namespace tano
 {
   struct PN
   {
-    V3 pos;
-    V3 normal;
+    vec3 pos;
+    vec3 normal;
   };
 
   struct Pathy
@@ -25,31 +25,31 @@ namespace tano
       MAX_NUM_LINES = 32
     };
     void Create();
-    V3* CopyOut(V3* buf);
+    vec3* CopyOut(vec3* buf);
 
     void CreateTubesIncremental(float t);
 
-    vector<V3> verts;
+    vector<vec3> verts;
     vector<PN> tubeVerts;
 
     struct Segment
     {
-      Segment(const Vector3& cur, float scale, float speed, float angleX, float angleY, float angleZ)
+      Segment(const vec3& cur, float scale, float speed, float angleX, float angleY, float angleZ)
           : cur(cur), scale(scale), speed(speed), angleX(angleX), angleY(angleY), angleZ(angleZ)
       {
       }
-      Vector3 cur;
+      vec3 cur;
       float speed;
       float scale;
       float angleX, angleY, angleZ;
       int lastNumTicks = 0;
-      vector<V3> verts;
+      vector<vec3> verts;
       vector<PN> completeRings;
       vector<PN> inprogressRing;
       CardinalSpline spline;
 
       // last reference frame
-      V3 frameD, frameN, frameT;
+      vec3 frameD, frameN, frameT;
     };
 
     float len = 5;

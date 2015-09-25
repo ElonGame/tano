@@ -65,8 +65,8 @@ Camera::Camera()
 void Camera::Update(float deltaTime)
 {
   _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
-  Vector3 target = _pos + _dir;
-  _view = Matrix::CreateLookAt(_pos, target, _up);
+  vec3 target = _pos + _dir;
+  _view = Matrix::CreateLookAt(ToVector3(_pos), ToVector3(target), ToVector3(_up));
 }
 
 //------------------------------------------------------------------------------
@@ -94,8 +94,8 @@ void FreeflyCamera::Update(float deltaTime)
     _roll -= 0.1f / XM_PI;
 
   _mtx = Matrix::CreateFromYawPitchRoll(_yaw, _pitch, _roll);
-  _dir = Vector3::Transform(Vector3(0, 0, 1), _mtx);
-  _up = Vector3::Transform(Vector3(0, 1, 0), _mtx);
+  _dir = FromVector3(Vector3::Transform(Vector3(0, 0, 1), _mtx));
+  _up = FromVector3(Vector3::Transform(Vector3(0, 1, 0), _mtx));
   _right = Cross(_up, _dir);
 
   // movement
@@ -119,8 +119,8 @@ void FreeflyCamera::Update(float deltaTime)
   if (state.keysPressed['V'])
     _pos -= s * _up;
 
-  Vector3 target = _pos + _dir;
-  _view = Matrix::CreateLookAt(_pos, target, _up);
+  vec3 target = _pos + _dir;
+  _view = Matrix::CreateLookAt(ToVector3(_pos), ToVector3(target), ToVector3(_up));
   _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
 }
 
@@ -144,12 +144,12 @@ FollowCam::~FollowCam()
 void FollowCam::Update(float deltaTime)
 {
   _particle.Update(deltaTime, true);
-  V3* pos = _particle._bodies.pos;
-  V3* vel = _particle._bodies.vel;
+  vec3* pos = _particle._bodies.pos;
+  vec3* vel = _particle._bodies.vel;
 
-  _pos = ToVector3(pos[0]);
-  Vector3 target = _pos + ToVector3(vel[0]);
-  _view = Matrix::CreateLookAt(_pos, target, _up);
+  _pos = pos[0];
+  vec3 target = _pos + vel[0];
+  _view = Matrix::CreateLookAt(ToVector3(_pos), ToVector3(target), ToVector3(_up));
 }
 
 //------------------------------------------------------------------------------
@@ -161,7 +161,7 @@ void FollowCam::SetMaxSpeedAndForce(float maxSpeed, float maxForce)
 }
 
 //------------------------------------------------------------------------------
-void FollowCam::SetFollowTarget(const V3& followTarget)
+void FollowCam::SetFollowTarget(const vec3& followTarget)
 {
   _seek.target = followTarget;
 }

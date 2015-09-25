@@ -15,10 +15,10 @@ namespace tano
     void EndFrame();
 
     void SetTransform(const Matrix& world, const Matrix& viewProj);
-    void AddDebugLine(const Vector3& start, const Vector3& end, const Color& color);
-    void AddDebugLine(const Vector3& start, const Vector3& end, const Color& startColor, const Color& endColor);
-    void AddDebugSphere(const Vector3& center, float radius, const Color& color);
-    void AddDebugCube(const Vector3& center, const Vector3& extents, const Color& color);
+    void AddDebugLine(const vec3& start, const vec3& end, const Color& color);
+    void AddDebugLine(const vec3& start, const vec3& end, const Color& startColor, const Color& endColor);
+    void AddDebugSphere(const vec3& center, float radius, const Color& color);
+    void AddDebugCube(const vec3& center, const vec3& extents, const Color& color);
 
     u32 AddDebugAnchor();
     void UpdateDebugAnchor(u32 id);
@@ -36,10 +36,17 @@ namespace tano
     };
 
     vector<LineChunk> _lineChunks;
-    vector<Vector3> _unitSphere;
+    vector<vec3> _unitSphere;
 
     static const int MAX_VERTS = 128 * 1024;
-    bristol::PosCol _vertices[MAX_VERTS];
+
+    struct PosCol
+    {
+      vec3 pos;
+      Color col;
+    };
+
+    PosCol _vertices[MAX_VERTS];
     int _numVerts = 0;
 
     struct CBufferPerFrame

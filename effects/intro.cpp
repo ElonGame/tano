@@ -18,6 +18,7 @@
 using namespace tano;
 using namespace tano::scheduler;
 using namespace bristol;
+using namespace DirectX;
 
 extern "C" float stb_perlin_noise3(float x, float y, float z);
 
@@ -40,10 +41,10 @@ void* BlockAllocate(int headerSize, int numBlocks, int dataOffset)
 }
 
 //------------------------------------------------------------------------------
-void CreateTriangles(const V3* vtx, int numVerts, vector<u32>* tris)
+void CreateTriangles(const vec3* vtx, int numVerts, vector<u32>* tris)
 {
-  V3 minBounds = vtx[0];
-  V3 maxBounds = vtx[1];
+  vec3 minBounds = vtx[0];
+  vec3 maxBounds = vtx[1];
   for (int i = 0; i < numVerts; ++i)
   {
     minBounds = Min(minBounds, vtx[i]);
@@ -54,7 +55,7 @@ void CreateTriangles(const V3* vtx, int numVerts, vector<u32>* tris)
   int numBuckets = 10;
   struct Bucket
   {
-    V3 center;
+    vec3 center;
     int cnt;
     int* vtx;
   };
@@ -154,20 +155,20 @@ void BlurLine(const T* src, T* dst, int size, float r)
 }
 
 //------------------------------------------------------------------------------
-void DistortVerts(V3* dst,
-    const V3* src,
+void DistortVerts(vec3* dst,
+    const vec3* src,
     int num,
-    const V3* randomPoints,
+    const vec3* randomPoints,
     float scale,
     float strength,
-    const V3 ptOfs,
+    const vec3 ptOfs,
     float ptScale)
 {
   for (int i = 0; i < num; ++i)
   {
-    V3 pt(ptScale * (src[i] + ptOfs));
+    vec3 pt(ptScale * (src[i] + ptOfs));
     float s = fabs(1024 * stb_perlin_noise3(pt.x / scale, pt.y / scale, pt.z / scale));
-    V3 v = randomPoints[IntMod((int)s, 1024)];
+    vec3 v = randomPoints[IntMod((int)s, 1024)];
     dst[i] = pt + strength * v;
   }
 }
@@ -210,12 +211,12 @@ static void CalcTextNeighbours(int num, const vector<int>& tris, int* neighbours
 //------------------------------------------------------------------------------
 void Intro::GenRandomPoints(float kernelSize)
 {
-  V3* tmp = g_ScratchMemory.Alloc<V3>(_randomPoints.Capacity());
+  vec3* tmp = g_ScratchMemory.Alloc<vec3>(_randomPoints.Capacity());
   for (int i = 0; i < _randomPoints.Capacity(); ++i)
   {
     float xSpread = 0.5f;
     float ySpread = 0.5f;
-    V3 v(randf(-xSpread, xSpread), randf(-ySpread, ySpread), randf(-1.f, 1.f));
+    vec3 v(randf(-xSpread, xSpread), randf(-ySpread, ySpread), randf(-1.f, 1.f));
     v = Normalize(v);
     tmp[i] = v;
   }
@@ -246,13 +247,13 @@ bool Intro::OnConfigChanged(const vector<char>& buf)
 }
 
 //------------------------------------------------------------------------------
-Vector4 ColorToVector4(const Color& c)
+vec4 ColorToVector4(const Color& c)
 {
-  return Vector4(c.x, c.y, c.z, c.w);
+  return vec4(c.x, c.y, c.z, c.w);
 }
 
 //------------------------------------------------------------------------------
-float Noise3(const V3& v, float scale)
+float Noise3(const vec3& v, float scale)
 {
   return stb_perlin_noise3(v.x / scale, v.y / scale, v.z / scale);
 }
@@ -271,7 +272,7 @@ void Intro::CreateKeyframes(TextData::Segment* segment)
 
   for (int i = 0; i < numVerts; ++i)
   {
-    V3 pos = segment->verts[i];
+    vec3 pos = segment->verts[i];
     float angle = XM_2PI * Noise3(pos, scale);
     float speed = 0;
     for (int j = 0; j < numKeyframes; ++j)
@@ -306,7 +307,7 @@ bool Intro::Init()
     .PixelShader("shaders/out/intro.particle", "PsParticle")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
-    .DynamicVb(MAX_NUM_PARTICLES, sizeof(V4))
+    .DynamicVb(MAX_NUM_PARTICLES, sizeof(vec4))
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescPreMultipliedAlpha)
     .RasterizerDesc(rasterizeDescCullNone)));
@@ -341,7 +342,7 @@ bool Intro::Init()
   for (int i = 0; i < 20; ++i)
   {
     _particleEmitters.Append(RadialParticleEmitter())
-        .Create(V3(0, 0, 0), 25.f * (i + 1), _settings.num_particles);
+        .Create(vec3(0, 0, 0), 25.f * (i + 1), _settings.num_particles);
   }
 
   GenRandomPoints(_settings.deform.blur_kernel);
@@ -360,8 +361,8 @@ bool Intro::Init()
     _textWriter.GenerateIndexedTris(text[i], TextWriter::TextOutline, &t.outline.verts, &t.outline.indices);
     _textWriter.GenerateTris(text[i], TextWriter::TextCap1, &t.cap.verts);
 
-    t.vb = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, 128 * 1024, true, nullptr, sizeof(V3));
-    t.vbTri = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, 128 * 1024, true, nullptr, 2 * sizeof(V3));
+    t.vb = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, 128 * 1024, true, nullptr, sizeof(vec3));
+    t.vbTri = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, 128 * 1024, true, nullptr, 2 * sizeof(vec3));
 
     auto fnFinalize = [this, &maxVerts](TextData::Segment& segment, bool calcNeighours) {
 
@@ -395,7 +396,7 @@ bool Intro::Init()
 
   int w, h;
   GRAPHICS.GetBackBufferSize(&w, &h);
-  Vector4 dim((float)w, (float)h, 0, 0);
+  vec4 dim((float)w, (float)h, 0, 0);
   _cbPlexus.gs0.dim = dim;
   _cbPlexus.gs0.world = Matrix::Identity();
 
@@ -415,15 +416,14 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
   {
     float x = distance * sin(angle);
     float z = -distance * cos(angle);
-    Vector3 pos = Vector3(x, height, z);
-    Vector3 target = Vector3(0, 0, 0);
-    Vector3 dir = target - pos;
-    dir.Normalize();
-
+    vec3 pos = vec3(x, height, z);
+    vec3 target = vec3(0, 0, 0);
+    vec3 dir = Normalize(target - pos);
+   
     int w, h;
     GRAPHICS.GetBackBufferSize(&w, &h);
     float aspect = (float)w / h;
-    Matrix view = Matrix::CreateLookAt(pos, Vector3(0, 0, 0), Vector3(0, 1, 0));
+    Matrix view = Matrix::CreateLookAt(ToVector3(pos), Vector3(0, 0, 0), Vector3(0, 1, 0));
     Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), aspect, 0.1f, 3000.f);
     Matrix viewProj = view * proj;
 
@@ -487,7 +487,7 @@ void Intro::UpdateText(const UpdateState& state, TextData* textData, const char*
   else
     textData->fade = 1;
   scale = Clamp(0.f, 1.f, scale / delta);
-  V3 ptOfs = BLACKBOARD.GetVec3Var(textPos);
+  vec3 ptOfs = BLACKBOARD.GetVec3Var(textPos);
   float ptScale = BLACKBOARD.GetFloatVar(textScale);
 
 #if 0
@@ -511,8 +511,8 @@ void Intro::UpdateText(const UpdateState& state, TextData* textData, const char*
   auto fnInterpolate = [=](TextData::Segment& segment) {
     for (int i = 0; i < (int)segment.verts.size(); ++i)
     {
-      V3 v0 = segment.keyframes[i * numKeyframes + idx0];
-      V3 v1 = segment.keyframes[i * numKeyframes + idx1];
+      vec3 v0 = segment.keyframes[i * numKeyframes + idx0];
+      vec3 v1 = segment.keyframes[i * numKeyframes + idx1];
       segment.transformedVerts[i] = ptOfs + ptScale * lerp(v0, v1, frac);
     }
   };
@@ -543,7 +543,7 @@ bool Intro::Update(const UpdateState& state)
   UpdateText(state, &_textData[2], "text2");
 
   _cbComposite.ps0.time.x = ms;
-  _cbComposite.ps0.tonemap = Vector4(1, 1, 0, 0);
+  _cbComposite.ps0.tonemap = vec4(1, 1, 0, 0);
 
   CopyOutParticleEmitters();
 
@@ -588,7 +588,7 @@ void Intro::CopyOutParticleEmitters()
   typedef RadialParticleEmitter::EmitterKernelData EmitterKernelData;
 
   ObjectHandle vb = _particleBundle.objects._vb;
-  V4* vtx = _ctx->MapWriteDiscard<V4>(_particleBundle.objects._vb);
+  vec4* vtx = _ctx->MapWriteDiscard<vec4>(_particleBundle.objects._vb);
 
   SimpleAppendBuffer<TaskId, 32> tasks;
 
@@ -665,7 +665,7 @@ bool Intro::Render()
   if (_drawText)
   {
     _ctx->SetRenderTarget(rtLines, GRAPHICS.GetDepthStencil(), &black);
-    V3 params = BLACKBOARD.GetVec3Var("intro.lineParams");
+    vec3 params = BLACKBOARD.GetVec3Var("intro.lineParams");
 
     // tris
     _ctx->SetBundle(_textPolyBundle);
@@ -677,20 +677,20 @@ bool Intro::Render()
         continue;
 
       float ff = cur->fade;
-      _cbTextPoly.ps0.params = Vector4(ff, beatHi, ff, ff);
+      _cbTextPoly.ps0.params = vec4(ff, beatHi, ff, ff);
       _cbTextPoly.Set(_ctx, 0);
 
       ObjectHandle vb = cur->vbTri;
-      V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
-      V3* src = cur->cap.transformedVerts.data();
+      vec3* vtx = _ctx->MapWriteDiscard<vec3>(vb);
+      vec3* src = cur->cap.transformedVerts.data();
       int num = (int)cur->cap.transformedVerts.size() / 3;
       for (int j = 0; j < num; ++j)
       {
-        V3& v0 = src[j * 3 + 0];
-        V3& v1 = src[j * 3 + 1];
-        V3& v2 = src[j * 3 + 2];
+        vec3& v0 = src[j * 3 + 0];
+        vec3& v1 = src[j * 3 + 1];
+        vec3& v2 = src[j * 3 + 2];
 
-        V3 n = Cross(v1 - v0, v2 - v0);
+        vec3 n = Cross(v1 - v0, v2 - v0);
         vtx[j * 6 + 0] = v0;
         vtx[j * 6 + 1] = n;
         vtx[j * 6 + 2] = v1;
@@ -711,11 +711,11 @@ bool Intro::Render()
       if (cur->state == TextData::STATE_INACTIVE)
         continue;
 
-      _cbPlexus.ps0.lineParams = Vector4(params.x, params.y, params.z, cur->fade);
+      _cbPlexus.ps0.lineParams = vec4(params.x, params.y, params.z, cur->fade);
       _cbPlexus.Set(_ctx, 0);
 
       ObjectHandle vb = cur->vb;
-      V3* vtx = _ctx->MapWriteDiscard<V3>(vb);
+      vec3* vtx = _ctx->MapWriteDiscard<vec3>(vb);
 
       int numLines = CalcPlexusGrouping(vtx,
         cur->outline.transformedVerts.data(),
@@ -742,7 +742,7 @@ bool Intro::Render()
   ScopedRenderTarget rtCompose(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv);
   {
     // composite
-    _cbComposite.ps0.tonemap = Vector4(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
+    _cbComposite.ps0.tonemap = vec4(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
     _cbComposite.Set(_ctx, 0);
     ObjectHandle inputs[] = {rtColor, rtLines, rtBlur, rtBlur2};
     fullscreen->Execute(inputs,
