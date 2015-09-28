@@ -53,6 +53,9 @@
     <Filter Include="bristol\parser">
       <UniqueIdentifier>{2b43d973-40ae-4be0-acf2-82ae3008d0db}</UniqueIdentifier>
     </Filter>
+    <Filter Include="s7">
+      <UniqueIdentifier>{e8ab1107-78e8-4790-83bc-d584de9ec07c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tano.cpp">
@@ -240,6 +243,9 @@
     </ClCompile>
     <ClCompile Include="..\bristol\parser\parse_base.cpp">
       <Filter>bristol\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\s7\s7.c">
+      <Filter>s7</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -494,6 +500,15 @@
     </ClInclude>
     <ClInclude Include="..\bristol\parser\parse_base.hpp">
       <Filter>bristol\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\s7\s7.h">
+      <Filter>s7</Filter>
+    </ClInclude>
+    <ClInclude Include="..\s7\mus-config.h">
+      <Filter>s7</Filter>
+    </ClInclude>
+    <ClInclude Include="..\boba_scene_format.hpp">
+      <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

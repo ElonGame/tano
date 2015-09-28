@@ -2,9 +2,13 @@
 #include "split.common.hlsl"
 #include "noise_lib.hlsl"
 
-cbuffer F : register(b0)
+cbuffer V : register(b0)
 {
   matrix viewProj;
+};
+
+cbuffer P : register(b0)
+{
   float3 cameraPos;
 };
 
@@ -63,7 +67,7 @@ float4 PsMesh(VsMeshOut p) : SV_Target
 
   float3 r = reflect(l, n);
   float diffuse = saturate(dot(n, l));
-  float specular = pow(saturate(dot(v, r)), 20);
+  float specular = pow(saturate(dot(v, r)), 10);
 
   //return specular;
 

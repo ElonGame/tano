@@ -13,6 +13,7 @@
 #include "../fullscreen_effect.hpp"
 #include "../mesh_utils.hpp"
 #include "../debug_api.hpp"
+#include "../mesh_loader.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -22,6 +23,9 @@ static int SEGMENT_SPLITS = 10;
 static int ROTATION_SEGMENTS = 10;
 static int NUM_INITIAL_SEGMENTS = 15;
 static float INITIAL_SPREAD = 25;
+
+#define DEBUG_DRAW_SPLINE 0
+#define USE_MESH_SPLINE 0
 
 //------------------------------------------------------------------------------
 void AddRing(float curT,
@@ -55,47 +59,71 @@ void AddRing(float curT,
     vec3 dd = Normalize(d);
     Matrix mtx = Matrix::CreateFromAxisAngle(ToVector3(dd), angle);
     vec3 xx = scale * n;
-    //Vector3 rr = ToVector3(V3(scale * 1, 0, 0));
     vec3 rr = Normalize(xx);
     rr = FromVector3(Vector3::Transform(ToVector3(rr), mtx));
     vec3 vv = pp + FromVector3(Vector3::Transform(ToVector3(xx), mtx));
-    //Vector3 nn = vv - pp;
-    //nn.Normalize();
     angle += angleInc;
     out->push_back(PN{vec3(vv), vec3(rr)});
 
+#if DEBUG_DRAW_SPLINE
     DEBUG_API.AddDebugLine(vv, vv+rr, Color(1, 1, 0), Color(1, 0, 1));
+#endif
 
   }
 }
 
 //------------------------------------------------------------------------------
-void Pathy::Create()
+void Pathy::Create(const MeshLoader& meshLoader)
 {
   SeqDelete(&segments);
 
-  float time = 0;
-  verts.clear();
-  float delta = 1.f / SEGMENT_SPLITS;
-
   float speedMean = BLACKBOARD.GetFloatVar("split.speedMean");
   float speedVar = BLACKBOARD.GetFloatVar("split.speedVar");
+
+  float time = 0;
+  float delta = 1.f / SEGMENT_SPLITS;
+
+#if USE_MESH_SPLINE
+  for (protocol::SplineBlob* spline : meshLoader.splines)
+  {
+    //if (strcmp(spline->name, "MoSpline") != 0)
+    //  continue;
+
+    Segment* s = new Segment{vec3(spline->points[0], spline->points[1], spline->points[2]),
+        1,
+        GaussianRand(speedMean, speedMean),
+        0,
+        0,
+        0};
+    segments.push_back(s);
+    segmentStart.push_back(SegmentStart{ time, s });
+
+    vector<vec3> pts(spline->numPoints);
+    memcpy(pts.data(), spline->points, spline->numPoints * sizeof(vec3));
+    for (u32 i = 0; i < spline->numPoints; ++i)
+    {
+      pts[i] = 1.0f / 2 * pts[i];
+    }
+    
+    s->spline.Create(pts.data(), spline->numPoints, 1.0f / 5);
+  }
+#else
 
   for (int i = 0; i < NUM_INITIAL_SEGMENTS; ++i)
   {
     float ss = INITIAL_SPREAD;
     float x = randf(-ss, ss);
     float z = randf(-ss, ss);
-    Segment* s = new Segment{vec3(x, 0, z), 1, GaussianRand(speedMean, speedMean), 0, 0, 0};
+    Segment* s = new Segment{ vec3(x, 0, z), 1, GaussianRand(speedMean, speedMean), 0, 0, 0 };
     segments.push_back(s);
-    segmentStart.push_back(SegmentStart{time, s});
+    segmentStart.push_back(SegmentStart{ time, s });
   }
 
   int numVerts = 0;
   while (numVerts < TOTAL_POINTS)
   {
     // update all the active instances
-    for (int i = 0, e = (int)segments.size(); i < e; ++i)
+    for (int i = 0; i < (int)segments.size(); ++i)
     {
       Segment& segment = *segments[i];
 
@@ -116,15 +144,15 @@ void Pathy::Create()
       float r = randf(0.f, 1.f);
       if (r >= childProb && (int)segments.size() < maxChildren)
       {
-        Segment* s = new Segment{cur,
-            scale * childScale,
-            scale * GaussianRand(speedMean, speedVar),
-            angleX + GaussianRand(angleXMean, angleXVariance),
-            angleY + GaussianRand(angleYMean, angleYVariance),
-            angleZ + GaussianRand(angleZMean, angleZVariance)};
+        Segment* s = new Segment{ cur,
+          scale * childScale,
+          scale * GaussianRand(speedMean, speedVar),
+          angleX + GaussianRand(angleXMean, angleXVariance),
+          angleY + GaussianRand(angleYMean, angleYVariance),
+          angleZ + GaussianRand(angleZMean, angleZVariance) };
 
         segments.push_back(s);
-        segmentStart.push_back(SegmentStart{time, s});
+        segmentStart.push_back(SegmentStart{ time, s });
       }
 
       Matrix mtx = Matrix::CreateFromYawPitchRoll(angleX, angleY, angleZ);
@@ -135,17 +163,19 @@ void Pathy::Create()
       segment.angleZ += GaussianRand(angleZMean, angleZVariance);
       segment.cur += delta;
     }
-
     time++;
   }
+#endif
 
-  // copy over all the vertices
   for (int i = 0; i < (int)segments.size(); ++i)
   {
     Segment* segment = segments[i];
-    segment->spline.Create(segment->verts.data(), (int)segment->verts.size(), 1);
+#if !USE_MESH_SPLINE
+    segment->spline.Create(segment->verts.data(), (int)segment->verts.size(), 1.0f / 3);
+#endif
 
     float tt = segmentStart[i].time;
+
     // Reference frame
     segment->frameD = Normalize(segment->spline.Interpolate(tt + delta) - segment->spline.Interpolate(tt));
     segment->frameT = Perp(segment->frameD);
@@ -160,20 +190,15 @@ void Pathy::Create()
         &segment->frameN,
         &segment->frameT,
         &segment->completeRings);
-
-    int ofs = (int)verts.size();
-    lines.push_back(Line{ofs, (int)segment->verts.size()});
-    verts.resize(verts.size() + segment->verts.size());
-    copy(segment->verts.begin(), segment->verts.end(), verts.begin() + ofs);
   }
 
-  assert(numVerts <= TOTAL_POINTS);
+  //assert(numVerts <= TOTAL_POINTS);
 }
 
 //------------------------------------------------------------------------------
 void Pathy::CreateTubesIncremental(float orgTime)
 {
-  tubeVerts.clear();
+  //tubeVerts.clear();
 
   for (SegmentStart start : segmentStart)
   {
@@ -183,6 +208,8 @@ void Pathy::CreateTubesIncremental(float orgTime)
     {
       break;
     }
+
+    s->started = true;
 
     float delta = 1.f / SEGMENT_SPLITS;
     float elapsedTime = time - start.time;
@@ -203,31 +230,21 @@ void Pathy::CreateTubesIncremental(float orgTime)
           &s->completeRings);
     }
 
+#if DEBUG_DRAW_SPLINE
     {
       vec3 p0 = s->spline.Interpolate(elapsedTime);
       DEBUG_API.AddDebugLine(p0, p0 + s->frameD, Color(1, 0, 0));
       DEBUG_API.AddDebugLine(p0, p0 + s->frameN, Color(0, 1, 0));
       DEBUG_API.AddDebugLine(p0, p0 + s->frameT, Color(0, 0, 1));
     }
+#endif
 
     s->inprogressRing.clear();
     float ss = (elapsedTime - (int)(elapsedTime / delta) * delta) / delta;
     ss = 1;
     AddRing(
         elapsedTime, s->frameT, s->spline, s->scale, &s->frameD, &s->frameN, &s->frameT, &s->inprogressRing);
-
-    Append(s->completeRings, &tubeVerts);
-    Append(s->inprogressRing, &tubeVerts);
   }
-}
-
-//------------------------------------------------------------------------------
-vec3* Pathy::CopyOut(vec3* buf)
-{
-  assert(verts.size() <= TOTAL_POINTS);
-
-  memcpy(buf, tubeVerts.data(), tubeVerts.size() * sizeof(PN));
-  return buf + verts.size();
 }
 
 //------------------------------------------------------------------------------
@@ -273,21 +290,38 @@ bool Split::Init()
   INIT_FATAL(_meshBundle.Create(BundleOptions()
     //.RasterizerDesc(rasterizeDescWireframe)
      .BlendDesc(blendDescBlendSrcAlpha)
-     .DepthStencilDesc(depthDescDepthDisabled)
+     //.DepthStencilDesc(depthDescDepthDisabled)
      .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
      .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
     .DynamicVb(10 * 1024 * 1024, 2 * sizeof(vec3))
     .StaticIb(CreateCylinderIndices(ROTATION_SEGMENTS, 1000))
     .VertexShader("shaders/out/split.mesh", "VsMesh")
     .PixelShader("shaders/out/split.mesh", "PsMesh")));
+
+  INIT(_particleBundle.Create(BundleOptions()
+    .DynamicVb(1024 * 1024 * 6, sizeof(vec3))
+    .VertexShader("shaders/out/split.particle", "VsParticle")
+    .GeometryShader("shaders/out/split.particle", "GsParticle")
+    .PixelShader("shaders/out/split.particle", "PsParticle")
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
+    .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
+    .DepthStencilDesc(depthDescDepthWriteDisabled)
+    .BlendDesc(blendDescBlendSrcAlpha)
+    .RasterizerDesc(rasterizeDescCullNone)));
   // clang-format on
 
   INIT_FATAL(_cbComposite.Create());
   INIT_FATAL(_cbBackground.Create());
   INIT_FATAL(_cbMesh.Create());
   INIT_FATAL(_cbSky.Create());
+  INIT_FATAL(_cbParticle.Create());
 
-  _pathy.Create();
+#if USE_MESH_SPLINE
+  INIT_FATAL(_meshLoader.Load("gfx/krumlins3.boba"));
+#endif
+  _pathy.Create(_meshLoader);
+
+  INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture("gfx/particle_white.png"));
 
   END_INIT_SEQUENCE();
 }
@@ -298,13 +332,6 @@ bool Split::Update(const UpdateState& state)
   UpdateCameraMatrix(state);
 
   _pathy.CreateTubesIncremental(state.localTime.TotalSecondsAsFloat());
-
-  {
-    ObjectHandle handle = _meshBundle.objects._vb;
-    vec3* vtx = _ctx->MapWriteDiscard<vec3>(handle);
-    _pathy.CopyOut(vtx);
-    _ctx->Unmap(handle);
-  }
 
   _cbBackground.ps0.upper = BLACKBOARD.GetVec4Var("particle_trail.upper");
   _cbBackground.ps0.lower = BLACKBOARD.GetVec4Var("particle_trail.lower");
@@ -326,7 +353,7 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
   Matrix viewProj = view * proj;
 
   _cbMesh.vs0.viewProj = viewProj.Transpose();
-  _cbMesh.vs0.cameraPos = _freeflyCamera._pos;
+  _cbMesh.ps0.cameraPos = _freeflyCamera._pos;
   _cbMesh.vs1.objWorld = Matrix::Identity();
 
   RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
@@ -335,17 +362,22 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
   _cbSky.ps0.cameraPos = _freeflyCamera._pos;
   _cbSky.ps0.cameraLookAt = _freeflyCamera._pos + _freeflyCamera._dir;
 
+  _cbParticle.gs0.viewProj = viewProj.Transpose();
+  _cbParticle.gs0.cameraPos = _freeflyCamera._pos;
+
+#if DEBUG_DRAW_SPLINE
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
+#endif
 
 }
 
 //------------------------------------------------------------------------------
-template <typename Src, typename Dst>
-size_t CopyOut(Dst* dst, const vector<Src>& src)
+template <typename T>
+size_t CopyOut(T* dst, const vector<T>& src)
 {
-  size_t len = src.size() * sizeof(Src);
+  size_t len = src.size() * sizeof(T);
   memcpy(dst, src.data(), len);
-  return len;
+  return src.size();
 }
 
 //------------------------------------------------------------------------------
@@ -368,9 +400,10 @@ bool Split::Render()
   }
 
   {
-
+    // tubes
     vec3 camPos = _freeflyCamera._pos;
     vector<Pathy::Segment*> sortedSegments = _pathy.segments;
+    // sort back to front
     sort(sortedSegments.begin(), sortedSegments.end(), [&](Pathy::Segment* lhs, Pathy::Segment* rhs)
     {
       return DistanceSquared(vec3(camPos), vec3(lhs->cur)) > DistanceSquared(vec3(camPos), vec3(rhs->cur));
@@ -380,57 +413,81 @@ bool Split::Render()
     PN* vtx = _ctx->MapWriteDiscard<PN>(handle);
     for (const Pathy::Segment* s : sortedSegments)
     {
-      vtx += CopyOut(vtx, s->completeRings);
-      vtx += CopyOut(vtx, s->inprogressRing);
+      if (s->started)
+      {
+        vtx += CopyOut(vtx, s->completeRings);
+        vtx += CopyOut(vtx, s->inprogressRing);
+      }
     }
     _ctx->Unmap(handle);
 
-    _cbMesh.Set(_ctx, 0);
-    _cbMesh.Set(_ctx, 1);
-    _ctx->SetBundle(_meshBundle);
-    int startVtx = 0;
-    for (const Pathy::Segment* s : sortedSegments)
     {
-      // calc # faces at the current segment
-      int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
-      int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
-      _ctx->DrawIndexed(n, 0, startVtx);
-      startVtx += numVerts;
+      // back facing
+      _cbMesh.Set(_ctx, 0);
+      _cbMesh.Set(_ctx, 1);
+      _ctx->SetBundle(_meshBundle);
+      int startVtx = 0;
+      _ctx->SetRasterizerState(_meshFrontFace);
+      for (const Pathy::Segment* s : sortedSegments)
+      {
+        if (s->started)
+        {
+          // calc # faces at the current segment
+          int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
+          int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
+          _ctx->DrawIndexed(n, 0, startVtx);
+          startVtx += numVerts;
+        }
+      }
     }
 
-#if 0
-    vector<Pathy::Segment*> sortedSegments = _pathy.segments;
-    sort(sortedSegments.begin(), sortedSegments.end(), [](Pathy::Segment* lhs, Pathy::Segment* rhs)
     {
-      return lhs->cur.z > rhs->cur.z;
-    });
+      // particles
+      int numParticles = 0;
+      ObjectHandle handle = _particleBundle.objects._vb;
+      vec3* vtx = _ctx->MapWriteDiscard<vec3>(handle);
+      for (const Pathy::Segment* s : sortedSegments)
+      {
+        if (s->started)
+        {
+          float t = 0;
+          for (int i = 0; i < 100; ++i)
+          {
+            *vtx++ = s->spline.Interpolate(t);
+            t += 1;
+          }
+          numParticles += 100;
+        }
+      }
+      _ctx->Unmap(handle);
 
-    _cbMesh.Set(_ctx, 0);
-    _cbMesh.Set(_ctx, 1);
-    _ctx->SetBundle(_meshBundle);
-    int startVtx = 0;
-    _ctx->SetRasterizerState(_meshFrontFace);
-    for (const Pathy::Segment* s : sortedSegments)
-    {
-      // calc # faces at the current segment
-      int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
-      int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
-      _ctx->DrawIndexed(n, 0, startVtx);
-      startVtx += numVerts;
+      _cbParticle.Set(_ctx, 0);
+      _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
+
+      ObjectHandle srv[] = { _particleTexture };
+      _ctx->SetShaderResources(srv, 1, ShaderType::PixelShader);
+      _ctx->Draw(numParticles, 0);
+      _ctx->UnsetShaderResources(0, 1, ShaderType::PixelShader);
     }
 
-    startVtx = 0;
-    _ctx->SetRasterizerState(_meshBackFace);
-
-    for (const Pathy::Segment* s : sortedSegments)
     {
-      // calc # faces at the current segment
-      int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
-      int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
-      _ctx->DrawIndexed(n, 0, startVtx);
-      startVtx += numVerts;
+      // front facing
+      _ctx->SetBundle(_meshBundle);
+      int startVtx = 0;
+      _ctx->SetRasterizerState(_meshBackFace);
+      for (const Pathy::Segment* s : sortedSegments)
+      {
+        if (s->started)
+        {
+          // calc # faces at the current segment
+          int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
+          int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
+          _ctx->DrawIndexed(n, 0, startVtx);
+          startVtx += numVerts;
+        }
+      }
     }
-#endif
+
   }
 
   {
@@ -467,7 +524,7 @@ void Split::RenderParameterSet()
   recalc |= ImGui::SliderFloat("z-var", &_pathy.angleZVariance, 0, 1);
 
   if (recalc)
-    _pathy.Create();
+    _pathy.Create(_meshLoader);
 
   ImGui::Separator();
   ImGui::SliderFloat("Exposure", &_settings.tonemap.exposure, 0.1f, 2.0f);

@@ -83,6 +83,8 @@ namespace tano
     vec3(float x, float y, float z) : x(x), y(y), z(z) { }
 #endif
 
+    float& operator[](int idx) { return *(&x + idx); }
+    float operator[] (int idx) const { return *(&x + idx); }
     vec3& operator+=(const vec3& v) { x += v.x; y += v.y; z += v.z; return *this; }
     vec3& operator-=(const vec3& v) { x -= v.x; y -= v.y; z -= v.z; return *this; }
     vec3& operator/=(float s) { x /= s; y /= s; z /= s; return *this; }
@@ -93,6 +95,11 @@ namespace tano
 
     float Length() const { return tano::Length(*this); }
     float LengthSqr() const { return tano::LengthSquared(*this); }
+
+    void Normalize()
+    {
+      *this = tano::Normalize(*this);
+    }
 
     float x, y, z;
   };
@@ -130,7 +137,7 @@ namespace tano
   inline vec3 Normalize(const vec3& v)
   {
     float len = Length(v);
-    return len > 0 ? 1 / len * v : v;
+    return len > 0.0000001f ? 1 / len * v : vec3(0,0,0);
   }
 
   inline vec3 operator*(float s, const vec3& v)

@@ -6,7 +6,10 @@
 #include "../shaders/out/trail.composite_pscomposite.cbuffers.hpp"
 #include "../shaders/out/trail.background_psbackground.cbuffers.hpp"
 #include "../shaders/out/split.mesh_vsmesh.cbuffers.hpp"
+#include "../shaders/out/split.mesh_psmesh.cbuffers.hpp"
 #include "../shaders/out/split.sky_pssky.cbuffers.hpp"
+#include "../shaders/out/split.particle_gsparticle.cbuffers.hpp"
+#include "../mesh_loader.hpp"
 
 namespace tano
 {
@@ -24,13 +27,9 @@ namespace tano
       POINTS_PER_CHILD = 1024,
       MAX_NUM_LINES = 32
     };
-    void Create();
-    vec3* CopyOut(vec3* buf);
+    void Create(const MeshLoader& meshLoader);
 
     void CreateTubesIncremental(float t);
-
-    vector<vec3> verts;
-    vector<PN> tubeVerts;
 
     struct Segment
     {
@@ -43,6 +42,7 @@ namespace tano
       float scale;
       float angleX, angleY, angleZ;
       int lastNumTicks = 0;
+      bool started = false;
       vector<vec3> verts;
       vector<PN> completeRings;
       vector<PN> inprogressRing;
@@ -63,7 +63,8 @@ namespace tano
     float angleZMean = 0.f;
     float angleZVariance = 1.f;
 
-    float childProb = 1; //0.75f;
+    // TODO(magnus): fix the popping here
+    float childProb = 1.0f; //0.75f;
     float childScale = 0.50f;
 
     int maxChildren = 512;
@@ -123,13 +124,18 @@ namespace tano
     ConstantBufferBundle<void, cb::TrailCompositeP> _cbComposite;
 
     ConstantBufferBundle<
-      cb::SplitMeshF, void, void,
+      cb::SplitMeshV, cb::SplitMeshP, void,
       cb::SplitMeshO, void, void> _cbMesh;
 
     GpuBundle _meshBundle;
     ConstantBufferBundle<void, cb::SplitSkyF> _cbSky;
     GpuBundle _skyBundle;
 
+    ConstantBufferBundle<void, void, cb::SplitParticleG> _cbParticle;
+    ObjectHandle _particleTexture;
+    GpuBundle _particleBundle;
+
     SplitSettings _settings;
+    MeshLoader _meshLoader;
   };
 }

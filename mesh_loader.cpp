@@ -54,6 +54,15 @@ bool MeshLoader::Load(const char* filename)
     ptr += materialBlob->blobSize;
   }
 
+  if (scene->version >= 2)
+  {
+    protocol::SplineBlob* blob = (protocol::SplineBlob*)&buf[scene->splineDataStart];
+    for (u32 i = 0; i < scene->numSplines; ++i, ++blob)
+    {
+      splines.push_back(blob);
+    }
+  }
+
   return true;
 }
 

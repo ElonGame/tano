@@ -383,6 +383,17 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
+    <ClCompile Include="..\s7\s7.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Public|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </ForcedIncludeFiles>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">
+      </ForcedIncludeFiles>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ForcedIncludeFiles>
+    </ClCompile>
     <ClCompile Include="..\scene.cpp" />
     <ClCompile Include="..\scheduler.cpp" />
     <ClCompile Include="..\stop_watch.cpp" />
@@ -461,6 +472,7 @@
     <ClInclude Include="..\arena_allocator.hpp" />
     <ClInclude Include="..\bass\bass.h" />
     <ClInclude Include="..\blackboard.hpp" />
+    <ClInclude Include="..\boba_scene_format.hpp" />
     <ClInclude Include="..\bristol\parser\input_buffer.hpp" />
     <ClInclude Include="..\bristol\parser\output_buffer.hpp" />
     <ClInclude Include="..\bristol\parser\parse_base.hpp" />
@@ -524,6 +536,8 @@
     <ClInclude Include="..\Remotery\lib\Remotery.h" />
     <ClInclude Include="..\render_queue.hpp" />
     <ClInclude Include="..\resource_manager.hpp" />
+    <ClInclude Include="..\s7\mus-config.h" />
+    <ClInclude Include="..\s7\s7.h" />
     <ClInclude Include="..\scene.hpp" />
     <ClInclude Include="..\scheduler.hpp" />
     <ClInclude Include="..\smooth_driver.hpp" />

@@ -22,7 +22,7 @@ using namespace tano::scheduler;
 using namespace bristol;
 using namespace DirectX;
 
-static const Vector3 ZERO3(0, 0, 0);
+static const vec3 ZERO3(0, 0, 0);
 static const float GRID_SIZE = 5;
 static const float NOISE_HEIGHT = 50;
 static const float NOISE_SCALE_X = 0.01f;
@@ -284,7 +284,7 @@ bool Landscape::Init()
   particleBlendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
   INIT(_particleBundle.Create(BundleOptions()
-    .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
+    .DynamicVb(1024 * 1024 * 6, sizeof(vec3))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
     .GeometryShader("shaders/out/landscape.particle", "GsParticle")
     .PixelShader("shaders/out/landscape.particle", "PsParticle")
@@ -295,7 +295,7 @@ bool Landscape::Init()
     .RasterizerDesc(rasterizeDescCullNone)));
 
   INIT(_boidsBundle.Create(BundleOptions()
-    .DynamicVb(1024 * 1024 * 6, sizeof(Vector3))
+    .DynamicVb(1024 * 1024 * 6, sizeof(vec3))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
     .GeometryShader("shaders/out/landscape.particle", "GsParticle")
     .PixelShader("shaders/out/landscape.particle", "PsParticle")
@@ -621,8 +621,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 #if DEBUG_DRAW_PATH
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
   float t = state.localTime.TotalSecondsAsFloat();
-  DEBUG_API.AddDebugSphere(ToVector3(
-    _spline.Interpolate(t * _settings.spline_speed)), 10, Color(1, 1, 1));
+  DEBUG_API.AddDebugSphere(_spline.Interpolate(t * _settings.spline_speed)), 10, Color(1, 1, 1);
 #endif
 }
 
@@ -807,7 +806,7 @@ void Landscape::RasterizeLandscape()
     numVerts = ClipPolygonAgainstPlane(numVerts, buf0, planes[i], buf1);
     if (numVerts == 0)
       return;
-    memcpy(buf0, buf1, numVerts * sizeof(Vector3));
+    memcpy(buf0, buf1, numVerts * sizeof(vec3));
   }
 
   vec3 minPos(buf0[0]);
@@ -821,10 +820,10 @@ void Landscape::RasterizeLandscape()
 
   // create a AABB for the clipped polygon
   float s = GRID_SIZE * CHUNK_SIZE;
-  Vector3 topLeft(SnapDown(minPos.x, s), 0, SnapUp(maxPos.z, s));
-  Vector3 topRight(SnapUp(maxPos.x, s), 0, SnapUp(maxPos.z, s));
-  Vector3 bottomLeft(SnapDown(minPos.x, s), 0, SnapDown(minPos.z, s));
-  Vector3 bottomRight(SnapUp(maxPos.x, s), 0, SnapDown(minPos.z, s));
+  vec3 topLeft(SnapDown(minPos.x, s), 0, SnapUp(maxPos.z, s));
+  vec3 topRight(SnapUp(maxPos.x, s), 0, SnapUp(maxPos.z, s));
+  vec3 bottomLeft(SnapDown(minPos.x, s), 0, SnapDown(minPos.z, s));
+  vec3 bottomRight(SnapUp(maxPos.x, s), 0, SnapDown(minPos.z, s));
 
   float x = topLeft.x;
   float z = topLeft.z;
@@ -1088,8 +1087,8 @@ bool Landscape::Render()
 #if DEBUG_DRAW_PATH
   for (int i = 0; i < _spline._controlPoints.size() - 1; ++i)
   {
-    Vector3 p0(_spline._controlPoints[i].x, _spline._controlPoints[i].y, _spline._controlPoints[i].z);
-    Vector3 p1(_spline._controlPoints[i + 1].x, _spline._controlPoints[i + 1].y, _spline._controlPoints[i + 1].z);
+    vec3 p0(_spline._controlPoints[i].x, _spline._controlPoints[i].y, _spline._controlPoints[i].z);
+    vec3 p1(_spline._controlPoints[i + 1].x, _spline._controlPoints[i + 1].y, _spline._controlPoints[i + 1].z);
     DEBUG_API.AddDebugLine(p0, p1, Color(1, 1, 1));
   }
 #endif
@@ -1217,7 +1216,6 @@ void Landscape::Register()
 void Landscape::FlockCamera::Update(const FixedUpdateState& state)
 {
   vec3 targetPos = flock->seek->target;
-  //Vector3 curPos = flock->boids._center;
   vec3 curPos = _pos;
 
   vec3 dir = Normalize(targetPos - curPos);
@@ -1232,8 +1230,5 @@ void Landscape::FlockCamera::Update(const FixedUpdateState& state)
   _pos = cc;
   _dir = Normalize(vv);
 
-  //_pos = flock->boids._center;
-  //Vector3 target = flock->seek->target;
-  //_dir = Normalize(target - _pos);
   Camera::Update(state.delta);
 }
