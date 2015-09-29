@@ -322,9 +322,9 @@ void GraphicsContext::CopyToBuffer(
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::DrawIndexed(int count, int start_index, int base_vertex)
+void GraphicsContext::DrawIndexed(int indexCount, int startIndex, int baseVertex)
 {
-  _ctx->DrawIndexed(count, start_index, base_vertex);
+  _ctx->DrawIndexed(indexCount, startIndex, baseVertex);
 }
 
 //------------------------------------------------------------------------------

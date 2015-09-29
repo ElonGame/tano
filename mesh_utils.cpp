@@ -542,9 +542,16 @@ namespace tano
 
     return indices;
   }
+  //------------------------------------------------------------------------------
+  static void AddFaceIndices(u32 a, u32 b, u32 c, vector<u32>* indices)
+  {
+    indices->push_back(a);
+    indices->push_back(b);
+    indices->push_back(c);
+  }
 
   //------------------------------------------------------------------------------
-  vector<u32> CreateCylinderIndices(int numRingSegments, int numHeightSegments)
+  vector<u32> CreateCylinderIndices(int numRingSegments, int numHeightSegments, bool segmented)
   {
     vector<u32> indices;
 
@@ -552,25 +559,23 @@ namespace tano
     // |  |
     // 0--3
 
+    int mul = segmented ? 2 : 1;
+
+    // TODO(magnus): hm, this vertex ordering seems off. they should grow in the
+    // other direction
     for (int i = 0; i < numHeightSegments-1; ++i)
     {
       for (int j = 0; j < numRingSegments; ++j)
       {
-        u32 v0 = (i + 1) * numRingSegments + j;
-        u32 v1 = (i + 0) * numRingSegments + j;
-        u32 v2 = (i + 0) * numRingSegments + (j+1) % numRingSegments;
-        u32 v3 = (i + 1) * numRingSegments + (j+1) % numRingSegments;
+        u32 v0 = (i * mul + 1) * numRingSegments + j;
+        u32 v1 = (i * mul + 0) * numRingSegments + j;
+        u32 v2 = (i * mul + 0) * numRingSegments + (j+1) % numRingSegments;
+        u32 v3 = (i * mul + 1) * numRingSegments + (j+1) % numRingSegments;
 
-        indices.push_back(v0);
-        indices.push_back(v1);
-        indices.push_back(v2);
-
-        indices.push_back(v0);
-        indices.push_back(v2);
-        indices.push_back(v3);
+        AddFaceIndices(v0, v1, v2, &indices);
+        AddFaceIndices(v0, v2, v3, &indices);
       }
     }
-
     return indices;
   }
 

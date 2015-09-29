@@ -9,7 +9,7 @@ BinPackParameters: false
 BreakBeforeBraces: Allman
 BreakConstructorInitializersBeforeComma: true
 BreakBeforeBinaryOperators: NonAssignment
-ColumnLimit: 110
+ColumnLimit: 100
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ConstructorInitializerIndentWidth: 4
 IndentCaseLabels: true

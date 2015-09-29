@@ -59,7 +59,7 @@ namespace tano
     void UnsetShaderResources(u32 first, u32 count, ShaderType shaderType);
     void UnsetUnorderedAccessViews(int first, int count);
     void UnsetRenderTargets(int first, int count);
-    void DrawIndexed(int count, int start_index, int base_vertex);
+    void DrawIndexed(int indexCount, int startIndex, int baseVertex);
     void Draw(int vertexCount, int startVertexLocation);
     void Dispatch(int threadGroupCountX, int threadGroupCountY, int threadGroupCountZ);
 
