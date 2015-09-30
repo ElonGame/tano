@@ -18,7 +18,6 @@
       settings: 'config/landscape.gb';
     },
     {
-      force: true;
       name: 'split';
       factory: 'split';
       start_time: 53000;
@@ -55,6 +54,7 @@
       settings: 'config/particle_trail.gb';
     },
     {
+      force: true;
       name: 'blob';
       factory: 'blob';
       start_time: 1300000;

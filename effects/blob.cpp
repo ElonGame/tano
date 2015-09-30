@@ -41,15 +41,15 @@ bool Blob::Init()
   _freeflyCamera.FromProtocol(_settings.camera);
 
   // TODO(magnus): broken for now
-  //MeshLoader meshLoader;
-  //INIT_FATAL(meshLoader.Load("gfx/displace_blob.boba"));
-  //CreateScene(meshLoader,
-  //  SceneOptions().TransformToWorldSpace(),
-  //  &_scene);
+  MeshLoader meshLoader;
+  INIT_FATAL(meshLoader.Load("gfx/displace_blob.boba"));
+  CreateScene(meshLoader,
+    SceneOptions().TransformToWorldSpace(),
+    &_scene);
 
     // clang-format off
   INIT_FATAL(_compositeBundle.Create(BundleOptions()
-    //.BlendDesc(blendDescWeightedBlendResolve)
+    .BlendDesc(blendDescWeightedBlendResolve)
     .DepthStencilDesc(depthDescDepthDisabled)
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/blob.compose", "PsComposite")));

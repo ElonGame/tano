@@ -417,7 +417,7 @@ vec3 RingCenter(const PN* verts)
 }
 
 //------------------------------------------------------------------------------
-bool Split::Render()
+void Split::RenderSplit()
 {
   rmt_ScopedCPUSample(Split_Render);
 
@@ -459,20 +459,20 @@ bool Split::Render()
         int numSegments = (int)s->completeRings.size() / ROTATION_SEGMENTS;
         for (int i = 0; i < numSegments - 1; ++i)
         {
-          ss.push_back(SegmentData{RingCenter(&s->completeRings[i * ROTATION_SEGMENTS]), s, i});
+          ss.push_back(SegmentData{ RingCenter(&s->completeRings[i * ROTATION_SEGMENTS]), s, i });
         }
-        ss.push_back(SegmentData{RingCenter(s->inprogressRing.data()), s, -1});
+        ss.push_back(SegmentData{ RingCenter(s->inprogressRing.data()), s, -1 });
       }
     }
 
     // sort by distance to camera
     sort(ss.begin(),
-        ss.end(),
-        [&](const SegmentData& lhs, const SegmentData& rhs)
-        {
-          return DistanceSquared(vec3(camPos), vec3(lhs.center))
-                 > DistanceSquared(vec3(camPos), vec3(rhs.center));
-        });
+      ss.end(),
+      [&](const SegmentData& lhs, const SegmentData& rhs)
+    {
+      return DistanceSquared(vec3(camPos), vec3(lhs.center))
+        > DistanceSquared(vec3(camPos), vec3(rhs.center));
+    });
 
     PN* vtx = _ctx->MapWriteDiscard<PN>(handle);
     // copy out the sorted verts
@@ -511,12 +511,12 @@ bool Split::Render()
       {
         // create stand alone segments for each ring
         int numSegments = (int)s->completeRings.size() / ROTATION_SEGMENTS;
-        for (int i = 0; i < numSegments-1; ++i)
+        for (int i = 0; i < numSegments - 1; ++i)
         {
           vtx += CopyOutN(vtx, s->completeRings, i * ROTATION_SEGMENTS, 2 * ROTATION_SEGMENTS);
         }
 
-        vtx += CopyOutN(vtx, s->completeRings, (numSegments-1) * ROTATION_SEGMENTS, ROTATION_SEGMENTS);
+        vtx += CopyOutN(vtx, s->completeRings, (numSegments - 1) * ROTATION_SEGMENTS, ROTATION_SEGMENTS);
         vtx += CopyOut(vtx, s->inprogressRing);
       }
     }
@@ -546,6 +546,7 @@ bool Split::Render()
 #endif
     }
 
+#if 0
     {
       // particles
       int numParticles = 0;
@@ -569,11 +570,12 @@ bool Split::Render()
       _cbParticle.Set(_ctx, 0);
       _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
 
-      ObjectHandle srv[] = {_particleTexture};
+      ObjectHandle srv[] = { _particleTexture };
       _ctx->SetShaderResources(srv, 1, ShaderType::PixelShader);
       _ctx->Draw(numParticles, 0);
       _ctx->UnsetShaderResources(0, 1, ShaderType::PixelShader);
     }
+#endif
     {
       // front facing
       _cbMesh.Set(_ctx, 0);
@@ -601,15 +603,26 @@ bool Split::Render()
     _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
-    ObjectHandle inputs[] = {rtColor};
+    ObjectHandle inputs[] = { rtColor };
     fullscreen->Execute(inputs,
-        1,
-        GRAPHICS.GetBackBuffer(),
-        GRAPHICS.GetBackBufferDesc(),
-        GRAPHICS.GetDepthStencil(),
-        _compositeBundle.objects._ps,
-        false);
+      1,
+      GRAPHICS.GetBackBuffer(),
+      GRAPHICS.GetBackBufferDesc(),
+      GRAPHICS.GetDepthStencil(),
+      _compositeBundle.objects._ps,
+      false);
   }
+}
+
+//------------------------------------------------------------------------------
+void Split::RenderTransparent()
+{
+}
+
+//------------------------------------------------------------------------------
+bool Split::Render()
+{
+  RenderSplit();
 
   return true;
 }

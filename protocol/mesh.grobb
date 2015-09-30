@@ -1,0 +1,35 @@
+struct header
+{
+  int flags;  
+};
+
+struct material_group
+{
+  u32 material_id;
+  u32 start_index;
+  u32 num_indices;
+};
+
+struct base
+{
+  string name;
+  u32 id;
+  u32 parent_id;
+  float[12] mtx_local;
+  float[12] mtx_global;
+};
+
+struct mesh
+{
+  material_group[] material_groups;
+  float[] verts;
+  float[] normals;
+  float[] uv;
+  u32[] indices;
+  u32[] selected_edges;
+
+  float sx;
+  float sy;
+  float sz;
+  float r;
+};

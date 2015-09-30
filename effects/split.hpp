@@ -109,6 +109,9 @@ namespace tano
     void SaveParameterSet(bool inc);
 #endif
 
+    void RenderSplit();
+    void RenderTransparent();
+
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
 
