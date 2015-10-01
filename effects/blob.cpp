@@ -108,9 +108,6 @@ bool Blob::Render()
   _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
   RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
 
-  ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
-
   ScopedRenderTarget rtOpacity(DXGI_FORMAT_R16G16B16A16_FLOAT);
   ScopedRenderTarget rtRevealage(DXGI_FORMAT_R16_FLOAT);
 

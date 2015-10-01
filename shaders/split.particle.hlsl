@@ -3,6 +3,7 @@
 cbuffer G : register(b0)
 {
   matrix world;
+  matrix view;
   matrix viewProj;
   float3 cameraPos;
 };
@@ -16,6 +17,13 @@ struct VsParticleOut
 {
   float4 pos : SV_Position;
   float2 uv : TexCoord0;
+  float depthVS : DepthVS;
+};
+
+struct PSOut
+{
+  float4 col : SV_Target0;
+  float4 revealage : SV_Target1;
 };
 
 // 1--2
@@ -50,33 +58,47 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   float3 up = cross(right, dir);
 
   VsParticleOut p;
-  float s = 1.75;
+  float s = 0.75;
   float3 p0 = float3(pos - s * right - s * up);
   float3 p1 = float3(pos - s * right + s * up);
   float3 p2 = float3(pos + s * right - s * up);
   float3 p3 = float3(pos + s * right + s * up);
   p.pos = mul(float4(p0, 1), worldViewProj);
   p.uv = uvsVtx[0];
+  p.depthVS = mul(float4(p0, 1), view).z;
   outStream.Append(p);
 
   p.pos = mul(float4(p1, 1), worldViewProj);
   p.uv = uvsVtx[1];
+  p.depthVS = mul(float4(p1, 1), view).z;
   outStream.Append(p);
 
   p.pos = mul(float4(p2, 1), worldViewProj);
   p.uv = uvsVtx[2];
+  p.depthVS = mul(float4(p2, 1), view).z;
   outStream.Append(p);
 
   p.pos = mul(float4(p3, 1), worldViewProj);
   p.uv = uvsVtx[3];
+  p.depthVS = mul(float4(p3, 1), view).z;
   outStream.Append(p);
 }
 
 // entry-point: ps
-float4 PsParticle(VsParticleOut p) : SV_Target
+PSOut PsParticle(VsParticleOut p)
 {
   // Texture1 = zbuffer
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
-  return ToFloat4(col, col.r);
+  float4 orgCol = col;
+
+  PSOut res;
+  float a = 0.5;
+  col.rgb *= a;
+  float z = p.depthVS;
+  float w = pow(a, 1.0) * clamp(0.3 / (1e-5 + pow(z / 200, 4.0)), 1e-2, 3e3);
+
+  res.col = w * float4(col.rgb, 0.1);
+  res.revealage = a;
+  return res;
 }

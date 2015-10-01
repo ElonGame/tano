@@ -3,7 +3,7 @@
 #include "../camera.hpp"
 #include "../generated/demo.types.hpp"
 #include "../gpu_objects.hpp"
-#include "../shaders/out/trail.composite_pscomposite.cbuffers.hpp"
+#include "../shaders/out/split.composite_pscomposite.cbuffers.hpp"
 #include "../shaders/out/trail.background_psbackground.cbuffers.hpp"
 #include "../shaders/out/split.mesh_vsmesh.cbuffers.hpp"
 #include "../shaders/out/split.mesh_psmesh.cbuffers.hpp"
@@ -109,9 +109,6 @@ namespace tano
     void SaveParameterSet(bool inc);
 #endif
 
-    void RenderSplit();
-    void RenderTransparent();
-
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
 
@@ -124,7 +121,7 @@ namespace tano
     ConstantBufferBundle<void, cb::TrailBackgroundF> _cbBackground;
 
     GpuBundle _compositeBundle;
-    ConstantBufferBundle<void, cb::TrailCompositeP> _cbComposite;
+    ConstantBufferBundle<void, cb::SplitCompositeP> _cbComposite;
 
     ConstantBufferBundle<
       cb::SplitMeshV, cb::SplitMeshP, void,

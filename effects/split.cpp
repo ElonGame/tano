@@ -21,8 +21,8 @@ using namespace DirectX;
 
 static int SEGMENT_SPLITS = 10;
 static int ROTATION_SEGMENTS = 10;
-static int NUM_INITIAL_SEGMENTS = 15;
-static float INITIAL_SPREAD = 25;
+static int NUM_INITIAL_SEGMENTS = 20;
+static float INITIAL_SPREAD = 30;
 
 #define DEBUG_DRAW_SPLINE 0
 #define USE_MESH_SPLINE 0
@@ -198,8 +198,6 @@ void Pathy::Create(const MeshLoader& meshLoader)
 //------------------------------------------------------------------------------
 void Pathy::CreateTubesIncremental(float orgTime)
 {
-  // tubeVerts.clear();
-
   for (SegmentStart start : segmentStart)
   {
     Segment* s = start.segment;
@@ -281,10 +279,6 @@ bool Split::Init()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/trail.background", "PsBackground")));
 
-  INIT_FATAL(_compositeBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/trail.composite", "PsComposite")));
-
   INIT_FATAL(_skyBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
     .VertexShader("shaders/out/common", "VsQuad")
@@ -294,15 +288,14 @@ bool Split::Init()
   _meshBackFace =  GRAPHICS.CreateRasterizerState(CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT()));
 
   INIT_FATAL(_meshBundle.Create(BundleOptions()
-    //.RasterizerDesc(rasterizeDescWireframe)
-     .BlendDesc(blendDescBlendSrcAlpha)
-     //.DepthStencilDesc(depthDescDepthDisabled)
-     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
-     .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
+    .DepthStencilDesc(depthDescDepthWriteDisabled)
+    .BlendDesc(blendDescWeightedBlend)
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
     .DynamicVb(10 * 1024 * 1024, 2 * sizeof(vec3))
-    .StaticIb(CreateCylinderIndices(ROTATION_SEGMENTS, 100000, true))
+    .StaticIb(CreateCylinderIndices(ROTATION_SEGMENTS, 100000, false))
     .VertexShader("shaders/out/split.mesh", "VsMesh")
-    .PixelShader("shaders/out/split.mesh", "PsMesh")));
+    .PixelShader("shaders/out/split.mesh", "PsMeshTrans")));
 
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024 * 6, sizeof(vec3))
@@ -312,8 +305,14 @@ bool Split::Init()
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
-    .BlendDesc(blendDescBlendSrcAlpha)
-    .RasterizerDesc(rasterizeDescCullNone)));
+    .BlendDesc(blendDescWeightedBlend)));
+
+  INIT_FATAL(_compositeBundle.Create(BundleOptions()
+    .BlendDesc(blendDescWeightedBlendResolve)
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/split.compose", "PsComposite")));
+
   // clang-format on
 
   INIT_FATAL(_cbComposite.Create());
@@ -358,6 +357,7 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
 
   Matrix viewProj = view * proj;
 
+  _cbMesh.vs0.view = view.Transpose();
   _cbMesh.vs0.viewProj = viewProj.Transpose();
   _cbMesh.ps0.cameraPos = _freeflyCamera._pos;
   _cbMesh.vs1.objWorld = Matrix::Identity();
@@ -368,6 +368,7 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
   _cbSky.ps0.cameraPos = _freeflyCamera._pos;
   _cbSky.ps0.cameraLookAt = _freeflyCamera._pos + _freeflyCamera._dir;
 
+  _cbParticle.gs0.view = view.Transpose();
   _cbParticle.gs0.viewProj = viewProj.Transpose();
   _cbParticle.gs0.cameraPos = _freeflyCamera._pos;
 
@@ -417,7 +418,7 @@ vec3 RingCenter(const PN* verts)
 }
 
 //------------------------------------------------------------------------------
-void Split::RenderSplit()
+bool Split::Render()
 {
   rmt_ScopedCPUSample(Split_Render);
 
@@ -435,167 +436,88 @@ void Split::RenderSplit()
     _ctx->Draw(3, 0);
   }
 
+  ScopedRenderTarget rtOpacity(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtRevealage(DXGI_FORMAT_R16_FLOAT);
+
+  ObjectHandle handle = _meshBundle.objects._vb;
+  PN* vtx = _ctx->MapWriteDiscard<PN>(handle);
+  for (const Pathy::Segment* s : _pathy.segments)
+  {
+    if (s->started)
+    {
+      vtx += CopyOut(vtx, s->completeRings);
+      vtx += CopyOut(vtx, s->inprogressRing);
+    }
+  }
+  _ctx->Unmap(handle);
+
+  const Color* clearColors[] = { &Color(0, 0, 0, 0), &Color(1, 1, 1, 1) };
+  ObjectHandle targets[] = { rtOpacity, rtRevealage };
+  _ctx->SetRenderTargets(targets, 2, GRAPHICS.GetDepthStencil(), clearColors);
   {
     // tubes
-    vec3 camPos = _freeflyCamera._pos;
-    // vector<Pathy::Segment*> sortedSegments = _pathy.segments;
-    //// sort back to front
-    // sort(sortedSegments.begin(),
-    //    sortedSegments.end(),
-    //    [&](Pathy::Segment* lhs, Pathy::Segment* rhs)
-    //    {
-    //      return DistanceSquared(vec3(camPos), vec3(lhs->cur))
-    //             > DistanceSquared(vec3(camPos), vec3(rhs->cur));
-    //    });
+    _cbMesh.Set(_ctx, 0);
+    _cbMesh.Set(_ctx, 1);
+    _ctx->SetBundle(_meshBundle);
+    int startVtx;
+    _ctx->SetRasterizerState(_meshFrontFace);
+    startVtx = 0;
 
-    ObjectHandle handle = _meshBundle.objects._vb;
-
-    vector<SegmentData> ss;
-    // calc the center points of all the rings
     for (const Pathy::Segment* s : _pathy.segments)
     {
       if (s->started)
       {
-        int numSegments = (int)s->completeRings.size() / ROTATION_SEGMENTS;
-        for (int i = 0; i < numSegments - 1; ++i)
-        {
-          ss.push_back(SegmentData{ RingCenter(&s->completeRings[i * ROTATION_SEGMENTS]), s, i });
-        }
-        ss.push_back(SegmentData{ RingCenter(s->inprogressRing.data()), s, -1 });
+        // calc # faces at the current segment
+        int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
+        int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
+        _ctx->DrawIndexed(n, 0, startVtx);
+        startVtx += numVerts;
       }
     }
 
-    // sort by distance to camera
-    sort(ss.begin(),
-      ss.end(),
-      [&](const SegmentData& lhs, const SegmentData& rhs)
-    {
-      return DistanceSquared(vec3(camPos), vec3(lhs.center))
-        > DistanceSquared(vec3(camPos), vec3(rhs.center));
-    });
+    _ctx->SetRasterizerState(_meshBackFace);
+    startVtx = 0;
 
-    PN* vtx = _ctx->MapWriteDiscard<PN>(handle);
-    // copy out the sorted verts
-    int numVerts = 0;
-    int numIndices = 0;
-    for (const SegmentData& d : ss)
-    {
-      const Pathy::Segment* s = d.s;
-      int numSegments = (int)s->completeRings.size() / ROTATION_SEGMENTS;
-      int idx = d.segmentIdx;
-
-      if (idx == -1)
-      {
-        numVerts += 2 * ROTATION_SEGMENTS;
-        numIndices += ROTATION_SEGMENTS * 6;
-
-        vtx += CopyOutN(vtx, s->completeRings, (numSegments - 1) * ROTATION_SEGMENTS, ROTATION_SEGMENTS);
-        vtx += CopyOut(vtx, s->inprogressRing);
-      }
-      else
-      {
-        if (numSegments > 1)
-        {
-          numVerts += 2 * ROTATION_SEGMENTS;
-          numIndices += ROTATION_SEGMENTS * 6;
-
-          vtx += CopyOutN(vtx, s->completeRings, idx * ROTATION_SEGMENTS, 2 * ROTATION_SEGMENTS);
-        }
-      }
-    }
-
-#if 0
-    for (const Pathy::Segment* s : sortedSegments)
+    for (const Pathy::Segment* s : _pathy.segments)
     {
       if (s->started)
       {
-        // create stand alone segments for each ring
-        int numSegments = (int)s->completeRings.size() / ROTATION_SEGMENTS;
-        for (int i = 0; i < numSegments - 1; ++i)
-        {
-          vtx += CopyOutN(vtx, s->completeRings, i * ROTATION_SEGMENTS, 2 * ROTATION_SEGMENTS);
-        }
-
-        vtx += CopyOutN(vtx, s->completeRings, (numSegments - 1) * ROTATION_SEGMENTS, ROTATION_SEGMENTS);
-        vtx += CopyOut(vtx, s->inprogressRing);
+        // calc # faces at the current segment
+        int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
+        int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
+        _ctx->DrawIndexed(n, 0, startVtx);
+        startVtx += numVerts;
       }
     }
-#endif
+  }
+
+  {
+    // particles
+    int numParticles = 0;
+    ObjectHandle handle = _particleBundle.objects._vb;
+    vec3* vtx = _ctx->MapWriteDiscard<vec3>(handle);
+    for (const Pathy::Segment* s : _pathy.segments)
+    {
+      if (s->started)
+      {
+        float t = 0;
+        for (int i = 0; i < 100; ++i)
+        {
+          *vtx++ = s->spline.Interpolate(t);
+          t += 1;
+        }
+        numParticles += 100;
+      }
+    }
     _ctx->Unmap(handle);
 
-    {
-      // back facing
-      _cbMesh.Set(_ctx, 0);
-      _cbMesh.Set(_ctx, 1);
-      _ctx->SetBundle(_meshBundle);
-      int startVtx = 0;
-      _ctx->SetRasterizerState(_meshFrontFace);
-      _ctx->DrawIndexed(numIndices, 0, 0);
-#if 0
-      for (const Pathy::Segment* s : sortedSegments)
-      {
-        if (s->started)
-        {
-          // calc # faces at the current segment
-          int numVerts = 2 * (int)(s->completeRings.size() + s->inprogressRing.size());
-          int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
-          _ctx->DrawIndexed(n, 0, startVtx);
-          startVtx += numVerts;
-        }
-      }
-#endif
-    }
+    _cbParticle.Set(_ctx, 0);
+    _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
 
-#if 0
-    {
-      // particles
-      int numParticles = 0;
-      ObjectHandle handle = _particleBundle.objects._vb;
-      vec3* vtx = _ctx->MapWriteDiscard<vec3>(handle);
-      for (const Pathy::Segment* s : _pathy.segments)
-      {
-        if (s->started)
-        {
-          float t = 0;
-          for (int i = 0; i < 100; ++i)
-          {
-            *vtx++ = s->spline.Interpolate(t);
-            t += 1;
-          }
-          numParticles += 100;
-        }
-      }
-      _ctx->Unmap(handle);
-
-      _cbParticle.Set(_ctx, 0);
-      _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
-
-      ObjectHandle srv[] = { _particleTexture };
-      _ctx->SetShaderResources(srv, 1, ShaderType::PixelShader);
-      _ctx->Draw(numParticles, 0);
-      _ctx->UnsetShaderResources(0, 1, ShaderType::PixelShader);
-    }
-#endif
-    {
-      // front facing
-      _cbMesh.Set(_ctx, 0);
-      _cbMesh.Set(_ctx, 1);
-      _ctx->SetBundle(_meshBundle);
-      int startVtx = 0;
-      _ctx->SetRasterizerState(_meshBackFace);
-      _ctx->DrawIndexed(numIndices, 0, 0);
-      // for (const Pathy::Segment* s : sortedSegments)
-      //{
-      //  if (s->started)
-      //  {
-      //    // calc # faces at the current segment
-      //    int numVerts = 2 * (int)(s->completeRings.size() + s->inprogressRing.size());
-      //    int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
-      //    _ctx->DrawIndexed(n, 0, startVtx);
-      //    startVtx += numVerts;
-      //  }
-      //}
-    }
+    ObjectHandle srv[] = { _particleTexture };
+    _ctx->SetShaderResources(srv, 1, ShaderType::PixelShader);
+    _ctx->Draw(numParticles, 0);
+    _ctx->UnsetShaderResources(0, 1, ShaderType::PixelShader);
   }
 
   {
@@ -603,26 +525,17 @@ void Split::RenderSplit()
     _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
-    ObjectHandle inputs[] = { rtColor };
+    ObjectHandle inputs[] = { rtColor, rtOpacity, rtRevealage };
     fullscreen->Execute(inputs,
-      1,
+      3,
       GRAPHICS.GetBackBuffer(),
       GRAPHICS.GetBackBufferDesc(),
       GRAPHICS.GetDepthStencil(),
       _compositeBundle.objects._ps,
-      false);
+      false,
+      true,
+      &Color(0.1f, 0.1f, 0.1f, 0));
   }
-}
-
-//------------------------------------------------------------------------------
-void Split::RenderTransparent()
-{
-}
-
-//------------------------------------------------------------------------------
-bool Split::Render()
-{
-  RenderSplit();
 
   return true;
 }
