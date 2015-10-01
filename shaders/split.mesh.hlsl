@@ -63,7 +63,7 @@ PSOut PsMeshTrans(VsMeshOut p)
   float w = pow(a, 1.0) * clamp(0.3 / (1e-5 + pow(z / 200, 4.0)), 1e-2, 3e3);
 
   float3 v = normalize(cameraPos - p.ws_pos);
-  float3 l = -SUN_DIR;
+  float3 l = SUN_DIR;
 
   float3 pp = p.ws_pos;
   float3 n = normalize(p.normal);
@@ -84,7 +84,7 @@ PSOut PsMeshTrans(VsMeshOut p)
 float4 PsMesh(VsMeshOut p) : SV_Target
 {
   float3 v = normalize(cameraPos - p.ws_pos);
-  float3 l = -SUN_DIR;
+  float3 l = SUN_DIR;
 
   float3 pp = p.ws_pos;
   //float org = simplexNoise(pp);

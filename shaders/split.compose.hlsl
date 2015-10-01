@@ -28,5 +28,7 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 
   // vignette
   float r = 0.8 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
-  return r * col;
+  col = r * col;
+
+  return col;
 }

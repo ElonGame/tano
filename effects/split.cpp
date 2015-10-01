@@ -170,7 +170,7 @@ void Pathy::Create(const MeshLoader& meshLoader)
   {
     Segment* segment = segments[i];
 #if !USE_MESH_SPLINE
-    segment->spline.Create(segment->verts.data(), (int)segment->verts.size(), 1.0f / 3);
+    segment->spline.Create(segment->verts.data(), (int)segment->verts.size(), 1.0f / 4.0f);
 #endif
 
     float tt = segmentStart[i].time;
@@ -191,8 +191,6 @@ void Pathy::Create(const MeshLoader& meshLoader)
         &segment->frameT,
         &segment->completeRings);
   }
-
-  // assert(numVerts <= TOTAL_POINTS);
 }
 
 //------------------------------------------------------------------------------
@@ -207,7 +205,7 @@ void Pathy::CreateTubesIncremental(float orgTime)
       break;
     }
 
-    s->started = true;
+    s->isStarted = true;
 
     float delta = 1.f / SEGMENT_SPLITS;
     float elapsedTime = time - start.time;
@@ -298,11 +296,12 @@ bool Split::Init()
     .PixelShader("shaders/out/split.mesh", "PsMeshTrans")));
 
   INIT(_particleBundle.Create(BundleOptions()
-    .DynamicVb(1024 * 1024 * 6, sizeof(vec3))
+    .DynamicVb(1024 * 1024 * 6, sizeof(vec4))
     .VertexShader("shaders/out/split.particle", "VsParticle")
     .GeometryShader("shaders/out/split.particle", "GsParticle")
     .PixelShader("shaders/out/split.particle", "PsParticle")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("TEXTURE", DXGI_FORMAT_R32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
     .BlendDesc(blendDescWeightedBlend)));
@@ -332,8 +331,38 @@ bool Split::Init()
 }
 
 //------------------------------------------------------------------------------
+void Split::UpdateParticles(const UpdateState& state)
+{
+  float now = state.localTime.TotalSecondsAsFloat();
+  float dt = state.delta.TotalSecondsAsFloat();
+
+  for (Pathy::Segment* segment : _pathy.segments)
+  {
+    if (!segment->isStarted)
+      continue;
+
+    if (segment->particles.size() > 10000)
+      continue;
+
+    for (Pathy::Particle& p : segment->particles)
+    {
+      p.pos += p.speed * dt;
+      p.fade = SmoothStep(0, 2, now - p.spawnTime);
+    }
+
+    if (now - segment->lastSpawn > 0.25f)
+    {
+      segment->particles.push_back(Pathy::Particle{0, GaussianRand(0.25, 0.25f), now, 0});
+      segment->lastSpawn = now;
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
 bool Split::Update(const UpdateState& state)
 {
+  UpdateParticles(state);
+
   UpdateCameraMatrix(state);
 
   _pathy.CreateTubesIncremental(state.localTime.TotalSecondsAsFloat());
@@ -443,7 +472,7 @@ bool Split::Render()
   PN* vtx = _ctx->MapWriteDiscard<PN>(handle);
   for (const Pathy::Segment* s : _pathy.segments)
   {
-    if (s->started)
+    if (s->isStarted)
     {
       vtx += CopyOut(vtx, s->completeRings);
       vtx += CopyOut(vtx, s->inprogressRing);
@@ -465,7 +494,7 @@ bool Split::Render()
 
     for (const Pathy::Segment* s : _pathy.segments)
     {
-      if (s->started)
+      if (s->isStarted)
       {
         // calc # faces at the current segment
         int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
@@ -480,7 +509,7 @@ bool Split::Render()
 
     for (const Pathy::Segment* s : _pathy.segments)
     {
-      if (s->started)
+      if (s->isStarted)
       {
         // calc # faces at the current segment
         int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
@@ -495,19 +524,18 @@ bool Split::Render()
     // particles
     int numParticles = 0;
     ObjectHandle handle = _particleBundle.objects._vb;
-    vec3* vtx = _ctx->MapWriteDiscard<vec3>(handle);
+    vec4* vtx = _ctx->MapWriteDiscard<vec4>(handle);
     for (const Pathy::Segment* s : _pathy.segments)
     {
-      if (s->started)
+      size_t zz = sizeof(Pathy::Particle);
+      for (const Pathy::Particle& p : s->particles)
       {
-        float t = 0;
-        for (int i = 0; i < 100; ++i)
-        {
-          *vtx++ = s->spline.Interpolate(t);
-          t += 1;
-        }
-        numParticles += 100;
+        *(vec3*)vtx = s->spline.Interpolate(p.pos);
+        vtx->w = p.fade;
+        vtx++;
       }
+
+      numParticles += (int)s->particles.size();
     }
     _ctx->Unmap(handle);
 

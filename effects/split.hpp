@@ -3,7 +3,7 @@
 #include "../camera.hpp"
 #include "../generated/demo.types.hpp"
 #include "../gpu_objects.hpp"
-#include "../shaders/out/split.composite_pscomposite.cbuffers.hpp"
+#include "../shaders/out/split.compose_pscomposite.cbuffers.hpp"
 #include "../shaders/out/trail.background_psbackground.cbuffers.hpp"
 #include "../shaders/out/split.mesh_vsmesh.cbuffers.hpp"
 #include "../shaders/out/split.mesh_psmesh.cbuffers.hpp"
@@ -31,6 +31,14 @@ namespace tano
 
     void CreateTubesIncremental(float t);
 
+    struct Particle
+    {
+      float pos;
+      float speed;
+      float spawnTime;
+      float fade;
+    };
+
     struct Segment
     {
       Segment(const vec3& cur, float scale, float speed, float angleX, float angleY, float angleZ)
@@ -42,11 +50,14 @@ namespace tano
       float scale;
       float angleX, angleY, angleZ;
       int lastNumTicks = 0;
-      bool started = false;
+      bool isStarted = false;
       vector<vec3> verts;
       vector<PN> completeRings;
       vector<PN> inprogressRing;
       CardinalSpline spline;
+
+      float lastSpawn = 0;
+      vector<Particle> particles;
 
       // last reference frame
       vec3 frameD, frameN, frameT;
@@ -64,7 +75,7 @@ namespace tano
     float angleZVariance = 1.f;
 
     // TODO(magnus): fix the popping here
-    float childProb = 1.0f; //0.75f;
+    float childProb = 0.75f;
     float childScale = 0.50f;
 
     int maxChildren = 512;
@@ -112,6 +123,8 @@ namespace tano
     void Reset();
     void UpdateCameraMatrix(const UpdateState& state);
 
+    void UpdateParticles(const UpdateState& state);
+
     ObjectHandle _meshBackFace;
     ObjectHandle _meshFrontFace;
 
@@ -121,7 +134,7 @@ namespace tano
     ConstantBufferBundle<void, cb::TrailBackgroundF> _cbBackground;
 
     GpuBundle _compositeBundle;
-    ConstantBufferBundle<void, cb::SplitCompositeP> _cbComposite;
+    ConstantBufferBundle<void, cb::SplitComposeP> _cbComposite;
 
     ConstantBufferBundle<
       cb::SplitMeshV, cb::SplitMeshP, void,

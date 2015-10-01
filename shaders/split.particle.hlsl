@@ -11,6 +11,7 @@ cbuffer G : register(b0)
 struct VsParticleIn
 {
   float3 pos : Position;
+  float fade : Texture0;
 };
 
 struct VsParticleOut
@@ -18,6 +19,7 @@ struct VsParticleOut
   float4 pos : SV_Position;
   float2 uv : TexCoord0;
   float depthVS : DepthVS;
+  float fade : Texture0;
 };
 
 struct PSOut
@@ -58,6 +60,7 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   float3 up = cross(right, dir);
 
   VsParticleOut p;
+  p.fade = input[0].fade;
   float s = 0.75;
   float3 p0 = float3(pos - s * right - s * up);
   float3 p1 = float3(pos - s * right + s * up);
@@ -87,7 +90,7 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
 // entry-point: ps
 PSOut PsParticle(VsParticleOut p)
 {
-  // Texture1 = zbuffer
+  float fade = p.fade;
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
   float4 orgCol = col;
@@ -98,7 +101,7 @@ PSOut PsParticle(VsParticleOut p)
   float z = p.depthVS;
   float w = pow(a, 1.0) * clamp(0.3 / (1e-5 + pow(z / 200, 4.0)), 1e-2, 3e3);
 
-  res.col = w * float4(col.rgb, 0.1);
-  res.revealage = a;
+  res.col = fade * w * float4(col.rgb, 0.1);
+  res.revealage = fade * a;
   return res;
 }
