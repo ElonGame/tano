@@ -295,6 +295,10 @@ bool Split::Init()
     .VertexShader("shaders/out/split.mesh", "VsMesh")
     .PixelShader("shaders/out/split.mesh", "PsMeshTrans")));
 
+  INIT_FATAL(_meshBlockerState.Create());
+  INIT_RESOURCE_FATAL(
+    _meshBlockerPs, GRAPHICS.LoadPixelShaderFromFile("shaders/out/split.mesh", "PsMeshBlocker"));
+
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024 * 6, sizeof(vec4))
     .VertexShader("shaders/out/split.particle", "VsParticle")
@@ -468,20 +472,50 @@ bool Split::Render()
   ScopedRenderTarget rtOpacity(DXGI_FORMAT_R16G16B16A16_FLOAT);
   ScopedRenderTarget rtRevealage(DXGI_FORMAT_R16_FLOAT);
 
+  ScopedRenderTarget rtBlocker(DXGI_FORMAT_R32_FLOAT);
+
   ObjectHandle handle = _meshBundle.objects._vb;
   PN* vtx = _ctx->MapWriteDiscard<PN>(handle);
+  int indexCount = 0;
   for (const Pathy::Segment* s : _pathy.segments)
   {
     if (s->isStarted)
     {
+      // calc # faces at the current segment
+      int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
+      int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
+      indexCount += n;
       vtx += CopyOut(vtx, s->completeRings);
       vtx += CopyOut(vtx, s->inprogressRing);
     }
   }
   _ctx->Unmap(handle);
 
-  const Color* clearColors[] = { &Color(0, 0, 0, 0), &Color(1, 1, 1, 1) };
-  ObjectHandle targets[] = { rtOpacity, rtRevealage };
+  {
+    // blocker
+    _ctx->SetRenderTarget(rtBlocker, GRAPHICS.GetDepthStencil(), &black);
+    _cbMesh.Set(_ctx, 0);
+    _cbMesh.Set(_ctx, 1);
+    _ctx->SetBundle(_meshBundle);
+    _ctx->SetGpuState(_meshBlockerState);
+    _ctx->SetPixelShader(_meshBlockerPs);
+
+    int startVtx = 0;
+    for (const Pathy::Segment* s : _pathy.segments)
+    {
+      if (s->isStarted)
+      {
+        // calc # faces at the current segment
+        int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
+        int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
+        _ctx->DrawIndexed(n, 0, startVtx);
+        startVtx += numVerts;
+      }
+    }
+  }
+
+  const Color* clearColors[] = {&Color(0, 0, 0, 0), &Color(1, 1, 1, 1)};
+  ObjectHandle targets[] = {rtOpacity, rtRevealage};
   _ctx->SetRenderTargets(targets, 2, GRAPHICS.GetDepthStencil(), clearColors);
   {
     // tubes
@@ -542,7 +576,7 @@ bool Split::Render()
     _cbParticle.Set(_ctx, 0);
     _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
 
-    ObjectHandle srv[] = { _particleTexture };
+    ObjectHandle srv[] = {_particleTexture};
     _ctx->SetShaderResources(srv, 1, ShaderType::PixelShader);
     _ctx->Draw(numParticles, 0);
     _ctx->UnsetShaderResources(0, 1, ShaderType::PixelShader);
@@ -553,16 +587,16 @@ bool Split::Render()
     _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
-    ObjectHandle inputs[] = { rtColor, rtOpacity, rtRevealage };
+    ObjectHandle inputs[] = {rtColor, rtBlocker, rtOpacity, rtRevealage};
     fullscreen->Execute(inputs,
-      3,
-      GRAPHICS.GetBackBuffer(),
-      GRAPHICS.GetBackBufferDesc(),
-      GRAPHICS.GetDepthStencil(),
-      _compositeBundle.objects._ps,
-      false,
-      true,
-      &Color(0.1f, 0.1f, 0.1f, 0));
+        4,
+        GRAPHICS.GetBackBuffer(),
+        GRAPHICS.GetBackBufferDesc(),
+        GRAPHICS.GetDepthStencil(),
+        _compositeBundle.objects._ps,
+        false,
+        true,
+        &Color(0.1f, 0.1f, 0.1f, 0));
   }
 
   return true;

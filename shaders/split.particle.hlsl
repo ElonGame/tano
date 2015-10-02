@@ -92,7 +92,7 @@ PSOut PsParticle(VsParticleOut p)
 {
   float fade = p.fade;
   float2 uv = p.uv.xy;
-  float4 col = Texture0.Sample(PointSampler, uv);
+  float4 col = Texture0.Sample(LinearSampler, uv);
   float4 orgCol = col;
 
   PSOut res;

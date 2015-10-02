@@ -6,7 +6,7 @@
 #include "../shaders/out/split.compose_pscomposite.cbuffers.hpp"
 #include "../shaders/out/trail.background_psbackground.cbuffers.hpp"
 #include "../shaders/out/split.mesh_vsmesh.cbuffers.hpp"
-#include "../shaders/out/split.mesh_psmesh.cbuffers.hpp"
+#include "../shaders/out/split.mesh_psmeshtrans.cbuffers.hpp"
 #include "../shaders/out/split.sky_pssky.cbuffers.hpp"
 #include "../shaders/out/split.particle_gsparticle.cbuffers.hpp"
 #include "../mesh_loader.hpp"
@@ -75,7 +75,7 @@ namespace tano
     float angleZVariance = 1.f;
 
     // TODO(magnus): fix the popping here
-    float childProb = 0.75f;
+    float childProb = 1.0f;
     float childScale = 0.50f;
 
     int maxChildren = 512;
@@ -136,11 +136,14 @@ namespace tano
     GpuBundle _compositeBundle;
     ConstantBufferBundle<void, cb::SplitComposeP> _cbComposite;
 
+    GpuState _meshBlockerState;
+    ObjectHandle _meshBlockerPs;
+
+    GpuBundle _meshBundle;
     ConstantBufferBundle<
       cb::SplitMeshV, cb::SplitMeshP, void,
       cb::SplitMeshO, void, void> _cbMesh;
 
-    GpuBundle _meshBundle;
     ConstantBufferBundle<void, cb::SplitSkyF> _cbSky;
     GpuBundle _skyBundle;
 

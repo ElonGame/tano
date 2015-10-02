@@ -8,14 +8,18 @@ import os
 import time
 import glob
 import subprocess
-import collections
+from collections import OrderedDict, defaultdict
 from string import Template
+import re
 
 SHADER_DIR = os.path.join('..', 'shaders')
 OUT_DIR = os.path.join(SHADER_DIR, 'out')
 ENTRY_POINT_TAG = 'entry-point'
 SHADERS = {}
 SHADER_FILES = set()
+
+SHADER_DECL_RE = re.compile('(.+)? (.+)\(.*')
+ENTRY_POINT_RE = re.compile('// entry-point: (.+)')
 
 
 def get_shader_root(f):
@@ -28,36 +32,28 @@ def entry_points_for_file(f):
     # parse all the hlsl files, and look for marked entry points
     global SHADERS
     root = get_shader_root(f)
-    cur = None
+    # nuke any old entries for the field
+    SHADERS[root] = defaultdict(list)
+    entry_point_type = None
     for r in open(f, 'rt').readlines():
         r = r.strip()
-        if cur:
+        if entry_point_type:
             # previous row was an entry point, so parse the entry point
             # name
-            _, _, name = r.partition(' ')
-            if name:
-                name, _, _ = name.partition('(')
-                if name:
-                    SHADERS.setdefault(root, {}).setdefault(
-                        cur, []).append(name)
-            cur = None
+            m = SHADER_DECL_RE.match(r)
+            if m:
+                name = m.groups()[1]
+                SHADERS[root][entry_point_type].append(name)
+            entry_point_type = None
         else:
-            try:
-                idx = r.index(ENTRY_POINT_TAG)
-                # found entry point tag. check if vs, ps etc
-                _, _, t = r[idx:].partition(':')
-                if len(t) == 0:
-                    print 'error parsing entry point tag'
-                    continue
-                t = t.strip()
-                t = t[:2].lower()
+            m = ENTRY_POINT_RE.match(r)
+            if m:
+                t = m.groups()[0]
                 if t in ('vs', 'ps', 'gs', 'cs'):
                     # found correct entry point tag
-                    cur = t
+                    entry_point_type = t
                 else:
                     print 'Unknown tag type: %s' % t
-            except ValueError:
-                pass
 
 shader_data = {
     'vs': {'profile': 'vs', 'obj_ext': 'vso', 'asm_ext': 'vsa'},
@@ -197,7 +193,7 @@ def parse_cbuffer(basename, entry_point, out_name, ext):
             name = line[len('cbuffer '):]
             cur_cbuffer = {
                 'name': cbuffer_prefix + name,
-                'vars': collections.OrderedDict(),
+                'vars': OrderedDict(),
                 'unused': 0,
             }
             continue
