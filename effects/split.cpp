@@ -272,6 +272,8 @@ bool Split::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
+  _camera._useTarget = true;
+
   // clang-format off
   INIT_FATAL(_backgroundBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
@@ -385,25 +387,60 @@ bool Split::FixedUpdate(const FixedUpdateState& state)
 //------------------------------------------------------------------------------
 void Split::UpdateCameraMatrix(const UpdateState& state)
 {
-  Matrix view = _freeflyCamera._view;
-  Matrix proj = _freeflyCamera._proj;
+  if (g_KeyUpTrigger.IsTriggered('1'))
+  {
+    _curCamera = _curCamera == &_freeflyCamera ? &_camera : &_freeflyCamera;
+  }
+
+  float tt = state.localTime.TotalSecondsAsFloat();
+
+  BLACKBOARD.SetNamespace("split");
+  _camera._pos.y = BLACKBOARD.GetFloatVar("camOffsetY") - tt * BLACKBOARD.GetFloatVar("camSpeedY");
+
+  float r = lerp(
+    BLACKBOARD.GetFloatVar("camStartRadius"),
+    BLACKBOARD.GetFloatVar("camEndRadius"),
+    SmoothStep(0, 1, tt / BLACKBOARD.GetFloatVar("camRotTime")));
+
+  _camera._pos.x = r * sinf(tt * BLACKBOARD.GetFloatVar("camRotSpeed"));
+  _camera._pos.z = r * cosf(tt * BLACKBOARD.GetFloatVar("camRotSpeed"));
+  _camera._target = vec3{
+    0,
+    _camera._pos.y + BLACKBOARD.GetFloatVar("camTargetJitter") * sinf(tt * BLACKBOARD.GetFloatVar("camTargetJitterSpeed")),
+    0};
+  _camera.Update(state.delta.TotalSecondsAsFloat());
+
+  Matrix view = _curCamera->_view;
+  Matrix proj = _curCamera->_proj;
 
   Matrix viewProj = view * proj;
+  vec3 cameraPos = _curCamera->_pos;
 
   _cbMesh.vs0.view = view.Transpose();
   _cbMesh.vs0.viewProj = viewProj.Transpose();
-  _cbMesh.ps0.cameraPos = _freeflyCamera._pos;
+  _cbMesh.ps0.cameraPos = _curCamera->_pos;
   _cbMesh.vs1.objWorld = Matrix::Identity();
 
   RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
   vec4 dim((float)desc.width, (float)desc.height, 0, 0);
   _cbSky.ps0.dim = dim;
-  _cbSky.ps0.cameraPos = _freeflyCamera._pos;
-  _cbSky.ps0.cameraLookAt = _freeflyCamera._pos + _freeflyCamera._dir;
+  _cbSky.ps0.cameraPos = _curCamera->_pos;
+
+  _cbSky.ps0.cameraLookAt = _curCamera->_target;
 
   _cbParticle.gs0.view = view.Transpose();
   _cbParticle.gs0.viewProj = viewProj.Transpose();
-  _cbParticle.gs0.cameraPos = _freeflyCamera._pos;
+  _cbParticle.gs0.cameraPos = _curCamera->_pos;
+
+  vec3 SUN_DIR = Normalize(vec3(0, -0.2f, -1));
+  // Calc light pos as a point along the light dir, from the camera pos
+  vec3 lightPos = cameraPos - 2000 * SUN_DIR;
+  Vector4 lightPosP = Vector4::Transform(Vector4(lightPos.x, lightPos.y, lightPos.z, 1), viewProj);
+  lightPosP.x /= lightPosP.w;
+  lightPosP.y /= lightPosP.w;
+  _cbComposite.ps0.lightPos = vec2(lightPosP.x, lightPosP.y);
+  _cbComposite.ps0.camDir = _curCamera->_dir;
+
 
 #if DEBUG_DRAW_SPLINE
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
@@ -589,7 +626,7 @@ bool Split::Render()
 
     ObjectHandle inputs[] = {rtColor, rtBlocker, rtOpacity, rtRevealage};
     fullscreen->Execute(inputs,
-        4,
+        4,  
         GRAPHICS.GetBackBuffer(),
         GRAPHICS.GetBackBufferDesc(),
         GRAPHICS.GetDepthStencil(),

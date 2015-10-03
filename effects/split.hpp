@@ -153,5 +153,8 @@ namespace tano
 
     SplitSettings _settings;
     MeshLoader _meshLoader;
+
+    Camera _camera;
+    Camera* _curCamera = &_camera;
   };
 }

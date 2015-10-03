@@ -203,6 +203,12 @@ vec4 Blackboard::GetVec4Var(const string& name)
 template <typename T>
 T Blackboard::GetVar(const string& name, float t, unordered_map<string, Keyframes<T>*>& vars)
 {
+  if (name.find('.') != string::npos)
+  {
+    // if the name contains a '.', assume it's a fully qualified name, and reset the
+    // current namespace
+    _curNamespace.clear();
+  }
   string fullname = _curNamespace.empty() ? name : _curNamespace + "." + name;
 
   auto it = vars.find(fullname);

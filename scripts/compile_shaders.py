@@ -11,6 +11,7 @@ import subprocess
 from collections import OrderedDict, defaultdict
 from string import Template
 import re
+import time
 
 SHADER_DIR = os.path.join('..', 'shaders')
 OUT_DIR = os.path.join(SHADER_DIR, 'out')
@@ -92,12 +93,12 @@ def generate_files(base, entry_points, obj_ext, asm_ext):
 
 # conversion between HLSL and my types
 known_types = {
-    'float': {'type': 'float', 'alignment': 3},
-    'float2': {'type': 'vec2', 'alignment': 2},
-    'float3': {'type': 'vec3', 'alignment': 1},
-    'float4': {'type': 'vec4'},
-    'float4x4': {'type': 'Matrix'},
-    'matrix': {'type': 'Matrix'},
+    'float': {'type': 'float', 'size': 1},
+    'float2': {'type': 'vec2', 'size': 2},
+    'float3': {'type': 'vec3', 'size': 3},
+    'float4': {'type': 'vec4', 'size': 4},
+    'float4x4': {'type': 'Matrix', 'size': 16},
+    'matrix': {'type': 'Matrix', 'size': 16},
 }
 
 buffer_template = Template("""#pragma once
@@ -119,29 +120,41 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
         name = c['name']
         vars = c['vars']
 
-        # skip write the cbuffer if all the vars are unused
+        # skip writing the cbuffer if all the vars are unused
         if len(vars) == c['unused']:
             continue
         num_valid += 1
 
         cur = '    struct %s\n    {\n' % name
 
-        # calc max line length, to align the comments
+        # calc max line length to align the comments
         max_len = 0
-        for n, (tt, comments) in vars.iteritems():
-            t = tt['type']
+        for n, (var_data, comments) in vars.iteritems():
+            t = var_data['type']
             max_len = max(max_len, len(n) + len(t))
 
         padder = 0
-        for n, (tt, comments) in vars.iteritems():
-            t = tt['type']
-            alignment = tt.get('alignment', 0)
-            cur_len = len(n) + len(t)
-            padding = (max_len - cur_len + 8) * ' '
-            cur += '      %s %s;%s%s\n' % (t, n, padding, comments)
-            if alignment:
-                cur += '      float padding%s[%s];\n' % (padder, alignment)
+        slots_left = 4
+        for n, (var_data, comments) in vars.iteritems():
+            var_type = var_data['type']
+            var_size = var_data.get('size', None)
+            # if the current variable doesn't fit in the remaining
+            # slots, align it
+            if (
+                slots_left != 4 and
+                slots_left - var_size < 0
+            ):
+                cur += (
+                    '      float padding%s[%s];\n' %
+                    (padder, slots_left)
+                )
                 padder += 1
+            cur_len = len(n) + len(var_type)
+            padding = (max_len - cur_len + 8) * ' '
+            cur += '      %s %s;%s%s\n' % (var_type, n, padding, comments)
+            slots_left -= (var_size % 4)
+            if slots_left == 0:
+                slots_left = 4
         cur += '    };'
 
         bufs.append(cur)
@@ -238,6 +251,7 @@ def parse_cbuffer(basename, entry_point, out_name, ext):
 
 
 def compile():
+    first_tick = True
     for basename, data in SHADERS.iteritems():
         for shader_type, entry_points in data.iteritems():
             profile = shader_data[shader_type]['profile']
@@ -263,6 +277,11 @@ def compile():
                     filetime_is_newer(
                         hlsl_file_time, os.path.join(OUT_DIR, output))
                 ):
+                    if first_tick:
+                        ll = time.localtime()
+                        print '==> COMPILE STARTED AT [%.2d:%.2d:%.2d]' % (
+                            ll.tm_hour, ll.tm_min, ll.tm_sec)
+                        first_tick = False
                     out_name = os.path.join(
                         OUT_DIR, basename + '_' + entry_point)
 

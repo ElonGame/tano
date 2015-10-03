@@ -58,7 +58,7 @@ VsMeshOut VsMesh(VsMeshIn v)
 PSOut PsMeshTrans(VsMeshOut p)
 {
   PSOut res;
-  float a = 0.7;
+  float a = 0.9;
   float z = p.depthVS;
   float w = pow(a, 1.0) * clamp(0.3 / (1e-5 + pow(z / 200, 4.0)), 1e-2, 3e3);
 

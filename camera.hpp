@@ -16,8 +16,10 @@ namespace tano
     void FromProtocol(const CameraSettings& settings);
     void ToProtocol(CameraSettings* settings);
 
+    bool _useTarget = false;
     vec3 _pos = vec3(0,0,0);
     vec3 _dir = vec3(0, 0, 1);
+    vec3 _target = vec3(0,0,1);
     vec3 _right = vec3(1, 0, 0);
     vec3 _up = vec3(0,1,0);
 
@@ -25,6 +27,7 @@ namespace tano
     float _aspectRatio;
     float _nearPlane = 1.f;
     float _farPlane = 2000.f;
+
 
     Matrix _mtx;
     Matrix _view;

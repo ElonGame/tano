@@ -11,6 +11,7 @@ using namespace bristol;
 //------------------------------------------------------------------------------
 void Camera::FromProtocol(const CameraSettings& settings)
 {
+  // TODO(magnus): add the _target and _useTarget flags
   _pos = settings.pos;
   _dir = settings.dir;
   _right = settings.right;
@@ -65,8 +66,11 @@ Camera::Camera()
 void Camera::Update(float deltaTime)
 {
   _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
-  vec3 target = _pos + _dir;
-  _view = Matrix::CreateLookAt(ToVector3(_pos), ToVector3(target), ToVector3(_up));
+  if (!_useTarget)
+  {
+    _target = _pos + _dir;
+  }
+  _view = Matrix::CreateLookAt(ToVector3(_pos), ToVector3(_target), ToVector3(_up));
 }
 
 //------------------------------------------------------------------------------

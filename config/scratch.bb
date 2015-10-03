@@ -41,6 +41,15 @@ namespace split
 {
     float speedMean = 0.5;
     float speedVar = 0.25;
+
+    float camOffsetY = -20;
+    float camSpeedY = 3;
+    float camStartRadius = 20;
+    float camEndRadius = 50;
+    float camRotSpeed = 0.525;
+    float camRotTime = 30;
+    float camTargetJitter = 10;
+    float camTargetJitterSpeed = 0.4;
 }
 
 namespace plexus
