@@ -160,7 +160,6 @@
     <ClCompile Include="..\bristol\parser\output_buffer.cpp" />
     <ClCompile Include="..\bristol\parser\parse_base.cpp" />
     <ClCompile Include="..\camera.cpp" />
-    <ClCompile Include="..\circular_buffer.cpp" />
     <ClCompile Include="..\debug_api.cpp" />
     <ClCompile Include="..\dyn_particles.cpp" />
     <ClCompile Include="..\effects\blob.cpp" />
@@ -383,17 +382,6 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\s7\s7.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Public|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </ForcedIncludeFiles>
-    </ClCompile>
     <ClCompile Include="..\scene.cpp" />
     <ClCompile Include="..\scheduler.cpp" />
     <ClCompile Include="..\stop_watch.cpp" />
@@ -460,6 +448,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="..\tano_math.cpp" />
+    <ClCompile Include="..\tests.cpp" />
     <ClCompile Include="..\text_writer.cpp" />
     <ClCompile Include="..\timer.cpp">
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</ForcedIncludeFiles>
@@ -492,6 +481,7 @@
     <ClInclude Include="..\effects\split.hpp" />
     <ClInclude Include="..\effects\tunnel.hpp" />
     <ClInclude Include="..\filewatcher_win32.hpp" />
+    <ClInclude Include="..\fixed_deque.hpp" />
     <ClInclude Include="..\free_list.hpp" />
     <ClInclude Include="..\lz4\lz4.h" />
     <ClInclude Include="..\mesh_loader.hpp" />
@@ -536,8 +526,6 @@
     <ClInclude Include="..\Remotery\lib\Remotery.h" />
     <ClInclude Include="..\render_queue.hpp" />
     <ClInclude Include="..\resource_manager.hpp" />
-    <ClInclude Include="..\s7\mus-config.h" />
-    <ClInclude Include="..\s7\s7.h" />
     <ClInclude Include="..\scene.hpp" />
     <ClInclude Include="..\scheduler.hpp" />
     <ClInclude Include="..\smooth_driver.hpp" />

@@ -52,7 +52,7 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   //float nn = NoiseOctaves(float3(xx.x + col.r, xx.y + col.g, 1), 0.6, 4);
   //col = r * col;
 
-  col = col + 3 * blur;
+  col = col + smoothstep(0.0, 1, 3 * blur);
   //float r = saturate(0.8 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y)));
   //col = r * col;
 

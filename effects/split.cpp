@@ -19,8 +19,8 @@ using namespace tano;
 using namespace bristol;
 using namespace DirectX;
 
-static int SEGMENT_SPLITS = 10;
-static int ROTATION_SEGMENTS = 10;
+static int SEGMENT_SPLITS = 20;
+static int ROTATION_SEGMENTS = 20;
 static int NUM_INITIAL_SEGMENTS = 20;
 static float INITIAL_SPREAD = 30;
 
@@ -356,9 +356,9 @@ void Split::UpdateParticles(const UpdateState& state)
       p.fade = SmoothStep(0, 2, now - p.spawnTime);
     }
 
-    if (now - segment->lastSpawn > 0.25f)
+    if (now - segment->lastSpawn > 0.20f)
     {
-      segment->particles.push_back(Pathy::Particle{0, GaussianRand(0.25, 0.25f), now, 0});
+      segment->particles.push_back(Pathy::Particle{0, GaussianRand(0.25f, 0.20f), now, 0});
       segment->lastSpawn = now;
     }
   }

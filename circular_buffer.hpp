@@ -46,5 +46,4 @@ namespace tano
     u32 readPtr = 0;
     u32 writePtr = 0;
   };
-
 }

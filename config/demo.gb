@@ -18,27 +18,32 @@
       settings: 'config/landscape.gb';
     },
     {
-      force: true;
       name: 'split';
       factory: 'split';
       start_time: 53000;
-      end_time: 1300000;
+      end_time: 82500;
       settings: 'config/split.gb';
     },
     {
       name: 'plexus';
       factory: 'plexus';
-      start_time: 53000;
-      start_time: 1300000;
-      end_time: 1300000;
+      start_time: 82500;
+      end_time: 125000;
       settings: 'config/plexus.gb';
     },
     {
       name: 'tunnel';
       factory: 'tunnel';
-      start_time: 1300000;
-      end_time: 1300000;
+      start_time: 125000;
+      end_time: 142000;
       settings: 'config/tunnel.gb';
+    },
+    {
+      name: 'credits';
+      factory: 'credits';
+      start_time: 142000;
+      end_time: 160000;
+      settings: 'config/credits.gb';
     },
     {
       name: 'fluid';
@@ -68,12 +73,5 @@
       end_time: 1300000;
       settings: 'config/raymarcher.gb';
     },
-    {
-      name: 'credits';
-      factory: 'credits';
-      start_time: 1300000;
-      end_time: 1300000;
-      settings: 'config/credits.gb';
-   },
   ];
 }

@@ -23,7 +23,10 @@
 #include "effects/particle_trail.hpp"
 #include "effects/split.hpp"
 #include "effects/blob.hpp"
+
+#if WITH_SCHEME
 #include "s7/s7.h"
+#endif
 
 #if WITH_IMGUI
 #include "imgui_helpers.hpp"
@@ -199,6 +202,7 @@ bool App::Init(HINSTANCE hinstance)
 bool App::Run()
 {
 
+#if WITH_SCHEME
   s7_scheme *s7;
   s7 = s7_init();
   vector<char> buf;
@@ -206,14 +210,7 @@ bool App::Run()
   buf.push_back(0);
   s7_pointer pp = s7_eval_c_string(s7, buf.data());
   s7_double res = s7_real(s7_eval_c_string(s7, "(intro 'explode-time)"));
-
-  //s7_define_variable(s7, "an-integer", s7_make_integer(s7, 32));
-  //s7_eval_c_string(s7, "(define (add1 a) (+ a 1))");
-  //s7_int a = s7_integer(s7_name_to_value(s7, "an-integer"));
-  //s7_symbol_set_value(s7, s7_make_symbol(s7, "an-integer"), s7_make_integer(s7, 32));
-  //s7_int res = s7_integer(s7_call(s7,
-  //  s7_name_to_value(s7, "add1"),
-  //  s7_cons(s7, s7_make_integer(s7, 2), s7_nil(s7))));
+#endif
 
   MSG msg ={ 0 };
 

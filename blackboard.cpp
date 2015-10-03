@@ -56,6 +56,7 @@ bool Blackboard::Init(const char* filename, const char* datafile)
           res = ParseBlackboard(inputBuffer, namespaceStack);
           if (res)
           {
+            LoadData();
             _triggeredIds.clear();
           }
           return res;
@@ -70,8 +71,6 @@ bool Blackboard::Init(const char* filename, const char* datafile)
   WSAStartup(MAKEWORD(2, 2), &_wsaData);
   Connect("127.0.0.1", "1337");
 #endif
-
-  LoadData();
 
   return res;
 }

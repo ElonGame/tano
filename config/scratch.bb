@@ -42,8 +42,8 @@ namespace split
     float speedMean = 0.5;
     float speedVar = 0.25;
 
-    float camOffsetY = -20;
-    float camSpeedY = 3;
+    float camOffsetY = -50;
+    float camSpeedY = 2;
     float camStartRadius = 20;
     float camEndRadius = 50;
     float camRotSpeed = 0.525;
@@ -54,10 +54,19 @@ namespace split
 
 namespace plexus
 {
-    vec3 lineParams = { 5.0, 0.25, 150 };
-    float rotXDivisor = 2000;
-    float rotYDivisor = 300;
+    vec3 lineParams = { 10.0, 0.50, 150 };
+    float rotXDivisor = 10000;
+    float rotYDivisor = 6000;
     float strength = 1000;
+
+    float base = 1500;
+    float scale = 350;
+
+    vec3 plexusCamPos = { 0, 0, -100 };
+    vec3 plexusCamLookAt = { 0, 0, 0 };
+
+    vec3 greetsCamPos = { 0, 0, -100 };
+    vec3 greetsCamLookAt = { 0, 0, 0 };
 }
 
 namespace tunnel

@@ -8,60 +8,10 @@
 #include "../shaders/out/tunnel.lines_pstunnellines.cbuffers.hpp"
 #include "../shaders/out/tunnel.composite_pscomposite.cbuffers.hpp"
 #include "../shaders/out/tunnel.mesh_vsmesh.cbuffers.hpp"
-#include "../shaders/out/tunnel.greets_vsgreets.cbuffers.hpp"
-#include "../shaders/out/tunnel.greets_psgreets.cbuffers.hpp"
 #include "../scene.hpp"
 
 namespace tano
 {
-  //------------------------------------------------------------------------------
-  struct GreetsBlock
-  {
-    ~GreetsBlock();
-
-    struct PathElem
-    {
-      PathElem(int x, int y) : x(x), y(y) {}
-      int x, y;
-    };
-
-    struct Particle
-    {
-      int x, y;
-      float speed;
-      float cur;
-      int dir;
-    };
-
-    struct GreetsData
-    {
-      GreetsData(int w, int h);
-      ~GreetsData();
-      void CalcPath(int w, int h, const char* buf);
-
-      void Update(const UpdateState& state);
-
-      bool IsValid(int x, int y);
-
-      vector<Particle> particles;
-
-      vector<vector<PathElem*>> paths;
-      vector<PathElem*> startingPoints;
-
-      vector<float> curParticleCount;
-      vector<float> targetParticleCount;
-      vector<u8> background;
-      int width, height;
-    };
-
-    void Update(const UpdateState& state);
-    bool Init();
-    void Reset();
-
-    vector<GreetsData*> _data;
-    int curText = 0;
-  };
-
   class Tunnel : public BaseEffect
   {
   public:
@@ -93,7 +43,6 @@ namespace tano
     void PlexusUpdate(const UpdateState& state);
     void NormalUpdate(const UpdateState& state);
 
-    void UpdateGreets(const UpdateState& state);
 
     GpuBundle _linesBundle;
     GpuBundle _compositeBundle;
@@ -103,25 +52,15 @@ namespace tano
 
     SimpleAppendBuffer<vec3, 64 * 1024> _tunnelVerts;
 
-    ConstantBufferBundle<cb::TunnelGreetsV, cb::TunnelGreetsP> _cbGreets;
-
     float _dist = 0;
     CardinalSpline _spline;
     CardinalSpline _cameraSpline;
     TunnelSettings _settings;
-    //Camera _camera;
-    FreeflyCamera _camera;
 
     ConstantBufferBundle<
       cb::TunnelMeshF, void, void,
       cb::TunnelMeshO, void, void> _cbMesh;
     GpuBundle _meshBundle;
     scene::Scene _scene;
-
-    int _numGreetsCubes = 0;
-    GpuBundle _greetsBundle;
-    GreetsBlock _greetsBlock;
-
   };
-
 }

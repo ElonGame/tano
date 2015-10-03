@@ -89,7 +89,8 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 orgCol = Texture2.Sample(LinearSampler, uv);
   float opacity = Texture3.Sample(LinearSampler, uv).x;
 
-  float4 glow = Volumetric(uv);
+  float4 glow = float4(0,0,0,0);
+  // float4 glow = Volumetric(uv);
   float ss = smoothstep(0, 1, dot(camDir, -SUN_DIR));
   // return ss; 
   glow *= ss;
