@@ -9,9 +9,38 @@
 #include "../shaders/out/plexus.greets_vsgreets.cbuffers.hpp"
 #include "../shaders/out/plexus.greets_psgreets.cbuffers.hpp"
 #include "../shaders/out/plexus.compose_pscomposite.cbuffers.hpp"
+#include "../shaders/out/plexus.sky_pssky.cbuffers.hpp"
 
 namespace tano
 {
+  //------------------------------------------------------------------------------
+  struct GreetsBlock2
+  {
+    bool Init();
+    void Update(const UpdateState& state);
+    void CopyOut(vec3* verts);
+
+    struct GreetsData
+    {
+      vector<u8> block;
+      void CopyToTarget(vector<float>* target);
+    };
+
+    void Transition(const GreetsData& from, const GreetsData& to);
+
+    vector<GreetsData> greetsData;
+    vector<u8> curBlocks;
+    vector<float> targetSize;
+    vector<float> blockSize;
+    vector<float> blockAcc;
+    vector<float> blockVel;
+    int greetsIdx = 0;
+    int prevGreetsIdx = -1;
+    int width, height;
+    int curText = 0;
+    int numGreetsCubes = 0;
+  };
+
   //------------------------------------------------------------------------------
   struct GreetsBlock
   {
@@ -55,9 +84,11 @@ namespace tano
     void Update(const UpdateState& state);
     bool Init();
     void Reset();
+    void CopyOut(vec3* verts);
 
     vector<GreetsData*> _data;
     int curText = 0;
+    int numGreetsCubes = 0;
   };
 
   //------------------------------------------------------------------------------
@@ -97,7 +128,6 @@ namespace tano
     SimpleAppendBuffer<vec3, MAX_POINTS> _tris;
     int* _neighbours = nullptr;
 
-    void UpdateNoise();
     void UpdateGreets(const UpdateState& state);
 
     GpuBundle _plexusLineBundle;
@@ -109,6 +139,9 @@ namespace tano
     GpuBundle _compositeBundle;
     ConstantBufferBundle<void, cb::PlexusComposeP> _cbComposite;
 
+    ConstantBufferBundle<void, cb::PlexusSkyF> _cbSky;
+    GpuBundle _skyBundle;
+
     PlexusSettings _settings;
 
     Camera _plexusCamera;
@@ -117,6 +150,7 @@ namespace tano
     ObjectHandle _perlinTexture;
 
     int _numGreetsCubes = 0;
-    GreetsBlock _greetsBlock;
+    //GreetsBlock _greetsBlock;
+    GreetsBlock2 _greetsBlock;
   };
 }

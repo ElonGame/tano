@@ -400,6 +400,10 @@ bool Intro::Init()
   _cbPlexus.gs0.dim = dim;
   _cbPlexus.gs0.world = Matrix::Identity();
 
+  INIT_RESOURCE_FATAL(_introTexture[0], RESOURCE_MANAGER.LoadTexture("gfx/intro_1.png"));
+  INIT_RESOURCE_FATAL(_introTexture[1], RESOURCE_MANAGER.LoadTexture("gfx/intro_2.png"));
+  INIT_RESOURCE_FATAL(_introTexture[2], RESOURCE_MANAGER.LoadTexture("gfx/intro_3.png"));
+
   END_INIT_SEQUENCE();
 }
 
@@ -490,19 +494,6 @@ void Intro::UpdateText(const UpdateState& state, TextData* textData, const char*
   vec3 ptOfs = BLACKBOARD.GetVec3Var(textPos);
   float ptScale = BLACKBOARD.GetFloatVar(textScale);
 
-#if 0
-  scale = (1 - scale) * BLACKBOARD.GetFloatVar("intro.maxStrength");
-
-  DistortVerts(textData->transformedVerts.data(),
-    textData->verts.data(),
-    (int)textData->verts.size(),
-    _randomPoints.Data(),
-    _settings.deform.perlin_scale,
-    scale,
-    ptOfs,
-    ptScale);
-#else
-
   int numKeyframes = _settings.num_keyframes;
   int idx0 = max(0, min(numKeyframes - 1, (int)(scale * numKeyframes)));
   int idx1 = max(0, min(numKeyframes - 1, idx0 + 1));
@@ -519,7 +510,6 @@ void Intro::UpdateText(const UpdateState& state, TextData* textData, const char*
 
   fnInterpolate(textData->outline);
   fnInterpolate(textData->cap);
-#endif
 }
 
 //------------------------------------------------------------------------------

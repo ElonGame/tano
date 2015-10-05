@@ -41,12 +41,12 @@ VsOut VsGreets(VsIn v)
 // entry-point: ps
 float4 PsGreets(VsOut v) : SV_Target
 {
-  float3 lightDir = normalize(LIGHT_POS - v.pos_ws.xyz);
+  float3 lightDir = normalize(camPos - v.pos_ws.xyz);
   float3 viewDir = normalize(camPos - v.pos_ws.xyz);
   float3 h = normalize(lightDir + viewDir);
   float3 normal = normalize(v.normal_ws.xyz);
 
-  float ambient = 0.1;
+  float ambient = 0.2;
   float diffuse = saturate(dot(normal, lightDir));
   float specular = pow(saturate(dot(h, normal)), SPECULAR_POWER);
   return (ambient + diffuse + specular) * float4(0.2, 0.2, 0.1, 1);

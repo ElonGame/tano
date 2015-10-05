@@ -18,7 +18,7 @@
 #define BORDERLESS_WINDOW 0
 #endif
 
-#define WITH_BLACKBOARD_TCP 1
+#define WITH_BLACKBOARD_TCP 0
 #define WITH_BLACKBOARD_SAVE 1
 
 #define WITH_TESTS 1
@@ -36,7 +36,7 @@
 
 #define WITH_IMGUI 0
 
-#define WITH_CONFIG_DLG 1
+#define WITH_CONFIG_DLG 0
 #define WITH_UNPACKED_RESOUCES 1
 
 #define WITH_MUSIC 1

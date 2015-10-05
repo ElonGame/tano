@@ -79,7 +79,7 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<PsLinesIn> outStream
   float3 dir, right, up;
 
   PsLinesIn p;
-  float s = 5.5;
+  float s = 15.5;
 
   dir = normalize(cameraPos - pos0);
   right = cross(dir, float3(0,1,0));

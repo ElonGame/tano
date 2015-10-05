@@ -425,7 +425,6 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
   vec4 dim((float)desc.width, (float)desc.height, 0, 0);
   _cbSky.ps0.dim = dim;
   _cbSky.ps0.cameraPos = _curCamera->_pos;
-
   _cbSky.ps0.cameraLookAt = _curCamera->_target;
 
   _cbParticle.gs0.view = view.Transpose();

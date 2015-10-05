@@ -4,7 +4,7 @@ namespace intro
     float moveSpeed = 15.0;
     float rotSpeed = 3.0;
 
-    vec3 lineParams = { 5.0, 1.25, 500 };
+    vec3 lineParams = { 5.0, 2.25, 1500 };
 
     vec3 text0Pos = { 0, 300, 0 };
     float text0Scale = 0.75;
@@ -54,18 +54,18 @@ namespace split
 
 namespace plexus
 {
-    vec3 lineParams = { 10.0, 0.50, 150 };
+    vec3 lineParams = { 15.0, 0.50, 150 };
     float rotXDivisor = 10000;
     float rotYDivisor = 6000;
     float strength = 1000;
 
-    float base = 1500;
-    float scale = 350;
+    float base = 1000;
+    float scale = 750;
 
-    vec3 plexusCamPos = { 0, 0, -100 };
-    vec3 plexusCamLookAt = { 0, 0, 0 };
+    vec3 plexusCamPos = { -400, 400, -600 };
+    vec3 plexusCamLookAt = { -400, 300, 0 };
 
-    vec3 greetsCamPos = { 0, 0, -100 };
+    vec3 greetsCamPos = { 0, 0, -50 };
     vec3 greetsCamLookAt = { 0, 0, 0 };
 }
 

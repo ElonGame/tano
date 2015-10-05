@@ -28,6 +28,118 @@ static int MAX_GREETS_HEIGHT = 8;
 static int GRID_DIRS[] = { -1, 0, 0, -1, 1, 0, 0, 1 };
 
 //------------------------------------------------------------------------------
+void GreetsBlock2::GreetsData::CopyToTarget(vector<float>* target)
+{
+  for (int i = 0; i < (int)block.size(); ++i)
+  {
+    (*target)[i] = block[i] ? 10.f : 0.f;
+  }
+}
+
+//------------------------------------------------------------------------------
+bool GreetsBlock2::Init()
+{
+  BEGIN_INIT_SEQUENCE();
+
+  vector<char> buf;
+  INIT(RESOURCE_MANAGER.LoadFile("gfx/greets2.png", &buf));
+  int w, h, c;
+  const char* greetsBuf =
+    (const char*)stbi_load_from_memory((const u8*)buf.data(), (int)buf.size(), &w, &h, &c, 4);
+
+  width = w;
+  height = 7;
+  for (int i : {0, 10, 19, 29, 38})
+  {
+    const char* buf = greetsBuf + i * w * 4;
+    GreetsData dd;
+    dd.block.resize(width * height);
+    for (int y = 0; y < 7; ++y)
+    {
+      for (int x = 0; x < w; ++x)
+      {
+        dd.block[y*w+x] = *(int*)&buf[4 * (y*w + x)] == 0xffffffff ? 0 : 1;
+      }
+    }
+
+    greetsData.push_back(dd);
+  }
+
+  targetSize.resize(width * height);
+  blockSize.resize(width * height);
+  blockAcc.resize(width * height);
+  blockVel.resize(width * height);
+
+  greetsData[0].CopyToTarget(&targetSize);
+
+  END_INIT_SEQUENCE();
+}
+
+//------------------------------------------------------------------------------
+void GreetsBlock2::CopyOut(vec3* verts)
+{
+  int w = width;
+  int h = height;
+  float fw = (float)w;
+  float fh = (float)h;
+
+  numGreetsCubes = 0;
+
+  float s = 10;
+  vec3 pos(-fw / 2 * s + s / 2, fh / 2 * s - s / 2, 300);
+  float orgX = pos.x;
+  for (int i = 0; i < h; ++i)
+  {
+    pos.x = orgX;
+    for (int j = 0; j < w; ++j)
+    {
+      float ss = blockSize[i*w+j];
+      if (ss > 0)
+      {
+        verts = AddCubeWithNormal(verts, pos, ss / 2);
+        numGreetsCubes++;
+      }
+      pos.x += s;
+    }
+    pos.y -= s;
+  }
+}
+
+//------------------------------------------------------------------------------
+void GreetsBlock2::Update(const UpdateState& state)
+{
+  float localTime = state.localTime.TotalSecondsAsFloat();
+  float dt = state.delta.TotalSecondsAsFloat();
+
+  greetsIdx = (int)localTime / 6;
+  if (greetsIdx != prevGreetsIdx)
+  {
+    prevGreetsIdx = greetsIdx;
+    if (greetsIdx > (int)greetsData.size() - 1)
+    {
+      for (int i = 0; i < width * height; ++i)
+      {
+        targetSize[i] = 0.f;
+      }
+    }
+    else
+    {
+      greetsData[greetsIdx].CopyToTarget(&targetSize);
+    }
+  }
+
+  for (int i = 0; i < width * height; ++i)
+  {
+    float diff = targetSize[i] - blockSize[i];
+    blockAcc[i] = 2.5f * diff;
+
+    blockVel[i] = (0.99f * blockVel[i]) + blockAcc[i] * dt;
+    blockSize[i] += blockVel[i] * dt;
+  }
+
+}
+
+//------------------------------------------------------------------------------
 GreetsBlock::~GreetsBlock()
 {
   SeqDelete(&_data);
@@ -385,10 +497,15 @@ bool Plexus::Init()
 
   GenRandomPoints(_settings.deform.blur_kernel);
 
-  INIT(_cbPlexus.Create());
 
   // clang-format off
-  INIT(_plexusLineBundle.Create(BundleOptions()
+
+  INIT_FATAL(_skyBundle.Create(BundleOptions()
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/plexus.sky", "PsSky")));
+
+  INIT_FATAL(_plexusLineBundle.Create(BundleOptions()
     .VertexShader("shaders/out/plexus", "VsLines")
     .GeometryShader("shaders/out/plexus", "GsLines")
     .PixelShader("shaders/out/plexus", "PsLines")
@@ -402,8 +519,8 @@ bool Plexus::Init()
   INIT_FATAL(_greetsBundle.Create(BundleOptions()
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
-    .VertexShader("shaders/out/tunnel.greets", "VsGreets")
-    .PixelShader("shaders/out/tunnel.greets", "PsGreets")
+    .VertexShader("shaders/out/plexus.greets", "VsGreets")
+    .PixelShader("shaders/out/plexus.greets", "PsGreets")
     .DynamicVb(MAX_GREETS_HEIGHT*MAX_GREETS_WIDTH * 24 * 2, 2 * sizeof(vec3))
     .StaticIb(GenerateCubeIndicesFaceted(MAX_GREETS_HEIGHT*MAX_GREETS_WIDTH))));
 
@@ -418,114 +535,18 @@ bool Plexus::Init()
   INIT_FATAL(_greetsBlock.Init());
   CalcPoints(true);
 
-  INIT(_cbGreets.Create());
+  INIT_FATAL(_cbGreets.Create());
   INIT_FATAL(_cbComposite.Create());
+  INIT_FATAL(_cbSky.Create());
+  INIT_FATAL(_cbPlexus.Create());
 
-  _perlinTexture = GRAPHICS.CreateTexture(NOISE_WIDTH, NOISE_HEIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+  INIT_RESOURCE_FATAL(_perlinTexture,
+      GRAPHICS.CreateTexture(NOISE_WIDTH, NOISE_HEIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr));
+
+  _plexusCamera._useTarget = true;
+  _greetsCamera._useTarget = true;
 
   END_INIT_SEQUENCE();
-}
-
-//------------------------------------------------------------------------------
-void Plexus::UpdateNoise()
-{
-  static bool opened = false;
-  static bool firstTime = true;
-
-#if WITH_IMGUI
-  if (!ImGui::Begin("Noise", &opened))
-  {
-    ImGui::End();
-    return;
-  }
-
-  bool recalc = firstTime;
-  recalc |= ImGui::SliderInt("layer-lock", &_settings.noise.layer_lock, -1, 10);
-  recalc |= ImGui::SliderInt("layers", &_settings.noise.num_layers, 1, 10);
-  recalc |= ImGui::SliderFloat("max-scale", &_settings.noise.max_scale, 1, 20);
-  recalc |= ImGui::SliderFloat("scale-factor", &_settings.noise.scale_factor, 1.0f, 25.0f);
-  recalc |= ImGui::SliderFloat("max opacity", &_settings.noise.max_opacity, 0, 1);
-  recalc |= ImGui::SliderFloat("opacity factor", &_settings.noise.opacity_factor, 0.1f, 2.0f);
-  recalc |= ImGui::SliderFloat("turbulence", &_settings.noise.turbulence, 1, 500);
-
-  ImGui::Image((void*)&_perlinTexture, ImVec2((float)NOISE_WIDTH, (float)NOISE_HEIGHT));
-
-  ImGui::End();
-  firstTime = false;
-  if (!recalc)
-    return;
-#endif
-
-  float scale = _settings.noise.max_scale;
-  float opacity = 0;
-  float layerOpacity = _settings.noise.max_opacity;
-
-  float* pixels = g_ScratchMemory.Alloc<float>(NOISE_HEIGHT * NOISE_WIDTH);
-  memset(pixels, 0, NOISE_WIDTH * NOISE_HEIGHT * 4);
-
-  int layerLock = _settings.noise.layer_lock;
-  for (int layer = 0; layer < _settings.noise.num_layers; ++layer)
-  {
-    if (layerLock != -1 && layerLock != layer)
-    {
-      scale *= _settings.noise.scale_factor;
-      layerOpacity *= _settings.noise.opacity_factor;
-      continue;
-    }
-
-    opacity = min(1.0f, opacity + layerOpacity);
-    u32 a = 0xff;
-
-    for (int i = 0; i < NOISE_HEIGHT; ++i)
-    {
-      for (int j = 0; j < NOISE_WIDTH; ++j)
-      {
-        float f = 0.5f + 0.5f * Perlin2D::Value(scale * j / NOISE_WIDTH, scale * i / NOISE_HEIGHT);
-        float v = layerOpacity * f;
-        pixels[i * NOISE_WIDTH + j] += v;
-      }
-    }
-
-    scale *= _settings.noise.scale_factor;
-    layerOpacity *= _settings.noise.opacity_factor;
-  }
-
-#if 0
-  const FullTonemapSettings& t = _settings.tonemap;
-  u32* p = _ctx->MapWriteDiscard<u32>(_perlinTexture);
-  for (int i = 0; i < NOISE_HEIGHT; ++i)
-  {
-    for (int j = 0; j < NOISE_WIDTH; ++j)
-    {
-      float f;
-      if (_settings.tonemap.enabled)
-      {
-        f = 255 * Clamp(0.f,
-                      1.f,
-                      ToneMap(pixels[i * NOISE_WIDTH + j],
-                            t.cross_over,
-                            t.black_point,
-                            t.white_point,
-                            t.toe,
-                            t.shoulder));
-      }
-      else
-      {
-        f = pixels[i * NOISE_WIDTH + j];
-        float angle = 2 * XM_PI * f;
-        float s = _settings.noise.turbulence;
-        int xx = (int)(j + s * cos(angle));
-        int yy = (int)(i + s * sin(angle));
-        int x = IntMod(xx, NOISE_WIDTH);
-        int y = IntMod(yy, NOISE_HEIGHT);
-        f = 255 * Clamp(0.f, 1.f, pixels[y * NOISE_WIDTH + x]);
-      }
-      u32 val = (u32)f;
-      p[i * NOISE_WIDTH + j] = (0xff000000) | (val << 16) | (val << 8) | (val << 0);
-    }
-  }
-  _ctx->Unmap(_perlinTexture);
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -695,19 +716,15 @@ void Plexus::CalcPoints(bool recalcEdges)
 }
 
 //------------------------------------------------------------------------------
-void Plexus::UpdateGreets(const UpdateState& state)
+void GreetsBlock::CopyOut(vec3* verts)
 {
-  _greetsBlock.Update(state);
-  _numGreetsCubes = 0;
-
-  ObjectHandle handle = _greetsBundle.objects._vb;
-  vec3* verts = _ctx->MapWriteDiscard<vec3>(handle);
-
-  GreetsBlock::GreetsData* data = _greetsBlock._data[_greetsBlock.curText];
+  GreetsBlock::GreetsData* data = _data[curText];
   int w = data->width;
   int h = data->height;
   float fw = (float)w;
   float fh = (float)h;
+
+  numGreetsCubes = 0;
 
   float s = 10;
   vec3 pos(-fw / 2 * s + s / 2, fh / 2 * s - s / 2, 300);
@@ -721,13 +738,22 @@ void Plexus::UpdateGreets(const UpdateState& state)
       if (ss > 0)
       {
         verts = AddCubeWithNormal(verts, pos, ss / 2);
-        _numGreetsCubes++;
+        numGreetsCubes++;
       }
       pos.x += s;
     }
     pos.y -= s;
   }
+}
 
+//------------------------------------------------------------------------------
+void Plexus::UpdateGreets(const UpdateState& state)
+{
+  _greetsBlock.Update(state);
+
+  ObjectHandle handle = _greetsBundle.objects._vb;
+  vec3* verts = _ctx->MapWriteDiscard<vec3>(handle);
+  _greetsBlock.CopyOut(verts);
   _ctx->Unmap(handle);
 }
 
@@ -762,24 +788,45 @@ bool Plexus::FixedUpdate(const FixedUpdateState& state)
 //------------------------------------------------------------------------------
 void Plexus::UpdateCameraMatrix(const UpdateState& state)
 {
-  Matrix view = _freeflyCamera._view;
-  Matrix proj = _freeflyCamera._proj;
 
-  Matrix viewProj = view * proj;
+  float dt = state.delta.TotalSecondsAsFloat();
 
-  float rotXDiv = BLACKBOARD.GetFloatVar("plexus.rotXDivisor");
-  float rotYDiv = BLACKBOARD.GetFloatVar("plexus.rotXDivisor");
-  static float angle = 0;
-  angle += state.delta.TotalMilliseconds();
-  Matrix mtx = Matrix::CreateRotationX(angle / rotXDiv) * Matrix::CreateRotationY(angle / rotYDiv);
-  // Matrix mtx = Matrix::Identity();
-  _cbPlexus.gs0.world = mtx.Transpose();
-  _cbPlexus.gs0.viewProj = viewProj.Transpose();
-  _cbPlexus.gs0.cameraPos = _freeflyCamera._pos;
+  BLACKBOARD.SetNamespace("plexus");
 
-  _cbGreets.vs0.viewProj = viewProj.Transpose();
-  _cbGreets.vs0.objWorld = Matrix::Identity();
-  _cbGreets.ps0.camPos = _freeflyCamera._pos;
+  {
+    _plexusCamera._pos = BLACKBOARD.GetVec3Var("plexusCamPos");
+    _plexusCamera._target = BLACKBOARD.GetVec3Var("plexusCamLookAt");
+    _plexusCamera.Update(dt);
+
+    // plexus
+    Matrix view = _plexusCamera._view;
+    Matrix proj = _plexusCamera._proj;
+    Matrix viewProj = view * proj;
+
+    float rotXDiv = BLACKBOARD.GetFloatVar("rotXDivisor");
+    float rotYDiv = BLACKBOARD.GetFloatVar("rotYDivisor");
+    static float angle = 0;
+    angle += state.delta.TotalMilliseconds();
+    Matrix mtx = Matrix::CreateRotationX(angle / rotXDiv) * Matrix::CreateRotationY(angle / rotYDiv);
+    _cbPlexus.gs0.world = mtx.Transpose();
+    _cbPlexus.gs0.viewProj = viewProj.Transpose();
+    _cbPlexus.gs0.cameraPos = _plexusCamera._pos;
+  }
+
+  {
+    _greetsCamera._pos = BLACKBOARD.GetVec3Var("greetsCamPos");
+    _greetsCamera._target = BLACKBOARD.GetVec3Var("greetsCamLookAt");
+    _greetsCamera.Update(dt);
+
+    // greets
+    Matrix view = _greetsCamera._view;
+    Matrix proj = _greetsCamera._proj;
+    Matrix viewProj = view * proj;
+
+    _cbGreets.vs0.viewProj = viewProj.Transpose();
+    _cbGreets.vs0.objWorld = Matrix::Identity();
+    _cbGreets.ps0.camPos = _greetsCamera._pos;
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -791,12 +838,26 @@ bool Plexus::Render()
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
 
   ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  const RenderTargetDesc& rtDesc = rtColor._desc;
+
+  {
+    _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
+
+    // sky
+    vec4 dim((float)rtDesc.width, (float)rtDesc.height, 0, 0);
+    _cbSky.ps0.dim = dim;
+    _cbSky.ps0.cameraPos = _greetsCamera._pos;
+    _cbSky.ps0.cameraLookAt = _greetsCamera._target;
+
+    _cbSky.Set(_ctx, 0);
+    _ctx->SetBundle(_skyBundle);
+    _ctx->Draw(3, 0);
+  }
 
   {
     // plexus
-    _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
 
-    _cbPlexus.gs0.dim = vec4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
+    _cbPlexus.gs0.dim = vec4((float)rtDesc.width, (float)rtDesc.height, 0, 0);
     vec3 params = BLACKBOARD.GetVec3Var("plexus.lineParams");
     _cbPlexus.ps0.lineParams = vec4(params.x, params.y, params.z, 1);
     _cbPlexus.Set(_ctx, 0);
@@ -817,8 +878,7 @@ bool Plexus::Render()
 
     _cbGreets.Set(_ctx, 0);
     _ctx->SetBundle(_greetsBundle);
-    GreetsBlock::GreetsData* data = _greetsBlock._data[_greetsBlock.curText];
-    _ctx->DrawIndexed(_numGreetsCubes * 36, 0, 0);
+    _ctx->DrawIndexed(_greetsBlock.numGreetsCubes * 36, 0, 0);
   }
 
   {
@@ -837,7 +897,6 @@ bool Plexus::Render()
       true,
       &Color(0.1f, 0.1f, 0.1f, 0));
   }
-
 
   return true;
 }

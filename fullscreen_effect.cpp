@@ -43,6 +43,11 @@ bool FullscreenEffect::Init()
   INIT(_addBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/common", "PsAdd")));
+
+  INIT(_renderTextureBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/common", "VsQuad")
+    .PixelShader("shaders/out/common", "PsCopy")));
+
   // clang-format on
 
   // blur setup
@@ -379,4 +384,11 @@ void FullscreenEffect::BlurVert(
     ObjectHandle input, ObjectHandle output, const RenderTargetDesc& outputDesc, float radius, int scale)
 {
   BlurVertCustom(input, output, outputDesc, _csBlurY, radius, scale);
+}
+
+//------------------------------------------------------------------------------
+void FullscreenEffect::RenderTexture(ObjectHandle texture,
+  const vec2& topLeft,
+  const vec2& bottomRight)
+{
 }

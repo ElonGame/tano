@@ -67,6 +67,10 @@ namespace tano
         float radius,
         int scale);
 
+    void RenderTexture(ObjectHandle texture,
+      const vec2& topLeft,
+      const vec2& bottomRight);
+
     void Copy(ObjectHandle inputBuffer,
         ObjectHandle outputBuffer,
         const RenderTargetDesc& outputDesc,
@@ -107,5 +111,7 @@ namespace tano
     GpuBundle _defaultBundle;
     GpuBundle _scaleBiasBundle;
     GpuBundle _scaleBiasSecondaryBundle;
+
+    GpuBundle _renderTextureBundle;
   };
 }

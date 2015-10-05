@@ -429,7 +429,7 @@ T Blackboard::GetValueAtTime(float t, const Keyframes<T>* keyframes)
   float relT = t - keyframes->firstTime;
 
   float step = keyframes->sampleStep;
-  int idx0 = (int)(relT / step);
+  int idx0 = min((int)(relT / step), (int)keyframes->values.size() - 1);
   int idx1 = min(idx0 + 1, (int)keyframes->values.size() - 1);
 
   // calc lerp term

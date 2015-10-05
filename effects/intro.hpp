@@ -111,6 +111,8 @@ namespace tano
     bool _drawText = true;
     float _curTime = 0;
 
+    ObjectHandle _introTexture[3];
+
     FreeflyCamera _textCamera;
   };
 }

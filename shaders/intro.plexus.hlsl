@@ -118,7 +118,6 @@ void GsLines(line VsLinesOut input[2], inout TriangleStream<PsLinesIn> outStream
 
 
 static float4 WireColor = float4(0.3, 0.3, 0.7, 1);
-static float LineWidth = 2.5;
 
 // entry-point: ps
 float4 PsLines(PsLinesIn p) : SV_Target

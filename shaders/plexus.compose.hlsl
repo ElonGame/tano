@@ -31,9 +31,12 @@ float4 Sobel(Texture2D tex, float2 uv)
  
   float4 col;
  
-  if (((t1 * t1) + (t2 * t2)) > 0.05) {
-  col = float4(0,0,0,1);
-  } else {
+  if (((t1 * t1) + (t2 * t2)) > 0.05)
+  {
+    col = float4(0,0,0,1);
+  }
+  else
+  {
     col = float4(1,1,1,1);
   }
 
@@ -54,16 +57,13 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 
   float4 greetsOutline = Sobel(Texture1, uv);
 
-  float greetsLum = Luminance(greets);
+  float greetsLum = Luminance(greets.rgb);
   if (greetsLum > 0)
   {
-    col = greets * greetsOutline;
-    // col = (greets * (1 - 0.5 * col)) - greetsOutline;
+    col = lerp(greets, float4(0.1, 0.1, 0.1, 0.1), 1 - 0.8 * greetsOutline);
+    col = lerp(greets, 0.5 * greets, 1 - greetsOutline);
+    //col = greets * greetsOutline;
   }
-
-  //col *= (greets - greetsOutline);
-
-  //col = greets;
 
   float exposure = tonemap.x;
   float minWhite = tonemap.y;
@@ -73,7 +73,7 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   col = pow(abs(col), 1.0/2.2);
 
   // vignette
-  float r = 0.8 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
+  float r = 0.6 + 0.9 - smoothstep(0, 0.9, sqrt(xx.x*xx.x + xx.y*xx.y));
   col = r * col;
 
   return col;
