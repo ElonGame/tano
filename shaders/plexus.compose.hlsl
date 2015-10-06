@@ -60,9 +60,9 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float greetsLum = Luminance(greets.rgb);
   if (greetsLum > 0)
   {
-    col = lerp(greets, float4(0.1, 0.1, 0.1, 0.1), 1 - 0.8 * greetsOutline);
-    col = lerp(greets, 0.5 * greets, 1 - greetsOutline);
-    //col = greets * greetsOutline;
+    //col = lerp(greets, float4(0.1, 0.1, 0.1, 0.1), 1 - 0.8 * greetsOutline);
+    //col = lerp(greets, 0.5 * greets, 1 - greetsOutline);
+    col = greets * greetsOutline;
   }
 
   float exposure = tonemap.x;
