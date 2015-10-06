@@ -2,6 +2,10 @@ Texture2D Texture0 : register(t0);
 Texture2D Texture1 : register(t1);
 Texture2D Texture2 : register(t2);
 Texture2D Texture3 : register(t3);
+Texture2D Texture4 : register(t4);
+Texture2D Texture5 : register(t5);
+Texture2D Texture6 : register(t6);
+Texture2D Texture7 : register(t7);
 
 // Samplers if using the GpuObjects samplers
 sampler PointSampler : register(s0);
@@ -160,8 +164,35 @@ float4 PsCopy(VSQuadOut p) : SV_Target
 float4 PsAdd(VSQuadOut p) : SV_Target
 {
   float2 uv = p.uv.xy;
-  float4 a = Texture0.Sample(PointSampler, uv);
-  float4 b = Texture1.Sample(PointSampler, uv);
+  float4 a = Texture0.Sample(LinearSampler, uv);
+  float4 b = Texture1.Sample(LinearSampler, uv);
   return a + b;
 }
 
+
+//------------------------------------------------------
+struct VSTextureIn
+{
+  float4 pos : SV_Position;
+  float2 uv : TexCoord;
+};
+
+struct VSTextureOut
+{
+  float4 pos : SV_Position;
+  float2 uv : TexCoord;
+};
+
+//------------------------------------------------------
+// entry-point: vs
+VSTextureOut VsRenderTexture(VSTextureIn v)
+{
+  return v;
+}
+
+//------------------------------------------------------
+// entry-point: ps
+float4 PsRenderTexture(VSTextureOut p) : SV_Target
+{
+  return Texture0.Sample(LinearSampler, p.uv);
+}

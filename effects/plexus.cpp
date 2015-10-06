@@ -96,7 +96,7 @@ void GreetsBlock2::CopyOut(vec3* verts)
       float ss = blockSize[i*w+j];
       if (ss > 0)
       {
-        verts = AddCubeWithNormal(verts, pos, ss / 2);
+        verts = AddCubeWithNormal(verts, pos, ss / 2, true);
         numGreetsCubes++;
       }
       pos.x += s;
@@ -131,7 +131,7 @@ void GreetsBlock2::Update(const UpdateState& state)
   for (int i = 0; i < width * height; ++i)
   {
     float diff = targetSize[i] - blockSize[i];
-    blockAcc[i] = 2.5f * diff;
+    blockAcc[i] = 2.0f * diff;
 
     blockVel[i] = (0.99f * blockVel[i]) + blockAcc[i] * dt;
     blockSize[i] += blockVel[i] * dt;
@@ -878,7 +878,8 @@ bool Plexus::Render()
 
     _cbGreets.Set(_ctx, 0);
     _ctx->SetBundle(_greetsBundle);
-    _ctx->DrawIndexed(_greetsBlock.numGreetsCubes * 36, 0, 0);
+    //_ctx->DrawIndexed(_greetsBlock.numGreetsCubes * 36, 0, 0);
+    _ctx->DrawIndexed(_greetsBlock.numGreetsCubes * 6, 0, 0);
   }
 
   {

@@ -580,7 +580,7 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  vec3* AddCubeWithNormal(vec3* buf, const vec3& pos, float scale)
+  vec3* AddCubeWithNormal(vec3* buf, const vec3& pos, float scale, bool singleFace)
   {
     vec3 verts[] = {
       {pos + vec3(-scale, -scale, -scale)},
@@ -616,6 +616,11 @@ namespace tano
 
     /// Front face
     AddFace(0, 1, 2, 3, n0);
+
+    if (singleFace)
+    {
+      return buf;
+    }
 
     // Back face
     AddFace(7, 6, 5, 4, n1);

@@ -27,6 +27,13 @@ namespace intro
     float text2FadeOutStart = 20;
     float text2FadeOutEnd = 22;
 
+    float textRight = 0.97;
+    float textSize = 0.03;
+
+    float newText0Pos = 0.84;
+    float newText1Pos = 0.90;
+    float newText2Pos = 0.96;
+
     float maxStrength = 5000;
 }
 

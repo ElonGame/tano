@@ -3,6 +3,14 @@
 #include "init_sequence.hpp"
 
 using namespace tano;
+using namespace bristol;
+
+//------------------------------------------------------------------------------
+struct VecPosTex
+{
+  vec4 pos;
+  vec2 tex;
+};
 
 //------------------------------------------------------------------------------
 FullscreenEffect::FullscreenEffect(GraphicsContext* ctx) : _ctx(ctx)
@@ -45,8 +53,13 @@ bool FullscreenEffect::Init()
     .PixelShader("shaders/out/common", "PsAdd")));
 
   INIT(_renderTextureBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/common", "PsCopy")));
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .RasterizerDesc(rasterizeDescCullNone)
+    .VertexShader("shaders/out/common", "VsRenderTexture")
+    .PixelShader("shaders/out/common", "PsRenderTexture")
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT))
+    .DynamicVb(6, sizeof(VecPosTex))));
 
   // clang-format on
 
@@ -391,4 +404,33 @@ void FullscreenEffect::RenderTexture(ObjectHandle texture,
   const vec2& topLeft,
   const vec2& bottomRight)
 {
+  // convert from 0..1 -> -1..1
+  vec2 tl = { -1 + 2 * topLeft.x, 1 - 2 * topLeft.y };
+  vec2 br = { -1 + 2 * bottomRight.x, 1 - 2 * bottomRight.y };
+
+  // 0--1
+  // 2 -3
+  VecPosTex v0 = { vec4{ tl.x, tl.y, 0, 1 }, vec2{ 0, 0 } };
+  VecPosTex v1 = { vec4{ br.x, tl.y, 0, 1 }, vec2{ 1, 0 } };
+  VecPosTex v2 = { vec4{ tl.x, br.y, 0, 1 }, vec2{ 0, 1 } };
+  VecPosTex v3 = { vec4{ br.x, br.y, 0, 1 }, vec2{ 1, 1 } };
+
+  // 0, 1, 2
+  // 2, 1, 3
+
+  ObjectHandle handle = _renderTextureBundle.objects._vb;
+  VecPosTex* vtx = _ctx->MapWriteDiscard<VecPosTex>(handle);
+  *vtx++ = v0;
+  *vtx++ = v1;
+  *vtx++ = v2;
+
+  *vtx++ = v2;
+  *vtx++ = v1;
+  *vtx++ = v3;
+
+  _ctx->Unmap(handle);
+
+  _ctx->SetBundleWithSamplers(_renderTextureBundle, ShaderType::PixelShader);
+  _ctx->SetShaderResource(texture);
+  _ctx->Draw(6, 0); 
 }

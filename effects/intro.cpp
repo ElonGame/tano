@@ -629,7 +629,7 @@ bool Intro::Render()
   {
     // Render the background
     _cbBackground.Set(_ctx, 0);
-    _ctx->SetRenderTarget(rtColor._rtHandle, GRAPHICS.GetDepthStencil(), &black);
+    _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
     _ctx->SetBundle(_backgroundBundle);
     _ctx->Draw(3, 0);
   }
@@ -642,6 +642,42 @@ bool Intro::Render()
     _ctx->Draw(_numSpawnedParticles, 0);
   }
 
+  ScopedRenderTarget rtText(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  {
+    // text
+    _ctx->SetRenderTarget(rtText, GRAPHICS.GetDepthStencil(), &black);
+    // 656 x 40
+
+    float right = BLACKBOARD.GetFloatVar("intro.textRight");
+    float s = BLACKBOARD.GetFloatVar("intro.textSize");
+    float y0 = BLACKBOARD.GetFloatVar("intro.newText0Pos");
+    float y1 = BLACKBOARD.GetFloatVar("intro.newText1Pos");
+    float y2 = BLACKBOARD.GetFloatVar("intro.newText2Pos");
+
+    float ar0 = 656.f / 40;
+    float ar1 = 696.f / 40;
+    float ar2 = 600.f / 40;
+
+    fullscreen->RenderTexture(
+      _introTexture[0], vec2{ right - ar0 * s, y0 - s }, vec2{ right, y0 });
+
+    fullscreen->RenderTexture(
+      _introTexture[1], vec2{ right - ar1 * s, y1 - s }, vec2{ right, y1 });
+
+    fullscreen->RenderTexture(
+      _introTexture[2], vec2{ right - ar2 * s, y2 - s }, vec2{ right, y2 });
+  }
+
+  ScopedRenderTarget rtBlurText(rtText._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
+
+  float beatHi = BLACKBOARD.GetFloatVar("Beat-Hi", _curTime);
+
+  {
+    // blur
+    _ctx->UnsetRenderTargets(0, 1);
+    fullscreen->BlurVertCustom(rtText, rtBlurText, rtBlurText._desc, _csParticleBlur, 20 * beatHi, 1);
+  }
+
   ScopedRenderTarget rtBlur2(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
   {
     // blur
@@ -649,9 +685,9 @@ bool Intro::Render()
     fullscreen->BlurVertCustom(rtColor, rtBlur2, rtBlur2._desc, _csParticleBlur, 20, 1);
   }
 
-  float beatHi = BLACKBOARD.GetFloatVar("Beat-Hi", _curTime);
-
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtBlur(
+    DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
   if (_drawText)
   {
     _ctx->SetRenderTarget(rtLines, GRAPHICS.GetDepthStencil(), &black);
@@ -720,11 +756,7 @@ bool Intro::Render()
     }
 
     _ctx->UnsetRenderTargets(0, 1);
-  }
 
-  ScopedRenderTarget rtBlur(
-      DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
-  {
     // blur
     fullscreen->Blur(rtLines._rtHandle, rtBlur._rtHandle, rtBlur._desc, _settings.blur_radius, 1);
   }
@@ -734,9 +766,9 @@ bool Intro::Render()
     // composite
     _cbComposite.ps0.tonemap = vec4(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
     _cbComposite.Set(_ctx, 0);
-    ObjectHandle inputs[] = {rtColor, rtLines, rtBlur, rtBlur2};
+    ObjectHandle inputs[] = {rtColor, rtLines, rtBlur, rtBlur2, rtText, rtBlurText};
     fullscreen->Execute(inputs,
-        4,
+        6,
         GRAPHICS.GetBackBuffer(),
         GRAPHICS.GetBackBufferDesc(),
         GRAPHICS.GetDepthStencil(),

@@ -108,7 +108,7 @@ namespace tano
     SimpleAppendBuffer<vec3, 1024> _randomPoints;
     GpuBundle _plexusLineBundle;
 
-    bool _drawText = true;
+    bool _drawText = false;
     float _curTime = 0;
 
     ObjectHandle _introTexture[3];
