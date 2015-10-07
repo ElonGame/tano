@@ -174,6 +174,8 @@
     <ClCompile Include="..\effects\tunnel.cpp" />
     <ClCompile Include="..\filewatcher_win32.cpp" />
     <ClCompile Include="..\free_list.cpp" />
+    <ClCompile Include="..\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\lz4\lz4.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -483,6 +485,7 @@
     <ClInclude Include="..\filewatcher_win32.hpp" />
     <ClInclude Include="..\fixed_deque.hpp" />
     <ClInclude Include="..\free_list.hpp" />
+    <ClInclude Include="..\imgui\imgui_internal.h" />
     <ClInclude Include="..\lz4\lz4.h" />
     <ClInclude Include="..\mesh_loader.hpp" />
     <ClInclude Include="..\bristol\bristol.hpp" />

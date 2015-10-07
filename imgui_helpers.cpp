@@ -73,6 +73,7 @@ bool InitDeviceD3D()
 
   INIT(g_gpuState.Create(&depthDesc, &desc, &RSDesc));
   INIT(g_gpuObjects.CreateDynamicVb(200000, sizeof(CUSTOMVERTEX)));
+  INIT(g_gpuObjects.CreateDynamicIb(200000, DXGI_FORMAT_R16_UINT));
 
   // (MAGNUS) Ignoring the render target view for now.. maybe later i want the gui to have its
   // own layer and compose with the main?
@@ -111,38 +112,23 @@ bool InitDeviceD3D()
 // This is the main rendering function that you have to implement and provide to ImGui (via setting up 'RenderDrawListsFn' in the ImGuiIO structure)
 // If text or lines are blurry when integrating ImGui in your engine:
 // - in your Render function, try translating your projection matrix by (0.5f,0.5f) or (0.375f,0.375f)
-static void ImImpl_RenderDrawLists(ImDrawList** const cmd_lists, int cmd_lists_count)
+static void ImImpl_RenderDrawLists(ImDrawData* draw_data)
 {
   g_ctx->SetRenderTarget(GRAPHICS.GetBackBuffer(), GRAPHICS.GetDepthStencil(), nullptr);
 
-  size_t total_vtx_count = 0;
-  for (int n = 0; n < cmd_lists_count; n++)
-    total_vtx_count += cmd_lists[n]->vtx_buffer.size();
-  if (total_vtx_count == 0)
-    return;
-
-  // Copy and convert all vertices into a single contiguous buffer
-  D3D11_MAPPED_SUBRESOURCE mappedResource;
-  if (!g_ctx->Map(g_gpuObjects._vb, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource))
-    return;
-
-  CUSTOMVERTEX* vtx_dst = (CUSTOMVERTEX*)mappedResource.pData;
-  for (int n = 0; n < cmd_lists_count; n++)
+  ImDrawVert* vtx_dst = g_ctx->MapWriteDiscard<ImDrawVert>(g_gpuObjects._vb);
+  ImDrawIdx* idx_dst = g_ctx->MapWriteDiscard<ImDrawIdx>(g_gpuObjects._ib);
+  for (int n = 0; n < draw_data->CmdListsCount; n++)
   {
-    const ImDrawList* cmd_list = cmd_lists[n];
-    const ImDrawVert* vtx_src = &cmd_list->vtx_buffer[0];
-    for (size_t i = 0; i < cmd_list->vtx_buffer.size(); i++)
-    {
-      vtx_dst->pos[0] = vtx_src->pos.x;
-      vtx_dst->pos[1] = vtx_src->pos.y;
-      vtx_dst->uv[0] = vtx_src->uv.x;
-      vtx_dst->uv[1] = vtx_src->uv.y;
-      vtx_dst->col = vtx_src->col;
-      vtx_dst++;
-      vtx_src++;
-    }
+    const ImDrawList* cmd_list = draw_data->CmdLists[n];
+    memcpy(vtx_dst, &cmd_list->VtxBuffer[0], cmd_list->VtxBuffer.size() * sizeof(ImDrawVert));
+    memcpy(idx_dst, &cmd_list->IdxBuffer[0], cmd_list->IdxBuffer.size() * sizeof(ImDrawIdx));
+    vtx_dst += cmd_list->VtxBuffer.size();
+    idx_dst += cmd_list->IdxBuffer.size();
   }
+
   g_ctx->Unmap(g_gpuObjects._vb);
+  g_ctx->Unmap(g_gpuObjects._ib);
 
   // Setup orthographic projection matrix into our constant buffer
   {
@@ -182,27 +168,34 @@ static void ImImpl_RenderDrawLists(ImDrawList** const cmd_lists, int cmd_lists_c
   g_ctx->SetGpuStateSamplers(g_gpuState, ShaderType::PixelShader);
   g_ctx->SetConstantBuffer(g_cb, ShaderType::VertexShader, 0);
 
-  // Render command lists
+  // Render command list
   int vtx_offset = 0;
-  for (int n = 0; n < cmd_lists_count; n++)
+  int idx_offset = 0;
+  for (int n = 0; n < draw_data->CmdListsCount; n++)
   {
-    // Render command list
-    const ImDrawList* cmd_list = cmd_lists[n];
-    for (size_t cmd_i = 0; cmd_i < cmd_list->commands.size(); cmd_i++)
+    const ImDrawList* cmd_list = draw_data->CmdLists[n];
+    for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.size(); cmd_i++)
     {
-      const ImDrawCmd* pcmd = &cmd_list->commands[cmd_i];
-      const D3D11_RECT r ={ (LONG)pcmd->clip_rect.x, (LONG)pcmd->clip_rect.y, (LONG)pcmd->clip_rect.z, (LONG)pcmd->clip_rect.w };
-
-      ObjectHandle* h = (ObjectHandle*)pcmd->texture_id;
-      if (h && h->IsValid())
-        g_ctx->SetShaderResource(*h, ShaderType::PixelShader);
+      const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+      if (pcmd->UserCallback)
+      {
+        pcmd->UserCallback(cmd_list, pcmd);
+      }
       else
-        g_ctx->SetShaderResource(g_texture, ShaderType::PixelShader);
+      {
+        const D3D11_RECT r = { (LONG)pcmd->ClipRect.x, (LONG)pcmd->ClipRect.y, (LONG)pcmd->ClipRect.z, (LONG)pcmd->ClipRect.w };
+        ObjectHandle* h = (ObjectHandle*)pcmd->TextureId;
+        if (h && h->IsValid())
+          g_ctx->SetShaderResource(*h, ShaderType::PixelShader);
+        else
+          g_ctx->SetShaderResource(g_texture, ShaderType::PixelShader);
 
-      g_ctx->SetScissorRect(1, &r);
-      g_ctx->Draw(pcmd->vtx_count, vtx_offset);
-      vtx_offset += pcmd->vtx_count;
+        g_ctx->SetScissorRect(1, &r);
+        g_ctx->DrawIndexed(pcmd->ElemCount, idx_offset, vtx_offset);
+      }
+      idx_offset += pcmd->ElemCount;
     }
+    vtx_offset += cmd_list->VtxBuffer.size();
   }
 
   // reset to full screen scissor rect

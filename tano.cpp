@@ -244,6 +244,8 @@ bool App::Run()
     UpdateImGui();
 #endif
 
+    ImGui::ShowTestWindow();
+
     DEMO_ENGINE.Tick();
 
 #if WITH_UNPACKED_RESOUCES
