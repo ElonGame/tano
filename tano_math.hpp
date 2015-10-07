@@ -261,10 +261,6 @@ namespace tano
   Spherical ToSpherical(const vec3& v);
 
   //------------------------------------------------------------------------------
-  // This implements the tone mapping operator in the Insomniac paper
-  float ToneMap(float x, float c, float b, float w, float t, float s);
-
-  //------------------------------------------------------------------------------
   inline int IntMod(int v, int m)
   {
     if (v < 0)

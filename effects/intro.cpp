@@ -658,14 +658,26 @@ bool Intro::Render()
     float ar1 = 696.f / 40;
     float ar2 = 600.f / 40;
 
-    fullscreen->RenderTexture(
-      _introTexture[0], vec2{ right - ar0 * s, y0 - s }, vec2{ right, y0 });
+    bool rightAlign = true;
+    if (rightAlign)
+    {
+      fullscreen->RenderTexture(
+        _introTexture[0], vec2{ right - ar0 * s, y0 - s }, vec2{ right, y0 });
 
-    fullscreen->RenderTexture(
-      _introTexture[1], vec2{ right - ar1 * s, y1 - s }, vec2{ right, y1 });
+      fullscreen->RenderTexture(
+        _introTexture[1], vec2{ right - ar1 * s, y1 - s }, vec2{ right, y1 });
 
-    fullscreen->RenderTexture(
-      _introTexture[2], vec2{ right - ar2 * s, y2 - s }, vec2{ right, y2 });
+      fullscreen->RenderTexture(
+        _introTexture[2], vec2{ right - ar2 * s, y2 - s }, vec2{ right, y2 });
+    }
+    else
+    {
+      // center
+      float w0 = ar0 * s;
+      fullscreen->RenderTexture(
+        _introTexture[0], vec2{ 0.5f - w0 / 2, 0.5f - s / 2 }, vec2{ 0.5f + w0 / 2, 0.5f + s / 2 });
+    }
+
   }
 
   ScopedRenderTarget rtBlurText(rtText._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);

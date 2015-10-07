@@ -107,7 +107,7 @@ void GreetsBlock2::CopyOut(vec3* verts)
 
 //------------------------------------------------------------------------------
 void GreetsBlock2::Update(const UpdateState& state)
-{
+{ 
   float localTime = state.localTime.TotalSecondsAsFloat();
   float dt = state.delta.TotalSecondsAsFloat();
 
