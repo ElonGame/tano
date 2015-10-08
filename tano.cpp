@@ -124,9 +124,70 @@ App& App::Instance()
   return *_instance;
 }
 
+struct Token
+{
+  enum class Type
+  {
+    Value,
+    BinOp,
+    LeftParen,
+    RightParen,
+    FuncStart,
+    Comma,
+    FuncEnd
+  };
+
+  Token() {}
+  Token(Type type) : type(type) {}
+  Token(float value) : type(Type::Value), value(value) {}
+  Token(Type type, const string& op) : type(type), op(op) {}
+
+  Type type;
+  string op;
+  float value;
+};
+
+struct ShuntingYard
+{
+  deque<Token> operandStack;
+  deque<Token> operatorStack;
+
+  void Parse(const char* str)
+  {
+
+    // First step is to tokenize the input
+    InputBuffer buf(str, strlen(str));
+
+    vector<Token> input;
+
+    while (!buf.Eof())
+    {
+      buf.SkipWhitespace();
+
+      char ch;
+      float value;
+      bool res;
+      if (parser::ParseFloat(buf, &value, &res) && res)
+      {
+        input.push_back(Token(value));
+      }
+      else if (buf.OneOf("+-/*", 4, &ch) && ch)
+      {
+        input.push_back(Token(Token::Type::BinOp, string(res, 1)));
+      }
+
+    }
+  }
+
+};
+
+
 //------------------------------------------------------------------------------
 bool App::Init(HINSTANCE hinstance)
 {
+  ShuntingYard ss;
+  ss.Parse("3 * (1 + 2)");
+
   BEGIN_INIT_SEQUENCE();
 
 #if WITH_UNPACKED_RESOUCES
