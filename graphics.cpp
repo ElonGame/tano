@@ -1085,3 +1085,12 @@ ObjectHandle Graphics::LoadComputeShaderFromFile(const string& filenameBase, con
 
   return res.initialResult ? handle : ObjectHandle();
 }
+
+//------------------------------------------------------------------------------
+void Graphics::ClearRenderTarget(ObjectHandle h)
+{
+  static Color black(0, 0, 0, 0);
+  RenderTargetResource* rt = GRAPHICS._renderTargets.Get(h);
+  ID3D11RenderTargetView* rtv = rt->view.ptr;
+  _immediateContext->ClearRenderTargetView(rtv, &black.x);
+}

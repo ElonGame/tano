@@ -22,8 +22,8 @@ namespace
     float mvp[4][4];
   };
 
-  INT64 ticks_per_second = 0;
-  INT64 last_time = 0;
+  LARGE_INTEGER ticksPerSecond;
+  LARGE_INTEGER lastTime = { 0 };
 
   GraphicsContext* g_ctx;
   ConstantBuffer<VERTEX_CONSTANT_BUFFER> g_cb;
@@ -282,10 +282,10 @@ namespace tano
     ImGuiIO& io = ImGui::GetIO();
 
     // Setup time step
-    INT64 current_time;
-    QueryPerformanceCounter((LARGE_INTEGER *)&current_time);
-    io.DeltaTime = (float)(current_time - last_time) / ticks_per_second;
-    last_time = current_time;
+    LARGE_INTEGER currentTime;
+    QueryPerformanceCounter(&currentTime);
+    io.DeltaTime = (float)(currentTime.QuadPart - lastTime.QuadPart) / ticksPerSecond.QuadPart;
+    lastTime = currentTime;
 
     // Setup inputs
     // (we already got mouse position, buttons, wheel from the window message callback)
@@ -304,7 +304,7 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  bool InitImGui()
+  bool InitImGui(HWND hWnd)
   {
     g_ctx = GRAPHICS.GetGraphicsContext();
     InitDeviceD3D();
@@ -333,6 +333,9 @@ namespace tano
     io.KeyMap[ImGuiKey_Y] = 'Y';
     io.KeyMap[ImGuiKey_Z] = 'Z';
     io.RenderDrawListsFn = ImImpl_RenderDrawLists;
+    io.ImeWindowHandle = hWnd;
+
+    QueryPerformanceFrequency(&ticksPerSecond);
 
     // Load fonts
     LoadFontsTexture();

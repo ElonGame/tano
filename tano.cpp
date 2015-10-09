@@ -171,7 +171,7 @@ bool App::Init(HINSTANCE hinstance)
   GRAPHICS.CreateDefaultSwapChain(width, height, bbWidth, bbHeight, DXGI_FORMAT_R8G8B8A8_UNORM, WndProc, hinstance);
 
 #if WITH_IMGUI
-  INIT_FATAL(InitImGui());
+  INIT_FATAL(InitImGui(GRAPHICS.GetSwapChain(GRAPHICS.DefaultSwapChain())->_hwnd));
 #endif
 
 #if WITH_REMOTERY
@@ -195,6 +195,42 @@ bool App::Init(HINSTANCE hinstance)
   INIT_FATAL(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
 
   END_INIT_SEQUENCE();
+}
+
+//------------------------------------------------------------------------------
+void App::DrawExpressionEditor()
+{
+#define IM_ARRAYSIZE(_ARR)      ((int)(sizeof(_ARR)/sizeof(*_ARR)))
+
+  if (ImGui::CollapsingHeader("Graphs widgets"))
+  {
+    static char buf[512] = {0};
+    static vector<eval::Token> expression;
+
+    if (ImGui::InputText("func:", buf, sizeof(buf), ImGuiInputTextFlags_EnterReturnsTrue))
+    {
+      expression.clear();
+      eval::Parse(buf, &expression);
+    }
+
+    if (!expression.empty())
+    {
+      eval::Environment env;
+      eval::Evaluator e;
+
+      float t = 0;
+      float tInc = 5.f / 100;
+      float res[100];
+      for (int i = 0; i < 100; ++i)
+      {
+        env.constants["t"] = t;
+        t += tInc;
+        res[i] = e.Evaluate(expression, &env);
+      }
+
+      ImGui::PlotLines("Res", res, IM_ARRAYSIZE(res), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(800, 600));
+    }
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -243,9 +279,11 @@ bool App::Run()
     UpdateImGui();
 #endif
 
-    ImGui::ShowTestWindow();
+    //ImGui::ShowTestWindow();
+    GRAPHICS.ClearRenderTarget(GRAPHICS.GetBackBuffer());
+    DrawExpressionEditor();
 
-    DEMO_ENGINE.Tick();
+    //DEMO_ENGINE.Tick();
 
 #if WITH_UNPACKED_RESOUCES
     RESOURCE_MANAGER.Tick();
