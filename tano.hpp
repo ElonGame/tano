@@ -75,7 +75,6 @@ namespace tano
     bool LoadSettings();
     void SaveSettings();
     void UpdateIoState();
-    void DrawExpressionEditor();
 
     static LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 

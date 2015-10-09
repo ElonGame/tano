@@ -1,6 +1,7 @@
 #include "blackboard.hpp"
 #include "resource_manager.hpp"
 #include "init_sequence.hpp"
+#include "imgui/imgui_internal.h"
 
 using namespace tano;
 using namespace bristol;
@@ -618,3 +619,65 @@ void Blackboard::Process()
 }
 
 #endif
+
+//------------------------------------------------------------------------------
+void Blackboard::DrawExpressionEditor()
+{
+#define IM_ARRAYSIZE(_ARR)      ((int)(sizeof(_ARR)/sizeof(*_ARR)))
+
+  ImGui::Begin("Expression Window");
+  static char buf[512] = { 0 };
+  static vector<eval::Token> expression;
+
+  if (ImGui::InputText("func:", buf, sizeof(buf), ImGuiInputTextFlags_EnterReturnsTrue))
+  {
+    expression.clear();
+    eval::Parse(buf, &expression);
+  }
+
+  if (!expression.empty())
+  {
+    eval::Environment env;
+    eval::Evaluator e;
+
+    // arguments are stored in LIFO order
+    env.functions["step"] = [](eval::Evaluator* e) {
+      // step(cutoff, t)
+      float t = e->PopValue();
+      float cutoff = e->PopValue();
+      e->PushValue(t >= cutoff ? 1.f : 0.f);
+    };
+
+    env.functions["pulse"] = [](eval::Evaluator* e) {
+      // step(start, stop, t)
+      float t = e->PopValue();
+      float stop = e->PopValue();
+      float start = e->PopValue();
+      e->PushValue((t >= start && t < stop) ? 1.f : 0.f);
+    };
+
+    env.functions["edecay"] = [](eval::Evaluator* e) {
+      // edecay(k, t)
+      float t = e->PopValue();
+      float k = e->PopValue();
+      e->PushValue(exp(-k*t));
+    };
+
+
+    float t = 0;
+    float tInc = 5.f / 100;
+    float res[100];
+    for (int i = 0; i < 100; ++i)
+    {
+      env.constants["t"] = t;
+      t += tInc;
+      res[i] = e.Evaluate(expression, &env);
+    }
+
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+
+    ImGui::PlotLines("Res", res, IM_ARRAYSIZE(res), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(800, 600));
+  }
+
+  ImGui::End();
+}

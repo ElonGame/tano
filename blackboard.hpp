@@ -49,6 +49,8 @@ namespace tano
 
     bool IsDirtyTrigger(void* id);
 
+    void DrawExpressionEditor();
+
   private:
 
     ~Blackboard();
