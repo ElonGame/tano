@@ -156,6 +156,7 @@
     <ClCompile Include="..\animation_helpers.cpp" />
     <ClCompile Include="..\arena_allocator.cpp" />
     <ClCompile Include="..\blackboard.cpp" />
+    <ClCompile Include="..\bristol\evaluator.cpp" />
     <ClCompile Include="..\bristol\parser\input_buffer.cpp" />
     <ClCompile Include="..\bristol\parser\output_buffer.cpp" />
     <ClCompile Include="..\bristol\parser\parse_base.cpp" />
@@ -464,6 +465,7 @@
     <ClInclude Include="..\bass\bass.h" />
     <ClInclude Include="..\blackboard.hpp" />
     <ClInclude Include="..\boba_scene_format.hpp" />
+    <ClInclude Include="..\bristol\evaluator.hpp" />
     <ClInclude Include="..\bristol\parser\input_buffer.hpp" />
     <ClInclude Include="..\bristol\parser\output_buffer.hpp" />
     <ClInclude Include="..\bristol\parser\parse_base.hpp" />

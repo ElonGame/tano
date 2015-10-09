@@ -247,6 +247,9 @@
     <ClCompile Include="..\imgui\imgui_demo.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
+    <ClCompile Include="..\bristol\evaluator.cpp">
+      <Filter>bristol</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -509,6 +512,9 @@
     </ClInclude>
     <ClInclude Include="..\imgui\imgui_internal.h">
       <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bristol\evaluator.hpp">
+      <Filter>bristol</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -258,6 +258,7 @@ namespace parser
 #define PARSER_WITH_VECTOR_TYPES 1
 #include "bristol/parser/input_buffer.hpp"
 #include "bristol/parser/parse_base.hpp"
+#include "bristol/evaluator.hpp"
 
 namespace tano
 {

@@ -8,6 +8,25 @@ using namespace tano;
 #include <assert.h>
 
 //------------------------------------------------------------------------------
+bool EvalTest()
+{
+  eval::Environment env;
+  env.functions["test"] = [](eval::Evaluator* eval) {
+    float b = eval->PopValue();
+    float a = eval->PopValue();
+    eval->PushValue(a + b);
+  };
+
+  env.constants["a"] = 10;
+
+  eval::Evaluator ss;
+  float res = ss.EvaluateFromString("test(1 / 10, 2 / 10) * a", &env);
+  assert(res == 3.0f);
+
+  return true;
+}
+
+//------------------------------------------------------------------------------
 bool BufferTest()
 {
   const int N = 4;
@@ -84,5 +103,6 @@ bool DequeTest()
 //------------------------------------------------------------------------------
 static bool bufferTestPassed = BufferTest();
 static bool dequeTest1Passed = DequeTest();
+static bool evalTestPassed = EvalTest();
 
 #endif
