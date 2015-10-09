@@ -128,57 +128,230 @@ struct Token
 {
   enum class Type
   {
-    Value,
+    Constant,
+    Var,
     BinOp,
     LeftParen,
     RightParen,
-    FuncStart,
+    FuncCall,
     Comma,
-    FuncEnd
+    UnaryMinus,
+    UnaryPlus,
+  };
+
+  enum BinOp
+  {
+    BinOpAdd, BinOpSub, BinOpMul, BinOpDiv
   };
 
   Token() {}
   Token(Type type) : type(type) {}
-  Token(float value) : type(Type::Value), value(value) {}
-  Token(Type type, const string& op) : type(type), op(op) {}
+  Token(float constant) : type(Type::Constant), constant(constant) {}
+  Token(Type type, const string& name) : type(type), name(name) {}
+  Token(BinOp binOp) : type(Type::BinOp), binOp(binOp) {}
 
   Type type;
-  string op;
-  float value;
+  BinOp binOp;
+  string name;
+  float constant;
 };
+
+static int BINOP_PRIO[4] = { 1, 1, 2, 2 };
 
 struct ShuntingYard
 {
   deque<Token> operandStack;
   deque<Token> operatorStack;
 
+  float PopValue()
+  {
+    float v = operandStack.back().constant;
+    operandStack.pop_back();
+    return v;
+  }
+
+  void PushValue(float value)
+  {
+    operandStack.push_back(Token{value});
+  }
+
+  Token PopOperator()
+  {
+    Token t = operatorStack.back();
+    operatorStack.pop_back();
+    return t;
+  }
+
+  void ApplyBinOp(Token::BinOp op)
+  {
+    float b = PopValue();
+    float a = PopValue();
+    switch (op)
+    {
+      case Token::BinOpAdd: PushValue(a + b); break;
+      case Token::BinOpSub: PushValue(a - b); break;
+      case Token::BinOpMul: PushValue(a * b); break;
+      case Token::BinOpDiv: PushValue(a / b); break;
+      default: LOG_WARN("Unknown bin-op!");
+    }
+  }
+
+  void LookupVar(const Token& t)
+  {
+    PushValue(2);
+  }
+
+  void TestFunc()
+  {
+    float a = PopValue();
+    float b = PopValue();
+    PushValue(a + b);
+  }
+
+  void ApplyUntilLeftParen()
+  {
+    while (!operatorStack.empty())
+    {
+      Token op = PopOperator();
+      if (op.type == Token::Type::LeftParen)
+      {
+        break;
+      }
+      else
+      {
+        ApplyBinOp(op.binOp);
+      }
+    }
+  }
+
+  struct Environment
+  {
+  };
+
+  float Evaluate(const vector<Token>& expression, const Environment& env)
+  {
+    // Now perform the actual shunting :)
+    for (size_t i = 0; i < expression.size(); ++i)
+    {
+      const Token& t = expression[i];
+
+      if (t.type == Token::Type::Constant)
+      {
+        operandStack.push_back(t);
+      }
+      else if (t.type == Token::Type::BinOp)
+      {
+        // Apply any higher priority operators
+        int prio = BINOP_PRIO[t.binOp];
+        while (!operatorStack.empty())
+        {
+          const Token& op = operatorStack.back();
+          if (op.type == Token::Type::BinOp && BINOP_PRIO[op.binOp] >= prio)
+            ApplyBinOp(op.binOp);
+          else
+            break;
+        }
+
+        operatorStack.push_back(t);
+      }
+      else if (t.type == Token::Type::FuncCall)
+      {
+        operatorStack.push_back(t);
+      }
+      else if (t.type == Token::Type::LeftParen)
+      {
+        operatorStack.push_back(t);
+      }
+      else if (t.type == Token::Type::Comma)
+      {
+        // apply all the operators until the left paren
+        ApplyUntilLeftParen();
+      }
+      else if (t.type == Token::Type::RightParen)
+      {
+        ApplyUntilLeftParen();
+        // if the token at the top of the operator stack is a function call,
+        // then invoke it
+        if (!operatorStack.empty())
+        {
+          Token t = operatorStack.back();
+          if (t.type == Token::Type::FuncCall)
+          {
+            operatorStack.pop_back();
+            TestFunc();
+          }
+        }
+      }
+      else if (t.type == Token::Type::Var)
+      {
+        LookupVar(t);
+      }
+    }
+
+    // apply all the remaining operators
+    while (!operatorStack.empty())
+    {
+      ApplyBinOp(PopOperator().binOp);
+    }
+
+    return PopValue();
+  }
+
   void Parse(const char* str)
   {
-
-    // First step is to tokenize the input
     InputBuffer buf(str, strlen(str));
 
-    vector<Token> input;
-
+    // First step is to tokenize the input
+    vector<Token> expression;
     while (!buf.Eof())
     {
       buf.SkipWhitespace();
 
-      char ch;
+      //char ch;
       float value;
       bool res;
+      int idx;
+      string fn;
       if (parser::ParseFloat(buf, &value, &res) && res)
       {
-        input.push_back(Token(value));
+        expression.push_back(Token(value));
       }
-      else if (buf.OneOf("+-/*", 4, &ch) && ch)
+      else if (buf.OneOfIdx("+-*/", 4, &idx) && idx != -1)
       {
-        input.push_back(Token(Token::Type::BinOp, string(res, 1)));
+        expression.push_back(Token(Token::BinOp(idx)));
       }
-
+      else if (buf.ConsumeIf('(', &res) && res)
+      {
+        expression.push_back(Token(Token::Type::LeftParen));
+      }
+      else if (buf.ConsumeIf(')', &res) && res)
+      {
+        expression.push_back(Token(Token::Type::RightParen));
+      }
+      else if (buf.ConsumeIf(',', &res) && res)
+      {
+        expression.push_back(Token(Token::Type::Comma));
+      }
+      else if (parser::ParseIdentifier(buf, &fn, false))
+      {
+        char ch;
+        // differentiate between function calls and vars
+        if (buf.Peek(&ch) && ch == '(')
+          expression.push_back(Token(Token::Type::FuncCall, fn));
+        else
+          expression.push_back(Token(Token::Type::Var, fn));
+      }
+      else
+      {
+        LOG_WARN("Error tokenizing string", str);
+        return;
+      }
     }
-  }
 
+    Environment env;
+    float res = Evaluate(expression, env);
+
+  }
 };
 
 
@@ -186,7 +359,9 @@ struct ShuntingYard
 bool App::Init(HINSTANCE hinstance)
 {
   ShuntingYard ss;
-  ss.Parse("3 * (1 + 2)");
+  //ss.Parse("10 * a");
+  ss.Parse("test(1 / 10, 2 / 10) * a");
+  //ss.Parse("3 * (1 + 2) / 10");
 
   BEGIN_INIT_SEQUENCE();
 
