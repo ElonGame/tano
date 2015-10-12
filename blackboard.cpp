@@ -60,6 +60,7 @@ bool Blackboard::Init(const char* filename, const char* datafile)
             LoadData();
             _triggeredIds.clear();
           }
+          _curExpr = min(_curExpr, (int)_expressionNames.size());
           return res;
         }
         else
@@ -95,6 +96,9 @@ void Blackboard::Reset()
   AssocDelete(&_vec2Vars);
   AssocDelete(&_vec3Vars);
   AssocDelete(&_vec4Vars);
+
+  _expressions.clear();
+  _expressionNames.clear();
 }
 
 //------------------------------------------------------------------------------
@@ -200,8 +204,7 @@ vec4 Blackboard::GetVec4Var(const string& name)
 }
 
 //------------------------------------------------------------------------------
-template <typename T>
-T Blackboard::GetVar(const string& name, float t, unordered_map<string, Keyframes<T>*>& vars)
+string Blackboard::GetFullName(const string& name)
 {
   if (name.find('.') != string::npos)
   {
@@ -209,8 +212,15 @@ T Blackboard::GetVar(const string& name, float t, unordered_map<string, Keyframe
     // current namespace
     _curNamespace.clear();
   }
-  string fullname = _curNamespace.empty() ? name : _curNamespace + "." + name;
 
+  return _curNamespace.empty() ? name : _curNamespace + "." + name;
+}
+
+//------------------------------------------------------------------------------
+template <typename T>
+T Blackboard::GetVar(const string& name, float t, unordered_map<string, Keyframes<T>*>& vars)
+{
+  string fullname = GetFullName(name);
   auto it = vars.find(fullname);
   if (it == vars.end())
   {
@@ -347,6 +357,26 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
       buf.SkipWhitespace();
       CHECKED_OP(buf.Expect(';'));
     }
+    else if (keyword == "expr")
+    {
+      CHECKED_OP(ParseIdentifier(buf, &id, false));
+      buf.SkipWhitespace();
+
+      CHECKED_OP(buf.Expect('='));
+
+      buf.SkipWhitespace();
+      string str;
+      CHECKED_OP(ParseString(buf, &str));
+
+      // parse the expression
+      vector<eval::Token> expr;
+      eval::Parse(str.c_str(), &expr);
+      _expressions[fnFullName(id)] = expr;
+      _expressionNames.push_back(fnFullName(id));
+
+      buf.SkipWhitespace();
+      CHECKED_OP(buf.Expect(';'));
+    }
     else
     {
       LOG_ERROR("unknown keyword");
@@ -410,6 +440,21 @@ vec2 Blackboard::GetVec2Var(const string& name, float t)
 vec3 Blackboard::GetVec3Var(const string& name, float t)
 {
   return GetVar(name, t, _vec3Vars);
+}
+
+//------------------------------------------------------------------------------
+float Blackboard::GetExpr(const string& name, eval::Environment* env)
+{
+  string fullname = GetFullName(name);
+  auto it = _expressions.find(fullname);
+  if (it == _expressions.end())
+  {
+    LOG_ERROR("Unknown expression: ", fullname);
+    return 0;
+  }
+
+  eval::Evaluator e;
+  return e.Evaluate(it->second, env);
 }
 
 //------------------------------------------------------------------------------
@@ -626,58 +671,59 @@ void Blackboard::DrawExpressionEditor()
 #define IM_ARRAYSIZE(_ARR)      ((int)(sizeof(_ARR)/sizeof(*_ARR)))
 
   ImGui::Begin("Expression Window");
-  static char buf[512] = { 0 };
-  static vector<eval::Token> expression;
 
-  if (ImGui::InputText("func:", buf, sizeof(buf), ImGuiInputTextFlags_EnterReturnsTrue))
+  auto fnGetParam = [](void* data, int idx, const char** out_text)
   {
-    expression.clear();
-    eval::Parse(buf, &expression);
+    Blackboard* self = (Blackboard*)data;
+    *out_text = self->_expressionNames[idx].c_str();
+    return true;
+  };
+
+  // Draw the parameter set combo box
+  ImGui::Combo("Expression", &_curExpr, fnGetParam, this, (int)_expressionNames.size());
+
+  auto it = _expressions.find(_expressionNames[_curExpr]);
+
+  eval::Environment env;
+  eval::Evaluator e;
+
+  // arguments are stored in LIFO order
+  env.functions["step"] = [](eval::Evaluator* e) {
+    // step(cutoff, t)
+    float t = e->PopValue();
+    float cutoff = e->PopValue();
+    e->PushValue(t >= cutoff ? 1.f : 0.f);
+  };
+
+  env.functions["pulse"] = [](eval::Evaluator* e) {
+    // step(start, stop, t)
+    float t = e->PopValue();
+    float stop = e->PopValue();
+    float start = e->PopValue();
+    e->PushValue((t >= start && t < stop) ? 1.f : 0.f);
+  };
+
+  env.functions["edecay"] = [](eval::Evaluator* e) {
+    // edecay(k, t)
+    float t = e->PopValue();
+    float k = e->PopValue();
+    e->PushValue(exp(-k*t));
+  };
+
+
+  float t = 0;
+  float tInc = 5.f / 100;
+  float res[100];
+  for (int i = 0; i < 100; ++i)
+  {
+    env.constants["t"] = t;
+    t += tInc;
+    res[i] = e.Evaluate(it->second, &env);
   }
 
-  if (!expression.empty())
-  {
-    eval::Environment env;
-    eval::Evaluator e;
+  ImGuiWindow* window = ImGui::GetCurrentWindow();
 
-    // arguments are stored in LIFO order
-    env.functions["step"] = [](eval::Evaluator* e) {
-      // step(cutoff, t)
-      float t = e->PopValue();
-      float cutoff = e->PopValue();
-      e->PushValue(t >= cutoff ? 1.f : 0.f);
-    };
-
-    env.functions["pulse"] = [](eval::Evaluator* e) {
-      // step(start, stop, t)
-      float t = e->PopValue();
-      float stop = e->PopValue();
-      float start = e->PopValue();
-      e->PushValue((t >= start && t < stop) ? 1.f : 0.f);
-    };
-
-    env.functions["edecay"] = [](eval::Evaluator* e) {
-      // edecay(k, t)
-      float t = e->PopValue();
-      float k = e->PopValue();
-      e->PushValue(exp(-k*t));
-    };
-
-
-    float t = 0;
-    float tInc = 5.f / 100;
-    float res[100];
-    for (int i = 0; i < 100; ++i)
-    {
-      env.constants["t"] = t;
-      t += tInc;
-      res[i] = e.Evaluate(expression, &env);
-    }
-
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-
-    ImGui::PlotLines("Res", res, IM_ARRAYSIZE(res), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(800, 600));
-  }
+  ImGui::PlotLines("Res", res, IM_ARRAYSIZE(res), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(800, 600));
 
   ImGui::End();
 }

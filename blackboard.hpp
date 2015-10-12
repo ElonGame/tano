@@ -30,6 +30,8 @@ namespace tano
     vec2 GetVec2Var(const string& name, float t);
     vec3 GetVec3Var(const string& name, float t);
 
+    float GetExpr(const string& name, eval::Environment* env);
+
     template <typename T>
     struct Keyframes;
     template <typename T>
@@ -65,6 +67,7 @@ namespace tano
     void LoadData();
 
     void ProcessAnimationBuffer(const char* buf, int bufSize);
+    string GetFullName(const string& name);
 
     static Blackboard* _instance;
 
@@ -94,6 +97,10 @@ namespace tano
     unordered_map<string, Keyframes<vec2>*> _vec2Vars;
     unordered_map<string, Keyframes<vec3>*> _vec3Vars;
     unordered_map<string, Keyframes<vec4>*> _vec4Vars;
+    unordered_map<string, vector<eval::Token>> _expressions;
+    vector<string> _expressionNames;
+
+    int _curExpr = 0;
 
     string _filename;
     string _datafile;
