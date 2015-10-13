@@ -9,9 +9,24 @@ using namespace std;
 
 namespace parser
 {
+  struct ScopedRestore
+  {
+    ScopedRestore(InputBuffer* buf, bool* success) : buf(buf), success(success) { buf->SaveState(); }
+    ~ScopedRestore()
+    {
+      // this relies on the fact the SET_PARSER_SUCCESS has been called, which will throw an
+      // exception in the case of an error, so if success doesn't exist, then the parse must
+      // have been successful.
+      buf->RestoreState(success && !(*success));
+    }
+    InputBuffer* buf;
+    bool* success;
+  };
+
   //-----------------------------------------------------------------------------
   bool ParseBool(InputBuffer& buf, bool* success)
   {
+    ScopedRestore r(&buf, success);
     SET_PARSER_SUCCESS(true);
 
     size_t start = buf._idx;
@@ -32,7 +47,8 @@ namespace parser
   //-----------------------------------------------------------------------------
   float ParseFloat(InputBuffer& buf, bool* success)
   {
-    buf.SaveState();
+    ScopedRestore r(&buf, success);
+    SET_PARSER_SUCCESS(true);
 
     char ch;
     CHECKED_OP(buf.IsOneOf("-+", 2, &ch));
@@ -70,26 +86,31 @@ namespace parser
       }
     }
 
-    // If success is set, then we only want to advance if the parse was succesful
     bool validParse = numLeadingDigits > 0 || numTrailingDigits > 0;
+    SET_PARSER_SUCCESS(validParse);
     if (success)
     {
       *success = validParse;
     }
-    buf.RestoreState(!success || validParse);
-
     return res;
   }
 
   //-----------------------------------------------------------------------------
   int ParseInt(InputBuffer& buf, bool* success)
   {
+    ScopedRestore r(&buf, success);
+    SET_PARSER_SUCCESS(true);
+
     char ch;
-    CHECKED_OP(buf.IsOneOf("-+", 2, &ch));
+    buf.IsOneOf("-+", 2, &ch);
     bool neg = ch == '-';
 
     // read the first char, and make sure it's a digit
-    CHECKED_OP(buf.Satifies(InputBuffer::IsDigit, &ch));
+    if (!buf.Satifies(InputBuffer::IsDigit, &ch))
+    {
+      SET_PARSER_SUCCESS(false);
+      return 0;
+    }
 
     int val = ch - '0';
     while (buf.Satifies(InputBuffer::IsDigit, &ch))
@@ -104,29 +125,43 @@ namespace parser
   template <int N>
   void ParseVec(InputBuffer& buf, float* res, bool* success)
   {
+    ScopedRestore r(&buf, success);
+    SET_PARSER_SUCCESS(true);
+
     // { x, y, z, w }
-    buf.Expect('{');
+    buf.Expect('{', success);
+    if (!(*success))
+      return;
 
     for (int i = 0; i < N; ++i)
     {
       buf.SkipWhitespace();
       res[i] = ParseFloat(buf, success);
+      if (!(*success))
+        return;
 
       if (i != N - 1)
       {
         buf.SkipWhitespace();
-        buf.Expect(',');
+        buf.Expect(',', success);
+        if (!(*success))
+          return;
       }
     }
 
     buf.SkipWhitespace();
-    buf.Expect('}');
+    buf.Expect('}', success);
+    if (!(*success))
+      return;
   }
 
 #if PARSER_WITH_VECTOR_TYPES
   //-----------------------------------------------------------------------------
   color ParseColor(InputBuffer& buf, bool* success)
   {
+    ScopedRestore r(&buf, success);
+    SET_PARSER_SUCCESS(true);
+
     float tmp[4];
     ParseVec<4>(buf, tmp, success);
     return color(tmp[0], tmp[1], tmp[2], tmp[3]);
@@ -135,6 +170,9 @@ namespace parser
   //-----------------------------------------------------------------------------
   vec2 ParseVec2(InputBuffer& buf, bool* success)
   {
+    ScopedRestore r(&buf, success);
+    SET_PARSER_SUCCESS(true);
+
     float tmp[2];
     ParseVec<2>(buf, tmp, success);
     return vec2(tmp[0], tmp[1]);
@@ -143,6 +181,9 @@ namespace parser
   //-----------------------------------------------------------------------------
   vec3 ParseVec3(InputBuffer& buf, bool* success)
   {
+    ScopedRestore r(&buf, success);
+    SET_PARSER_SUCCESS(true);
+
     float tmp[3];
     ParseVec<3>(buf, tmp, success);
     return vec3(tmp[0], tmp[1], tmp[2]);
@@ -151,6 +192,9 @@ namespace parser
   //-----------------------------------------------------------------------------
   vec4 ParseVec4(InputBuffer& buf, bool* success)
   {
+    ScopedRestore r(&buf, success);
+    SET_PARSER_SUCCESS(true);
+
     float tmp[4];
     ParseVec<4>(buf, tmp, success);
     return vec4(tmp[0], tmp[1], tmp[2], tmp[3]);
@@ -160,11 +204,19 @@ namespace parser
   //-----------------------------------------------------------------------------
   std::string ParseString(InputBuffer& buf, bool* success)
   {
+    ScopedRestore r(&buf, success);
+    SET_PARSER_SUCCESS(true);
+
     char ch;
-    // TODO: handle error
-    buf.SkipUntilOneOf("'\"", 2, &ch, true);
+    buf.SkipUntilOneOf("'\"", 2, &ch, true, success);
+    if (!(*success))
+      return string();
+
     size_t start = buf._idx;
-    buf.SkipUntil(ch, true);
+    buf.SkipUntil(ch, true, success);
+    if (!(*success))
+      return string();
+
     size_t end = buf._idx;
     return buf.SubStr(start, end - start - 1, success);
   }

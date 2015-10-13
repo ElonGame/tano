@@ -74,9 +74,6 @@ namespace parser
     if (!IsOneOfIdx(str, len, &idx))
       return false;
 
-    if (idx == -1)
-      return true;
-
     *res = str[idx];
     return true;
   }
@@ -96,10 +93,10 @@ namespace parser
       {
         Consume();
         *res = (int)i;
-        break;
+        return true;
       }
     }
-    return true;
+    return false;
   }
 
   //-----------------------------------------------------------------------------
@@ -275,9 +272,9 @@ namespace parser
   }
 
   //-----------------------------------------------------------------------------
-  void InputBuffer::RestoreState(bool onlyPop)
+  void InputBuffer::RestoreState(bool fullRestore)
   {
-    if (!onlyPop)
+    if (fullRestore)
     {
       _idx = _saveStack.back();
     }

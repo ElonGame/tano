@@ -68,7 +68,7 @@ namespace parser
     bool InnerScope(const char* delim, InputBuffer* scope);
 
     void SaveState();
-    void RestoreState(bool onlyPop=false);
+    void RestoreState(bool fullRestore=true);
 
     std::deque<size_t> _saveStack;
 
