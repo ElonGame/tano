@@ -247,7 +247,7 @@ bool App::Run()
     GRAPHICS.ClearRenderTarget(GRAPHICS.GetBackBuffer());
     BLACKBOARD.DrawExpressionEditor();
 
-    //DEMO_ENGINE.Tick();
+    DEMO_ENGINE.Tick();
 
 #if WITH_UNPACKED_RESOUCES
     RESOURCE_MANAGER.Tick();

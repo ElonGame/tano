@@ -92,12 +92,18 @@ namespace tano
     template <typename T>
     T GetValueAtTime(float t, const Keyframes<T>* keyframes);
 
+    struct Expression
+    {
+      string repr;
+      vector<eval::Token> tokens;
+    };
+
     unordered_map<string, Keyframes<int>*> _intVars;
     unordered_map<string, Keyframes<float>*> _floatVars;
     unordered_map<string, Keyframes<vec2>*> _vec2Vars;
     unordered_map<string, Keyframes<vec3>*> _vec3Vars;
     unordered_map<string, Keyframes<vec4>*> _vec4Vars;
-    unordered_map<string, vector<eval::Token>> _expressions;
+    unordered_map<string, Expression> _expressions;
     vector<string> _expressionNames;
 
     int _curExpr = 0;

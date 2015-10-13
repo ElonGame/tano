@@ -359,7 +359,7 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
       // parse the expression
       vector<eval::Token> expr;
       eval::Parse(str.c_str(), &expr);
-      _expressions[fnFullName(id)] = expr;
+      _expressions[fnFullName(id)] = Expression{str, expr};
       _expressionNames.push_back(fnFullName(id));
 
       buf.SkipWhitespace();
@@ -442,7 +442,7 @@ float Blackboard::GetExpr(const string& name, eval::Environment* env)
   }
 
   eval::Evaluator e;
-  return e.Evaluate(it->second, env);
+  return e.Evaluate(it->second.tokens, env);
 }
 
 //------------------------------------------------------------------------------
@@ -658,19 +658,32 @@ void Blackboard::DrawExpressionEditor()
 {
 #define IM_ARRAYSIZE(_ARR)      ((int)(sizeof(_ARR)/sizeof(*_ARR)))
 
+  static bool opened = true;
   ImGui::Begin("Expression Window");
 
   auto fnGetParam = [](void* data, int idx, const char** out_text)
   {
     Blackboard* self = (Blackboard*)data;
-    *out_text = self->_expressionNames[idx].c_str();
+    const string& name = self->_expressionNames[idx];
+    const string& expr = self->_expressions[name].repr;
+    static char buf[256];
+    snprintf(buf, 255, "%s (%s)", name.c_str(), expr.c_str());
+    *out_text = buf;
     return true;
   };
 
-  // Draw the parameter set combo box
+  static float endTime = 10.f;
+  static int numSteps = 500;
+  static float scaleMin = -1.0f;
+  static float scaleMax = +1.0f;
   ImGui::Combo("Expression", &_curExpr, fnGetParam, this, (int)_expressionNames.size());
+  ImGui::InputFloat("End time", &endTime);
+  ImGui::InputInt("Num steps", &numSteps);
+  ImGui::InputFloat("Scale min", &scaleMin);
+  ImGui::InputFloat("Scale max", &scaleMax);
+  numSteps = max(1, numSteps);
 
-  auto it = _expressions.find(_expressionNames[_curExpr]);
+  Expression expr = _expressions[_expressionNames[_curExpr]];
 
   eval::Environment env;
   eval::Evaluator e;
@@ -691,27 +704,36 @@ void Blackboard::DrawExpressionEditor()
     e->PushValue((t >= start && t < stop) ? 1.f : 0.f);
   }};
 
-  env.functions["edecay"] = eval::UserFunction{2, [](eval::Evaluator* e) {
+  env.functions["edecay"] = eval::UserFunction{ 2, [](eval::Evaluator* e) {
     // edecay(k, t)
     float t = e->PopValue();
     float k = e->PopValue();
     e->PushValue(exp(-k*t));
-  }};
+  } };
+
+  env.functions["ldecay"] = eval::UserFunction{ 2, [](eval::Evaluator* e) {
+    // lerp between 1..0
+    float t = e->PopValue();
+    float k = e->PopValue();
+    float s = Clamp(0.f, 1.f, t * k);
+    e->PushValue(lerp(1.f, 0.f, s));
+  } };
 
 
   float t = 0;
-  float tInc = 5.f / 100;
-  float res[100];
-  for (int i = 0; i < 100; ++i)
+  float tInc = endTime / numSteps;
+  float* res = (float*)_alloca(numSteps * sizeof(float));
+  for (int i = 0; i < numSteps; ++i)
   {
     env.constants["t"] = t;
     t += tInc;
-    res[i] = e.Evaluate(it->second, &env);
+    res[i] = e.Evaluate(expr.tokens, &env);
   }
 
   ImGuiWindow* window = ImGui::GetCurrentWindow();
 
-  ImGui::PlotLines("Res", res, IM_ARRAYSIZE(res), 0, NULL, FLT_MAX, FLT_MAX, ImVec2(800, 600));
+  ImVec2 size = ImGui::GetContentRegionAvail();
+  ImGui::PlotLines("Func", res, numSteps, 0, NULL, scaleMin, scaleMax, size);
 
   ImGui::End();
 }

@@ -34,8 +34,9 @@ namespace intro
     float newText1Pos = 0.90;
     float newText2Pos = 0.96;
 
-    expr text0Thing = "pulse(1, 100, t) * max(pulse(1, 1.2, t), edecay(2, t+1))";
-    expr text2Thing = "sin(7*t)";
+    expr text0Thing = "sin(5*t) * ldecay(0.1, t)";
+    expr text1Thing = "pulse(1, 2, t) * ldecay(0.1, t)";
+    expr text2Thing = "sin(3*t)";
 
     float maxStrength = 5000;
 }
