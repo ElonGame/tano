@@ -11,11 +11,11 @@ using namespace tano;
 bool EvalTest()
 {
   eval::Environment env;
-  env.functions["test"] = [](eval::Evaluator* eval) {
+  env.functions["test"] = eval::UserFunction{2, [](eval::Evaluator* eval) {
     float b = eval->PopValue();
     float a = eval->PopValue();
     eval->PushValue(a + b);
-  };
+  }};
 
   env.constants["a"] = 10;
 

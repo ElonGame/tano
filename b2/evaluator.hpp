@@ -40,9 +40,16 @@ namespace eval
   typedef std::function<void(Evaluator* eval)> fnFunction;
 
   //------------------------------------------------------------------------------
+  struct UserFunction
+  {
+    int numArgs;
+    fnFunction fn;
+  };
+
+  //------------------------------------------------------------------------------
   struct Environment
   {
-    std::unordered_map<std::string, fnFunction> functions;
+    std::unordered_map<std::string, UserFunction> functions;
     std::unordered_map<std::string, float> constants;
   };
 
@@ -57,7 +64,7 @@ namespace eval
     float EvaluateFromString(const char* str, const Environment* env);
     float Evaluate(const std::vector<Token>& expression, const Environment* env);
 
-    void RegisterFunction(const std::string& name, const fnFunction& fn);
+    void RegisterFunction(const std::string& name, int numArgs, const fnFunction& fn);
     void SetConstant(const std::string& name, float value);
 
     float PopValue();
@@ -71,7 +78,10 @@ namespace eval
     std::deque<Token> operandStack;
     std::deque<Token> operatorStack;
 
-    std::unordered_map<std::string, fnFunction> functions;
+    std::unordered_map<std::string, UserFunction> functions;
     std::unordered_map<std::string, float> constants;
+
+    std::string errorString;
+    bool success = true;
   };
 }

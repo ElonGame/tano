@@ -676,27 +676,27 @@ void Blackboard::DrawExpressionEditor()
   eval::Evaluator e;
 
   // arguments are stored in LIFO order
-  env.functions["step"] = [](eval::Evaluator* e) {
+  env.functions["step"] = eval::UserFunction{2, [](eval::Evaluator* e) {
     // step(cutoff, t)
     float t = e->PopValue();
     float cutoff = e->PopValue();
     e->PushValue(t >= cutoff ? 1.f : 0.f);
-  };
+  }};
 
-  env.functions["pulse"] = [](eval::Evaluator* e) {
+  env.functions["pulse"] = eval::UserFunction{3, [](eval::Evaluator* e) {
     // step(start, stop, t)
     float t = e->PopValue();
     float stop = e->PopValue();
     float start = e->PopValue();
     e->PushValue((t >= start && t < stop) ? 1.f : 0.f);
-  };
+  }};
 
-  env.functions["edecay"] = [](eval::Evaluator* e) {
+  env.functions["edecay"] = eval::UserFunction{2, [](eval::Evaluator* e) {
     // edecay(k, t)
     float t = e->PopValue();
     float k = e->PopValue();
     e->PushValue(exp(-k*t));
-  };
+  }};
 
 
   float t = 0;

@@ -62,27 +62,27 @@ namespace eval
   //------------------------------------------------------------------------------
   Evaluator::Evaluator()
   {
-    RegisterFunction("min", [](eval::Evaluator* eval) {
+    RegisterFunction("min", 2, [](eval::Evaluator* eval) {
       eval->PushValue(min(eval->PopValue(), eval->PopValue()));
     });
 
-    RegisterFunction("max", [](eval::Evaluator* eval) {
+    RegisterFunction("max", 2, [](eval::Evaluator* eval) {
       eval->PushValue(max(eval->PopValue(), eval->PopValue()));
     });
 
-    RegisterFunction("sin", [](eval::Evaluator* eval) {
+    RegisterFunction("sin", 1, [](eval::Evaluator* eval) {
       eval->PushValue(sin(eval->PopValue()));
     });
 
-    RegisterFunction("cos", [](eval::Evaluator* eval) {
+    RegisterFunction("cos", 1, [](eval::Evaluator* eval) {
       eval->PushValue(cos(eval->PopValue()));
     });
   }
 
   //------------------------------------------------------------------------------
-  void Evaluator::RegisterFunction(const string& name, const fnFunction& fn)
+  void Evaluator::RegisterFunction(const string& name, int numArgs, const fnFunction& fn)
   {
-    functions[name] = fn;
+    functions[name] = UserFunction{ numArgs, fn };
   }
 
   //------------------------------------------------------------------------------
@@ -94,6 +94,13 @@ namespace eval
   //------------------------------------------------------------------------------
   float Evaluator::PopValue()
   {
+    if (operandStack.empty())
+    {
+      errorString = "Too few operands";
+      success = false;
+      return 0;
+    }
+
     float v = operandStack.back().constant;
     operandStack.pop_back();
     return v;
@@ -108,6 +115,13 @@ namespace eval
   //------------------------------------------------------------------------------
   Token Evaluator::PopOperator()
   {
+    if (operatorStack.empty())
+    {
+      errorString = "Too few operators";
+      success = false;
+      return 0;
+    }
+
     Token t = operatorStack.back();
     operatorStack.pop_back();
     return t;
@@ -116,15 +130,27 @@ namespace eval
   //------------------------------------------------------------------------------
   void Evaluator::ApplyBinOp(Token::BinOp op)
   {
+    if (operandStack.size() < 2)
+    {
+      errorString = "Missing operands";
+      success = false;
+      return;
+    }
+
     float b = PopValue();
     float a = PopValue();
     switch (op)
     {
-    case Token::BinOpAdd: PushValue(a + b); break;
-    case Token::BinOpSub: PushValue(a - b); break;
-    case Token::BinOpMul: PushValue(a * b); break;
-    case Token::BinOpDiv: PushValue(a / b); break;
-    default: LOG_WARN("Unknown bin-op!");
+      case Token::BinOpAdd: PushValue(a + b); break;
+      case Token::BinOpSub: PushValue(a - b); break;
+      case Token::BinOpMul: PushValue(a * b); break;
+      case Token::BinOpDiv: PushValue(a / b); break;
+      default:
+      {
+        errorString = "Unknown bin-op";
+        success = false;
+        break;
+      }
     }
   }
 
@@ -141,7 +167,13 @@ namespace eval
         return;
       }
     }
-    assert(constants.count(name));
+
+    if (constants.count(name) == 0)
+    {
+      errorString = "Unknown constant: " + name;
+      return;
+    }
+
     PushValue(constants[name]);
   }
 
@@ -149,18 +181,39 @@ namespace eval
   void Evaluator::InvokeFunction(const Token& t, const Environment* env)
   {
     const string& name = t.name;
+
+    const UserFunction* fn = nullptr;
+
+    // First check the environment for the function, then check built-ins
     if (env)
     {
       auto it = env->functions.find(name);
       if (it != env->functions.end())
-      {
-        it->second(this);
-        return;
-      }
+        fn = &it->second;
     }
 
-    assert(functions.count(name));
-    functions[name](this);
+    if (!fn)
+    {
+      auto it = functions.find(name);
+      if (it != functions.end())
+        fn = &it->second;
+    }
+
+    if (!fn)
+    {
+      errorString = "Unknown function: " + name;
+      return;
+    }
+
+    // Verify that we have enough arguments on the stack
+    if (operandStack.size() < fn->numArgs)
+    {
+      errorString = "Too few arguments for user function: " + name;
+      success = false;
+      return;
+    }
+
+    fn->fn(this);
   }
 
   //------------------------------------------------------------------------------
@@ -197,6 +250,11 @@ namespace eval
     // Now perform the actual shunting :)
     for (size_t i = 0; i < expression.size(); ++i)
     {
+      if (!success)
+      {
+        return 0;
+      }
+
       const Token& t = expression[i];
 
       if (t.type == Token::Type::Constant)

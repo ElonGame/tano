@@ -51,7 +51,7 @@ namespace parser
     SET_PARSER_SUCCESS(true);
 
     char ch;
-    CHECKED_OP(buf.IsOneOf("-+", 2, &ch));
+    buf.IsOneOf("-+", 2, &ch);
     bool neg = ch == '-';
 
     int numLeadingDigits = 0;
@@ -88,10 +88,6 @@ namespace parser
 
     bool validParse = numLeadingDigits > 0 || numTrailingDigits > 0;
     SET_PARSER_SUCCESS(validParse);
-    if (success)
-    {
-      *success = validParse;
-    }
     return res;
   }
 
@@ -130,28 +126,28 @@ namespace parser
 
     // { x, y, z, w }
     buf.Expect('{', success);
-    if (!(*success))
+    if (success && !(*success))
       return;
 
     for (int i = 0; i < N; ++i)
     {
       buf.SkipWhitespace();
       res[i] = ParseFloat(buf, success);
-      if (!(*success))
+      if (success && !(*success))
         return;
 
       if (i != N - 1)
       {
         buf.SkipWhitespace();
         buf.Expect(',', success);
-        if (!(*success))
+        if (success && !(*success))
           return;
       }
     }
 
     buf.SkipWhitespace();
     buf.Expect('}', success);
-    if (!(*success))
+    if (success && !(*success))
       return;
   }
 
@@ -209,12 +205,12 @@ namespace parser
 
     char ch;
     buf.SkipUntilOneOf("'\"", 2, &ch, true, success);
-    if (!(*success))
+    if (success && !(*success))
       return string();
 
     size_t start = buf._idx;
     buf.SkipUntil(ch, true, success);
-    if (!(*success))
+    if (success && !(*success))
       return string();
 
     size_t end = buf._idx;
@@ -233,6 +229,8 @@ namespace parser
     {
       // find the trailing ':'
       buf.SkipUntil(':', true, success);
+      if (success && !(*success))
+        return string();
     }
 
     return buf.SubStr(start, end - start, success);
@@ -295,7 +293,6 @@ namespace parser
     buf.Advance(sprintf(buf.Cur(), "{ %f, %f, %f, %f }", value.x, value.y, value.z, value.w));
   }
 #endif
-  //-----------------------------------------------------------------------------
   //-----------------------------------------------------------------------------
   void Serialize(OutputBuffer& buf, int indent, const char* member, bool value)
   {
