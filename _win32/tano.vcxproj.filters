@@ -21,15 +21,6 @@
     <Filter Include="imgui">
       <UniqueIdentifier>{a8f1f197-ab6e-453a-b7ef-54b46a1d555d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="bristol">
-      <UniqueIdentifier>{7c505794-c8dc-4dd7-ac5f-26afe953add2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="bristol\dx">
-      <UniqueIdentifier>{aca57c52-e77c-4e43-8784-a22926ae5e8d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="bristol\dx\directxtk">
-      <UniqueIdentifier>{0c75b133-5052-40be-a9e1-4bcb30007a03}</UniqueIdentifier>
-    </Filter>
     <Filter Include="remotery">
       <UniqueIdentifier>{341c806c-144b-485d-afe0-6003cedb2f6a}</UniqueIdentifier>
     </Filter>
@@ -50,8 +41,17 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="bristol\parser">
-      <UniqueIdentifier>{2b43d973-40ae-4be0-acf2-82ae3008d0db}</UniqueIdentifier>
+    <Filter Include="b2">
+      <UniqueIdentifier>{d245a077-198f-46fa-8627-ab2f3230a3fc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="b2\dx">
+      <UniqueIdentifier>{9c6fc992-f430-4528-9542-c22d4b7f6c80}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="b2\parser">
+      <UniqueIdentifier>{130a7fbd-c674-466a-9e3f-630eccd16f04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="b2\dx\directxtk">
+      <UniqueIdentifier>{95aff643-7ada-4629-9c25-c803eb0efbc9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -105,27 +105,6 @@
     </ClCompile>
     <ClCompile Include="..\graphics_extra.cpp">
       <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bristol\error.cpp">
-      <Filter>bristol</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bristol\file_utils.cpp">
-      <Filter>bristol</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bristol\file_watcher.cpp">
-      <Filter>bristol</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bristol\string_utils.cpp">
-      <Filter>bristol</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bristol\time_utils.cpp">
-      <Filter>bristol</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bristol\utils.cpp">
-      <Filter>bristol</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bristol\dx\graphics_utils.cpp">
-      <Filter>bristol\dx</Filter>
     </ClCompile>
     <ClCompile Include="..\mesh_loader.cpp">
       <Filter>src</Filter>
@@ -229,15 +208,6 @@
     <ClCompile Include="..\particle_emitters.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\bristol\parser\input_buffer.cpp">
-      <Filter>bristol\parser</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bristol\parser\output_buffer.cpp">
-      <Filter>bristol\parser</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bristol\parser\parse_base.cpp">
-      <Filter>bristol\parser</Filter>
-    </ClCompile>
     <ClCompile Include="..\tests.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -247,8 +217,38 @@
     <ClCompile Include="..\imgui\imgui_demo.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\bristol\evaluator.cpp">
-      <Filter>bristol</Filter>
+    <ClCompile Include="..\b2\error.cpp">
+      <Filter>b2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\b2\evaluator.cpp">
+      <Filter>b2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\b2\file_utils.cpp">
+      <Filter>b2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\b2\file_watcher.cpp">
+      <Filter>b2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\b2\string_utils.cpp">
+      <Filter>b2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\b2\time_utils.cpp">
+      <Filter>b2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\b2\utils.cpp">
+      <Filter>b2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\b2\dx\graphics_utils.cpp">
+      <Filter>b2\dx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\b2\parser\input_buffer.cpp">
+      <Filter>b2\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\b2\parser\output_buffer.cpp">
+      <Filter>b2\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\b2\parser\parse_base.cpp">
+      <Filter>b2\parser</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -336,39 +336,6 @@
     <ClInclude Include="..\graphics_extra.hpp">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="..\bristol\bristol.hpp">
-      <Filter>bristol</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\error.hpp">
-      <Filter>bristol</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\file_utils.hpp">
-      <Filter>bristol</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\file_watcher.hpp">
-      <Filter>bristol</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\flags.hpp">
-      <Filter>bristol</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\string_utils.hpp">
-      <Filter>bristol</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\time_utils.hpp">
-      <Filter>bristol</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\utils.hpp">
-      <Filter>bristol</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\dx\graphics_utils.hpp">
-      <Filter>bristol\dx</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\dx\vertex_types.hpp">
-      <Filter>bristol\dx</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\dx\DirectXTK\SimpleMath.h">
-      <Filter>bristol\dx\directxtk</Filter>
-    </ClInclude>
     <ClInclude Include="..\mesh_loader.hpp">
       <Filter>inc</Filter>
     </ClInclude>
@@ -407,9 +374,6 @@
     </ClInclude>
     <ClInclude Include="..\scene.hpp">
       <Filter>inc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\rolling_average.hpp">
-      <Filter>bristol</Filter>
     </ClInclude>
     <ClInclude Include="..\tano_math.hpp">
       <Filter>inc</Filter>
@@ -495,15 +459,6 @@
     <ClInclude Include="..\smooth_driver.hpp">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="..\bristol\parser\input_buffer.hpp">
-      <Filter>bristol\parser</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\parser\output_buffer.hpp">
-      <Filter>bristol\parser</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bristol\parser\parse_base.hpp">
-      <Filter>bristol\parser</Filter>
-    </ClInclude>
     <ClInclude Include="..\boba_scene_format.hpp">
       <Filter>inc</Filter>
     </ClInclude>
@@ -513,8 +468,53 @@
     <ClInclude Include="..\imgui\imgui_internal.h">
       <Filter>imgui</Filter>
     </ClInclude>
-    <ClInclude Include="..\bristol\evaluator.hpp">
-      <Filter>bristol</Filter>
+    <ClInclude Include="..\b2\bristol.hpp">
+      <Filter>b2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\error.hpp">
+      <Filter>b2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\evaluator.hpp">
+      <Filter>b2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\file_utils.hpp">
+      <Filter>b2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\file_watcher.hpp">
+      <Filter>b2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\flags.hpp">
+      <Filter>b2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\rolling_average.hpp">
+      <Filter>b2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\string_utils.hpp">
+      <Filter>b2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\time_utils.hpp">
+      <Filter>b2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\utils.hpp">
+      <Filter>b2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\dx\graphics_utils.hpp">
+      <Filter>b2\dx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\dx\vertex_types.hpp">
+      <Filter>b2\dx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\dx\DirectXTK\SimpleMath.h">
+      <Filter>b2\dx\directxtk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\parser\input_buffer.hpp">
+      <Filter>b2\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\parser\output_buffer.hpp">
+      <Filter>b2\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\b2\parser\parse_base.hpp">
+      <Filter>b2\parser</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -529,8 +529,8 @@
     <None Include="..\protocol\app.grobb">
       <Filter>protocol</Filter>
     </None>
-    <None Include="..\bristol\dx\DirectXTK\SimpleMath.inl">
-      <Filter>bristol\dx\directxtk</Filter>
+    <None Include="..\b2\dx\DirectXTK\SimpleMath.inl">
+      <Filter>b2\dx\directxtk</Filter>
     </None>
   </ItemGroup>
 </Project>

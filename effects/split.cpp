@@ -262,9 +262,9 @@ Split::~Split()
 //------------------------------------------------------------------------------
 bool Split::OnConfigChanged(const vector<char>& buf)
 {
-  bool res = ParseSplitSettings(InputBuffer(buf), &_settings);
+  _settings = ParseSplitSettings(InputBuffer(buf));
   _freeflyCamera.FromProtocol(_settings.camera);
-  return res;
+  return true;
 }
 
 //------------------------------------------------------------------------------

@@ -66,9 +66,9 @@ ParticleTrail::~ParticleTrail()
 //------------------------------------------------------------------------------
 bool ParticleTrail::OnConfigChanged(const vector<char>& buf)
 {
-  bool res = ParseParticleTrailSettings(InputBuffer(buf), &_settings);
+  _settings = ParseParticleTrailSettings(InputBuffer(buf));
   _camera.FromProtocol(_settings.camera);
-  return res;
+  return true;
 }
 
 //------------------------------------------------------------------------------

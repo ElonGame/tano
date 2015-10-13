@@ -34,7 +34,8 @@ Fluid::~Fluid()
 //------------------------------------------------------------------------------
 bool Fluid::OnConfigChanged(const vector<char>& buf)
 {
-  return ParseFluidSettings(InputBuffer(buf), &_settings);
+  _settings = ParseFluidSettings(InputBuffer(buf));
+  return true;
 }
 
 //------------------------------------------------------------------------------

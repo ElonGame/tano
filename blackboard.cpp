@@ -254,15 +254,14 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
   {
     buf.SkipWhitespace();
 
-    string keyword;
-    CHECKED_OP(ParseIdentifier(buf, &keyword, false));
+    string keyword = ParseIdentifier(buf, false);
     buf.SkipWhitespace();
 
     string id;
     if (keyword == "namespace")
     {
       // get namespace, and add to namespace stack
-      CHECKED_OP(ParseIdentifier(buf, &id, false));
+      id = ParseIdentifier(buf, false);
       namespaceStack.push_back(id);
 
       buf.SkipWhitespace();
@@ -284,89 +283,78 @@ bool Blackboard::ParseBlackboard(InputBuffer& buf, deque<string>& namespaceStack
     }
     else if (keyword == "int")
     {
-      CHECKED_OP(ParseIdentifier(buf, &id, false));
+      id = ParseIdentifier(buf, false);
       buf.SkipWhitespace();
 
       CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
-      int value;
-      ParseInt(buf, &value);
-      AddIntVar(fnFullName(id), value);
+      AddIntVar(fnFullName(id), ParseInt(buf));
 
       buf.SkipWhitespace();
       CHECKED_OP(buf.Expect(';'));
     }
     else if (keyword == "float")
     {
-      CHECKED_OP(ParseIdentifier(buf, &id, false));
+      id = ParseIdentifier(buf, false);
       buf.SkipWhitespace();
 
       CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
-      float value;
-      ParseFloat(buf, &value);
-      AddFloatVar(fnFullName(id), value);
+      AddFloatVar(fnFullName(id), ParseFloat(buf));
 
       buf.SkipWhitespace();
       CHECKED_OP(buf.Expect(';'));
     }
     else if (keyword == "vec2")
     {
-      CHECKED_OP(ParseIdentifier(buf, &id, false));
+      id = ParseIdentifier(buf, false);
       buf.SkipWhitespace();
 
       CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
-      vec2 tmp;
-      ParseVec2(buf, &tmp);
-      AddVec2Var(fnFullName(id), tmp);
+      AddVec2Var(fnFullName(id), ParseVec2(buf));
 
       buf.SkipWhitespace();
       CHECKED_OP(buf.Expect(';'));
     }
     else if (keyword == "vec3")
     {
-      CHECKED_OP(ParseIdentifier(buf, &id, false));
+      id = ParseIdentifier(buf, false);
       buf.SkipWhitespace();
 
       CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
-      vec3 tmp;
-      ParseVec3(buf, &tmp);
-      AddVec3Var(fnFullName(id), tmp);
+      AddVec3Var(fnFullName(id), ParseVec3(buf));
 
       buf.SkipWhitespace();
       CHECKED_OP(buf.Expect(';'));
     }
     else if (keyword == "vec4")
     {
-      CHECKED_OP(ParseIdentifier(buf, &id, false));
+      id = ParseIdentifier(buf, false);
       buf.SkipWhitespace();
 
       CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
-      vec4 tmp;
-      ParseVec4(buf, &tmp);
-      AddVec4Var(fnFullName(id), tmp);
+      AddVec4Var(fnFullName(id), ParseVec4(buf));
 
       buf.SkipWhitespace();
       CHECKED_OP(buf.Expect(';'));
     }
     else if (keyword == "expr")
     {
-      CHECKED_OP(ParseIdentifier(buf, &id, false));
+      id = ParseIdentifier(buf, false);
       buf.SkipWhitespace();
 
       CHECKED_OP(buf.Expect('='));
 
       buf.SkipWhitespace();
-      string str;
-      CHECKED_OP(ParseString(buf, &str));
+      string str = ParseString(buf);
 
       // parse the expression
       vector<eval::Token> expr;

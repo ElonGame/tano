@@ -155,11 +155,18 @@
   <ItemGroup>
     <ClCompile Include="..\animation_helpers.cpp" />
     <ClCompile Include="..\arena_allocator.cpp" />
+    <ClCompile Include="..\b2\dx\graphics_utils.cpp" />
+    <ClCompile Include="..\b2\error.cpp" />
+    <ClCompile Include="..\b2\evaluator.cpp" />
+    <ClCompile Include="..\b2\file_utils.cpp" />
+    <ClCompile Include="..\b2\file_watcher.cpp" />
+    <ClCompile Include="..\b2\parser\input_buffer.cpp" />
+    <ClCompile Include="..\b2\parser\output_buffer.cpp" />
+    <ClCompile Include="..\b2\parser\parse_base.cpp" />
+    <ClCompile Include="..\b2\string_utils.cpp" />
+    <ClCompile Include="..\b2\time_utils.cpp" />
+    <ClCompile Include="..\b2\utils.cpp" />
     <ClCompile Include="..\blackboard.cpp" />
-    <ClCompile Include="..\bristol\evaluator.cpp" />
-    <ClCompile Include="..\bristol\parser\input_buffer.cpp" />
-    <ClCompile Include="..\bristol\parser\output_buffer.cpp" />
-    <ClCompile Include="..\bristol\parser\parse_base.cpp" />
     <ClCompile Include="..\camera.cpp" />
     <ClCompile Include="..\debug_api.cpp" />
     <ClCompile Include="..\dyn_particles.cpp" />
@@ -189,83 +196,6 @@
       </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="..\mesh_loader.cpp" />
-    <ClCompile Include="..\bristol\dx\graphics_utils.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Public|x64'">NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">
-      </ForcedIncludeFiles>
-    </ClCompile>
-    <ClCompile Include="..\bristol\error.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Public|x64'">NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">
-      </ForcedIncludeFiles>
-    </ClCompile>
-    <ClCompile Include="..\bristol\file_utils.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Public|x64'">NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">
-      </ForcedIncludeFiles>
-    </ClCompile>
-    <ClCompile Include="..\bristol\file_watcher.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Public|x64'">NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">
-      </ForcedIncludeFiles>
-    </ClCompile>
-    <ClCompile Include="..\bristol\string_utils.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Public|x64'">NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">
-      </ForcedIncludeFiles>
-    </ClCompile>
-    <ClCompile Include="..\bristol\time_utils.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Public|x64'">NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">
-      </ForcedIncludeFiles>
-    </ClCompile>
-    <ClCompile Include="..\bristol\utils.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Public|x64'">NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </ForcedIncludeFiles>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">
-      </ForcedIncludeFiles>
-    </ClCompile>
     <ClCompile Include="..\graphics_context.cpp">
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
@@ -462,14 +392,25 @@
   <ItemGroup>
     <ClInclude Include="..\animation_helpers.hpp" />
     <ClInclude Include="..\arena_allocator.hpp" />
+    <ClInclude Include="..\b2\bristol.hpp" />
+    <ClInclude Include="..\b2\dx\DirectXTK\SimpleMath.h" />
+    <ClInclude Include="..\b2\dx\graphics_utils.hpp" />
+    <ClInclude Include="..\b2\dx\vertex_types.hpp" />
+    <ClInclude Include="..\b2\error.hpp" />
+    <ClInclude Include="..\b2\evaluator.hpp" />
+    <ClInclude Include="..\b2\file_utils.hpp" />
+    <ClInclude Include="..\b2\file_watcher.hpp" />
+    <ClInclude Include="..\b2\flags.hpp" />
+    <ClInclude Include="..\b2\parser\input_buffer.hpp" />
+    <ClInclude Include="..\b2\parser\output_buffer.hpp" />
+    <ClInclude Include="..\b2\parser\parse_base.hpp" />
+    <ClInclude Include="..\b2\rolling_average.hpp" />
+    <ClInclude Include="..\b2\string_utils.hpp" />
+    <ClInclude Include="..\b2\time_utils.hpp" />
+    <ClInclude Include="..\b2\utils.hpp" />
     <ClInclude Include="..\bass\bass.h" />
     <ClInclude Include="..\blackboard.hpp" />
     <ClInclude Include="..\boba_scene_format.hpp" />
-    <ClInclude Include="..\bristol\evaluator.hpp" />
-    <ClInclude Include="..\bristol\parser\input_buffer.hpp" />
-    <ClInclude Include="..\bristol\parser\output_buffer.hpp" />
-    <ClInclude Include="..\bristol\parser\parse_base.hpp" />
-    <ClInclude Include="..\bristol\rolling_average.hpp" />
     <ClInclude Include="..\camera.hpp" />
     <ClInclude Include="..\circular_buffer.hpp" />
     <ClInclude Include="..\debug_api.hpp" />
@@ -490,17 +431,6 @@
     <ClInclude Include="..\imgui\imgui_internal.h" />
     <ClInclude Include="..\lz4\lz4.h" />
     <ClInclude Include="..\mesh_loader.hpp" />
-    <ClInclude Include="..\bristol\bristol.hpp" />
-    <ClInclude Include="..\bristol\dx\DirectXTK\SimpleMath.h" />
-    <ClInclude Include="..\bristol\dx\graphics_utils.hpp" />
-    <ClInclude Include="..\bristol\dx\vertex_types.hpp" />
-    <ClInclude Include="..\bristol\error.hpp" />
-    <ClInclude Include="..\bristol\file_utils.hpp" />
-    <ClInclude Include="..\bristol\file_watcher.hpp" />
-    <ClInclude Include="..\bristol\flags.hpp" />
-    <ClInclude Include="..\bristol\string_utils.hpp" />
-    <ClInclude Include="..\bristol\time_utils.hpp" />
-    <ClInclude Include="..\bristol\utils.hpp" />
     <ClInclude Include="..\graphics_context.hpp" />
     <ClInclude Include="..\demo_engine.hpp" />
     <ClInclude Include="..\base_effect.hpp" />
@@ -553,7 +483,7 @@
     <ResourceCompile Include="tano.rc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\bristol\dx\DirectXTK\SimpleMath.inl" />
+    <None Include="..\b2\dx\DirectXTK\SimpleMath.inl" />
     <None Include="..\protocol\app.grobb" />
     <None Include="..\protocol\demo.grobb" />
   </ItemGroup>

@@ -30,7 +30,8 @@ Blob::~Blob()
 //------------------------------------------------------------------------------
 bool Blob::OnConfigChanged(const vector<char>& buf)
 {
-  return ParseBlobSettings(InputBuffer(buf), &_settings);
+  _settings = ParseBlobSettings(InputBuffer(buf));
+  return true;
 }
 
 //------------------------------------------------------------------------------

@@ -485,7 +485,8 @@ void GenRandomPoints(float kernelSize)
 //------------------------------------------------------------------------------
 bool Plexus::OnConfigChanged(const vector<char>& buf)
 {
-  return ParsePlexusSettings(InputBuffer(buf), &_settings);
+  _settings = ParsePlexusSettings(InputBuffer(buf));
+  return true;
 }
 
 //------------------------------------------------------------------------------

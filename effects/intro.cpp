@@ -243,7 +243,8 @@ Intro::~Intro()
 //------------------------------------------------------------------------------
 bool Intro::OnConfigChanged(const vector<char>& buf)
 {
-  return ParseIntroSettings(InputBuffer(buf), &_settings);
+  _settings = ParseIntroSettings(InputBuffer(buf));
+  return true;
 }
 
 //------------------------------------------------------------------------------

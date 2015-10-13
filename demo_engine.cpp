@@ -506,8 +506,7 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
   vector<char> buf;
   INIT_FATAL(RESOURCE_MANAGER.LoadFile(config, &buf));
 
-  DemoSettings settings;
-  INIT_FATAL(ParseDemoSettings(InputBuffer(buf), &settings));
+  DemoSettings settings = ParseDemoSettings(InputBuffer(buf));
   INIT_FATAL(ApplySettings(settings));
 
 #if WITH_MUSIC

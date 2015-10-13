@@ -23,7 +23,8 @@ RayMarcher::~RayMarcher()
 //------------------------------------------------------------------------------
 bool RayMarcher::OnConfigChanged(const vector<char>& buf)
 {
-  return ParseRayMarcherSettings(InputBuffer(buf), &_settings);
+  _settings = ParseRayMarcherSettings(InputBuffer(buf));
+  return true;
 }
 
 //------------------------------------------------------------------------------

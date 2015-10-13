@@ -148,16 +148,16 @@
 #define rmt_ScopedCPUSample(x) ;
 #endif
 
-#include "bristol/string_utils.hpp"
-#include "bristol/flags.hpp"
-#include "bristol/utils.hpp"
-#include "bristol/error.hpp"
-#include "bristol/rolling_average.hpp"
-#include "bristol/file_utils.hpp"
-#include "bristol/time_utils.hpp"
-#include "bristol/file_watcher.hpp"
-#include "bristol/dx/graphics_utils.hpp"
-#include "bristol/dx/vertex_types.hpp"
+#include "b2/string_utils.hpp"
+#include "b2/flags.hpp"
+#include "b2/utils.hpp"
+#include "b2/error.hpp"
+#include "b2/rolling_average.hpp"
+#include "b2/file_utils.hpp"
+#include "b2/time_utils.hpp"
+#include "b2/file_watcher.hpp"
+#include "b2/dx/graphics_utils.hpp"
+#include "b2/dx/vertex_types.hpp"
 
 
 typedef uint8_t u8;
@@ -256,9 +256,9 @@ namespace parser
 }
 
 #define PARSER_WITH_VECTOR_TYPES 1
-#include "bristol/parser/input_buffer.hpp"
-#include "bristol/parser/parse_base.hpp"
-#include "bristol/evaluator.hpp"
+#include "b2/parser/input_buffer.hpp"
+#include "b2/parser/parse_base.hpp"
+#include "b2/evaluator.hpp"
 
 namespace tano
 {

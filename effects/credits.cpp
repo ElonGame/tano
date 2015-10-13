@@ -53,7 +53,8 @@ Credits::~Credits()
 //------------------------------------------------------------------------------
 bool Credits::OnConfigChanged(const vector<char>& buf)
 {
-  return ParseCreditsSettings(InputBuffer(buf), &_settings);
+  _settings = ParseCreditsSettings(InputBuffer(buf));
+  return true;
 }
 
 //------------------------------------------------------------------------------

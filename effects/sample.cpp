@@ -27,7 +27,8 @@ Sample::~Sample()
 //------------------------------------------------------------------------------
 bool Sample::OnConfigChanged(const vector<char>& buf)
 {
-  return ParseSampleSettings(InputBuffer(buf), &_settings);
+  _settings = ParseSampleSettings(InputBuffer(buf));
+  return true;
 }
 
 //------------------------------------------------------------------------------

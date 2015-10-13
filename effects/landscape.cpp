@@ -210,7 +210,8 @@ Landscape::~Landscape()
 //------------------------------------------------------------------------------
 bool Landscape::OnConfigChanged(const vector<char>& buf)
 {
-  return ParseLandscapeSettings(InputBuffer(buf), &_settings);
+  _settings = ParseLandscapeSettings(InputBuffer(buf));
+  return true;
 }
 
 //------------------------------------------------------------------------------

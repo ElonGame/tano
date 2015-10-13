@@ -33,7 +33,8 @@ Tunnel::~Tunnel()
 //------------------------------------------------------------------------------
 bool Tunnel::OnConfigChanged(const vector<char>& buf)
 {
-  return ParseTunnelSettings(InputBuffer(buf), &_settings);
+  _settings = ParseTunnelSettings(InputBuffer(buf));
+  return true;
 }
 
 //------------------------------------------------------------------------------
