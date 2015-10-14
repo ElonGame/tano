@@ -12,6 +12,8 @@
 #include "../generated/demo.parse.hpp"
 #include "../scheduler.hpp"
 #include "../mesh_utils.hpp"
+#include "../vertex_types.hpp"
+#include "../tano_math_convert.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -481,9 +483,9 @@ void Fluid::UpdateBackgroundTexture(float dt)
     float u = 0.0f;
     for (int j = 0; j <= NUM_GRIDS; ++j)
     {
-      verts->pos = Vector4(x, y, 0, 1);
+      verts->pos = vec4(x, y, 0, 1);
 
-      verts->tex = Vector2(_textureU[i * FluidSim::FLUID_SIZE_PADDED + 1 + j],
+      verts->tex = vec2(_textureU[i * FluidSim::FLUID_SIZE_PADDED + 1 + j],
           _textureV[i * FluidSim::FLUID_SIZE_PADDED + 1 + j]);
 
       verts++;

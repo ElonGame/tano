@@ -157,7 +157,6 @@
 #include "b2/time_utils.hpp"
 #include "b2/file_watcher.hpp"
 #include "b2/dx/graphics_utils.hpp"
-#include "b2/dx/vertex_types.hpp"
 
 
 typedef uint8_t u8;

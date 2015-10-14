@@ -14,141 +14,23 @@
 #include "../stop_watch.hpp"
 #include "../blackboard.hpp"
 #include "../mesh_utils.hpp"
+#include "../tano_math_convert.hpp"
+#include "../vertex_types.hpp"
 
 using namespace tano;
 using namespace tano::scheduler;
 using namespace bristol;
 using namespace DirectX;
 
+//------------------------------------------------------------------------------
 namespace
 {
   float angle = 0;
   float height = 0;
   float distance = 1300;
   bool extended = true;
-}
 
-template <typename T>
-void* BlockAllocate(int headerSize, int numBlocks, int dataOffset)
-{
-  char* mem = g_ScratchMemory.Alloc(numBlocks * (headerSize + dataSize));
-  for (int i = 0; i < numBlocks; ++i)
-  {
-  }
-}
-
-//------------------------------------------------------------------------------
-void CreateTriangles(const vec3* vtx, int numVerts, vector<u32>* tris)
-{
-  vec3 minBounds = vtx[0];
-  vec3 maxBounds = vtx[1];
-  for (int i = 0; i < numVerts; ++i)
-  {
-    minBounds = Min(minBounds, vtx[i]);
-    maxBounds = Max(maxBounds, vtx[i]);
-  }
-
-  // create a number of buckets between min/max
-  int numBuckets = 10;
-  struct Bucket
-  {
-    vec3 center;
-    int cnt;
-    int* vtx;
-  };
-
-  int vtxSizeInBytes = sizeof(int) * numVerts;
-  int bucketSizeInBytes = sizeof(Bucket) + vtxSizeInBytes;
-  Bucket* buckets = (Bucket*)g_ScratchMemory.Alloc(numBuckets * bucketSizeInBytes);
-  char* ptr = (char*)buckets;
-  int* vtxPtr = (int*)(ptr + numBuckets * sizeof(Bucket));
-  for (int i = 0; i < numBuckets; ++i)
-  {
-    Bucket* b = &buckets[i];
-    b->center = lerp(minBounds, maxBounds, i / (float)(numBuckets - 1));
-    b->cnt = 0;
-    b->vtx = vtxPtr;
-    vtxPtr += numVerts;
-  }
-
-  // assign each vtx to a bucket
-  for (int i = 0; i < numVerts; ++i)
-  {
-    float bucketDist = DistanceSquared(buckets[0].center, vtx[i]);
-    int bucketIdx = 0;
-    for (int j = 1; j < numBuckets; ++j)
-    {
-      float cand = DistanceSquared(buckets[j].center, vtx[i]);
-      if (cand < bucketDist)
-      {
-        bucketIdx = j;
-        bucketDist = cand;
-      }
-    }
-
-    Bucket* b = &buckets[bucketIdx];
-    b->vtx[b->cnt++] = i;
-  }
-
-  struct SortedEdge
-  {
-    float dist;
-    int a, b;
-  };
-
-  SortedEdge* sortedEdges = g_ScratchMemory.Alloc<SortedEdge>(numVerts * numVerts);
-
-  for (int k = 0; k < numBuckets; ++k)
-  {
-    Bucket* b = &buckets[k];
-    int* verts = b->vtx;
-    int vertexCount = b->cnt;
-    int cnt = 0;
-    for (int i = 0; i < vertexCount; i += 5)
-    {
-      for (int j = i + 1; j < vertexCount; j += 5)
-      {
-        int ii = verts[i];
-        int jj = verts[j];
-        sortedEdges[cnt++] = SortedEdge{DistanceSquared(vtx[ii], vtx[jj]), ii, jj};
-      }
-    }
-
-    sort(sortedEdges,
-        sortedEdges + cnt,
-        [](const SortedEdge& lhs, const SortedEdge& rhs)
-        {
-          return lhs.dist < rhs.dist;
-        });
-  }
-
-  int a = 10;
-}
-
-static int MAX_NUM_PARTICLES = 128 * 1024;
-
-//------------------------------------------------------------------------------
-template <typename T>
-void BlurLine(const T* src, T* dst, int size, float r)
-{
-  // Blur the data
-  float scale = 1.f / (2.0f * r + 1.f);
-  int m = (int)r;
-  float alpha = r - m;
-
-  // set up initial pixel
-
-  T sum = src[0];
-  for (int i = 0; i < m; i++)
-    sum += src[IntMod(-i, size)] + src[IntMod(i, size)];
-  sum += alpha * (src[IntMod(-m, size)] + src[IntMod(m, size)]);
-
-  for (int i = 0; i < size; ++i)
-  {
-    dst[i] = sum * scale;
-    sum += lerp(src[IntMod(i + m + 1, size)], src[IntMod(i + m + 2, size)], alpha);
-    sum -= lerp(src[IntMod(i - m, size)], src[IntMod(i - m - 1, size)], alpha);
-  }
+  static int MAX_NUM_PARTICLES = 128 * 1024;
 }
 
 //------------------------------------------------------------------------------
@@ -204,6 +86,16 @@ bool Intro::Init()
   INIT(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/intro.composite", "PsComposite")));
+
+  INIT(_textBundle.Create(BundleOptions()
+    .DepthStencilDesc(depthDescDepthDisabled)
+    .RasterizerDesc(rasterizeDescCullNone)
+    .VertexShader("shaders/out/intro.text", "VsIntroText")
+    .PixelShader("shaders/out/intro.text", "PsIntroText")
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT))
+    .DynamicVb(6, sizeof(PosTex))));
+
   // clang-format on
 
   INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
@@ -220,6 +112,7 @@ bool Intro::Init()
   // Generic setup
   INIT(_cbBackground.Create());
   INIT(_cbComposite.Create());
+  INIT(_cbText.Create());
   INIT(_cbParticle.Create());
   _cbBackground.ps0.inner = ColorToVector4(_settings.inner_color);
   _cbBackground.ps0.outer = ColorToVector4(_settings.outer_color);
@@ -257,12 +150,6 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
     Matrix view = Matrix::CreateLookAt(ToVector3(pos), Vector3(0, 0, 0), Vector3(0, 1, 0));
     Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), aspect, 0.1f, 3000.f);
     Matrix viewProj = view * proj;
-
-    _cbPlexus.gs0.viewProj = viewProj.Transpose();
-    _cbPlexus.gs0.cameraPos = pos;
-
-    _cbTextPoly.vs0.viewProj = viewProj.Transpose();
-    _cbTextPoly.vs0.objWorld = Matrix::Identity();
   }
 }
 
@@ -281,6 +168,8 @@ bool Intro::Update(const UpdateState& state)
   UpdateCameraMatrix(state);
 
   float ms = state.localTime.TotalMicroseconds() / (float)1e6;
+
+  _cbText.ps0.time.x = ms;
 
   _cbComposite.ps0.time.x = ms;
   _cbComposite.ps0.tonemap = vec4(1, 1, 0, 0);
@@ -368,6 +257,30 @@ bool Intro::FixedUpdate(const FixedUpdateState& state)
   return true;
 }
 
+void SetQuadCoords(PosTex* vtx, const vec2& topLeft, const vec2& bottomRight)
+{
+  // convert from 0..1 -> -1..1
+  vec2 tl = { -1 + 2 * topLeft.x, 1 - 2 * topLeft.y };
+  vec2 br = { -1 + 2 * bottomRight.x, 1 - 2 * bottomRight.y };
+
+  // 0--1
+  // 2 -3
+  PosTex v0 = { vec3{ tl.x, tl.y, 0 }, vec2{ 0, 0 } };
+  PosTex v1 = { vec3{ br.x, tl.y, 0 }, vec2{ 1, 0 } };
+  PosTex v2 = { vec3{ tl.x, br.y, 0 }, vec2{ 0, 1 } };
+  PosTex v3 = { vec3{ br.x, br.y, 0 }, vec2{ 1, 1 } };
+
+  // 0, 1, 2
+  // 2, 1, 3
+  *vtx++ = v0;
+  *vtx++ = v1;
+  *vtx++ = v2;
+
+  *vtx++ = v2;
+  *vtx++ = v1;
+  *vtx++ = v3;
+}
+
 //------------------------------------------------------------------------------
 bool Intro::Render()
 {
@@ -395,6 +308,7 @@ bool Intro::Render()
   ScopedRenderTarget rtText(DXGI_FORMAT_R16G16B16A16_FLOAT);
   {
     // text
+    _cbText.Set(_ctx, 0);
     _ctx->SetRenderTarget(rtText, GRAPHICS.GetDepthStencil(), &black);
     // 656 x 40
 
@@ -411,14 +325,23 @@ bool Intro::Render()
     bool rightAlign = true;
     if (rightAlign)
     {
-      fullscreen->RenderTexture(
-        _introTexture[0].h, vec2{ right - ar0 * s, y0 - s }, vec2{ right, y0 });
 
-      fullscreen->RenderTexture(
-        _introTexture[1].h, vec2{ right - ar1 * s, y1 - s }, vec2{ right, y1 });
+      PosTex* v = _ctx->MapWriteDiscard<PosTex>(_textBundle.objects._vb);
+      SetQuadCoords(v, vec2{ right - ar0 * s, y0 - s }, vec2{ right, y0 });
+      _ctx->Unmap(_textBundle.objects._vb);
 
-      fullscreen->RenderTexture(
-        _introTexture[2].h, vec2{ right - ar2 * s, y2 - s }, vec2{ right, y2 });
+      _ctx->SetShaderResource(_introTexture[0].h);
+      _ctx->SetBundleWithSamplers(_textBundle, ShaderType::PixelShader);
+      _ctx->Draw(6, 0);
+
+      //fullscreen->RenderTexture(
+      //  _introTexture[0].h, vec2{ right - ar0 * s, y0 - s }, vec2{ right, y0 });
+
+      //fullscreen->RenderTexture(
+      //  _introTexture[1].h, vec2{ right - ar1 * s, y1 - s }, vec2{ right, y1 });
+
+      //fullscreen->RenderTexture(
+      //  _introTexture[2].h, vec2{ right - ar2 * s, y2 - s }, vec2{ right, y2 });
     }
     else
     {

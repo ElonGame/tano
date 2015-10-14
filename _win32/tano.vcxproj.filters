@@ -516,6 +516,12 @@
     <ClInclude Include="..\b2\parser\parse_base.hpp">
       <Filter>b2\parser</Filter>
     </ClInclude>
+    <ClInclude Include="..\tano_math_convert.hpp">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vertex_types.hpp">
+      <Filter>inc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="tano.rc">

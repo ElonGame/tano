@@ -4,6 +4,7 @@
 #include "graphics.hpp"
 #include "update_state.hpp"
 #include "tano_math.hpp"
+#include "tano_math_convert.hpp"
 
 using namespace tano;
 using namespace bristol;

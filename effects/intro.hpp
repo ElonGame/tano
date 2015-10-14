@@ -16,6 +16,7 @@
 #include "../shaders/out/plexus_pslines.cbuffers.hpp"
 #include "../shaders/out/intro.textpoly_vsmesh.cbuffers.hpp"
 #include "../shaders/out/intro.textpoly_psmesh.cbuffers.hpp"
+#include "../shaders/out/intro.text_psintrotext.cbuffers.hpp"
 #include "../particle_emitters.hpp"
 
 namespace tano
@@ -62,15 +63,12 @@ namespace tano
     ConstantBufferBundle<void, cb::IntroCompositeF> _cbComposite;
     ConstantBufferBundle<void, void, cb::IntroParticleF> _cbParticle;
 
-    ConstantBufferBundle<void, cb::PlexusPS, cb::PlexusGS> _cbPlexus;
-
-    ConstantBufferBundle<cb::IntroTextpolyV, cb::IntroTextpolyP> _cbTextPoly;
-    GpuBundle _textPolyBundle;
+    GpuBundle _textBundle;
+    ConstantBufferBundle<void, cb::IntroTextP> _cbText;
 
     string _configName;
     
     ObjectHandle _csParticleBlur;
-
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
 

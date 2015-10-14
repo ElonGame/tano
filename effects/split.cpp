@@ -14,6 +14,7 @@
 #include "../mesh_utils.hpp"
 #include "../debug_api.hpp"
 #include "../mesh_loader.hpp"
+#include "../tano_math_convert.hpp"
 
 using namespace tano;
 using namespace bristol;

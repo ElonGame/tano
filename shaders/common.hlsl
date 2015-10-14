@@ -130,6 +130,17 @@ float4 ToneMapReinhard(float4 col, float exposure, float minWhite)
   return saturate(scale * col);
 }
 
+float2 ToPolar(float2 v)
+{
+  return float2(length(v), atan2(v.y, v.x));
+}
+
+float2 ToCartesian(float2 p)
+{
+  // x = radius, y = angle
+  return float2(p.x * cos(p.y), p.x * sin(p.y));
+}
+
 //------------------------------------------------------
 struct VSQuadOut
 {

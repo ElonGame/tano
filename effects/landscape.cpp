@@ -16,6 +16,7 @@
 #include "../stop_watch.hpp"
 #include "../blackboard.hpp"
 #include "../smooth_driver.hpp"
+#include "../vertex_types.hpp"
 
 using namespace tano;
 using namespace tano::scheduler;

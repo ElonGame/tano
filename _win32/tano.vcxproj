@@ -474,9 +474,11 @@
     <ClInclude Include="..\sync\track.h" />
     <ClInclude Include="..\tano.hpp" />
     <ClInclude Include="..\tano_math.hpp" />
+    <ClInclude Include="..\tano_math_convert.hpp" />
     <ClInclude Include="..\text_writer.hpp" />
     <ClInclude Include="..\timer.hpp" />
     <ClInclude Include="..\update_state.hpp" />
+    <ClInclude Include="..\vertex_types.hpp" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

@@ -2,8 +2,6 @@
 
 #define WITH_INVALID_CHECK 0
 
-//using namespace DirectX;
-
 namespace tano
 {
   struct vec2
@@ -170,12 +168,12 @@ namespace tano
 
   inline vec3 Min(const vec3& a, const vec3& b)
   {
-    return vec3(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z));
+    return vec3(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z));
   }
 
   inline vec3 Max(const vec3& a, const vec3& b)
   {
-    return vec3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z));
+    return vec3(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z));
   }
 
 /*
@@ -213,16 +211,6 @@ namespace tano
       (a.x * b.y) - (a.y * b.x));
   }
 */
-  inline Vector3 ToVector3(const vec3& v)
-  {
-    return Vector3(v.x, v.y, v.z);
-  }
-
-  inline vec3 FromVector3(const Vector3& v)
-  {
-    return vec3(v.x, v.y, v.z);
-  }
-
   struct vec4
   {
     vec4() {}
@@ -241,10 +229,6 @@ namespace tano
     return vec4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
   }
 
-  inline Vector4 ToVector4(const vec4& v)
-  {
-    return Vector4(v.x, v.y, v.z, v.w);
-  }
 
   //------------------------------------------------------------------------------
   struct Spherical
@@ -275,12 +259,6 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
-  inline Vector4 Expand(const Vector3& v, float x)
-  {
-    return Vector4(v.x, v.y, v.z, x);
-  }
-
-  //------------------------------------------------------------------------------
   vec3 PointOnHemisphere(const vec3& axis);
   vec3 RandomVector(float scaleX = 1, float scaleY = 1, float scaleZ = 1);
 
@@ -289,7 +267,7 @@ namespace tano
   {
     void Create(const vec3* pts, int numPoints, float scale = 1.f);
     vec3 Interpolate(float t) const;
-    vector<vec3> _controlPoints;
+    std::vector<vec3> _controlPoints;
     float _scale;
   };
 
