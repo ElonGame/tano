@@ -76,42 +76,18 @@ namespace tano
 
     IntroSettings _settings;
 
-    TextWriter _textWriter;
-    struct TextData
-    {
-      struct Segment
-      {
-        vector<vec3> verts;
-        vector<vec3> transformedVerts;
-        vector<int> indices;
-        vector<vec3> keyframes;
-        int* neighbours = nullptr;
-      };
-
-      Segment outline;
-      Segment cap;
-      enum { STATE_INACTIVE, STATE_ACTIVE, STATE_DONE };
-      int state = STATE_INACTIVE;
-      float fade = 1;
-      ObjectHandle vb;
-      ObjectHandle vbTri;
-    };
-
-    void CreateKeyframes(TextData::Segment* textData);
-    void UpdateText(const UpdateState& state, TextData* textData, const char* prefix);
-
-    TextData _textData[3];
-
     float _particlesStart, _particlesEnd;
 
     int _numSpawnedParticles = 0;
-    SimpleAppendBuffer<vec3, 1024> _randomPoints;
-    GpuBundle _plexusLineBundle;
 
-    bool _drawText = false;
     float _curTime = 0;
 
-    ObjectHandle _introTexture[3];
+    struct IntroTexture
+    {
+      ObjectHandle h;
+      D3DX11_IMAGE_INFO info;
+    };
+    IntroTexture _introTexture[3];
 
     FreeflyCamera _textCamera;
   };
