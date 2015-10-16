@@ -4,7 +4,6 @@
   
   effects: [
     {
-      force: true;
       name: 'intro';
       factory: 'intro';
       start_time: 0;
@@ -12,6 +11,7 @@
       settings: 'config/intro.gb';
     },
     {
+      force: true;
       name: 'landscape';
       factory: 'landscape';
       start_time: 22500;

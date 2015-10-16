@@ -34,7 +34,8 @@ namespace intro
     float newText1Pos = 0.90;
     float newText2Pos = 0.96;
 
-    expr text0Thing = "sin(5*t) * ldecay(0.1, t)";
+    expr distortBrightness = "lfade_in(9.0, 13, t)";
+    expr text0Brightness = "1 + 3 * step(1, t - 10) * (1 - lfade_in(10, 12, t))";
     expr text1Thing = "pulse(1, 2, t) * ldecay(0.1, t)";
     expr text2Thing = "sin(3*t)";
 

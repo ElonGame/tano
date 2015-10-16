@@ -22,9 +22,7 @@
 #define WITH_BLACKBOARD_SAVE 1
 
 #define WITH_TESTS 1
-
-// lolol!
-#define WITH_SCHEME 0
+#define WITH_EXPRESSION_EDITOR 1
 
 #if WITH_ROCKET_PLAYER
   #define SYNC_PLAYER

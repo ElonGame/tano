@@ -24,10 +24,6 @@
 #include "effects/split.hpp"
 #include "effects/blob.hpp"
 
-#if WITH_SCHEME
-#include "s7/s7.h"
-#endif
-
 #if WITH_IMGUI
 #include "imgui_helpers.hpp"
 #endif
@@ -200,17 +196,6 @@ bool App::Init(HINSTANCE hinstance)
 //------------------------------------------------------------------------------
 bool App::Run()
 {
-
-#if WITH_SCHEME
-  s7_scheme *s7;
-  s7 = s7_init();
-  vector<char> buf;
-  RESOURCE_MANAGER.LoadFile("config/scratch.scm", &buf);
-  buf.push_back(0);
-  s7_pointer pp = s7_eval_c_string(s7, buf.data());
-  s7_double res = s7_real(s7_eval_c_string(s7, "(intro 'explode-time)"));
-#endif
-
   MSG msg ={ 0 };
 
   DEMO_ENGINE.Start();
@@ -244,8 +229,17 @@ bool App::Run()
 #endif
 
     //ImGui::ShowTestWindow();
+#if WITH_EXPRESSION_EDITOR
     GRAPHICS.ClearRenderTarget(GRAPHICS.GetBackBuffer());
-    BLACKBOARD.DrawExpressionEditor();
+    static bool showExpressionEditor = false;
+    if (g_KeyUpTrigger.IsTriggered('0'))
+      showExpressionEditor = !showExpressionEditor;
+
+    if (showExpressionEditor)
+    {
+      BLACKBOARD.DrawExpressionEditor();
+    }
+#endif
 
     DEMO_ENGINE.Tick();
 

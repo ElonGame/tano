@@ -75,7 +75,7 @@ namespace eval
     void InvokeFunction(const Token& t, const Environment* env);
     void ApplyUntilLeftParen(bool discardParen);
 
-    std::deque<Token> operandStack;
+    std::deque<Token> resultStack;
     std::deque<Token> operatorStack;
 
     std::unordered_map<std::string, UserFunction> functions;

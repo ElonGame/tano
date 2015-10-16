@@ -1,6 +1,7 @@
 #pragma once
 #include "object_handle.hpp"
 #include "gpu_objects.hpp"
+#include "shaders/out/common_psrendertexture.cbuffers.hpp"
 
 namespace tano
 {
@@ -69,7 +70,8 @@ namespace tano
 
     void RenderTexture(ObjectHandle texture,
       const vec2& topLeft,
-      const vec2& bottomRight);
+      const vec2& bottomRight,
+      float brightness = 1.0f);
 
     void Copy(ObjectHandle inputBuffer,
         ObjectHandle outputBuffer,
@@ -112,6 +114,7 @@ namespace tano
     GpuBundle _scaleBiasBundle;
     GpuBundle _scaleBiasSecondaryBundle;
 
+    ConstantBufferBundle<void, cb::CommonP> _cbRenderTexture;
     GpuBundle _renderTextureBundle;
   };
 }

@@ -84,17 +84,10 @@ bool Intro::Init()
     .RasterizerDesc(rasterizeDescCullNone)));
 
   INIT(_compositeBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/intro.composite", "PsComposite")));
 
   INIT(_textBundle.Create(BundleOptions()
-    .DepthStencilDesc(depthDescDepthDisabled)
-    .RasterizerDesc(rasterizeDescCullNone)
-    .VertexShader("shaders/out/intro.text", "VsIntroText")
-    .PixelShader("shaders/out/intro.text", "PsIntroText")
-    .InputElement(CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
-    .InputElement(CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT))
-    .DynamicVb(6, sizeof(PosTex))));
+    .PixelShader("shaders/out/intro.text", "PsIntroTextDistort")));
 
   // clang-format on
 
@@ -169,7 +162,7 @@ bool Intro::Update(const UpdateState& state)
 
   float ms = state.localTime.TotalMicroseconds() / (float)1e6;
 
-  _cbText.ps0.time.x = ms;
+  _cbText.ps0.time = ms;
 
   _cbComposite.ps0.time.x = ms;
   _cbComposite.ps0.tonemap = vec4(1, 1, 0, 0);
@@ -257,7 +250,8 @@ bool Intro::FixedUpdate(const FixedUpdateState& state)
   return true;
 }
 
-void SetQuadCoords(PosTex* vtx, const vec2& topLeft, const vec2& bottomRight)
+//------------------------------------------------------------------------------
+void SetQuadCoords(Pos4Tex* vtx, const vec2& topLeft, const vec2& bottomRight)
 {
   // convert from 0..1 -> -1..1
   vec2 tl = { -1 + 2 * topLeft.x, 1 - 2 * topLeft.y };
@@ -265,10 +259,10 @@ void SetQuadCoords(PosTex* vtx, const vec2& topLeft, const vec2& bottomRight)
 
   // 0--1
   // 2 -3
-  PosTex v0 = { vec3{ tl.x, tl.y, 0 }, vec2{ 0, 0 } };
-  PosTex v1 = { vec3{ br.x, tl.y, 0 }, vec2{ 1, 0 } };
-  PosTex v2 = { vec3{ tl.x, br.y, 0 }, vec2{ 0, 1 } };
-  PosTex v3 = { vec3{ br.x, br.y, 0 }, vec2{ 1, 1 } };
+  Pos4Tex v0 = { vec4{ tl.x, tl.y, 0, 1 }, vec2{ 0, 0 } };
+  Pos4Tex v1 = { vec4{ br.x, tl.y, 0, 1 }, vec2{ 1, 0 } };
+  Pos4Tex v2 = { vec4{ tl.x, br.y, 0, 1 }, vec2{ 0, 1 } };
+  Pos4Tex v3 = { vec4{ br.x, br.y, 0, 1 }, vec2{ 1, 1 } };
 
   // 0, 1, 2
   // 2, 1, 3
@@ -306,11 +300,10 @@ bool Intro::Render()
   }
 
   ScopedRenderTarget rtText(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtTextDistort(DXGI_FORMAT_R16G16B16A16_FLOAT);
   {
     // text
-    _cbText.Set(_ctx, 0);
     _ctx->SetRenderTarget(rtText, GRAPHICS.GetDepthStencil(), &black);
-    // 656 x 40
 
     float right = BLACKBOARD.GetFloatVar("intro.textRight");
     float s = BLACKBOARD.GetFloatVar("intro.textSize");
@@ -325,23 +318,30 @@ bool Intro::Render()
     bool rightAlign = true;
     if (rightAlign)
     {
+      eval::Environment env;
+      env.constants["t"] = _curTime;
+      float bb = BLACKBOARD.GetExpr("intro.text0Brightness", &env);
+      fullscreen->RenderTexture(
+          _introTexture[0].h, vec2{right - ar0 * s, y0 - s}, vec2{right, y0}, bb);
 
-      PosTex* v = _ctx->MapWriteDiscard<PosTex>(_textBundle.objects._vb);
-      SetQuadCoords(v, vec2{ right - ar0 * s, y0 - s }, vec2{ right, y0 });
-      _ctx->Unmap(_textBundle.objects._vb);
+      fullscreen->RenderTexture(
+          _introTexture[1].h, vec2{right - ar1 * s, y1 - s}, vec2{right, y1}, bb);
 
-      _ctx->SetShaderResource(_introTexture[0].h);
-      _ctx->SetBundleWithSamplers(_textBundle, ShaderType::PixelShader);
-      _ctx->Draw(6, 0);
+      fullscreen->RenderTexture(
+          _introTexture[2].h, vec2{right - ar2 * s, y2 - s}, vec2{right, y2}, bb);
 
-      //fullscreen->RenderTexture(
-      //  _introTexture[0].h, vec2{ right - ar0 * s, y0 - s }, vec2{ right, y0 });
-
-      //fullscreen->RenderTexture(
-      //  _introTexture[1].h, vec2{ right - ar1 * s, y1 - s }, vec2{ right, y1 });
-
-      //fullscreen->RenderTexture(
-      //  _introTexture[2].h, vec2{ right - ar2 * s, y2 - s }, vec2{ right, y2 });
+      _cbText.ps0.brightness = BLACKBOARD.GetExpr("intro.distortBrightness", &env);
+      _cbText.Set(_ctx, 0);
+      ObjectHandle inputs[] = { rtText };
+      fullscreen->Execute(inputs,
+        1,
+        rtTextDistort,
+        rtTextDistort._desc,
+        ObjectHandle(),
+        _textBundle.objects._ps,
+        true,
+        true,
+        &black);
     }
     else
     {
@@ -360,7 +360,7 @@ bool Intro::Render()
   {
     // blur
     _ctx->UnsetRenderTargets(0, 1);
-    fullscreen->BlurVertCustom(rtText, rtBlurText, rtBlurText._desc, _csParticleBlur, 20 * beatHi, 1);
+    fullscreen->Blur(rtTextDistort, rtBlurText, rtBlurText._desc, 20, 1);
   }
 
   ScopedRenderTarget rtBlur2(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
@@ -379,7 +379,7 @@ bool Intro::Render()
     // composite
     _cbComposite.ps0.tonemap = vec4(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
     _cbComposite.Set(_ctx, 0);
-    ObjectHandle inputs[] = {rtColor, rtLines, rtBlur, rtBlur2, rtText, rtBlurText};
+    ObjectHandle inputs[] = {rtColor, rtLines, rtBlur, rtBlur2, rtTextDistort, rtBlurText };
     fullscreen->Execute(inputs,
         6,
         GRAPHICS.GetBackBuffer(),

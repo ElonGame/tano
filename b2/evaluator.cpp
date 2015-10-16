@@ -3,6 +3,23 @@
 using namespace std;
 using namespace parser;
 
+namespace
+{
+  template <typename T>
+  T Clamp(T minValue, T maxValue, T value)
+  {
+    return value < minValue ? minValue : value > maxValue ? maxValue : value;
+  }
+
+  template <typename T, typename U>
+  T Lerp(T a, T b, U v)
+  {
+    return (T)((1 - v) * a + v * b);
+  }
+
+}
+
+
 namespace eval
 {
   static int BINOP_PRIO[4] = { 1, 1, 2, 2 };
@@ -77,6 +94,55 @@ namespace eval
     RegisterFunction("cos", 1, [](eval::Evaluator* eval) {
       eval->PushValue(cos(eval->PopValue()));
     });
+
+    // arguments are stored in LIFO order
+    RegisterFunction("step", 2, [](eval::Evaluator* e) {
+      // step(cutoff, t)
+      float t = e->PopValue();
+      float cutoff = e->PopValue();
+      e->PushValue(t >= cutoff ? 1.f : 0.f);
+    });
+
+    RegisterFunction("pulse", 3, [](eval::Evaluator* e) {
+      // pulse(start, stop, t)
+      float t = e->PopValue();
+      float stop = e->PopValue();
+      float start = e->PopValue();
+      e->PushValue((t >= start && t < stop) ? 1.f : 0.f);
+    });
+
+    RegisterFunction("edecay", 2, [](eval::Evaluator* e) {
+      // edecay(k, t)
+      float t = e->PopValue();
+      float k = e->PopValue();
+      e->PushValue(exp(-k*t));
+    });
+
+    RegisterFunction("ldecay", 2, [](eval::Evaluator* e) {
+      // Lerp between 1..0
+      float t = e->PopValue();
+      float k = e->PopValue();
+      float s = Clamp(0.f, 1.f, t * k);
+      e->PushValue(Lerp(1.f, 0.f, s));
+    });
+
+    RegisterFunction("lfade_in", 3, [](eval::Evaluator* e) {
+      // lfade_in(a, b, t)
+      // Linear fade in between a, b
+      float t = e->PopValue();
+      float b = e->PopValue();
+      float a = e->PopValue();
+      float res;
+      if (t <= a)
+        res = 0;
+      else if (t >= b)
+        res = 1;
+      else
+        res = Lerp(0.f, 1.f, (t - a) / (b - a));
+      e->PushValue(res);
+    });
+
+
   }
 
   //------------------------------------------------------------------------------
@@ -94,22 +160,22 @@ namespace eval
   //------------------------------------------------------------------------------
   float Evaluator::PopValue()
   {
-    if (operandStack.empty())
+    if (resultStack.empty())
     {
       errorString = "Too few operands";
       success = false;
       return 0;
     }
 
-    float v = operandStack.back().constant;
-    operandStack.pop_back();
+    float v = resultStack.back().constant;
+    resultStack.pop_back();
     return v;
   }
 
   //------------------------------------------------------------------------------
   void Evaluator::PushValue(float value)
   {
-    operandStack.push_back(Token{ value });
+    resultStack.push_back(Token{ value });
   }
 
   //------------------------------------------------------------------------------
@@ -130,7 +196,7 @@ namespace eval
   //------------------------------------------------------------------------------
   void Evaluator::ApplyBinOp(Token::BinOp op)
   {
-    if (operandStack.size() < 2)
+    if (resultStack.size() < 2)
     {
       errorString = "Missing operands";
       success = false;
@@ -206,7 +272,7 @@ namespace eval
     }
 
     // Verify that we have enough arguments on the stack
-    if (operandStack.size() < fn->numArgs)
+    if (resultStack.size() < fn->numArgs)
     {
       errorString = "Too few arguments for user function: " + name;
       success = false;
@@ -257,11 +323,7 @@ namespace eval
 
       const Token& t = expression[i];
 
-      if (t.type == Token::Type::Constant)
-      {
-        operandStack.push_back(t);
-      }
-      else if (t.type == Token::Type::BinOp)
+      if (t.type == Token::Type::BinOp)
       {
         // Apply any higher priority operators
         int prio = BINOP_PRIO[t.binOp];
@@ -278,6 +340,10 @@ namespace eval
         }
 
         operatorStack.push_back(t);
+      }
+      else if (t.type == Token::Type::Constant)
+      {
+        resultStack.push_back(t);
       }
       else if (t.type == Token::Type::FuncCall)
       {

@@ -1215,7 +1215,7 @@ void Landscape::Register()
 }
 
 //------------------------------------------------------------------------------
-void Landscape::FlockCamera::Update(const FixedUpdateState& state)
+void Landscape::FlockCamera::Update(float deltaTime)
 {
   vec3 targetPos = flock->seek->target;
   vec3 curPos = _pos;
@@ -1227,10 +1227,10 @@ void Landscape::FlockCamera::Update(const FixedUpdateState& state)
   vec3 vv(targetVel.x, targetVel.y, targetVel.z);
   vec3 tt(targetPos.x, targetPos.y, targetPos.z);
 
-  SmoothDriver::DriveCubic(&cc, &vv, &tt, &vv, 50, state.delta);
+  SmoothDriver::DriveCubic(&cc, &vv, &tt, &vv, 50, deltaTime);
 
   _pos = cc;
   _dir = Normalize(vv);
 
-  Camera::Update(state.delta);
+  Camera::Update(deltaTime);
 }

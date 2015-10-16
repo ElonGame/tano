@@ -133,7 +133,7 @@ namespace tano
 
     struct FlockCamera : public Camera
     {
-      virtual void Update(const FixedUpdateState& state);
+      virtual void Update(float deltaTime) override;
       Flock* flock;
     };
 
@@ -180,7 +180,6 @@ namespace tano
     BehaviorAlignment* _behaviorAlignment = nullptr;
     BehaviorLandscapeFollow* _landscapeFollow = nullptr;
 
-    FreeflyCamera _freeflyCamera;
     FollowCam _followCamera;
     FlockCamera _flockCamera;
     Camera* _curCamera = &_flockCamera;

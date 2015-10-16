@@ -51,7 +51,9 @@ namespace tano
 
     bool IsDirtyTrigger(void* id);
 
+#if WITH_EXPRESSION_EDITOR
     void DrawExpressionEditor();
+#endif
 
   private:
 

@@ -16,7 +16,7 @@
 #include "../shaders/out/plexus_pslines.cbuffers.hpp"
 #include "../shaders/out/intro.textpoly_vsmesh.cbuffers.hpp"
 #include "../shaders/out/intro.textpoly_psmesh.cbuffers.hpp"
-#include "../shaders/out/intro.text_psintrotext.cbuffers.hpp"
+#include "../shaders/out/intro.text_psintrotextdistort.cbuffers.hpp"
 #include "../particle_emitters.hpp"
 
 namespace tano

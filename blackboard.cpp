@@ -653,6 +653,7 @@ void Blackboard::Process()
 
 #endif
 
+#if WITH_EXPRESSION_EDITOR
 //------------------------------------------------------------------------------
 void Blackboard::DrawExpressionEditor()
 {
@@ -672,8 +673,8 @@ void Blackboard::DrawExpressionEditor()
     return true;
   };
 
-  static float endTime = 10.f;
-  static int numSteps = 500;
+  static float endTime = 30.f;
+  static int numSteps = 1000;
   static float scaleMin = -1.0f;
   static float scaleMax = +1.0f;
   ImGui::Combo("Expression", &_curExpr, fnGetParam, this, (int)_expressionNames.size());
@@ -687,38 +688,6 @@ void Blackboard::DrawExpressionEditor()
 
   eval::Environment env;
   eval::Evaluator e;
-
-  // arguments are stored in LIFO order
-  env.functions["step"] = eval::UserFunction{2, [](eval::Evaluator* e) {
-    // step(cutoff, t)
-    float t = e->PopValue();
-    float cutoff = e->PopValue();
-    e->PushValue(t >= cutoff ? 1.f : 0.f);
-  }};
-
-  env.functions["pulse"] = eval::UserFunction{3, [](eval::Evaluator* e) {
-    // step(start, stop, t)
-    float t = e->PopValue();
-    float stop = e->PopValue();
-    float start = e->PopValue();
-    e->PushValue((t >= start && t < stop) ? 1.f : 0.f);
-  }};
-
-  env.functions["edecay"] = eval::UserFunction{ 2, [](eval::Evaluator* e) {
-    // edecay(k, t)
-    float t = e->PopValue();
-    float k = e->PopValue();
-    e->PushValue(exp(-k*t));
-  } };
-
-  env.functions["ldecay"] = eval::UserFunction{ 2, [](eval::Evaluator* e) {
-    // lerp between 1..0
-    float t = e->PopValue();
-    float k = e->PopValue();
-    float s = Clamp(0.f, 1.f, t * k);
-    e->PushValue(lerp(1.f, 0.f, s));
-  } };
-
 
   float t = 0;
   float tInc = endTime / numSteps;
@@ -737,3 +706,4 @@ void Blackboard::DrawExpressionEditor()
 
   ImGui::End();
 }
+#endif

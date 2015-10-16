@@ -16,7 +16,8 @@ struct VSTextOut
 
 cbuffer P : register(b0)
 {
-  float4 time; // x = local-time, y = text fade
+  float time;
+  float brightness;
 };
 
 //------------------------------------------------------
@@ -49,20 +50,17 @@ float4 Distort(Texture2D tex, float2 uv, float time)
   float2 uv2g = ToCartesian(float2(polar.x, polar.y + 0.005 * timeScale)) + center;
   float2 uv2b = ToCartesian(float2(polar.x, polar.y - 0.005 * timeScale)) + center;
 
-  float colr = (1 - timeScale) * Texture4.Sample(LinearSampler, uv2r).r;
-  float colg = (1 - timeScale) * Texture4.Sample(LinearSampler, uv2g).g;
-  float colb = (1 - timeScale) * Texture4.Sample(LinearSampler, uv2b).b;
+  float colr = (1 - timeScale) * tex.Sample(LinearSampler, uv2r).r;
+  float colg = (1 - timeScale) * tex.Sample(LinearSampler, uv2g).g;
+  float colb = (1 - timeScale) * tex.Sample(LinearSampler, uv2b).b;
   return float4(colr, colg, colb, 1);
-  // float4 col = (1 - timeScale) * Texture4.Sample(LinearSampler, uv2);
-  // return col;
 }
 
 //------------------------------------------------------
 // entry-point: ps
-float4 PsIntroText(VSTextOut p) : SV_Target
+float4 PsIntroTextDistort(VSQuadOut p) : SV_Target
 {
-	float4 col = Distort(Texture0, p.uv, time.x);
-	return col;
-  return Texture0.Sample(LinearSampler, p.uv);
+  return brightness * Distort(Texture0, p.uv, time - 9);
 }
+
 

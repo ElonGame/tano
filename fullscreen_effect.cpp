@@ -55,8 +55,8 @@ bool FullscreenEffect::Init()
   INIT(_renderTextureBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
     .RasterizerDesc(rasterizeDescCullNone)
-    .VertexShader("shaders/out/common", "VsRenderTexture")
-    .PixelShader("shaders/out/common", "PsRenderTexture")
+    .VertexShader("shaders/out/common.texture", "VsRenderTexture")
+    .PixelShader("shaders/out/common.texture", "PsRenderTexture")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT))
     .DynamicVb(6, sizeof(VecPosTex))));
@@ -68,6 +68,8 @@ bool FullscreenEffect::Init()
   INIT_RESOURCE(_csCopyTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "CopyTranspose"));
   INIT_RESOURCE(_csBlurX, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BoxBlurX"));
   INIT_RESOURCE(_csBlurY, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BoxBlurY"));
+
+  INIT_FATAL(_cbRenderTexture.Create());
 
   END_INIT_SEQUENCE();
 }
@@ -402,7 +404,8 @@ void FullscreenEffect::BlurVert(
 //------------------------------------------------------------------------------
 void FullscreenEffect::RenderTexture(ObjectHandle texture,
   const vec2& topLeft,
-  const vec2& bottomRight)
+  const vec2& bottomRight,
+  float brightness)
 {
   // convert from 0..1 -> -1..1
   vec2 tl = { -1 + 2 * topLeft.x, 1 - 2 * topLeft.y };
@@ -430,6 +433,8 @@ void FullscreenEffect::RenderTexture(ObjectHandle texture,
 
   _ctx->Unmap(handle);
 
+  _cbRenderTexture.ps0.brightness = brightness;
+  _cbRenderTexture.Set(_ctx, 0);
   _ctx->SetBundleWithSamplers(_renderTextureBundle, ShaderType::PixelShader);
   _ctx->SetShaderResource(texture);
   _ctx->Draw(6, 0); 

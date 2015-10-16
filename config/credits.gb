@@ -1,9 +1,11 @@
 {
-  blur_amount: 245.000000;
-  particle_texture: 'gfx/particle_orange.png';
+  tonemap: {
+    exposure: 0.753000;
+    min_white: 1.106000;
+  };
   camera: {
     camera: {
-      pos: { 0.000000, -66.069817, -192.870880 };
+      pos: { 0.000000, -65.930183, -191.129120 };
       dir: { 0.000000, -0.095348, 0.995444 };
       right: { 1.000000, 0.000000, -0.000000 };
       up: { 0.000000, 0.995444, 0.095348 };
@@ -15,10 +17,8 @@
     pitch: 0.095493;
     roll: 0.000000;
   };
+  blur_amount: 245.000000;
+  particle_texture: 'gfx/particle_orange.png';
   damping: 0.010000;
   gravity: { 0.000000, -1.000000, 0.000000 };
-  tonemap: {
-    exposure: 0.753000;
-    min_white: 1.405000;
-  };
 };
