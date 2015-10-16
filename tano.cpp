@@ -106,7 +106,7 @@ bool App::Destroy()
   DemoEngine::Destroy();
   DebugApi::Destroy();
   INIT(Graphics::Destroy());
-  Scheduler::Destroy();
+  //Scheduler::Destroy();
 
   delete exch_null(_instance);
 
@@ -148,7 +148,8 @@ bool App::Init(HINSTANCE hinstance)
 
   INIT_FATAL(Blackboard::Create("config/scratch.bb", "data/scratch.dat"));
 
-  INIT_FATAL(Scheduler::Create());
+  //INIT_FATAL(Scheduler::Create());
+  g_TS.Initialize();
 
   INIT_FATAL(Graphics::Create(hinstance));
   INIT_FATAL(DebugApi::Create(GRAPHICS.GetGraphicsContext()));

@@ -93,7 +93,15 @@ namespace tano
       static int nextId;
     };
 
-    static void FillChunk(const scheduler::TaskData& data);
+    struct ChunkKernelData
+    {
+      Chunk* chunk;
+      float x, z;
+    };
+
+    
+      //static void FillChunk(const scheduler::TaskData& data);
+    static void FillChunk(ChunkKernelData* chunkData);
     static void UpdateFlock(const scheduler::TaskData& data);
 
     struct FlockKernelData
@@ -102,12 +110,6 @@ namespace tano
       vec3 target;
       float waypointRadius;
       float deltaTime;
-    };
-
-    struct ChunkKernelData
-    {
-      Chunk* chunk;
-      float x, z;
     };
 
     struct ChunkCache
@@ -182,7 +184,7 @@ namespace tano
 
     FollowCam _followCamera;
     FlockCamera _flockCamera;
-    Camera* _curCamera = &_flockCamera;
+    Camera* _curCamera = &_freeflyCamera;
     int _followFlock = 0;
 
     CardinalSpline _spline;

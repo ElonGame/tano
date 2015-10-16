@@ -4,6 +4,9 @@
 #include "free_list.hpp"
 #include "circular_buffer.hpp"
 
+#include "enkits/TaskScheduler.h"
+
+
 namespace tano
 {
   namespace scheduler
@@ -116,4 +119,6 @@ namespace tano
   }
 
 #define SCHEDULER Scheduler::Instance()
+
 }
+extern enki::TaskScheduler g_TS;

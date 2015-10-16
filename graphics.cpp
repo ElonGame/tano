@@ -261,7 +261,7 @@ ObjectHandle Graphics::GetTempRenderTarget(const RenderTargetDesc& desc, const B
 //------------------------------------------------------------------------------
 ObjectHandle Graphics::GetTempRenderTarget(
     int width, int height, DXGI_FORMAT format, const BufferFlags& flags)
-{
+{ 
   // Look for a temp render target with the required format etc
   for (TempRenderTarget& t : _tempRenderTargets)
   {
@@ -273,6 +273,8 @@ ObjectHandle Graphics::GetTempRenderTarget(
       return MakeObjectHandle(ObjectHandle::kRenderTarget, t.idx);
     }
   }
+
+  LOG_WARN("new temp");
 
   // Render target not found, so create a new one
   RenderTargetResource* rt = CreateRenderTargetPtr(width, height, format, flags);

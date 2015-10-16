@@ -53,6 +53,9 @@
     <Filter Include="b2\dx\directxtk">
       <UniqueIdentifier>{95aff643-7ada-4629-9c25-c803eb0efbc9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="enkits">
+      <UniqueIdentifier>{7832cdc9-d0eb-4a6a-acb1-1ead4ac959d2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tano.cpp">
@@ -249,6 +252,9 @@
     </ClCompile>
     <ClCompile Include="..\b2\parser\parse_base.cpp">
       <Filter>b2\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\enkits\TaskScheduler.cpp">
+      <Filter>enkits</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -521,6 +527,18 @@
     </ClInclude>
     <ClInclude Include="..\vertex_types.hpp">
       <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\enkits\Atomics.h">
+      <Filter>enkits</Filter>
+    </ClInclude>
+    <ClInclude Include="..\enkits\LockLessMultiReadPipe.h">
+      <Filter>enkits</Filter>
+    </ClInclude>
+    <ClInclude Include="..\enkits\TaskScheduler.h">
+      <Filter>enkits</Filter>
+    </ClInclude>
+    <ClInclude Include="..\enkits\Threads.h">
+      <Filter>enkits</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

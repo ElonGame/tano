@@ -31,6 +31,10 @@ static const float NOISE_SCALE_Z = 0.01f;
 
 static const float SPLINE_RADIUS = 500;
 
+/*
+  custom task scheduler: 24.2 ms
+*/
+
 //------------------------------------------------------------------------------
 inline float Dot(const DirectX::SimpleMath::Plane& plane, const vec3& pt)
 {
@@ -243,7 +247,7 @@ bool Landscape::Init()
     // Landscape
     u32 vertexFlags = VF_POS | VF_NORMAL;
     u32 vertexSize = sizeof(PosNormal);
-    INIT_FATAL(_landscapeGpuObjects.CreateDynamicVb(1024 * 1024 * 6 * vertexSize, vertexSize));
+    INIT_FATAL(_landscapeGpuObjects.CreateDynamicVb(512 * 1024 * 6 * vertexSize, vertexSize));
 
     u32 maxQuads = 1024 * 1024;
     vector<u32> indices = GenerateQuadIndices(maxQuads);
@@ -286,7 +290,7 @@ bool Landscape::Init()
   particleBlendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
   INIT(_particleBundle.Create(BundleOptions()
-    .DynamicVb(1024 * 1024 * 6, sizeof(vec3))
+    .DynamicVb(1024 * 1024, sizeof(vec3))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
     .GeometryShader("shaders/out/landscape.particle", "GsParticle")
     .PixelShader("shaders/out/landscape.particle", "PsParticle")
@@ -297,7 +301,7 @@ bool Landscape::Init()
     .RasterizerDesc(rasterizeDescCullNone)));
 
   INIT(_boidsBundle.Create(BundleOptions()
-    .DynamicVb(1024 * 1024 * 6, sizeof(vec3))
+    .DynamicVb(1024 * 1024, sizeof(vec3))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
     .GeometryShader("shaders/out/landscape.particle", "GsParticle")
     .PixelShader("shaders/out/landscape.particle", "PsParticle")
@@ -453,6 +457,7 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
 //------------------------------------------------------------------------------
 void Landscape::UpdateBoids(const FixedUpdateState& state)
 {
+#if 0
   rmt_ScopedCPUSample(Boids_Update);
 
   float dt = state.delta;
@@ -472,6 +477,7 @@ void Landscape::UpdateBoids(const FixedUpdateState& state)
 
   for (const TaskId& taskId : chunkTasks)
     SCHEDULER.Wait(taskId);
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -710,9 +716,14 @@ Landscape::Chunk* Landscape::ChunkCache::GetFreeChunk(float x, float y, int time
   return chunk;
 }
 //------------------------------------------------------------------------------
+#if 0
 void Landscape::FillChunk(const TaskData& data)
 {
   ChunkKernelData* chunkData = (ChunkKernelData*)data.kernelData.data;
+#else
+void Landscape::FillChunk(ChunkKernelData* chunkData)
+{
+#endif
   Chunk* chunk = chunkData->chunk;
   float x = chunkData->x;
   float z = chunkData->z;
@@ -783,6 +794,26 @@ void Landscape::FillChunk(const TaskData& data)
   }
 }
 
+struct ChunkTaskSet : public enki::ITaskSet
+{
+  virtual void ExecuteRange(enki::TaskSetPartition range, uint32_t threadnum)
+  {
+    for (u32 i = range.start; i < range.end; ++i)
+    {
+      Landscape::FillChunk(&data[i]);
+    }
+  }
+
+  void Init()
+  {
+    m_SetSize = 0;
+  }
+
+  static Landscape::ChunkKernelData data[2048];
+};
+
+Landscape::ChunkKernelData ChunkTaskSet::data[2048];
+
 //------------------------------------------------------------------------------
 void Landscape::RasterizeLandscape()
 {
@@ -835,8 +866,11 @@ void Landscape::RasterizeLandscape()
   vec3 v0, v1, v2, v3;
   vec3 n0, n1;
 
-  SimpleAppendBuffer<TaskId, 2048> chunkTasks;
+  //SimpleAppendBuffer<TaskId, 2048> chunkTasks;
   SimpleAppendBuffer<Chunk*, 2048> chunks;
+
+  ChunkTaskSet ts;
+  ts.Init();
 
   for (float z = bottomLeft.z; z <= topLeft.z; z += s)
   {
@@ -852,20 +886,32 @@ void Landscape::RasterizeLandscape()
       {
         ++chunkMisses;
         chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
+
+#if 0
         ChunkKernelData* data = (ChunkKernelData*)g_ScratchMemory.Alloc(sizeof(ChunkKernelData));
         *data = ChunkKernelData{chunk, x, z};
         KernelData kd;
         kd.data = data;
         kd.size = sizeof(ChunkKernelData);
         chunkTasks.Append(SCHEDULER.AddTask(kd, FillChunk));
+#else
+        ChunkTaskSet::data[ts.m_SetSize++] = ChunkKernelData{ chunk, x, z };
+        //ChunkKernelData* data = (ChunkKernelData*)g_ScratchMemory.Alloc(sizeof(ChunkKernelData));
+        //*data = ChunkKernelData{ chunk, x, z };
+
+#endif
+
       }
 
       chunks.Append(chunk);
     }
   }
 
-  for (const TaskId& taskId : chunkTasks)
-    SCHEDULER.Wait(taskId);
+  g_TS.AddTaskSetToPipe(&ts);
+  g_TS.WaitforTaskSet(&ts);
+
+  //for (const TaskId& taskId : chunkTasks)
+  //  SCHEDULER.Wait(taskId);
 
   // sort the chunks by distance to camera (furthest first)
   vec3 camPos = _curCamera->_pos;

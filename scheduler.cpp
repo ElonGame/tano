@@ -1,9 +1,13 @@
 #include "scheduler.hpp"
 #include <thread>
 
+
+enki::TaskScheduler g_TS;
+
 using namespace tano;
 using namespace tano::scheduler;
 using namespace bristol;
+
 
 //------------------------------------------------------------------------------
 Scheduler* Scheduler::_instance;
