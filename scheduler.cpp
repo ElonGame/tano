@@ -2,7 +2,9 @@
 #include <thread>
 
 
+#if WITH_ENKI_SCHEDULER
 enki::TaskScheduler g_TS;
+#endif
 
 using namespace tano;
 using namespace tano::scheduler;

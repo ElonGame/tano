@@ -121,4 +121,7 @@ namespace tano
 #define SCHEDULER Scheduler::Instance()
 
 }
+
+#if WITH_ENKI_SCHEDULER
 extern enki::TaskScheduler g_TS;
+#endif

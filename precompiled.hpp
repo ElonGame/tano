@@ -3,6 +3,7 @@
 //  C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc
 #pragma warning(disable: 4530)
 
+#define WITH_ENKI_SCHEDULER 0
 #define WITH_REMOTERY 0
 #define WITH_DXGI_DEBUG 1
 #define WITH_DEBUG_SHADERS 1

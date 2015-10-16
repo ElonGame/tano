@@ -106,7 +106,12 @@ bool App::Destroy()
   DemoEngine::Destroy();
   DebugApi::Destroy();
   INIT(Graphics::Destroy());
-  //Scheduler::Destroy();
+#if WITH_ENKI_SCHEDULER
+  g_TS.StopThreads(true)
+#else
+  Scheduler::Destroy();
+#endif
+
 
   delete exch_null(_instance);
 
@@ -148,8 +153,11 @@ bool App::Init(HINSTANCE hinstance)
 
   INIT_FATAL(Blackboard::Create("config/scratch.bb", "data/scratch.dat"));
 
-  //INIT_FATAL(Scheduler::Create());
+#if WITH_ENKI_SCHEDULER
   g_TS.Initialize();
+#else
+  INIT_FATAL(Scheduler::Create());
+#endif
 
   INIT_FATAL(Graphics::Create(hinstance));
   INIT_FATAL(DebugApi::Create(GRAPHICS.GetGraphicsContext()));

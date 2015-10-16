@@ -100,8 +100,11 @@ namespace tano
     };
 
     
-      //static void FillChunk(const scheduler::TaskData& data);
+#if WITH_ENKI_SCHEDULER
     static void FillChunk(ChunkKernelData* chunkData);
+#else
+    static void FillChunk(const scheduler::TaskData& data);
+#endif
     static void UpdateFlock(const scheduler::TaskData& data);
 
     struct FlockKernelData
@@ -184,7 +187,7 @@ namespace tano
 
     FollowCam _followCamera;
     FlockCamera _flockCamera;
-    Camera* _curCamera = &_freeflyCamera;
+    Camera* _curCamera = &_flockCamera;
     int _followFlock = 0;
 
     CardinalSpline _spline;

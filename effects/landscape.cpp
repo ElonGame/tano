@@ -457,7 +457,6 @@ void Landscape::UpdateFlock(const scheduler::TaskData& data)
 //------------------------------------------------------------------------------
 void Landscape::UpdateBoids(const FixedUpdateState& state)
 {
-#if 0
   rmt_ScopedCPUSample(Boids_Update);
 
   float dt = state.delta;
@@ -477,7 +476,6 @@ void Landscape::UpdateBoids(const FixedUpdateState& state)
 
   for (const TaskId& taskId : chunkTasks)
     SCHEDULER.Wait(taskId);
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -716,13 +714,13 @@ Landscape::Chunk* Landscape::ChunkCache::GetFreeChunk(float x, float y, int time
   return chunk;
 }
 //------------------------------------------------------------------------------
-#if 0
+#if WITH_ENKI_SCHEDULER
+void Landscape::FillChunk(ChunkKernelData* chunkData)
+{
+#else
 void Landscape::FillChunk(const TaskData& data)
 {
   ChunkKernelData* chunkData = (ChunkKernelData*)data.kernelData.data;
-#else
-void Landscape::FillChunk(ChunkKernelData* chunkData)
-{
 #endif
   Chunk* chunk = chunkData->chunk;
   float x = chunkData->x;
@@ -794,6 +792,7 @@ void Landscape::FillChunk(ChunkKernelData* chunkData)
   }
 }
 
+#if WITH_ENKI_SCHEDULER
 struct ChunkTaskSet : public enki::ITaskSet
 {
   virtual void ExecuteRange(enki::TaskSetPartition range, uint32_t threadnum)
@@ -813,6 +812,7 @@ struct ChunkTaskSet : public enki::ITaskSet
 };
 
 Landscape::ChunkKernelData ChunkTaskSet::data[2048];
+#endif
 
 //------------------------------------------------------------------------------
 void Landscape::RasterizeLandscape()
@@ -866,11 +866,14 @@ void Landscape::RasterizeLandscape()
   vec3 v0, v1, v2, v3;
   vec3 n0, n1;
 
-  //SimpleAppendBuffer<TaskId, 2048> chunkTasks;
-  SimpleAppendBuffer<Chunk*, 2048> chunks;
-
+#if WITH_ENKI_SCHEDULER
   ChunkTaskSet ts;
   ts.Init();
+#else
+  SimpleAppendBuffer<TaskId, 2048> chunkTasks;
+#endif
+
+  SimpleAppendBuffer<Chunk*, 2048> chunks;
 
   for (float z = bottomLeft.z; z <= topLeft.z; z += s)
   {
@@ -887,28 +890,26 @@ void Landscape::RasterizeLandscape()
         ++chunkMisses;
         chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
 
-#if 0
+#if WITH_ENKI_SCHEDULER
+        ChunkTaskSet::data[ts.m_SetSize++] = ChunkKernelData{ chunk, x, z };
+#else
         ChunkKernelData* data = (ChunkKernelData*)g_ScratchMemory.Alloc(sizeof(ChunkKernelData));
-        *data = ChunkKernelData{chunk, x, z};
+        *data = ChunkKernelData{ chunk, x, z };
         KernelData kd;
         kd.data = data;
         kd.size = sizeof(ChunkKernelData);
         chunkTasks.Append(SCHEDULER.AddTask(kd, FillChunk));
-#else
-        ChunkTaskSet::data[ts.m_SetSize++] = ChunkKernelData{ chunk, x, z };
-        //ChunkKernelData* data = (ChunkKernelData*)g_ScratchMemory.Alloc(sizeof(ChunkKernelData));
-        //*data = ChunkKernelData{ chunk, x, z };
-
 #endif
-
       }
 
       chunks.Append(chunk);
     }
   }
 
+#if WITH_ENKI_SCHEDULER
   g_TS.AddTaskSetToPipe(&ts);
   g_TS.WaitforTaskSet(&ts);
+#endif
 
   //for (const TaskId& taskId : chunkTasks)
   //  SCHEDULER.Wait(taskId);
