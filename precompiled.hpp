@@ -25,7 +25,7 @@
 
 #define WITH_IMGUI 1
 
-#define WITH_CONFIG_DLG 1
+#define WITH_CONFIG_DLG 0
 #define WITH_UNPACKED_RESOUCES 1
 
 #define WITH_MUSIC 1

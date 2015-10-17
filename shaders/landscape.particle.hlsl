@@ -15,6 +15,12 @@ cbuffer G : register(b0)
 struct VsParticleIn
 {
   float3 pos : Position;
+  // float3 normal : Normal;
+};
+
+struct GsParticleIn
+{
+  float3 pos : Position;
 };
 
 struct VsParticleOut
@@ -23,6 +29,7 @@ struct VsParticleOut
   float2 uv : TexCoord0;
   float z : TexCoord1;
   float alpha : TexCoord2;
+  float3 rayDir : TexCoord3;
 };
 
 // 1--2
@@ -34,14 +41,16 @@ static float2 uvsVtx[4] = {
 };
 
 // entry-point: vs
-VsParticleIn VsParticle(VsParticleIn v)
+GsParticleIn VsParticle(VsParticleIn v)
 {
-  return v;
+  GsParticleIn res;
+  res.pos = v.pos;
+  return res;
 }
 
 [maxvertexcount(4)]
 // entry-point: gs
-void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
+void GsParticle(point GsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
 {
   // Note, the DirectX strip order differs from my usual order. It might be
   // a good idea to change my stuff..
@@ -58,6 +67,7 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
 
   VsParticleOut p;
   p.alpha = 1;
+  p.rayDir = dir;
   float s = 0.75;
   float3 p0 = float3(pos - s * right - s * up);
   float3 p1 = float3(pos - s * right + s * up);
@@ -91,12 +101,12 @@ static float zEpsilon = 0.0;
 // entry-point: ps
 PsColBrightnessOut PsParticle(VsParticleOut p)
 {
+  PsColBrightnessOut res;
+
   // Texture0 = particle texture
   // Texture1 = zbuffer
   float2 uv = p.uv.xy;
   float4 col = Texture0.Sample(PointSampler, uv);
-  // col.g *= 0.6;
-  // col.b *= 0.1;
   float zBuf = Texture1.Load(int3(p.pos.x, p.pos.y, 0)).r;
 
   // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))
@@ -109,8 +119,15 @@ PsColBrightnessOut PsParticle(VsParticleOut p)
   if( c * zdiff <= zEpsilon )
       discard;
 
-  PsColBrightnessOut res;
-  res.col = intensity * c * col;
+  col = intensity * c * col;
+
+  // Apply fog
+  float fogAmount = max(0, 1 - exp(-(p.z) * FOG_SCALE));
+  float3 fogColor = FogColor(p.rayDir);
+  col.xyz = lerp(col.xyz, col.xyz * fogColor, fogAmount);
+
+  res.col = col;
+
   res.emissive.rgb = 0;
   res.emissive.a = 0; //Luminance(intensity * c * col.rgb);
   return res;

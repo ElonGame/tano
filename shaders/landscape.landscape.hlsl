@@ -239,6 +239,8 @@ static float LineWidth = 2;
 // entry-point: ps
 PsColBrightnessOut PsLandscape(PsLandscapeIn p)
 {
+    PsColBrightnessOut res;
+
     // Compute the shortest distance between the fragment and the edges.
     float dist = MainDistanceToEdge(p);
     //return ColorCases[p.Case];
@@ -249,24 +251,20 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
     // Alpha is computed from the function exp2(-2(x)^2).
     dist *= dist;
     float alpha = exp2(-2*dist);
-    //float alpha = saturate(1 - pow(dist / 10, 0.3));
 
     float3 amb = float3(0.01, 0.01, 0.01);
     float dff = saturate(dot(-SUN_DIR, p.normal));
 
     float3 diffuseCol = float3(130, 45, 130) / 255;
-    //float3 diffuseCol = float3(0.8, 0.1, 0.25);
 
     float3 col = (amb + dff) * diffuseCol;
 
     col = lerp(col, WireColor.rgb, alpha);
 
-    float b = 0.002;
-    float fogAmount = max(0, 1 - exp(-(p.distance) * b));
+    float fogAmount = max(0, 1 - exp(-(p.distance) * FOG_SCALE));
     float3 fogColor = FogColor(p.rayDir);
-
-    PsColBrightnessOut res;
     col = lerp(col, fogColor, fogAmount);
+
     res.col = float4(col, 0.9);
     float lum = Luminance(col.rgb);
     res.emissive.rgb = 0;

@@ -337,6 +337,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
+    <ClCompile Include="..\tristripper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\arena_allocator.hpp" />
@@ -424,6 +425,7 @@
     <ClInclude Include="..\tano_math_convert.hpp" />
     <ClInclude Include="..\text_writer.hpp" />
     <ClInclude Include="..\timer.hpp" />
+    <ClInclude Include="..\tristripper.hpp" />
     <ClInclude Include="..\update_state.hpp" />
     <ClInclude Include="..\vertex_types.hpp" />
     <ClInclude Include="resource.h" />

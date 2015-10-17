@@ -518,10 +518,11 @@ void GraphicsContext::SetConstantBuffer(
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetBundleWithSamplers(const GpuBundle& bundle, ShaderType shaderType)
+void GraphicsContext::SetBundleWithSamplers(
+    const GpuBundle& bundle, ShaderType shaderType, bool skipInvalid)
 {
   SetGpuStateAndSamplers(bundle.state, shaderType);
-  SetGpuObjects(bundle.objects);
+  SetGpuObjects(bundle.objects, skipInvalid);
 }
 
 //------------------------------------------------------------------------------
@@ -532,15 +533,17 @@ void GraphicsContext::SetBundle(const GpuBundle& bundle)
 }
 
 //------------------------------------------------------------------------------
-void GraphicsContext::SetGpuObjects(const GpuObjects& obj)
+void GraphicsContext::SetGpuObjects(const GpuObjects& obj, bool skipInvalid)
 {
   // NOTE: We don't check for handle validity here, as setting an invalid (uninitialized)
   // handle is the same as setting NULL, ie unbinding
-  SetVertexShader(obj._vs);
+  if (!(skipInvalid && !obj._vs.IsValid()))
+    SetVertexShader(obj._vs);
   SetGeometryShader(obj._gs);
   SetPixelShader(obj._ps);
   SetLayout(obj._layout);
-  SetVertexBuffer(obj._vb);
+  if (!(skipInvalid && !obj._vb.IsValid()))
+    SetVertexBuffer(obj._vb);
   SetIndexBuffer(obj._ib);
   SetPrimitiveTopology(obj._topology);
 }

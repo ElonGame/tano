@@ -99,11 +99,18 @@ namespace tano
       float x, z;
     };
 
+    struct CopyKernelData
+    {
+      const Chunk* chunk;
+      float* landscapeBuf;
+      vec3* particleBuf;
+    };
     
 #if WITH_ENKI_SCHEDULER
     static void FillChunk(ChunkKernelData* chunkData);
 #else
     static void FillChunk(const scheduler::TaskData& data);
+    static void CopyOutTask(const scheduler::TaskData& data);
 #endif
     static void UpdateFlock(const scheduler::TaskData& data);
 
@@ -185,9 +192,9 @@ namespace tano
     BehaviorAlignment* _behaviorAlignment = nullptr;
     BehaviorLandscapeFollow* _landscapeFollow = nullptr;
 
-    FollowCam _followCamera;
     FlockCamera _flockCamera;
-    Camera* _curCamera = &_flockCamera;
+    //Camera* _curCamera = &_flockCamera;
+    Camera* _curCamera = &_freeflyCamera;
     int _followFlock = 0;
 
     CardinalSpline _spline;

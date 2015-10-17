@@ -48,8 +48,8 @@ namespace tano
 
     void SetConstantBuffer(ObjectHandle h, const void* buf, size_t len, u32 shaderFlags, u32 slot);
     void SetBundle(const GpuBundle& bundle);
-    void SetBundleWithSamplers(const GpuBundle& bundle, ShaderType shaderType);
-    void SetGpuObjects(const GpuObjects& obj);
+    void SetBundleWithSamplers(const GpuBundle& bundle, ShaderType shaderType, bool skipInvalid = false);
+    void SetGpuObjects(const GpuObjects& obj, bool skipInvalid = false);
     void SetGpuState(const GpuState& state);
     void SetGpuStateSamplers(const GpuState& state, ShaderType shaderType);
     void SetGpuStateAndSamplers(const GpuState& state, ShaderType shaderType);
