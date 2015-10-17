@@ -121,5 +121,5 @@ const char* Sample::Name()
 //------------------------------------------------------------------------------
 void Sample::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), Sample::Create);
+  g_DemoEngine->RegisterFactory(Name(), Sample::Create);
 }

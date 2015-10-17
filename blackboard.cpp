@@ -6,7 +6,7 @@
 using namespace tano;
 using namespace bristol;
 
-Blackboard* Blackboard::_instance;
+Blackboard* tano::g_Blackboard = nullptr;
 
 //------------------------------------------------------------------------------
 Blackboard::~Blackboard()
@@ -17,9 +17,9 @@ Blackboard::~Blackboard()
 //------------------------------------------------------------------------------
 bool Blackboard::Create(const char* filename, const char* datafile)
 {
-  assert(!_instance);
-  _instance = new Blackboard();
-  return _instance->Init(filename, datafile);
+  assert(!g_Blackboard);
+  g_Blackboard = new Blackboard();
+  return g_Blackboard->Init(filename, datafile);
 }
 
 //------------------------------------------------------------------------------
@@ -28,14 +28,7 @@ void Blackboard::Destory()
 #if WITH_BLACKBOARD_SAVE && WITH_BLACKBOARD_TCP && WITH_UNPACKED_RESOUCES
   _instance->SaveData();
 #endif
-  delete exch_null(_instance);
-}
-
-//------------------------------------------------------------------------------
-Blackboard& Blackboard::Instance()
-{
-  assert(_instance);
-  return *_instance;
+  delete exch_null(g_Blackboard);
 }
 
 //------------------------------------------------------------------------------
@@ -668,7 +661,7 @@ void Blackboard::DrawExpressionEditor()
     const string& name = self->_expressionNames[idx];
     const string& expr = self->_expressions[name].repr;
     static char buf[256];
-    snprintf(buf, 255, "%s (%s)", name.c_str(), expr.c_str());
+    _snprintf(buf, 255, "%s (%s)", name.c_str(), expr.c_str());
     *out_text = buf;
     return true;
   };

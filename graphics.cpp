@@ -86,7 +86,8 @@ bool Graphics::Destroy()
 //------------------------------------------------------------------------------
 const DXGI_MODE_DESC& Graphics::SelectedDisplayMode() const
 {
-  return _curSetup.videoAdapters[_curSetup.selectedAdapter].displayModes[_curSetup.SelectedDisplayMode];
+  return _curSetup.videoAdapters[_curSetup.selectedAdapter]
+      .displayModes[_curSetup.SelectedDisplayMode];
 }
 
 //------------------------------------------------------------------------------
@@ -97,14 +98,24 @@ bool Graphics::CreateDevice()
   flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
-  flags |= D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+  // flags |= D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 
   // Create the DX11 device and context
   CComPtr<IDXGIAdapter> adapter = _curSetup.videoAdapters[_curSetup.selectedAdapter].adapter;
-  if (FAILED(D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, flags, NULL, 0, D3D11_SDK_VERSION,
-          &_device, &_featureLevel, &_immediateContext)))
+  if (FAILED(D3D11CreateDevice(adapter,
+          D3D_DRIVER_TYPE_UNKNOWN,
+          NULL,
+          flags,
+          NULL,
+          0,
+          D3D11_SDK_VERSION,
+          &_device,
+          &_featureLevel,
+          &_immediateContext)))
     return false;
 
+  LOG_INFO("Using adapter: ",
+      wide_char_to_utf8(_curSetup.videoAdapters[_curSetup.selectedAdapter].desc.Description));
   _graphicsContext = new GraphicsContext(_immediateContext);
 
   if (_featureLevel < D3D_FEATURE_LEVEL_9_3)
@@ -159,7 +170,9 @@ ObjectHandle Graphics::CreateBuffer(
 bool Graphics::CreateBufferInner(
     D3D11_BIND_FLAG bind, int size, bool dynamic, const void* data, ID3D11Buffer** buffer)
 {
-  CD3D11_BUFFER_DESC desc(((size + 15) & ~0xf), bind, dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT,
+  CD3D11_BUFFER_DESC desc(((size + 15) & ~0xf),
+      bind,
+      dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT,
       dynamic ? D3D11_CPU_ACCESS_WRITE : 0);
 
   HRESULT hr;
@@ -168,7 +181,7 @@ bool Graphics::CreateBufferInner(
     D3D11_SUBRESOURCE_DATA init_data;
     ZeroMemory(&init_data, sizeof(init_data));
     init_data.pSysMem = data;
-    hr                = _device->CreateBuffer(&desc, &init_data, buffer);
+    hr = _device->CreateBuffer(&desc, &init_data, buffer);
   }
   else
   {
@@ -232,10 +245,10 @@ bool Graphics::GetTextureSize(ObjectHandle h, u32* x, u32* y)
   else if (type == ObjectHandle::kRenderTarget)
   {
     const D3D11_RENDER_TARGET_VIEW_DESC& rtDesc = _renderTargets.Get(h)->view.desc;
-    const D3D11_TEXTURE2D_DESC& desc            = _renderTargets.Get(h)->texture.desc;
-    u32 mipLevel                                = rtDesc.Texture2D.MipSlice;
-    *x                                          = max(desc.Width / (1 << mipLevel), 1u);
-    *y                                          = max(desc.Height / (1 << mipLevel), 1u);
+    const D3D11_TEXTURE2D_DESC& desc = _renderTargets.Get(h)->texture.desc;
+    u32 mipLevel = rtDesc.Texture2D.MipSlice;
+    *x = max(desc.Width / (1 << mipLevel), 1u);
+    *y = max(desc.Height / (1 << mipLevel), 1u);
     return true;
   }
   else if (type == ObjectHandle::kStructuredBuffer)
@@ -253,7 +266,8 @@ bool Graphics::GetTextureSize(ObjectHandle h, u32* x, u32* y)
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::GetTempRenderTarget(const RenderTargetDesc& desc, const BufferFlags& bufferFlags)
+ObjectHandle Graphics::GetTempRenderTarget(
+    const RenderTargetDesc& desc, const BufferFlags& bufferFlags)
 {
   return GetTempRenderTarget(desc.width, desc.height, desc.format, bufferFlags);
 }
@@ -261,12 +275,13 @@ ObjectHandle Graphics::GetTempRenderTarget(const RenderTargetDesc& desc, const B
 //------------------------------------------------------------------------------
 ObjectHandle Graphics::GetTempRenderTarget(
     int width, int height, DXGI_FORMAT format, const BufferFlags& flags)
-{ 
+{
   // Look for a temp render target with the required format etc
   for (TempRenderTarget& t : _tempRenderTargets)
   {
     const D3D11_TEXTURE2D_DESC& d = t.desc;
-    if (!t.inUse && d.Width == width && d.Height == height && d.Format == format && t.flags == flags)
+    if (!t.inUse && d.Width == width && d.Height == height && d.Format == format
+        && t.flags == flags)
     {
       // Found a free render target!
       t.inUse = true;
@@ -345,11 +360,11 @@ ObjectHandle Graphics::CreateStructuredBuffer(int elemSize, int numElems, bool c
 
   // Create Structured Buffer
   D3D11_BUFFER_DESC sbDesc;
-  sbDesc.BindFlags           = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-  sbDesc.CPUAccessFlags      = 0;
-  sbDesc.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+  sbDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+  sbDesc.CPUAccessFlags = 0;
+  sbDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
   sbDesc.StructureByteStride = elemSize;
-  sbDesc.ByteWidth           = elemSize * numElems;
+  sbDesc.ByteWidth = elemSize * numElems;
   sbDesc.Usage = D3D11_USAGE_DEFAULT;
   if (FAILED(_device->CreateBuffer(&sbDesc, NULL, &sb->buffer.ptr)))
     return emptyHandle;
@@ -359,9 +374,9 @@ ObjectHandle Graphics::CreateStructuredBuffer(int elemSize, int numElems, bool c
   // create the UAV for the structured buffer
   D3D11_UNORDERED_ACCESS_VIEW_DESC sbUAVDesc;
   sbUAVDesc.Buffer.FirstElement = 0;
-  sbUAVDesc.Buffer.Flags        = 0;
-  sbUAVDesc.Buffer.NumElements  = numElems;
-  sbUAVDesc.Format              = DXGI_FORMAT_UNKNOWN;
+  sbUAVDesc.Buffer.Flags = 0;
+  sbUAVDesc.Buffer.NumElements = numElems;
+  sbUAVDesc.Format = DXGI_FORMAT_UNKNOWN;
   sbUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
   if (FAILED(_device->CreateUnorderedAccessView(buf, &sbUAVDesc, &sb->uav.ptr)))
     return emptyHandle;
@@ -371,10 +386,10 @@ ObjectHandle Graphics::CreateStructuredBuffer(int elemSize, int numElems, bool c
     // create the Shader Resource View (SRV) for the structured buffer
     D3D11_SHADER_RESOURCE_VIEW_DESC sbSRVDesc;
     sbSRVDesc.Buffer.ElementOffset = 0;
-    sbSRVDesc.Buffer.ElementWidth  = elemSize;
-    sbSRVDesc.Buffer.FirstElement  = 0;
-    sbSRVDesc.Buffer.NumElements   = numElems;
-    sbSRVDesc.Format               = DXGI_FORMAT_UNKNOWN;
+    sbSRVDesc.Buffer.ElementWidth = elemSize;
+    sbSRVDesc.Buffer.FirstElement = 0;
+    sbSRVDesc.Buffer.NumElements = numElems;
+    sbSRVDesc.Format = DXGI_FORMAT_UNKNOWN;
     sbSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
     if (FAILED(_device->CreateShaderResourceView(buf, &sbSRVDesc, &sb->srv.ptr)))
       return emptyHandle;
@@ -396,7 +411,8 @@ ObjectHandle Graphics::CreateDepthStencil(int width, int height, const BufferFla
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& flags)
+ObjectHandle Graphics::CreateRenderTarget(
+    int width, int height, DXGI_FORMAT format, const BufferFlags& flags)
 {
   if (RenderTargetResource* rt = CreateRenderTargetPtr(width, height, format, flags))
   {
@@ -422,28 +438,31 @@ RenderTargetResource* Graphics::CreateRenderTargetPtr(
                   | (flags.IsSet(BufferFlag::CreateSrv) ? D3D11_BIND_SHADER_RESOURCE : 0)
                   | (flags.IsSet(BufferFlag::CreateUav) ? D3D11_BIND_UNORDERED_ACCESS : 0);
 
-  rt->texture.desc           = CD3D11_TEXTURE2D_DESC(format, width, height, 1, mip_levels, bindFlags);
-  rt->texture.desc.MiscFlags = flags.IsSet(BufferFlag::CreateMipMaps) ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
+  rt->texture.desc = CD3D11_TEXTURE2D_DESC(format, width, height, 1, mip_levels, bindFlags);
+  rt->texture.desc.MiscFlags =
+      flags.IsSet(BufferFlag::CreateMipMaps) ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
   if (FAILED(_device->CreateTexture2D(&rt->texture.desc, NULL, &rt->texture.ptr)))
     return nullptr;
 
   // create the render target view
-  rt->view.desc = CD3D11_RENDER_TARGET_VIEW_DESC(D3D11_RTV_DIMENSION_TEXTURE2D, rt->texture.desc.Format);
+  rt->view.desc =
+      CD3D11_RENDER_TARGET_VIEW_DESC(D3D11_RTV_DIMENSION_TEXTURE2D, rt->texture.desc.Format);
   if (FAILED(_device->CreateRenderTargetView(rt->texture.ptr, &rt->view.desc, &rt->view.ptr)))
     return nullptr;
 
   if (flags.IsSet(BufferFlag::CreateSrv))
   {
     // create the shader resource view
-    rt->srv.desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, rt->texture.desc.Format);
+    rt->srv.desc =
+        CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, rt->texture.desc.Format);
     if (FAILED(_device->CreateShaderResourceView(rt->texture.ptr, &rt->srv.desc, &rt->srv.ptr)))
       return nullptr;
   }
 
   if (flags.IsSet(BufferFlag::CreateUav))
   {
-    rt->uav.desc =
-        CD3D11_UNORDERED_ACCESS_VIEW_DESC(D3D11_UAV_DIMENSION_TEXTURE2D, format, 0, 0, width * height);
+    rt->uav.desc = CD3D11_UNORDERED_ACCESS_VIEW_DESC(
+        D3D11_UAV_DIMENSION_TEXTURE2D, format, 0, 0, width * height);
     if (FAILED(_device->CreateUnorderedAccessView(rt->texture.ptr, &rt->uav.desc, &rt->uav.ptr)))
       return nullptr;
   }
@@ -453,7 +472,8 @@ RenderTargetResource* Graphics::CreateRenderTargetPtr(
 }
 
 //------------------------------------------------------------------------------
-DepthStencilResource* Graphics::CreateDepthStencilPtr(int width, int height, const BufferFlags& flags)
+DepthStencilResource* Graphics::CreateDepthStencilPtr(
+    int width, int height, const BufferFlags& flags)
 {
   DepthStencilResource* ds = new DepthStencilResource();
   ScopeGuard s([=]()
@@ -464,14 +484,21 @@ DepthStencilResource* Graphics::CreateDepthStencilPtr(int width, int height, con
   bool srv = flags.IsSet(BufferFlag::CreateSrv);
 
   // create the depth stencil texture
-  CD3D11_TEXTURE2D_DESC depthStencilDesc(
-      DXGI_FORMAT_D24_UNORM_S8_UINT, width, height, 1, 1, D3D11_BIND_DEPTH_STENCIL, D3D11_USAGE_DEFAULT, 0);
+  CD3D11_TEXTURE2D_DESC depthStencilDesc(DXGI_FORMAT_D24_UNORM_S8_UINT,
+      width,
+      height,
+      1,
+      1,
+      D3D11_BIND_DEPTH_STENCIL,
+      D3D11_USAGE_DEFAULT,
+      0);
 
   if (srv)
   {
     // SRVs require special formats for depth/stencil
     depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
-    depthStencilDesc.BindFlags |= (flags.IsSet(BufferFlag::CreateSrv) ? D3D11_BIND_SHADER_RESOURCE : 0);
+    depthStencilDesc.BindFlags |=
+        (flags.IsSet(BufferFlag::CreateSrv) ? D3D11_BIND_SHADER_RESOURCE : 0);
   }
 
   // UAV for depth buffer not supported
@@ -482,15 +509,16 @@ DepthStencilResource* Graphics::CreateDepthStencilPtr(int width, int height, con
   ds->texture.ptr->GetDesc(&ds->texture.desc);
 
   // create depth stencil view
-  CD3D11_DEPTH_STENCIL_VIEW_DESC viewDesc(D3D11_DSV_DIMENSION_TEXTURE2D, DXGI_FORMAT_D24_UNORM_S8_UINT);
+  CD3D11_DEPTH_STENCIL_VIEW_DESC viewDesc(
+      D3D11_DSV_DIMENSION_TEXTURE2D, DXGI_FORMAT_D24_UNORM_S8_UINT);
   if (FAILED(_device->CreateDepthStencilView(ds->texture.ptr, &viewDesc, &ds->view.ptr)))
     return nullptr;
   ds->view.ptr->GetDesc(&ds->view.desc);
 
   if (flags.IsSet(BufferFlag::CreateSrv))
   {
-    ds->srv.desc =
-        CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
+    ds->srv.desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(
+        D3D11_SRV_DIMENSION_TEXTURE2D, DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
     if (FAILED(_device->CreateShaderResourceView(ds->texture.ptr, &ds->srv.desc, &ds->srv.ptr)))
       return false;
   }
@@ -500,7 +528,8 @@ DepthStencilResource* Graphics::CreateDepthStencilPtr(int width, int height, con
 }
 
 //------------------------------------------------------------------------------
-bool Graphics::ReadTexture(const char* filename, D3DX11_IMAGE_INFO* info, u32* pitch, vector<u8>* bits)
+bool Graphics::ReadTexture(
+    const char* filename, D3DX11_IMAGE_INFO* info, u32* pitch, vector<u8>* bits)
 {
   HRESULT hr;
   D3DX11GetImageInfoFromFileA(filename, NULL, info, &hr);
@@ -510,8 +539,8 @@ bool Graphics::ReadTexture(const char* filename, D3DX11_IMAGE_INFO* info, u32* p
   D3DX11_IMAGE_LOAD_INFO loadinfo;
   ZeroMemory(&loadinfo, sizeof(D3DX11_IMAGE_LOAD_INFO));
   loadinfo.CpuAccessFlags = D3D11_CPU_ACCESS_READ;
-  loadinfo.Usage          = D3D11_USAGE_STAGING;
-  loadinfo.Format         = DXGI_FORMAT_R8G8B8A8_UNORM;
+  loadinfo.Usage = D3D11_USAGE_STAGING;
+  loadinfo.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
   CComPtr<ID3D11Resource> resource;
   D3DX11CreateTextureFromFileA(_device, filename, &loadinfo, NULL, &resource.p, &hr);
   if (FAILED(hr))
@@ -566,7 +595,8 @@ ObjectHandle Graphics::LoadTexture(const char* filename, bool srgb, D3DX11_IMAGE
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::LoadTextureFromMemory(const void* buf, u32 len, bool srgb, D3DX11_IMAGE_INFO* info)
+ObjectHandle Graphics::LoadTextureFromMemory(
+    const void* buf, u32 len, bool srgb, D3DX11_IMAGE_INFO* info)
 {
   HRESULT hr;
   if (info && FAILED(D3DX11GetImageInfoFromMemory(buf, len, NULL, info, &hr)))
@@ -579,7 +609,8 @@ ObjectHandle Graphics::LoadTextureFromMemory(const void* buf, u32 len, bool srgb
   }
 
   // TODO: allow for srgb loading
-  auto desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, DXGI_FORMAT_R8G8B8A8_UNORM);
+  auto desc =
+      CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, DXGI_FORMAT_R8G8B8A8_UNORM);
   if (FAILED(_device->CreateShaderResourceView(data->resource, &desc, &data->view.ptr)))
     return emptyHandle;
 
@@ -616,7 +647,8 @@ TextureResource* Graphics::CreateTexturePtr(const D3D11_TEXTURE2D_DESC& desc)
   // create the shader resource view if the texture has a shader resource bind flag
   if (desc.BindFlags & D3D11_BIND_SHADER_RESOURCE)
   {
-    t->view.desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, t->texture.desc.Format);
+    t->view.desc =
+        CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, t->texture.desc.Format);
     if (FAILED(_device->CreateShaderResourceView(t->texture.ptr, &t->view.desc, &t->view.ptr)))
       return nullptr;
   }
@@ -626,8 +658,13 @@ TextureResource* Graphics::CreateTexturePtr(const D3D11_TEXTURE2D_DESC& desc)
 }
 
 //------------------------------------------------------------------------------
-ObjectHandle Graphics::CreateTexture(
-    int width, int height, DXGI_FORMAT fmt, void* data_bits, int data_width, int data_height, int data_pitch)
+ObjectHandle Graphics::CreateTexture(int width,
+    int height,
+    DXGI_FORMAT fmt,
+    void* data_bits,
+    int data_width,
+    int data_height,
+    int data_pitch)
 {
   TextureResource* data =
       CreateTexturePtr(width, height, fmt, data_bits, data_width, data_height, data_pitch);
@@ -635,11 +672,22 @@ ObjectHandle Graphics::CreateTexture(
 }
 
 //------------------------------------------------------------------------------
-TextureResource* Graphics::CreateTexturePtr(
-    int width, int height, DXGI_FORMAT fmt, void* data, int data_width, int data_height, int data_pitch)
+TextureResource* Graphics::CreateTexturePtr(int width,
+    int height,
+    DXGI_FORMAT fmt,
+    void* data,
+    int data_width,
+    int data_height,
+    int data_pitch)
 {
-  CD3D11_TEXTURE2D_DESC desc(
-      fmt, width, height, 1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+  CD3D11_TEXTURE2D_DESC desc(fmt,
+      width,
+      height,
+      1,
+      1,
+      D3D11_BIND_SHADER_RESOURCE,
+      D3D11_USAGE_DYNAMIC,
+      D3D11_CPU_ACCESS_WRITE);
 
   TextureResource* t = CreateTexturePtr(desc);
   if (!t)
@@ -654,10 +702,10 @@ TextureResource* Graphics::CreateTexturePtr(
       return nullptr;
     }
 
-    uint8_t* src    = (uint8_t*)data;
-    uint8_t* dst    = (uint8_t*)resource.pData;
-    const int w     = data_width == -1 ? width : min<int>(width, data_width);
-    const int h     = data_height == -1 ? height : min<int>(height, data_height);
+    uint8_t* src = (uint8_t*)data;
+    uint8_t* dst = (uint8_t*)resource.pData;
+    const int w = data_width == -1 ? width : min<int>(width, data_width);
+    const int h = data_height == -1 ? height : min<int>(height, data_height);
     const int pitch = data_pitch == -1 ? width * SizeFromFormat(fmt) : data_pitch;
     for (int i = 0; i < h; ++i)
     {
@@ -698,11 +746,14 @@ ObjectHandle Graphics::ReserveObjectHandle(ObjectHandle::Type type)
 {
   switch (type)
   {
-    case ObjectHandle::kVertexShader: return AddShader<ID3D11VertexShader>(_vertexShaders, nullptr, type);
+    case ObjectHandle::kVertexShader:
+      return AddShader<ID3D11VertexShader>(_vertexShaders, nullptr, type);
     case ObjectHandle::kGeometryShader:
       return AddShader<ID3D11GeometryShader>(_geometryShaders, nullptr, type);
-    case ObjectHandle::kPixelShader: return AddShader<ID3D11PixelShader>(_pixelShaders, nullptr, type);
-    case ObjectHandle::kComputeShader: return AddShader<ID3D11ComputeShader>(_computeShaders, nullptr, type);
+    case ObjectHandle::kPixelShader:
+      return AddShader<ID3D11PixelShader>(_pixelShaders, nullptr, type);
+    case ObjectHandle::kComputeShader:
+      return AddShader<ID3D11ComputeShader>(_computeShaders, nullptr, type);
     default: assert("Unsupported object type");
   }
 
@@ -746,7 +797,8 @@ ObjectHandle Graphics::CreateComputeShader(const vector<char>& shaderBytecode)
 ObjectHandle Graphics::CreateGeometryShader(const vector<char>& shaderBytecode)
 {
   ID3D11GeometryShader* cs = nullptr;
-  if (SUCCEEDED(_device->CreateGeometryShader(&shaderBytecode[0], shaderBytecode.size(), NULL, &cs)))
+  if (SUCCEEDED(
+          _device->CreateGeometryShader(&shaderBytecode[0], shaderBytecode.size(), NULL, &cs)))
   {
     return AddShader(_geometryShaders, cs, ObjectHandle::kGeometryShader);
   }
@@ -799,25 +851,25 @@ ObjectHandle Graphics::CreateSamplerState(const D3D11_SAMPLER_DESC& desc)
 
 //------------------------------------------------------------------------------
 ObjectHandle Graphics::CreateSwapChain(const char* name,
-  u32 windowWidth,
-  u32 windowHeight,
-  u32 backBufferWidth,
-  u32 backBufferHeight,
-  DXGI_FORMAT format,
-  WNDPROC wndProc,
-  HINSTANCE instance)
+    u32 windowWidth,
+    u32 windowHeight,
+    u32 backBufferWidth,
+    u32 backBufferHeight,
+    DXGI_FORMAT format,
+    WNDPROC wndProc,
+    HINSTANCE instance)
 {
   // TODO: this should probably be moved into the SwapChain class
   // Register the window class
   WNDCLASSEX wcex;
   ZeroMemory(&wcex, sizeof(wcex));
-  wcex.cbSize        = sizeof(WNDCLASSEX);
-  wcex.style         = CS_HREDRAW | CS_VREDRAW;
-  wcex.lpfnWndProc   = wndProc;
-  wcex.hInstance     = instance;
+  wcex.cbSize = sizeof(WNDCLASSEX);
+  wcex.style = CS_HREDRAW | CS_VREDRAW;
+  wcex.lpfnWndProc = wndProc;
+  wcex.hInstance = instance;
   wcex.hbrBackground = 0;
   wcex.lpszClassName = name;
-  wcex.hCursor       = LoadCursor(NULL, IDC_ARROW);
+  wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
 
   if (!RegisterClassEx(&wcex))
     return emptyHandle;
@@ -846,7 +898,7 @@ ObjectHandle Graphics::CreateSwapChain(const char* name,
 // if doing borderless, center the window as well
 #if BORDERLESS_WINDOW
 
-  int desktopWidth  = GetSystemMetrics(SM_CXFULLSCREEN);
+  int desktopWidth = GetSystemMetrics(SM_CXFULLSCREEN);
   int dekstopHeight = GetSystemMetrics(SM_CYFULLSCREEN);
 
   int centerX = (desktopWidth - width) / 2;
@@ -860,23 +912,23 @@ ObjectHandle Graphics::CreateSwapChain(const char* name,
   DXGI_SWAP_CHAIN_DESC swapChainDesc;
   IDXGISwapChain* sc = 0;
   ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
-  swapChainDesc.BufferCount            = 2;
-  swapChainDesc.BufferDesc.Width       = backBufferWidth;
-  swapChainDesc.BufferDesc.Height      = backBufferHeight;
-  swapChainDesc.BufferDesc.Format      = format;
+  swapChainDesc.BufferCount = 2;
+  swapChainDesc.BufferDesc.Width = backBufferWidth;
+  swapChainDesc.BufferDesc.Height = backBufferHeight;
+  swapChainDesc.BufferDesc.Format = format;
   swapChainDesc.BufferDesc.RefreshRate = SelectedDisplayMode().RefreshRate;
-  swapChainDesc.BufferUsage            = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-  swapChainDesc.OutputWindow           = hwnd;
-  swapChainDesc.SampleDesc.Count       = _curSetup.multisampleCount;
-  swapChainDesc.SampleDesc.Quality     = 0;
-  swapChainDesc.Windowed               = _curSetup.windowed;
+  swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+  swapChainDesc.OutputWindow = hwnd;
+  swapChainDesc.SampleDesc.Count = _curSetup.multisampleCount;
+  swapChainDesc.SampleDesc.Quality = 0;
+  swapChainDesc.Windowed = _curSetup.windowed;
 
   if (FAILED(_curSetup.dxgi_factory->CreateSwapChain(_device, &swapChainDesc, &sc)))
     return emptyHandle;
 
-  SwapChain* swapChain  = new SwapChain(name);
-  swapChain->_hwnd      = hwnd;
-  swapChain->_desc      = swapChainDesc;
+  SwapChain* swapChain = new SwapChain(name);
+  swapChain->_hwnd = hwnd;
+  swapChain->_desc = swapChainDesc;
   swapChain->_swapChain = sc;
   if (!swapChain->CreateBackBuffers(backBufferWidth, backBufferHeight, format))
     return emptyHandle;
@@ -917,21 +969,29 @@ void Graphics::CreateDefaultSwapChain(u32 windowWidth,
     WNDPROC wndProc,
     HINSTANCE instance)
 {
-  _defaultSwapChainHandle = CreateSwapChain(
-      "default", windowWidth, windowHeight, backBufferWidth, backBufferHeight, format, wndProc, instance);
+  _defaultSwapChainHandle = CreateSwapChain("default",
+      windowWidth,
+      windowHeight,
+      backBufferWidth,
+      backBufferHeight,
+      format,
+      wndProc,
+      instance);
   _defaultSwapChain = _swapChains.Get(_defaultSwapChainHandle);
 }
 
 //------------------------------------------------------------------------------
 void Graphics::Present()
 {
+  rmt_ScopedCPUSample(Graphics_Present);
+
   _defaultSwapChain->Present();
 }
 
 //------------------------------------------------------------------------------
 void Graphics::GetBackBufferSize(int* width, int* height)
 {
-  *width  = (int)_defaultSwapChain->_viewport.Width;
+  *width = (int)_defaultSwapChain->_viewport.Width;
   *height = (int)_defaultSwapChain->_viewport.Height;
 }
 
@@ -972,31 +1032,32 @@ ObjectHandle Graphics::LoadVertexShaderFromFile(const string& filenameBase,
 #if WITH_DEBUG_SHADERS
   string filename = filenameBase + ToString("_%sD.vso", entry);
 #else
-  string filename  = filenameBase + ToString("_%s.vso", entry);
+  string filename = filenameBase + ToString("_%s.vso", entry);
 #endif
 
   vector<D3D11_INPUT_ELEMENT_DESC> localElementDesc;
   if (elements)
     localElementDesc = *elements;
 
-  FileWatcherWin32::AddFileWatchResult res =
-      RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename)
-          {
-            BEGIN_INIT_SEQUENCE();
-            vector<char> buf;
-            ID3D11VertexShader* shader = nullptr;
+  FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(),
+      true,
+      [=](const string& filename)
+      {
+        BEGIN_INIT_SEQUENCE();
+        vector<char> buf;
+        ID3D11VertexShader* shader = nullptr;
 
-            INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
-            INIT_HR_FATAL(_device->CreateVertexShader(buf.data(), buf.size(), NULL, &shader));
-            _vertexShaders.Update(handle, shader);
+        INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
+        INIT_HR_FATAL(_device->CreateVertexShader(buf.data(), buf.size(), NULL, &shader));
+        _vertexShaders.Update(handle, shader);
 
-            if (inputLayout)
-            {
-              INIT_RESOURCE_FATAL(*inputLayout, GRAPHICS.CreateInputLayout(localElementDesc, buf));
-            }
+        if (inputLayout)
+        {
+          INIT_RESOURCE_FATAL(*inputLayout, GRAPHICS.CreateInputLayout(localElementDesc, buf));
+        }
 
-            END_INIT_SEQUENCE();
-          });
+        END_INIT_SEQUENCE();
+      });
 
   return res.initialResult ? handle : ObjectHandle();
 }
@@ -1009,23 +1070,24 @@ ObjectHandle Graphics::LoadPixelShaderFromFile(const string& filenameBase, const
 #if WITH_DEBUG_SHADERS
   string filename = filenameBase + ToString("_%sD.pso", entry);
 #else
-  string filename  = filenameBase + ToString("_%s.pso", entry);
+  string filename = filenameBase + ToString("_%s.pso", entry);
 #endif
 
-  FileWatcherWin32::AddFileWatchResult res =
-      RESOURCE_MANAGER.AddFileWatch(filename, true, [=](const string& filename)
-          {
-            BEGIN_INIT_SEQUENCE();
+  FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename,
+      true,
+      [=](const string& filename)
+      {
+        BEGIN_INIT_SEQUENCE();
 
-            vector<char> buf;
-            ID3D11PixelShader* shader = nullptr;
+        vector<char> buf;
+        ID3D11PixelShader* shader = nullptr;
 
-            INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
-            INIT_HR_FATAL(_device->CreatePixelShader(buf.data(), buf.size(), NULL, &shader));
-            _pixelShaders.Update(handle, shader);
+        INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
+        INIT_HR_FATAL(_device->CreatePixelShader(buf.data(), buf.size(), NULL, &shader));
+        _pixelShaders.Update(handle, shader);
 
-            END_INIT_SEQUENCE();
-          });
+        END_INIT_SEQUENCE();
+      });
 
   return res.initialResult ? handle : ObjectHandle();
 }
@@ -1038,23 +1100,24 @@ ObjectHandle Graphics::LoadGeometryShaderFromFile(const string& filenameBase, co
 #if WITH_DEBUG_SHADERS
   string filename = filenameBase + ToString("_%sD.gso", entry);
 #else
-  string filename  = filenameBase + ToString("_%s.gso", entry);
+  string filename = filenameBase + ToString("_%s.gso", entry);
 #endif
 
-  FileWatcherWin32::AddFileWatchResult res =
-      RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename)
-          {
-            BEGIN_INIT_SEQUENCE();
+  FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(),
+      true,
+      [=](const string& filename)
+      {
+        BEGIN_INIT_SEQUENCE();
 
-            vector<char> buf;
-            ID3D11GeometryShader* shader = nullptr;
+        vector<char> buf;
+        ID3D11GeometryShader* shader = nullptr;
 
-            INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
-            INIT_HR_FATAL(_device->CreateGeometryShader(buf.data(), buf.size(), NULL, &shader));
-            _geometryShaders.Update(handle, shader);
+        INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
+        INIT_HR_FATAL(_device->CreateGeometryShader(buf.data(), buf.size(), NULL, &shader));
+        _geometryShaders.Update(handle, shader);
 
-            END_INIT_SEQUENCE();
-          });
+        END_INIT_SEQUENCE();
+      });
 
   return res.initialResult ? handle : ObjectHandle();
 }
@@ -1067,23 +1130,24 @@ ObjectHandle Graphics::LoadComputeShaderFromFile(const string& filenameBase, con
 #if WITH_DEBUG_SHADERS
   string filename = filenameBase + ToString("_%sD.cso", entry);
 #else
-  string filename  = filenameBase + ToString("_%s.cso", entry);
+  string filename = filenameBase + ToString("_%s.cso", entry);
 #endif
 
-  FileWatcherWin32::AddFileWatchResult res =
-      RESOURCE_MANAGER.AddFileWatch(filename.c_str(), true, [=](const string& filename)
-          {
-            BEGIN_INIT_SEQUENCE();
+  FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename.c_str(),
+      true,
+      [=](const string& filename)
+      {
+        BEGIN_INIT_SEQUENCE();
 
-            vector<char> buf;
-            ID3D11ComputeShader* shader = nullptr;
+        vector<char> buf;
+        ID3D11ComputeShader* shader = nullptr;
 
-            INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
-            INIT_HR_FATAL(_device->CreateComputeShader(buf.data(), buf.size(), NULL, &shader));
-            _computeShaders.Update(handle, shader);
+        INIT_FATAL(RESOURCE_MANAGER.LoadFile(filename.c_str(), &buf));
+        INIT_HR_FATAL(_device->CreateComputeShader(buf.data(), buf.size(), NULL, &shader));
+        _computeShaders.Update(handle, shader);
 
-            END_INIT_SEQUENCE();
-          });
+        END_INIT_SEQUENCE();
+      });
 
   return res.initialResult ? handle : ObjectHandle();
 }

@@ -199,7 +199,7 @@ namespace tano
 
     ObjectHandle _defaultRenderTarget;
 
-    bool _vsync = true;
+    bool _vsync = false;
     int _totalBytesAllocated = 0;
 
     ObjectHandle _defaultSwapChainHandle;

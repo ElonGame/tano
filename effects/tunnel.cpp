@@ -107,7 +107,7 @@ bool Tunnel::Update(const UpdateState& state)
 {
   vec3 pos(vec3(_freeflyCamera._pos));
 
-  vec2 cameraParams = BLACKBOARD.GetVec2Var("tunnel.cameraParams");
+  vec2 cameraParams = g_Blackboard->GetVec2Var("tunnel.cameraParams");
   _tunnelVerts.Clear();
 
   // NormalUpdate(state);
@@ -119,8 +119,8 @@ bool Tunnel::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 void Tunnel::PlexusUpdate(const UpdateState& state)
 {
-  float radius = BLACKBOARD.GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
-  int numSegments = BLACKBOARD.GetIntVar("tunnel.segments");
+  float radius = g_Blackboard->GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
+  int numSegments = g_Blackboard->GetIntVar("tunnel.segments");
 
   vec3* points = g_ScratchMemory.Alloc<vec3>(16 * 1024);
   int MAX_N = 16;
@@ -187,8 +187,8 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
 //------------------------------------------------------------------------------
 void Tunnel::NormalUpdate(const UpdateState& state)
 {
-  float radius = BLACKBOARD.GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
-  int numSegments = BLACKBOARD.GetIntVar("tunnel.segments");
+  float radius = g_Blackboard->GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
+  int numSegments = g_Blackboard->GetIntVar("tunnel.segments");
 
   SimpleAppendBuffer<vec3, 512> ring1, ring2;
   SimpleAppendBuffer<vec3, 512>* rings[] = {&ring1, &ring2};
@@ -255,8 +255,8 @@ bool Tunnel::FixedUpdate(const FixedUpdateState& state)
 {
   // Update how far along the spline we've travelled
   float t = state.localTime.TotalSecondsAsFloat();
-  float speed = BLACKBOARD.GetFloatVar("tunnel.speed", t);
-  float dirScale = BLACKBOARD.GetFloatVar("tunnel.dirScale");
+  float speed = g_Blackboard->GetFloatVar("tunnel.speed", t);
+  float dirScale = g_Blackboard->GetFloatVar("tunnel.dirScale");
   _dist += state.delta * speed;
 
   vec3 pos = _cameraSpline.Interpolate(_dist / CAMERA_STEP);
@@ -314,7 +314,7 @@ bool Tunnel::Render()
   {
     // tunnel
     _cbLines.gs0.dim = vec4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
-    vec3 params = BLACKBOARD.GetVec3Var("tunnel.lineParams");
+    vec3 params = g_Blackboard->GetVec3Var("tunnel.lineParams");
     _cbLines.ps0.lineParams = vec4(params.x, params.y, params.z, 1);
     _cbLines.Set(_ctx, 0);
 
@@ -429,5 +429,5 @@ const char* Tunnel::Name()
 //------------------------------------------------------------------------------
 void Tunnel::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), Tunnel::Create);
+  g_DemoEngine->RegisterFactory(Name(), Tunnel::Create);
 }

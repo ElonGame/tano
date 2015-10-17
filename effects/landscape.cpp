@@ -168,7 +168,7 @@ struct BehaviorGravity : public ParticleKinematics
   BehaviorGravity(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
   virtual void Update(const ParticleKinematics::UpdateParams& params)
   {
-    //float gravity = BLACKBOARD.GetFloatVar("landscape.gravity");
+    //float gravity = g_Blackboard->GetFloatVar("landscape.gravity");
     //V3* force = bodies->force;
     //int numBodies = bodies->numBodies;
 
@@ -414,14 +414,14 @@ void BehaviorLandscapeFollow::Update(const ParticleKinematics::UpdateParams& par
 {
   // NOTE! This is called from the schedular threads, so setting namespace
   // on the blackboard will probably break :)
-  float clearance = BLACKBOARD.GetFloatVar("landscape.landscapeClearance");
+  float clearance = g_Blackboard->GetFloatVar("landscape.landscapeClearance");
   vec3* pos = params.bodies->pos;
   vec3* acc = params.bodies->acc;
   vec3* vel = params.bodies->vel;
   vec3* force = params.bodies->force;
   int numBodies = params.bodies->numBodies;
 
-  float ff = BLACKBOARD.GetFloatVar("landscape.pushForce");
+  float ff = g_Blackboard->GetFloatVar("landscape.pushForce");
   vec3 pushForce(0, ff, 0);
   for (int i = params.start; i < params.end; ++i)
   {
@@ -471,11 +471,11 @@ void Landscape::UpdateBoids(const FixedUpdateState& state)
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(FlockKernelData);
-    chunkTasks.Append(SCHEDULER.AddTask(kd, UpdateFlock));
+    chunkTasks.Append(g_Scheduler->AddTask(kd, UpdateFlock));
   }
 
   for (const TaskId& taskId : chunkTasks)
-    SCHEDULER.Wait(taskId);
+    g_Scheduler->Wait(taskId);
 }
 
 //------------------------------------------------------------------------------
@@ -604,8 +604,8 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   _cbLandscape.vs0.cameraPos = _curCamera->_pos;
 
   // XXX: move scratch to shared
-  //float beatHi = BLACKBOARD.GetFloatVar("Beat-Hi", state.globalTime.TotalSecondsAsFloat());
-  //float beatLo = BLACKBOARD.GetFloatVar("Beat-Lo", state.globalTime.TotalSecondsAsFloat());
+  //float beatHi = g_Blackboard->GetFloatVar("Beat-Hi", state.globalTime.TotalSecondsAsFloat());
+  //float beatLo = g_Blackboard->GetFloatVar("Beat-Lo", state.globalTime.TotalSecondsAsFloat());
   float beatHi = 0;
   float beatLo = 0;
   _cbLandscape.vs0.musicParams = vec4(beatHi, beatLo, 0, 0);
@@ -898,7 +898,7 @@ void Landscape::RasterizeLandscape()
         KernelData kd;
         kd.data = data;
         kd.size = sizeof(ChunkKernelData);
-        chunkTasks.Append(SCHEDULER.AddTask(kd, FillChunk));
+        chunkTasks.Append(g_Scheduler->AddTask(kd, FillChunk));
 #endif
       }
 
@@ -911,8 +911,8 @@ void Landscape::RasterizeLandscape()
   g_TS.WaitforTaskSet(&ts);
 #endif
 
-  //for (const TaskId& taskId : chunkTasks)
-  //  SCHEDULER.Wait(taskId);
+  for (const TaskId& taskId : chunkTasks)
+    g_Scheduler->Wait(taskId);
 
   // sort the chunks by distance to camera (furthest first)
   vec3 camPos = _curCamera->_pos;
@@ -945,15 +945,6 @@ void Landscape::RasterizeLandscape()
     }
 
     numParticles += Chunk::UPPER_VERTS;
-
-    //for (int i = 0; i < CHUNK_SIZE; i += 2)
-    //{
-    //  for (int j = 0; j < CHUNK_SIZE; j += 2)
-    //  {
-    //    *particleBuf++ = chunk->noiseValues[i * (CHUNK_SIZE + 1) + j];
-    //    numParticles++;
-    //  }
-    //}
   }
   _ctx->Unmap(_particleBundle.objects._vb);
 
@@ -1258,7 +1249,7 @@ const char* Landscape::Name()
 //------------------------------------------------------------------------------
 void Landscape::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), Landscape::Create);
+  g_DemoEngine->RegisterFactory(Name(), Landscape::Create);
 }
 
 //------------------------------------------------------------------------------

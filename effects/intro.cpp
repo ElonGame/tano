@@ -30,7 +30,9 @@ namespace
   float distance = 1300;
   bool extended = true;
 
-  static int MAX_NUM_PARTICLES = 128 * 1024;
+  static int MAX_NUM_PARTICLES = 10000;
+  static int VB_FRAMES = 3;
+  static int VB_INDEX = 0;
 }
 
 //------------------------------------------------------------------------------
@@ -78,7 +80,7 @@ bool Intro::Init()
     .PixelShader("shaders/out/intro.particle", "PsParticle")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
-    .DynamicVb(MAX_NUM_PARTICLES, sizeof(vec4))
+    .DynamicVb(VB_FRAMES * MAX_NUM_PARTICLES, sizeof(vec4))
     .DepthStencilDesc(depthDescDepthDisabled)
     .BlendDesc(blendDescPreMultipliedAlpha)
     .RasterizerDesc(rasterizeDescCullNone)));
@@ -149,14 +151,14 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Intro::Update(const UpdateState& state)
 {
+  rmt_ScopedCPUSample(Intro_Update);
+
   static AvgStopWatch stopWatch;
   stopWatch.Start();
 
   UpdateParticleEmitters(state.delta.TotalSecondsAsFloat());
 
   _curTime = state.localTime.TotalMicroseconds() / (float)1e6;
-
-  rmt_ScopedCPUSample(ParticleTunnel_Update);
 
   UpdateCameraMatrix(state);
 
@@ -182,7 +184,7 @@ bool Intro::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 void Intro::UpdateParticleEmitters(float dt)
 {
-  rmt_ScopedCPUSample(Particles_Update);
+  rmt_ScopedCPUSample(Intro_UpdateParticleEmitters);
 
   SimpleAppendBuffer<TaskId, 32> tasks;
 
@@ -195,22 +197,33 @@ void Intro::UpdateParticleEmitters(float dt)
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(EmitterKernelData);
-    tasks.Append(SCHEDULER.AddTask(kd, RadialParticleEmitter::UpdateEmitter));
+    tasks.Append(g_Scheduler->AddTask(kd, RadialParticleEmitter::UpdateEmitter));
   }
 
   for (const TaskId& taskId : tasks)
-    SCHEDULER.Wait(taskId);
+    g_Scheduler->Wait(taskId);
 }
 
 //------------------------------------------------------------------------------
 void Intro::CopyOutParticleEmitters()
 {
-  rmt_ScopedCPUSample(Particles_CopyOut);
+  rmt_ScopedCPUSample(Intro_CopyOutParticleEmitters);
 
   typedef RadialParticleEmitter::EmitterKernelData EmitterKernelData;
 
   ObjectHandle vb = _particleBundle.objects._vb;
-  vec4* vtx = _ctx->MapWriteDiscard<vec4>(_particleBundle.objects._vb);
+
+  D3D11_MAPPED_SUBRESOURCE res;
+  D3D11_MAP m = D3D11_MAP_WRITE_NO_OVERWRITE;
+  if (VB_INDEX == VB_FRAMES)
+  {
+    VB_INDEX = 0;
+    m = D3D11_MAP_WRITE_DISCARD;
+  }
+
+  HRESULT hr = _ctx->Map(_particleBundle.objects._vb, 0, m, 0, &res);
+  //vec4* vtx = _ctx->MapWriteDiscard<vec4>(_particleBundle.objects._vb);
+  vec4* vtx = (vec4*)res.pData;//  _ctx->MapWriteDiscard<vec4>(_particleBundle.objects._vb);
 
   SimpleAppendBuffer<TaskId, 32> tasks;
 
@@ -218,18 +231,20 @@ void Intro::CopyOutParticleEmitters()
   for (int i = 0; i < _particleEmitters.Size(); ++i)
   {
     EmitterKernelData* data = g_ScratchMemory.Alloc<EmitterKernelData>(1);
-    *data = EmitterKernelData{&_particleEmitters[i], 0, vtx + i * _particleEmitters[i]._spawnedParticles};
+    *data = EmitterKernelData{&_particleEmitters[i],
+        0,
+        vtx + VB_INDEX * MAX_NUM_PARTICLES + i * _particleEmitters[i]._spawnedParticles};
     KernelData kd;
     kd.data = data;
     kd.size = sizeof(ParticleEmitter::EmitterKernelData);
 
-    tasks.Append(SCHEDULER.AddTask(kd, RadialParticleEmitter::CopyOutEmitter));
+    tasks.Append(g_Scheduler->AddTask(kd, RadialParticleEmitter::CopyOutEmitter));
 
     _numSpawnedParticles += _particleEmitters[i]._spawnedParticles;
   }
 
   for (const TaskId& taskId : tasks)
-    SCHEDULER.Wait(taskId);
+    g_Scheduler->Wait(taskId);
 
   _ctx->Unmap(vb);
 }
@@ -237,9 +252,10 @@ void Intro::CopyOutParticleEmitters()
 //------------------------------------------------------------------------------
 bool Intro::FixedUpdate(const FixedUpdateState& state)
 {
+  rmt_ScopedCPUSample(Intro_FixedUpdate);
+
   float ms = state.localTime.TotalMicroseconds() / (float)1e6;
 
-  rmt_ScopedCPUSample(Particles_Update);
   float dt = state.delta;
 
   float zz = -1000;
@@ -278,13 +294,17 @@ void SetQuadCoords(Pos4Tex* vtx, const vec2& topLeft, const vec2& bottomRight)
 //------------------------------------------------------------------------------
 bool Intro::Render()
 {
+  rmt_ScopedCPUSample(Intro_Render);
+
   static Color black(0, 0, 0, 0);
 
   FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
 
-  ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtColor(DXGI_FORMAT_R11G11B10_FLOAT);
   {
     // Render the background
+     rmt_ScopedD3D11Sample(Background);
+
     _cbBackground.Set(_ctx, 0);
     _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
     _ctx->SetBundle(_backgroundBundle);
@@ -293,23 +313,29 @@ bool Intro::Render()
 
   {
     // Render particles
+    rmt_ScopedD3D11Sample(Particles);
+
     _cbParticle.Set(_ctx, 0);
     _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
     _ctx->SetShaderResource(_particleTexture);
-    _ctx->Draw(_numSpawnedParticles, 0);
+    _ctx->Draw(_numSpawnedParticles, VB_INDEX * MAX_NUM_PARTICLES);
   }
 
-  ScopedRenderTarget rtText(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  ScopedRenderTarget rtTextDistort(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  {
+  //ScopedRenderTarget rtText(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  //ScopedRenderTarget rtTextDistort(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtText(DXGI_FORMAT_R11G11B10_FLOAT); // 16G16B16A16_FLOAT);
+  ScopedRenderTarget rtTextDistort(DXGI_FORMAT_R11G11B10_FLOAT);
+  if (true) {
     // text
+    rmt_ScopedD3D11Sample(Text);
+
     _ctx->SetRenderTarget(rtText, GRAPHICS.GetDepthStencil(), &black);
 
-    float right = BLACKBOARD.GetFloatVar("intro.textRight");
-    float s = BLACKBOARD.GetFloatVar("intro.textSize");
-    float y0 = BLACKBOARD.GetFloatVar("intro.newText0Pos");
-    float y1 = BLACKBOARD.GetFloatVar("intro.newText1Pos");
-    float y2 = BLACKBOARD.GetFloatVar("intro.newText2Pos");
+    float right = g_Blackboard->GetFloatVar("intro.textRight");
+    float s = g_Blackboard->GetFloatVar("intro.textSize");
+    float y0 = g_Blackboard->GetFloatVar("intro.newText0Pos");
+    float y1 = g_Blackboard->GetFloatVar("intro.newText1Pos");
+    float y2 = g_Blackboard->GetFloatVar("intro.newText2Pos");
 
     float ar0 = _introTexture[0].info.Width / (float)_introTexture[0].info.Height;
     float ar1 = _introTexture[1].info.Width / (float)_introTexture[1].info.Height;
@@ -320,7 +346,7 @@ bool Intro::Render()
     {
       eval::Environment env;
       env.constants["t"] = _curTime;
-      float bb = BLACKBOARD.GetExpr("intro.text0Brightness", &env);
+      float bb = g_Blackboard->GetExpr("intro.text0Brightness", &env);
       fullscreen->RenderTexture(
           _introTexture[0].h, vec2{right - ar0 * s, y0 - s}, vec2{right, y0}, bb);
 
@@ -330,7 +356,7 @@ bool Intro::Render()
       fullscreen->RenderTexture(
           _introTexture[2].h, vec2{right - ar2 * s, y2 - s}, vec2{right, y2}, bb);
 
-      _cbText.ps0.brightness = BLACKBOARD.GetExpr("intro.distortBrightness", &env);
+      _cbText.ps0.brightness = g_Blackboard->GetExpr("intro.distortBrightness", &env);
       _cbText.Set(_ctx, 0);
       ObjectHandle inputs[] = { rtText };
       fullscreen->Execute(inputs,
@@ -355,7 +381,7 @@ bool Intro::Render()
 
   ScopedRenderTarget rtBlurText(rtText._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
 
-  float beatHi = BLACKBOARD.GetFloatVar("Beat-Hi", _curTime);
+  float beatHi = g_Blackboard->GetFloatVar("Beat-Hi", _curTime);
 
   {
     // blur
@@ -391,6 +417,7 @@ bool Intro::Render()
         &black);
   }
 
+  VB_INDEX += 1;
   return true;
 }
 
@@ -454,5 +481,5 @@ const char* Intro::Name()
 //------------------------------------------------------------------------------
 void Intro::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), Intro::Create);
+  g_DemoEngine->RegisterFactory(Name(), Intro::Create);
 }

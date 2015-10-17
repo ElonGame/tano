@@ -40,8 +40,6 @@ namespace tano
     static bool Create(const char* filename, const char* datafile);
     static void Destory();
 
-    static Blackboard& Instance();
-
 #if WITH_BLACKBOARD_TCP
     bool Connect(const char* host, const char* service);
     void Disconnect();
@@ -70,8 +68,6 @@ namespace tano
 
     void ProcessAnimationBuffer(const char* buf, int bufSize);
     string GetFullName(const string& name);
-
-    static Blackboard* _instance;
 
     string _curNamespace;
 
@@ -166,5 +162,5 @@ namespace tano
 #endif
   };
 
-#define BLACKBOARD Blackboard::Instance()
+  extern Blackboard* g_Blackboard;
 }

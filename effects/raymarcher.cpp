@@ -113,5 +113,5 @@ const char* RayMarcher::Name()
 //------------------------------------------------------------------------------
 void RayMarcher::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), RayMarcher::Create);
+  g_DemoEngine->RegisterFactory(Name(), RayMarcher::Create);
 }

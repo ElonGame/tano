@@ -185,8 +185,8 @@ void RadialParticleEmitter::Update(float dt)
     _spawnedParticles += toSpawn;
   }
 
-  float rad_mult = BLACKBOARD.GetFloatVar("radial.radius_mult");
-  float rad_scale = BLACKBOARD.GetFloatVar("radial.radius_scale");
+  float rad_mult = g_Blackboard->GetFloatVar("radial.radius_mult");
+  float rad_scale = g_Blackboard->GetFloatVar("radial.radius_scale");
 
   for (int i = 0, e = _spawnedParticles; i < e; ++i)
   {

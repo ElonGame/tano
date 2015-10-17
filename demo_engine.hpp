@@ -15,7 +15,6 @@ namespace tano
   class DemoEngine
   {
   public:
-    static DemoEngine &Instance();
     static void Create();
     static void Destroy();
 
@@ -36,12 +35,9 @@ namespace tano
     bool Tick();
 
     void WndProc(UINT message, WPARAM wParam, LPARAM lParam);
-#if WITH_ROCKET
-    sync_device* GetRocket() { return _rocket; }
-#endif
     double GetRow() const;
 
-    static bool IsInitialized() { return _instance != nullptr; }
+    //static bool IsInitialized() { return  _instance != nullptr; }
 
 #if WITH_IMGUI
     PropertyManager& GetPropertyManager() { return _propertyManager; }
@@ -51,7 +47,6 @@ namespace tano
 
     DemoEngine();
     ~DemoEngine();
-    static DemoEngine* _instance;
 
     void ReclassifyEffects();
     void KillEffects();
@@ -86,16 +81,6 @@ namespace tano
     HSTREAM _stream = 0;
 #endif
 
-#if WITH_ROCKET
-    sync_device* _rocket = nullptr;
-#if !WITH_ROCKET_PLAYER
-    bool _connected = false;
-    TimeStamp _lastReconnect;
-    static void RocketPauseCb(void* context, int flag);
-    static void RocketSetRowCb(void* context, int row);
-    static int RocketIsPlayingCb(void* context);
-#endif
-#endif
     UpdateState _initialState;
     FixedUpdateState _initialFixedState;
     BaseEffect* _forceEffect = nullptr;
@@ -104,8 +89,7 @@ namespace tano
     bool _initForceEffect = false;
   };
 
-#define DEMO_ENGINE DemoEngine::Instance()
-#define ROCKET DemoEngine::Instance().GetRocket()
-#define PROPERTIES DemoEngine::Instance().GetPropertyManager()
+  extern DemoEngine* g_DemoEngine;
+#define PROPERTIES g_DemoEngine->GetPropertyManager()
 
 }

@@ -246,7 +246,7 @@ void GraphicsContext::UnsetRenderTargets(int first, int count)
 }
 
 //------------------------------------------------------------------------------
-bool GraphicsContext::Map(
+HRESULT GraphicsContext::Map(
   ObjectHandle h,
   UINT sub,
   D3D11_MAP type,
@@ -256,17 +256,18 @@ bool GraphicsContext::Map(
   switch (h.type())
   {
   case ObjectHandle::kTexture:
-    return SUCCEEDED(_ctx->Map(GRAPHICS._textures.Get(h)->texture.ptr, sub, type, flags, res));
+    return _ctx->Map(GRAPHICS._textures.Get(h)->texture.ptr, sub, type, flags, res);
 
   case ObjectHandle::kVertexBuffer:
-    return SUCCEEDED(_ctx->Map(GRAPHICS._vertexBuffers.Get(h), sub, type, flags, res));
+    return _ctx->Map(GRAPHICS._vertexBuffers.Get(h), sub, type, flags, res);
 
   case ObjectHandle::kIndexBuffer:
-    return SUCCEEDED(_ctx->Map(GRAPHICS._indexBuffers.Get(h), sub, type, flags, res));
+    return _ctx->Map(GRAPHICS._indexBuffers.Get(h), sub, type, flags, res);
 
   default:
+    return S_OK;
     //LOG_ERROR_LN("Invalid resource type passed to %s", __FUNCTION__);
-    return false;
+    //return false;
   }
 }
 

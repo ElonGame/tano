@@ -59,7 +59,7 @@ void PropertyManager::Tick()
 {
   if (ImGui::Begin("Properties", &_windowOpened, ImGuiWindowFlags_AlwaysAutoResize))
   {
-    ImGui::LabelText("Time", "%f", DEMO_ENGINE.Pos().TotalMilliseconds() / 1000.f);
+    ImGui::LabelText("Time", "%f", g_DemoEngine->Pos().TotalMilliseconds() / 1000.f);
 
     auto fnGetParam = [](void* data, int idx, const char** out_text)
     {

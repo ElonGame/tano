@@ -61,7 +61,6 @@ namespace tano
     public:
       static bool Create();
       static void Destroy();
-      static Scheduler& Instance();
 
       TaskId AddTask(const KernelData& kernelData, const Kernel& kernel);
       TaskId AddStreamingTask(
@@ -102,7 +101,6 @@ namespace tano
       enum { MAX_TASKS = 16 * 1024 };
       char _taskMemory[MAX_TASKS * sizeof(Task)];
       char _queueMemory[MAX_TASKS * sizeof(Task*)];
-      static Scheduler* _instance;
       CircularBuffer<Task*> _taskQueue;
 
       u32 _done = FALSE;
@@ -118,8 +116,7 @@ namespace tano
     };
   }
 
-#define SCHEDULER Scheduler::Instance()
-
+  extern scheduler::Scheduler* g_Scheduler;
 }
 
 #if WITH_ENKI_SCHEDULER

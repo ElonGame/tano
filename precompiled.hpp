@@ -7,8 +7,6 @@
 #define WITH_REMOTERY 0
 #define WITH_DXGI_DEBUG 1
 #define WITH_DEBUG_SHADERS 1
-#define WITH_ROCKET 1
-#define WITH_ROCKET_PLAYER 1
 #define WITH_DEBUG_API 1
 
 #define BACKBUFFER_SCALE 1
@@ -25,17 +23,9 @@
 #define WITH_TESTS 1
 #define WITH_EXPRESSION_EDITOR 1
 
-#if WITH_ROCKET_PLAYER
-  #define SYNC_PLAYER
-#else
-  #ifdef SYNC_PLAYER
-    #undef SYNC_PLAYER
-  #endif
-#endif
-
 #define WITH_IMGUI 1
 
-#define WITH_CONFIG_DLG 0
+#define WITH_CONFIG_DLG 1
 #define WITH_UNPACKED_RESOUCES 1
 
 #define WITH_MUSIC 1
@@ -49,8 +39,6 @@
   #define WITH_REMOTERY 0
   #define WITH_IMGUI 0
   #define WITH_CONFIG_DLG 1
-  #define WITH_ROCKET 0
-  #define WITH_ROCKET_PLAYER 0
   #define WITH_BLACKBOARD_TCP 0
   #define WITH_BLACKBOARD_SAVE 0
 #elif _DEBUG
@@ -117,11 +105,6 @@
 #include <D3DX11tex.h>
 #include <DirectXMath.h>
 
-#if WITH_ROCKET
-#include "sync/device.h"
-#include "sync/sync.h"
-#endif
-
 #include <atlbase.h>
 #include <windows.h>
 #include <windowsx.h>
@@ -144,7 +127,8 @@
 #if WITH_REMOTERY
 #include "Remotery/lib/Remotery.h"
 #else
-#define rmt_ScopedCPUSample(x) ;
+#define rmt_ScopedCPUSample(x);
+#define rmt_ScopedD3D11Sample(x);
 #endif
 
 #include "b2/string_utils.hpp"
@@ -269,10 +253,6 @@ namespace tano
 #pragma comment(lib, "D3D11.lib")
 #pragma comment(lib, "D3DX11.lib")
 #pragma comment(lib, "psapi.lib")
-
-#ifdef WITH_ROCKET
-#pragma comment(lib, "Ws2_32.lib")
-#endif
 
 #define STBI_ONLY_PNG
 #include "stb/stb_image.h"

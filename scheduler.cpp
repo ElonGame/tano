@@ -1,39 +1,32 @@
 #include "scheduler.hpp"
 #include <thread>
 
-
-#if WITH_ENKI_SCHEDULER
-enki::TaskScheduler g_TS;
-#endif
-
 using namespace tano;
 using namespace tano::scheduler;
 using namespace bristol;
 
 
-//------------------------------------------------------------------------------
-Scheduler* Scheduler::_instance;
+#if WITH_ENKI_SCHEDULER
+enki::TaskScheduler g_TS;
+#else
+tano::scheduler::Scheduler* tano::g_Scheduler = nullptr;
+#endif
 
+//------------------------------------------------------------------------------
 #define SINGLE_THREADED 0
 
 //------------------------------------------------------------------------------
 bool Scheduler::Create()
 {
-  assert(!_instance);
-  _instance = new Scheduler();
-  return _instance->Init();
+  assert(!g_Scheduler);
+  g_Scheduler = new Scheduler();
+  return g_Scheduler->Init();
 }
 
 //------------------------------------------------------------------------------
 void Scheduler::Destroy()
 {
-  delete exch_null(_instance);
-}
-
-//------------------------------------------------------------------------------
-Scheduler& Scheduler::Instance()
-{
-  return *_instance;
+  delete exch_null(g_Scheduler);
 }
 
 //------------------------------------------------------------------------------

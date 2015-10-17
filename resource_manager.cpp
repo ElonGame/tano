@@ -196,6 +196,8 @@ void ResourceManager::RemoveFileWatch(FileWatcher::WatchId id)
 //------------------------------------------------------------------------------
 void ResourceManager::Tick()
 {
+  rmt_ScopedCPUSample(ResourceManager_Tick);
+
   _fileWatcher.Tick();
 }
 

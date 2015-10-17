@@ -10,6 +10,8 @@
 using namespace tano;
 using namespace bristol;
 
+DemoEngine* tano::g_DemoEngine;
+
 namespace
 {
   // update frequeny in hz
@@ -23,9 +25,6 @@ namespace
   // const float rpb = 8.0f;
   float ROWS_PER_SECOND = 24.0f; // bpm / 60.0f * rpb;
 }
-
-//------------------------------------------------------------------------------
-DemoEngine *DemoEngine::_instance = NULL;
 
 //------------------------------------------------------------------------------
 double TimeDurationToFloat(TimeDuration t)
@@ -46,13 +45,6 @@ namespace
 }
 
 //------------------------------------------------------------------------------
-DemoEngine& DemoEngine::Instance()
-{
-  assert(_instance);
-  return *_instance;
-}
-
-//------------------------------------------------------------------------------
 DemoEngine::DemoEngine() 
   : _cur_effect(0)
   , _duration(TimeDuration::Seconds(180))
@@ -69,13 +61,6 @@ DemoEngine::~DemoEngine()
   _inactiveEffects.clear();
   _expiredEffects.clear();
 
-#if WITH_ROCKET
-#if !WITH_ROCKET_PLAYER
-  sync_save_tracks(_rocket);
-#endif
-  sync_destroy_device(_rocket);
-#endif
-
 #if WITH_MUSIC
   BASS_StreamFree(_stream);
   BASS_Free();
@@ -90,8 +75,8 @@ void DemoEngine::KillEffects()
 //------------------------------------------------------------------------------
 void DemoEngine::Create()
 {
-  assert(!_instance);
-  _instance = new DemoEngine;
+  assert(!g_DemoEngine);
+  g_DemoEngine = new DemoEngine;
 }
 
 //------------------------------------------------------------------------------
@@ -247,47 +232,10 @@ double DemoEngine::GetRow() const
 //------------------------------------------------------------------------------
 bool DemoEngine::Tick()
 {
-#if WITH_ROCKET && !WITH_ROCKET_PLAYER
-  static struct sync_cb RocketCb =
-  {
-    RocketPauseCb,
-    RocketSetRowCb,
-    RocketIsPlayingCb,
-  };
-#endif
-
   rmt_ScopedCPUSample(DemoEngine_Tick);
 
 #if WITH_IMGUI
   _propertyManager.Tick();
-#endif
-
-#if WITH_ROCKET
-#if WITH_MUSIC
-  if (_stream)
-  {
-    double row = GetRow();
-
-#if !WITH_ROCKET_PLAYER
-    if (!_connected)
-    {
-      TimeStamp now = TimeStamp::Now();
-      if (now - _lastReconnect > TimeDuration::Seconds(5))
-      {
-        _connected = sync_connect(_rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
-        _lastReconnect = now;
-      }
-    }
-    else
-    {
-      if (sync_update(_rocket, (int)(row), &RocketCb, this))
-      {
-        _connected = false;
-      }
-    }
-#endif
-  }
-#endif
 #endif
 
   UpdateEffects();
@@ -298,6 +246,7 @@ bool DemoEngine::Tick()
 //------------------------------------------------------------------------------
 void DemoEngine::UpdateEffects()
 {
+  rmt_ScopedCPUSample(DemoEngine_UpdateEffects);
 
   TimeDuration globalDelta;
   _globalTimer.Elapsed(&globalDelta);
@@ -398,13 +347,18 @@ void DemoEngine::UpdateEffects()
 //------------------------------------------------------------------------------
 void DemoEngine::Destroy()
 {
-  delete exch_null(_instance);
+  delete exch_null(g_DemoEngine);
 }
 
 //------------------------------------------------------------------------------
 BaseEffect *DemoEngine::FindEffectByName(const string &name)
 {
-  auto it = find_if(_effects.begin(), _effects.end(), [&](const BaseEffect *e) { return e->InstanceName() == name; });
+  auto it = find_if(_effects.begin(),
+      _effects.end(),
+      [&](const BaseEffect* e)
+      {
+        return e->InstanceName() == name;
+      });
   return it == end(_effects) ? nullptr : *it;
 }
 
@@ -487,14 +441,6 @@ bool DemoEngine::Init(const char* config, HINSTANCE instance)
 {
   BEGIN_INIT_SEQUENCE();
 
-#if WITH_ROCKET 
-  INIT(_rocket = sync_create_device("config/sync/"));
-#if !WITH_ROCKET_PLAYER
-  _connected = sync_connect(_rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
-  _lastReconnect = TimeStamp::Now();
-#endif
-#endif
-
   // Set up the initial effect state
   _initialState.localTime = TimeDuration::Seconds(0);
   _initialState.delta = TimeDuration::Seconds(0);
@@ -536,47 +482,3 @@ LRESULT DemoEngine::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
   return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-#if WITH_ROCKET && !WITH_ROCKET_PLAYER
-//------------------------------------------------------------------------------
-void DemoEngine::RocketPauseCb(void* context, int flag)
-{
-  DemoEngine* self = (DemoEngine*)context;
-  if (HSTREAM h = self->_stream)
-  {
-    if (flag)
-    {
-      BASS_ChannelPause(h);
-      self->_demoTimer.Stop();
-    }
-    else
-    {
-      BASS_ChannelPlay(h, false);
-      self->_demoTimer.Start();
-    }
-  }
-}
-
-//------------------------------------------------------------------------------
-void DemoEngine::RocketSetRowCb(void* context, int row)
-{
-  DemoEngine* self = (DemoEngine*)context;
-
-  if (HSTREAM h = self->_stream)
-  {
-    double time = row / ROWS_PER_SECOND;
-    self->_demoTimer.SetElapsed(TimeDuration::Microseconds((s64)(1e6 * time)));
-    QWORD pos = BASS_ChannelSeconds2Bytes(h, time);
-    BASS_ChannelSetPosition(h, pos, BASS_POS_BYTE);
-  }
-}
-
-//------------------------------------------------------------------------------
-int DemoEngine::RocketIsPlayingCb(void* context)
-{
-  if (HSTREAM h = ((DemoEngine*)context)->_stream)
-  {
-    return BASS_ChannelIsActive(h) == BASS_ACTIVE_PLAYING;
-  }
-  return 0;
-}
-#endif

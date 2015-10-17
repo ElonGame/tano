@@ -65,7 +65,7 @@ namespace tano
 
     template <typename T>
     T* MapWriteDiscard(ObjectHandle h, int* pitch = nullptr);
-    bool Map(ObjectHandle h, UINT sub, D3D11_MAP type, UINT flags, D3D11_MAPPED_SUBRESOURCE *res);
+    HRESULT Map(ObjectHandle h, UINT sub, D3D11_MAP type, UINT flags, D3D11_MAPPED_SUBRESOURCE *res);
     void Unmap(ObjectHandle h, UINT sub = 0);
     void CopyToBuffer(ObjectHandle h, UINT sub, D3D11_MAP type, UINT flags, const void* data, u32 len);
     void CopyToBuffer(ObjectHandle h, const void* data, u32 len);
@@ -86,7 +86,7 @@ namespace tano
   T* GraphicsContext::MapWriteDiscard(ObjectHandle h, int* pitch)
   {
     D3D11_MAPPED_SUBRESOURCE res;
-    if (!Map(h, 0, D3D11_MAP_WRITE_DISCARD, 0, &res))
+    if (!SUCCEEDED(Map(h, 0, D3D11_MAP_WRITE_DISCARD, 0, &res)))
       return nullptr;
 
     if (pitch)

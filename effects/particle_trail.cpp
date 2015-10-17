@@ -146,8 +146,8 @@ bool ParticleTrail::Update(const UpdateState& state)
     _ctx->Unmap(handle);
   }
 
-  _cbBackground.ps0.upper = BLACKBOARD.GetVec4Var("particle_trail.upper");
-  _cbBackground.ps0.lower = BLACKBOARD.GetVec4Var("particle_trail.lower");
+  _cbBackground.ps0.upper = g_Blackboard->GetVec4Var("particle_trail.upper");
+  _cbBackground.ps0.lower = g_Blackboard->GetVec4Var("particle_trail.lower");
   return true;
 }
 
@@ -216,7 +216,7 @@ bool ParticleTrail::Render()
       // lines
       RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
       _cbPlexus.gs0.dim = vec4((float)desc.width, (float)desc.height, 0, 0);
-      vec3 params = BLACKBOARD.GetVec3Var("particle_trail.lineParams");
+      vec3 params = g_Blackboard->GetVec3Var("particle_trail.lineParams");
       _cbPlexus.ps0.lineParams = vec4(params.x, params.y, params.z, 1);
       _cbPlexus.Set(_ctx, 0);
       _ctx->SetBundle(_lineBundle);
@@ -296,5 +296,5 @@ const char* ParticleTrail::Name()
 //------------------------------------------------------------------------------
 void ParticleTrail::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), ParticleTrail::Create);
+  g_DemoEngine->RegisterFactory(Name(), ParticleTrail::Create);
 }

@@ -77,8 +77,8 @@ void Pathy::Create(const MeshLoader& meshLoader)
 {
   SeqDelete(&segments);
 
-  float speedMean = BLACKBOARD.GetFloatVar("split.speedMean");
-  float speedVar = BLACKBOARD.GetFloatVar("split.speedVar");
+  float speedMean = g_Blackboard->GetFloatVar("split.speedMean");
+  float speedVar = g_Blackboard->GetFloatVar("split.speedVar");
 
   float time = 0;
   float delta = 1.f / SEGMENT_SPLITS;
@@ -374,8 +374,8 @@ bool Split::Update(const UpdateState& state)
 
   _pathy.CreateTubesIncremental(state.localTime.TotalSecondsAsFloat());
 
-  _cbBackground.ps0.upper = BLACKBOARD.GetVec4Var("particle_trail.upper");
-  _cbBackground.ps0.lower = BLACKBOARD.GetVec4Var("particle_trail.lower");
+  _cbBackground.ps0.upper = g_Blackboard->GetVec4Var("particle_trail.upper");
+  _cbBackground.ps0.lower = g_Blackboard->GetVec4Var("particle_trail.lower");
   return true;
 }
 
@@ -395,19 +395,19 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
 
   float tt = state.localTime.TotalSecondsAsFloat();
 
-  BLACKBOARD.SetNamespace("split");
-  _camera._pos.y = BLACKBOARD.GetFloatVar("camOffsetY") - tt * BLACKBOARD.GetFloatVar("camSpeedY");
+  g_Blackboard->SetNamespace("split");
+  _camera._pos.y = g_Blackboard->GetFloatVar("camOffsetY") - tt * g_Blackboard->GetFloatVar("camSpeedY");
 
   float r = lerp(
-    BLACKBOARD.GetFloatVar("camStartRadius"),
-    BLACKBOARD.GetFloatVar("camEndRadius"),
-    SmoothStep(0, 1, tt / BLACKBOARD.GetFloatVar("camRotTime")));
+    g_Blackboard->GetFloatVar("camStartRadius"),
+    g_Blackboard->GetFloatVar("camEndRadius"),
+    SmoothStep(0, 1, tt / g_Blackboard->GetFloatVar("camRotTime")));
 
-  _camera._pos.x = r * sinf(tt * BLACKBOARD.GetFloatVar("camRotSpeed"));
-  _camera._pos.z = r * cosf(tt * BLACKBOARD.GetFloatVar("camRotSpeed"));
+  _camera._pos.x = r * sinf(tt * g_Blackboard->GetFloatVar("camRotSpeed"));
+  _camera._pos.z = r * cosf(tt * g_Blackboard->GetFloatVar("camRotSpeed"));
   _camera._target = vec3{
     0,
-    _camera._pos.y + BLACKBOARD.GetFloatVar("camTargetJitter") * sinf(tt * BLACKBOARD.GetFloatVar("camTargetJitterSpeed")),
+    _camera._pos.y + g_Blackboard->GetFloatVar("camTargetJitter") * sinf(tt * g_Blackboard->GetFloatVar("camTargetJitterSpeed")),
     0};
   _camera.Update(state.delta.TotalSecondsAsFloat());
 
@@ -703,5 +703,5 @@ const char* Split::Name()
 //------------------------------------------------------------------------------
 void Split::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), Split::Create);
+  g_DemoEngine->RegisterFactory(Name(), Split::Create);
 }

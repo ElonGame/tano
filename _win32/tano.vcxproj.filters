@@ -5,9 +5,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="sync">
-      <UniqueIdentifier>{231f890d-4c63-48f3-93d8-eb56430ea9e3}</UniqueIdentifier>
-    </Filter>
     <Filter Include="protocol">
       <UniqueIdentifier>{946f3bd4-86ba-46c3-8b97-cf3a8e8909ad}</UniqueIdentifier>
     </Filter>
@@ -82,15 +79,6 @@
     <ClCompile Include="..\timer.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\sync\data.c">
-      <Filter>sync</Filter>
-    </ClCompile>
-    <ClCompile Include="..\sync\device.c">
-      <Filter>sync</Filter>
-    </ClCompile>
-    <ClCompile Include="..\sync\track.c">
-      <Filter>sync</Filter>
-    </ClCompile>
     <ClCompile Include="..\generated\demo.parse.cpp">
       <Filter>generated</Filter>
     </ClCompile>
@@ -125,9 +113,6 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\mesh_utils.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\animation_helpers.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\lz4\lz4.c">
@@ -288,21 +273,6 @@
     <ClInclude Include="resource.h">
       <Filter>Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\sync\base.h">
-      <Filter>sync</Filter>
-    </ClInclude>
-    <ClInclude Include="..\sync\data.h">
-      <Filter>sync</Filter>
-    </ClInclude>
-    <ClInclude Include="..\sync\device.h">
-      <Filter>sync</Filter>
-    </ClInclude>
-    <ClInclude Include="..\sync\sync.h">
-      <Filter>sync</Filter>
-    </ClInclude>
-    <ClInclude Include="..\sync\track.h">
-      <Filter>sync</Filter>
-    </ClInclude>
     <ClInclude Include="..\generated\demo.parse.hpp">
       <Filter>generated</Filter>
     </ClInclude>
@@ -362,9 +332,6 @@
     </ClInclude>
     <ClInclude Include="..\bass\bass.h">
       <Filter>bass</Filter>
-    </ClInclude>
-    <ClInclude Include="..\animation_helpers.hpp">
-      <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\lz4\lz4.h">
       <Filter>lz4</Filter>

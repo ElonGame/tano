@@ -152,9 +152,9 @@ void FluidSim::Update(const UpdateState& state)
     vOld[i] = 0.f;
   }
 
-  int size = BLACKBOARD.GetIntVar("fluid.blobSize");
-  float diffuseStrength = BLACKBOARD.GetFloatVar("fluid.diffuseStrength");
-  float velocityStrength = BLACKBOARD.GetFloatVar("fluid.velocityStrength");
+  int size = g_Blackboard->GetIntVar("fluid.blobSize");
+  float diffuseStrength = g_Blackboard->GetFloatVar("fluid.diffuseStrength");
+  float velocityStrength = g_Blackboard->GetFloatVar("fluid.velocityStrength");
 
   static float angle = 0;
   angle += state.delta.TotalSecondsAsFloat();
@@ -177,7 +177,7 @@ void FluidSim::Update(const UpdateState& state)
   }
 
 #if !SHOW_GREETS
-  float dt = BLACKBOARD.GetFloatVar("fluid.timeScale") * state.delta.TotalSecondsAsFloat();
+  float dt = g_Blackboard->GetFloatVar("fluid.timeScale") * state.delta.TotalSecondsAsFloat();
   DensityStep(dt);
   VelocityStep(dt);
 #endif
@@ -257,12 +257,12 @@ void FluidSim::Diffuse(int b, float dt, float diff, float* out, float* old)
       KernelData kd;
       kd.data = data;
       kd.size = sizeof(FluidKernelChunk);
-      fluidTasks.Append(SCHEDULER.AddTask(kd, FluidKernelWorker));
+      fluidTasks.Append(g_Scheduler->AddTask(kd, FluidKernelWorker));
     }
   }
 
   for (const TaskId& taskId : fluidTasks)
-    SCHEDULER.Wait(taskId);
+    g_Scheduler->Wait(taskId);
 
   BoundaryConditions(b, out);
 
@@ -324,7 +324,7 @@ void FluidSim::Advect(int b, float dt, float* out, float* old, float* u, float* 
 //------------------------------------------------------------------------------
 void FluidSim::DensityStep(float dt)
 {
-  float diff = BLACKBOARD.GetFloatVar("fluid.diff");
+  float diff = g_Blackboard->GetFloatVar("fluid.diff");
 
   AddForce(dt, dCur, dOld);
   swap(dCur, dOld);
@@ -336,7 +336,7 @@ void FluidSim::DensityStep(float dt)
 //------------------------------------------------------------------------------
 void FluidSim::VelocityStep(float dt)
 {
-  float visc = BLACKBOARD.GetFloatVar("fluid.visc");
+  float visc = g_Blackboard->GetFloatVar("fluid.visc");
   AddForce(dt, uCur, uOld);
   AddForce(dt, vCur, vOld);
   swap(uCur, uOld);
@@ -534,7 +534,7 @@ void Fluid::UpdateFluidTexture()
   if (g_KeyUpTrigger.IsTriggered('B'))
     texture = (texture + 1) % 3;
 
-  float s = BLACKBOARD.GetFloatVar("fluid.diffuseScale");
+  float s = g_Blackboard->GetFloatVar("fluid.diffuseScale");
   int pitch;
   u32* p = _ctx->MapWriteDiscard<u32>(_fluidTexture, &pitch);
   pitch /= 4;
@@ -614,5 +614,5 @@ const char* Fluid::Name()
 //------------------------------------------------------------------------------
 void Fluid::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), Fluid::Create);
+  g_DemoEngine->RegisterFactory(Name(), Fluid::Create);
 }

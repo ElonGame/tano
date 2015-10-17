@@ -215,5 +215,5 @@ const char* Blob::Name()
 //------------------------------------------------------------------------------
 void Blob::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), Blob::Create);
+  g_DemoEngine->RegisterFactory(Name(), Blob::Create);
 }

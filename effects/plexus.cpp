@@ -185,10 +185,10 @@ bool GreetsBlock::Init()
   const char* greetsBuf =
     (const char*)stbi_load_from_memory((const u8*)buf.data(), (int)buf.size(), &w, &h, &c, 4);
 
-  int NUM_PARTICLES = BLACKBOARD.GetIntVar("fluid.particlesPerSegment");
+  int NUM_PARTICLES = g_Blackboard->GetIntVar("fluid.particlesPerSegment");
 
-  float speedMean = BLACKBOARD.GetFloatVar("fluid.speedMean");
-  float speedVariance = BLACKBOARD.GetFloatVar("fluid.speedVariance");
+  float speedMean = g_Blackboard->GetFloatVar("fluid.speedMean");
+  float speedVariance = g_Blackboard->GetFloatVar("fluid.speedVariance");
 
   for (int i : {0, 10, 19, 29, 38})
   {
@@ -241,8 +241,8 @@ void GreetsBlock::GreetsData::Update(const UpdateState& state)
 {
   float dt = state.delta.TotalSecondsAsFloat();
 
-  float changeProb = BLACKBOARD.GetFloatVar("fluid.changeProb");
-  float updateSpeed = BLACKBOARD.GetFloatVar("fluid.updateSpeed");
+  float changeProb = g_Blackboard->GetFloatVar("fluid.changeProb");
+  float updateSpeed = g_Blackboard->GetFloatVar("fluid.updateSpeed");
 
   for (int i = 0; i < (int)targetParticleCount.size(); ++i)
   {
@@ -763,12 +763,12 @@ bool Plexus::Update(const UpdateState& state)
 {
 
   float globalTime = state.globalTime.TotalSecondsAsFloat();
-  BLACKBOARD.ClearNamespace();
-  float lo = BLACKBOARD.GetFloatVar("Beat-Lo", globalTime);
+  g_Blackboard->ClearNamespace();
+  float lo = g_Blackboard->GetFloatVar("Beat-Lo", globalTime);
 
-  BLACKBOARD.SetNamespace("plexus");
-  float base = BLACKBOARD.GetFloatVar("plexus.base");
-  float scale = BLACKBOARD.GetFloatVar("plexus.scale");
+  g_Blackboard->SetNamespace("plexus");
+  float base = g_Blackboard->GetFloatVar("plexus.base");
+  float scale = g_Blackboard->GetFloatVar("plexus.scale");
 
   _settings.deform.noise_strength = base + scale * lo;
   CalcPoints(false);
@@ -792,11 +792,11 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
 
   float dt = state.delta.TotalSecondsAsFloat();
 
-  BLACKBOARD.SetNamespace("plexus");
+  g_Blackboard->SetNamespace("plexus");
 
   {
-    _plexusCamera._pos = BLACKBOARD.GetVec3Var("plexusCamPos");
-    _plexusCamera._target = BLACKBOARD.GetVec3Var("plexusCamLookAt");
+    _plexusCamera._pos = g_Blackboard->GetVec3Var("plexusCamPos");
+    _plexusCamera._target = g_Blackboard->GetVec3Var("plexusCamLookAt");
     _plexusCamera.Update(dt);
 
     // plexus
@@ -804,8 +804,8 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
     Matrix proj = _plexusCamera._proj;
     Matrix viewProj = view * proj;
 
-    float rotXDiv = BLACKBOARD.GetFloatVar("rotXDivisor");
-    float rotYDiv = BLACKBOARD.GetFloatVar("rotYDivisor");
+    float rotXDiv = g_Blackboard->GetFloatVar("rotXDivisor");
+    float rotYDiv = g_Blackboard->GetFloatVar("rotYDivisor");
     static float angle = 0;
     angle += state.delta.TotalMilliseconds();
     Matrix mtx = Matrix::CreateRotationX(angle / rotXDiv) * Matrix::CreateRotationY(angle / rotYDiv);
@@ -815,8 +815,8 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
   }
 
   {
-    _greetsCamera._pos = BLACKBOARD.GetVec3Var("greetsCamPos");
-    _greetsCamera._target = BLACKBOARD.GetVec3Var("greetsCamLookAt");
+    _greetsCamera._pos = g_Blackboard->GetVec3Var("greetsCamPos");
+    _greetsCamera._target = g_Blackboard->GetVec3Var("greetsCamLookAt");
     _greetsCamera.Update(dt);
 
     // greets
@@ -859,7 +859,7 @@ bool Plexus::Render()
     // plexus
 
     _cbPlexus.gs0.dim = vec4((float)rtDesc.width, (float)rtDesc.height, 0, 0);
-    vec3 params = BLACKBOARD.GetVec3Var("plexus.lineParams");
+    vec3 params = g_Blackboard->GetVec3Var("plexus.lineParams");
     _cbPlexus.ps0.lineParams = vec4(params.x, params.y, params.z, 1);
     _cbPlexus.Set(_ctx, 0);
 
@@ -996,5 +996,5 @@ const char* Plexus::Name()
 //------------------------------------------------------------------------------
 void Plexus::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), Plexus::Create);
+  g_DemoEngine->RegisterFactory(Name(), Plexus::Create);
 }

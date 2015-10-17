@@ -197,7 +197,7 @@ bool App::Init(HINSTANCE hinstance)
   Split::Register();
   Blob::Register();
 
-  INIT_FATAL(DEMO_ENGINE.Init(_settings.demo_config.c_str(), hinstance));
+  INIT_FATAL(g_DemoEngine->Init(_settings.demo_config.c_str(), hinstance));
 
   END_INIT_SEQUENCE();
 }
@@ -207,7 +207,7 @@ bool App::Run()
 {
   MSG msg ={ 0 };
 
-  DEMO_ENGINE.Start();
+  g_DemoEngine->Start();
 
   RollingAverage<float> avgFrameTime(200);
   StopWatch stopWatch;
@@ -216,15 +216,19 @@ bool App::Run()
 
   while (WM_QUIT != msg.message)
   {
+    rmt_ScopedCPUSample(App_Run);
+
     g_ScratchMemory.NewFrame();
     _perfCallbacks.clear();
-    if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
     {
-      TranslateMessage(&msg);
-      DispatchMessage(&msg);
-      continue;
+      rmt_ScopedCPUSample(App_PeekMessage);
+      if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+      {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+        continue;
+      }
     }
-    rmt_ScopedCPUSample(App_Run);
     stopWatch.Start();
 
     UpdateIoState();
@@ -246,11 +250,11 @@ bool App::Run()
 
     if (showExpressionEditor)
     {
-      BLACKBOARD.DrawExpressionEditor();
+      g_Blackboard->DrawExpressionEditor();
     }
 #endif
 
-    DEMO_ENGINE.Tick();
+    g_DemoEngine->Tick();
 
 #if WITH_UNPACKED_RESOUCES
     RESOURCE_MANAGER.Tick();
@@ -261,7 +265,7 @@ bool App::Run()
 #endif
 
 #if WITH_BLACKBOARD_TCP
-    BLACKBOARD.Process();
+    g_Blackboard->Process();
 #endif
 
 #if WITH_IMGUI
@@ -381,19 +385,19 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
       switch (wParam) {
       case VK_LEFT:
-        DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() - TimeDuration::Seconds(1));
+        g_DemoEngine->SetPos(g_DemoEngine->Pos() - TimeDuration::Seconds(1));
         return 0;
 
       case VK_RIGHT:
-        DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() + TimeDuration::Seconds(1));
+        g_DemoEngine->SetPos(g_DemoEngine->Pos() + TimeDuration::Seconds(1));
         return 0;
 
       case VK_UP:
-        DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() - TimeDuration::Milliseconds(100));
+        g_DemoEngine->SetPos(g_DemoEngine->Pos() - TimeDuration::Milliseconds(100));
         return 0;
 
       case VK_DOWN:
-        DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() + TimeDuration::Milliseconds(100));
+        g_DemoEngine->SetPos(g_DemoEngine->Pos() + TimeDuration::Milliseconds(100));
         return 0;
       }
       break;
@@ -442,19 +446,19 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           return 0;
 
         case VK_SPACE:
-          DEMO_ENGINE.SetPaused(!DEMO_ENGINE.Paused());
+          g_DemoEngine->SetPaused(!g_DemoEngine->Paused());
           return 0;
 
         case VK_PRIOR:
-          DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() - TimeDuration::Seconds(30));
+          g_DemoEngine->SetPos(g_DemoEngine->Pos() - TimeDuration::Seconds(30));
           return 0;
 
         case VK_NEXT:
-          DEMO_ENGINE.SetPos(DEMO_ENGINE.Pos() + TimeDuration::Seconds(30));
+          g_DemoEngine->SetPos(g_DemoEngine->Pos() + TimeDuration::Seconds(30));
           return 0;
 
         case VK_HOME:
-          DEMO_ENGINE.SetPos(TimeDuration::Seconds(0));
+          g_DemoEngine->SetPos(TimeDuration::Seconds(0));
           return 0;
 
         default:
@@ -463,9 +467,9 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       break;
   }
 
-  if (DemoEngine::IsInitialized())
+  if (g_DemoEngine)
   {
-    DEMO_ENGINE.WndProc(message, wParam, lParam);
+    g_DemoEngine->WndProc(message, wParam, lParam);
   }
 
   return DefWindowProc(hWnd, message, wParam, lParam);

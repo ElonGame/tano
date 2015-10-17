@@ -125,7 +125,7 @@ bool Credits::Init()
 //------------------------------------------------------------------------------
 void Credits::ResetParticleSpline()
 {
-  int num = BLACKBOARD.GetIntVar("credits.numParticles");
+  int num = g_Blackboard->GetIntVar("credits.numParticles");
   vector<int> tmp(num);
   for (int i = 0; i < num; ++i)
     tmp[i] = i;
@@ -504,9 +504,9 @@ void Credits::ResetParticles()
 //------------------------------------------------------------------------------
 void Credits::InitParticleSpline(const vector<int>& indices)
 {
-  BLACKBOARD.SetNamespace("credits");
+  g_Blackboard->SetNamespace("credits");
 
-  _numParticles = BLACKBOARD.GetIntVar("numParticles");
+  _numParticles = g_Blackboard->GetIntVar("numParticles");
 
   // if # particles have changes, just redo everything..
   if (_numParticles != (int)_particles.size())
@@ -515,21 +515,21 @@ void Credits::InitParticleSpline(const vector<int>& indices)
     _particleState.resize(_numParticles);
   }
 
-  float speed = BLACKBOARD.GetFloatVar("particleSpeed");
-  float speedVar = BLACKBOARD.GetFloatVar("particleSpeedVar");
+  float speed = g_Blackboard->GetFloatVar("particleSpeed");
+  float speedVar = g_Blackboard->GetFloatVar("particleSpeedVar");
 
-  float angleSpeed = BLACKBOARD.GetFloatVar("particleAngleSpeed");
-  float angleSpeedVar = BLACKBOARD.GetFloatVar("particleAngleSpeedVar");
+  float angleSpeed = g_Blackboard->GetFloatVar("particleAngleSpeed");
+  float angleSpeedVar = g_Blackboard->GetFloatVar("particleAngleSpeedVar");
 
-  float fadeSpeed = BLACKBOARD.GetFloatVar("particleFadeSpeed");
-  float fadeSpeedVar = BLACKBOARD.GetFloatVar("particleFadeSpeedVar");
+  float fadeSpeed = g_Blackboard->GetFloatVar("particleFadeSpeed");
+  float fadeSpeedVar = g_Blackboard->GetFloatVar("particleFadeSpeedVar");
 
-  float angleVar = BLACKBOARD.GetFloatVar("angleVar");
+  float angleVar = g_Blackboard->GetFloatVar("angleVar");
 
-  float height = BLACKBOARD.GetFloatVar("particleHeight");
-  float heightVar = BLACKBOARD.GetFloatVar("particleHeightVar");
+  float height = g_Blackboard->GetFloatVar("particleHeight");
+  float heightVar = g_Blackboard->GetFloatVar("particleHeightVar");
 
-  float width = BLACKBOARD.GetFloatVar("waveWidth");
+  float width = g_Blackboard->GetFloatVar("waveWidth");
 
   for (int i : indices)
   {
@@ -547,19 +547,19 @@ void Credits::InitParticleSpline(const vector<int>& indices)
       GaussianRand(fadeSpeed, fadeSpeedVar)};
   }
 
-  BLACKBOARD.ClearNamespace();
+  g_Blackboard->ClearNamespace();
 }
 
 //------------------------------------------------------------------------------
 void Credits::UpdateParticleSpline(float dt)
 {
-  if (BLACKBOARD.IsDirtyTrigger(this))
+  if (g_Blackboard->IsDirtyTrigger(this))
   {
     ResetParticleSpline();
   }
 
-  BLACKBOARD.SetNamespace("credits");
-  float width = BLACKBOARD.GetFloatVar("waveWidth");
+  g_Blackboard->SetNamespace("credits");
+  float width = g_Blackboard->GetFloatVar("waveWidth");
 
   vector<int> deadParticles;
 
@@ -581,14 +581,14 @@ void Credits::UpdateParticleSpline(float dt)
     InitParticleSpline(deadParticles);
   }
 
-  BLACKBOARD.ClearNamespace();
+  g_Blackboard->ClearNamespace();
 }
 
 //------------------------------------------------------------------------------
 bool Credits::Update(const UpdateState& state)
 {
-  _cbBackground.ps0.upper = BLACKBOARD.GetVec4Var("credits.upper");
-  _cbBackground.ps0.lower = BLACKBOARD.GetVec4Var("credits.lower");
+  _cbBackground.ps0.upper = g_Blackboard->GetVec4Var("credits.upper");
+  _cbBackground.ps0.lower = g_Blackboard->GetVec4Var("credits.lower");
 
   UpdateCameraMatrix(state);
   UpdateParticleSpline(state.delta.TotalSecondsAsFloat());
@@ -730,5 +730,5 @@ const char* Credits::Name()
 //------------------------------------------------------------------------------
 void Credits::Register()
 {
-  DEMO_ENGINE.RegisterFactory(Name(), Credits::Create);
+  g_DemoEngine->RegisterFactory(Name(), Credits::Create);
 }
