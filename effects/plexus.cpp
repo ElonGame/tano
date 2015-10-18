@@ -542,7 +542,7 @@ bool Plexus::Init()
   INIT_FATAL(_cbPlexus.Create());
 
   INIT_RESOURCE_FATAL(_perlinTexture,
-      GRAPHICS.CreateTexture(NOISE_WIDTH, NOISE_HEIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr));
+      g_Graphics->CreateTexture(NOISE_WIDTH, NOISE_HEIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr));
 
   _plexusCamera._useTarget = true;
   _greetsCamera._useTarget = true;
@@ -836,13 +836,13 @@ bool Plexus::Render()
   rmt_ScopedCPUSample(Plexus_Render);
 
   static Color black(0, 0, 0, 0);
-  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+  FullscreenEffect* fullscreen = g_Graphics->GetFullscreenEffect();
 
   ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
   const RenderTargetDesc& rtDesc = rtColor._desc;
 
   {
-    _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
+    _ctx->SetRenderTarget(rtColor, g_Graphics->GetDepthStencil(), &black);
 
     // sky
     vec4 dim((float)rtDesc.width, (float)rtDesc.height, 0, 0);
@@ -875,7 +875,7 @@ bool Plexus::Render()
   ScopedRenderTarget rtGreets(DXGI_FORMAT_R16G16B16A16_FLOAT);
   {
     // greets
-    _ctx->SetRenderTarget(rtGreets, GRAPHICS.GetDepthStencil(), &black);
+    _ctx->SetRenderTarget(rtGreets, g_Graphics->GetDepthStencil(), &black);
 
     _cbGreets.Set(_ctx, 0);
     _ctx->SetBundle(_greetsBundle);
@@ -891,9 +891,9 @@ bool Plexus::Render()
     ObjectHandle inputs[] = { rtColor, rtGreets };
     fullscreen->Execute(inputs,
       2,
-      GRAPHICS.GetBackBuffer(),
-      GRAPHICS.GetBackBufferDesc(),
-      GRAPHICS.GetDepthStencil(),
+      g_Graphics->GetBackBuffer(),
+      g_Graphics->GetBackBufferDesc(),
+      g_Graphics->GetDepthStencil(),
       _compositeBundle.objects._ps,
       false,
       true,

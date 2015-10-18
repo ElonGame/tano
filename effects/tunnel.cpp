@@ -302,9 +302,9 @@ bool Tunnel::Render()
   rmt_ScopedCPUSample(Tunnel_Render);
 
   static Color black(0, 0, 0, 0);
-  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+  FullscreenEffect* fullscreen = g_Graphics->GetFullscreenEffect();
 
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
+  _ctx->SetSwapChain(g_Graphics->DefaultSwapChain(), black);
 
   ScopedRenderTargetFull rtColor(
       DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
@@ -363,9 +363,9 @@ bool Tunnel::Render()
     ObjectHandle inputs[] = {rtColor, rtColor._dsHandle};
     fullscreen->Execute(inputs,
         2,
-        GRAPHICS.GetBackBuffer(),
-        GRAPHICS.GetBackBufferDesc(),
-        GRAPHICS.GetDepthStencil(),
+        g_Graphics->GetBackBuffer(),
+        g_Graphics->GetBackBufferDesc(),
+        g_Graphics->GetDepthStencil(),
         _compositeBundle.objects._ps,
         false);
   }

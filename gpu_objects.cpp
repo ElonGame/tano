@@ -25,7 +25,7 @@ bool GpuObjects::CreateDynamicVb(u32 vbSize, u32 vbElemSize, const void* vbData)
   _vbSize = vbSize;
   _vbElemSize = vbElemSize;
   _numVerts = _vbSize / _vbElemSize;
-  _vb = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, vbSize, true, vbData, vbElemSize);
+  _vb = g_Graphics->CreateBuffer(D3D11_BIND_VERTEX_BUFFER, vbSize, true, vbData, vbElemSize);
   return _vb.IsValid();
 }
 
@@ -35,7 +35,7 @@ bool GpuObjects::CreateDynamicIb(u32 ibSize, DXGI_FORMAT ibFormat, const void* i
   _ibSize = ibSize;
   _ibFormat = ibFormat;
   _numIndices = _ibSize / IndexSizeFromFormat(ibFormat);
-  _ib = GRAPHICS.CreateBuffer(D3D11_BIND_INDEX_BUFFER, ibSize, true, ibData, ibFormat);
+  _ib = g_Graphics->CreateBuffer(D3D11_BIND_INDEX_BUFFER, ibSize, true, ibData, ibFormat);
   return _ib.IsValid();
 }
 
@@ -45,7 +45,7 @@ bool GpuObjects::CreateVertexBuffer(u32 vbSize, u32 vbElemSize, const void* vbDa
   _vbSize = vbSize;
   _vbElemSize = vbElemSize;
   _numVerts = _vbSize / _vbElemSize;
-  _vb = GRAPHICS.CreateBuffer(D3D11_BIND_VERTEX_BUFFER, vbSize, false, vbData, vbElemSize);
+  _vb = g_Graphics->CreateBuffer(D3D11_BIND_VERTEX_BUFFER, vbSize, false, vbData, vbElemSize);
   return _vb.IsValid();
 }
 
@@ -55,7 +55,7 @@ bool GpuObjects::CreateIndexBuffer(u32 ibSize, DXGI_FORMAT ibFormat, const void*
   _ibSize = ibSize;
   _ibFormat = ibFormat;
   _numIndices = _ibSize / IndexSizeFromFormat(ibFormat);
-  _ib = GRAPHICS.CreateBuffer(D3D11_BIND_INDEX_BUFFER, ibSize, false, ibData, ibFormat);
+  _ib = g_Graphics->CreateBuffer(D3D11_BIND_INDEX_BUFFER, ibSize, false, ibData, ibFormat);
   return _ib.IsValid();
 }
 
@@ -70,7 +70,7 @@ bool GpuObjects::LoadVertexShader(
   {
     vector<D3D11_INPUT_ELEMENT_DESC> desc;
     VertexFlagsToLayoutDesc(flags, &desc);
-    INIT_RESOURCE(_vs, GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, &_layout, &desc));
+    INIT_RESOURCE(_vs, g_Graphics->LoadVertexShaderFromFile(filename, entryPoint, &_layout, &desc));
   }
   else if (elements)
   {
@@ -83,11 +83,11 @@ bool GpuObjects::LoadVertexShader(
       e.SemanticIndex = semanticIndex[e.SemanticName]++;
       ofs += SizeFromFormat(e.Format);
     }
-    INIT_RESOURCE(_vs, GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, &_layout, elements));
+    INIT_RESOURCE(_vs, g_Graphics->LoadVertexShaderFromFile(filename, entryPoint, &_layout, elements));
   }
   else
   {
-    INIT_RESOURCE(_vs, GRAPHICS.LoadVertexShaderFromFile(filename, entryPoint, nullptr, nullptr));
+    INIT_RESOURCE(_vs, g_Graphics->LoadVertexShaderFromFile(filename, entryPoint, nullptr, nullptr));
   }
 
   END_INIT_SEQUENCE();
@@ -96,14 +96,14 @@ bool GpuObjects::LoadVertexShader(
 //------------------------------------------------------------------------------
 bool GpuObjects::LoadPixelShader(const char* filename, const char* entryPoint)
 {
-  _ps = GRAPHICS.LoadPixelShaderFromFile(filename, entryPoint);
+  _ps = g_Graphics->LoadPixelShaderFromFile(filename, entryPoint);
   return _ps.IsValid();
 }
 
 //------------------------------------------------------------------------------
 bool GpuObjects::LoadGeometryShader(const char* filename, const char* entryPoint)
 {
-  _gs = GRAPHICS.LoadGeometryShaderFromFile(filename, entryPoint);
+  _gs = g_Graphics->LoadGeometryShaderFromFile(filename, entryPoint);
   return _gs.IsValid();
 }
 
@@ -113,25 +113,25 @@ bool GpuState::Create(const D3D11_DEPTH_STENCIL_DESC* dssDesc,
     const D3D11_RASTERIZER_DESC* rasterizerDesc)
 {
   _depthStencilState =
-      GRAPHICS.CreateDepthStencilState(dssDesc ? *dssDesc : CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT()));
+      g_Graphics->CreateDepthStencilState(dssDesc ? *dssDesc : CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT()));
 
-  _blendState = GRAPHICS.CreateBlendState(blendDesc ? *blendDesc : CD3D11_BLEND_DESC(CD3D11_DEFAULT()));
+  _blendState = g_Graphics->CreateBlendState(blendDesc ? *blendDesc : CD3D11_BLEND_DESC(CD3D11_DEFAULT()));
 
-  _rasterizerState = GRAPHICS.CreateRasterizerState(
+  _rasterizerState = g_Graphics->CreateRasterizerState(
       rasterizerDesc ? *rasterizerDesc : CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT()));
 
   CD3D11_SAMPLER_DESC samplerDesc = CD3D11_SAMPLER_DESC(CD3D11_DEFAULT());
-  _samplers[Linear] = GRAPHICS.CreateSamplerState(samplerDesc);
+  _samplers[Linear] = g_Graphics->CreateSamplerState(samplerDesc);
 
   samplerDesc.AddressU = samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-  _samplers[LinearWrap] = GRAPHICS.CreateSamplerState(samplerDesc);
+  _samplers[LinearWrap] = g_Graphics->CreateSamplerState(samplerDesc);
 
   samplerDesc.AddressU = samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
-  _samplers[LinearBorder] = GRAPHICS.CreateSamplerState(samplerDesc);
+  _samplers[LinearBorder] = g_Graphics->CreateSamplerState(samplerDesc);
 
   samplerDesc.AddressU = samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
   samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-  _samplers[Point] = GRAPHICS.CreateSamplerState(samplerDesc);
+  _samplers[Point] = g_Graphics->CreateSamplerState(samplerDesc);
 
   return _depthStencilState.IsValid() && _blendState.IsValid() && _rasterizerState.IsValid() &&
          _samplers[0].IsValid() && _samplers[1].IsValid() && _samplers[2].IsValid() && _samplers[3].IsValid();

@@ -69,9 +69,9 @@ bool Sample::Render()
 
   static Color black(0, 0, 0, 0);
 
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
+  _ctx->SetSwapChain(g_Graphics->DefaultSwapChain(), black);
 
-  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+  RenderTargetDesc desc = g_Graphics->GetBackBufferDesc();
 
   return true;
 }

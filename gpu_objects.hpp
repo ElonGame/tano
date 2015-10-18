@@ -54,7 +54,7 @@ namespace tano
   {
     bool Create()
     {
-      handle = GRAPHICS.CreateBuffer(D3D11_BIND_CONSTANT_BUFFER, sizeof(T), true);
+      handle = g_Graphics->CreateBuffer(D3D11_BIND_CONSTANT_BUFFER, sizeof(T), true);
       return handle.IsValid();
     }
 

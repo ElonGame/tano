@@ -285,8 +285,8 @@ bool Split::Init()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/split.sky", "PsSky")));
 
-  _meshFrontFace = GRAPHICS.CreateRasterizerState(rasterizeDescCullFrontFace);
-  _meshBackFace =  GRAPHICS.CreateRasterizerState(CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT()));
+  _meshFrontFace = g_Graphics->CreateRasterizerState(rasterizeDescCullFrontFace);
+  _meshBackFace =  g_Graphics->CreateRasterizerState(CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT()));
 
   INIT_FATAL(_meshBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthWriteDisabled)
@@ -300,7 +300,7 @@ bool Split::Init()
 
   INIT_FATAL(_meshBlockerState.Create());
   INIT_RESOURCE_FATAL(
-    _meshBlockerPs, GRAPHICS.LoadPixelShaderFromFile("shaders/out/split.mesh", "PsMeshBlocker"));
+    _meshBlockerPs, g_Graphics->LoadPixelShaderFromFile("shaders/out/split.mesh", "PsMeshBlocker"));
 
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024 * 6, sizeof(vec4))
@@ -422,7 +422,7 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
   _cbMesh.ps0.cameraPos = _curCamera->_pos;
   _cbMesh.vs1.objWorld = Matrix::Identity();
 
-  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+  RenderTargetDesc desc = g_Graphics->GetBackBufferDesc();
   vec4 dim((float)desc.width, (float)desc.height, 0, 0);
   _cbSky.ps0.dim = dim;
   _cbSky.ps0.cameraPos = _curCamera->_pos;
@@ -493,12 +493,12 @@ bool Split::Render()
   rmt_ScopedCPUSample(Split_Render);
 
   static Color black(0, 0, 0, 0);
-  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+  FullscreenEffect* fullscreen = g_Graphics->GetFullscreenEffect();
 
   ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
   //_ctx->SetRenderTarget(rtColor, &black);
-  _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
+  _ctx->SetRenderTarget(rtColor, g_Graphics->GetDepthStencil(), &black);
   {
     // sky
     _cbSky.Set(_ctx, 0);
@@ -530,7 +530,7 @@ bool Split::Render()
 
   {
     // blocker
-    _ctx->SetRenderTarget(rtBlocker, GRAPHICS.GetDepthStencil(), &black);
+    _ctx->SetRenderTarget(rtBlocker, g_Graphics->GetDepthStencil(), &black);
     _cbMesh.Set(_ctx, 0);
     _cbMesh.Set(_ctx, 1);
     _ctx->SetBundle(_meshBundle);
@@ -553,7 +553,7 @@ bool Split::Render()
 
   const Color* clearColors[] = {&Color(0, 0, 0, 0), &Color(1, 1, 1, 1)};
   ObjectHandle targets[] = {rtOpacity, rtRevealage};
-  _ctx->SetRenderTargets(targets, 2, GRAPHICS.GetDepthStencil(), clearColors);
+  _ctx->SetRenderTargets(targets, 2, g_Graphics->GetDepthStencil(), clearColors);
   {
     // tubes
     _cbMesh.Set(_ctx, 0);
@@ -627,9 +627,9 @@ bool Split::Render()
     ObjectHandle inputs[] = {rtColor, rtBlocker, rtOpacity, rtRevealage};
     fullscreen->Execute(inputs,
         4,  
-        GRAPHICS.GetBackBuffer(),
-        GRAPHICS.GetBackBufferDesc(),
-        GRAPHICS.GetDepthStencil(),
+        g_Graphics->GetBackBuffer(),
+        g_Graphics->GetBackBufferDesc(),
+        g_Graphics->GetDepthStencil(),
         _compositeBundle.objects._ps,
         false,
         true,

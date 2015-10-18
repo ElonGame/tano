@@ -22,12 +22,12 @@ namespace tano
     friend class ResourceManager;
     friend struct SwapChain;
     friend bool EnumerateDisplayModes(HWND hWnd);
-    friend INT_PTR CALLBACK dialogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+    friend INT_PTR CALLBACK DialogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
   public:
     static bool Create(HINSTANCE hInstance);
+    static bool CreateWithConfigDialog(HINSTANCE hInstance, WNDPROC wndProc);
     static bool Destroy();
-    static Graphics& Instance();
 
     ObjectHandle LoadTexture(const char* filename, bool srgb = false, D3DX11_IMAGE_INFO* info = nullptr);
     ObjectHandle LoadTextureFromMemory(
@@ -53,6 +53,7 @@ namespace tano
         u32 windowHeight,
         u32 backBufferWidth,
         u32 backBufferHeight,
+        bool windowed,
         DXGI_FORMAT format,
         WNDPROC wndProc,
         HINSTANCE instance);
@@ -95,7 +96,7 @@ namespace tano
     bool GetVSync() const { return _vsync; }
     void SetVSync(bool value) { _vsync = value; }
 
-    const Setup& CurSetup() const { return _curSetup; }
+    const GraphicsSettings& GetGraphicsSettings() const { return _graphicsSettings; }
     void SetDisplayAllModes(bool value) { _enumerateAllOutputs = value; }
     bool DisplayAllModes() const { return _enumerateAllOutputs; }
     const DXGI_MODE_DESC& SelectedDisplayMode() const;
@@ -106,6 +107,7 @@ namespace tano
         u32 windowHeight,
         u32 backBufferWidth,
         u32 backBufferHeight,
+        bool windowed,
         DXGI_FORMAT format,
         WNDPROC wndProc,
         HINSTANCE instance);
@@ -136,7 +138,7 @@ namespace tano
 
     bool CreateDevice();
 
-    bool Init(HINSTANCE hInstance);
+    bool Init(HINSTANCE hInstance, bool* cancelled);
 
     bool CreateBufferInner(
         D3D11_BIND_FLAG bind, int size, bool dynamic, const void* data, ID3D11Buffer** buffer);
@@ -153,7 +155,7 @@ namespace tano
 
     ObjectHandle InsertTexture(TextureResource* data);
 
-    Setup _curSetup;
+    GraphicsSettings _graphicsSettings;
 
     CComPtr<ID3D11Device> _device;
     CComPtr<ID3D11DeviceContext> _immediateContext;
@@ -191,7 +193,6 @@ namespace tano
     AppendBuffer<StructuredBuffer*, IdCount, DeleteMixin> _structuredBuffers;
     AppendBuffer<SwapChain*, 16, DeleteMixin> _swapChains;
 
-    static Graphics* _instance;
     static IDXGIDebug* _debugInterface;
     static HMODULE _debugModule;
 
@@ -199,7 +200,7 @@ namespace tano
 
     ObjectHandle _defaultRenderTarget;
 
-    bool _vsync = false;
+    bool _vsync = true;
     int _totalBytesAllocated = 0;
 
     ObjectHandle _defaultSwapChainHandle;
@@ -226,5 +227,5 @@ namespace tano
     SimpleAppendBuffer<TempDepthStencil, 64> _tempDepthStencils;
   };
 
-#define GRAPHICS Graphics::Instance()
+  extern Graphics* g_Graphics;
 }

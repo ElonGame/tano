@@ -46,10 +46,10 @@ bool Fluid::Init()
   BEGIN_INIT_SEQUENCE();
 
 #if SHOW_GREETS
-  _fluidTexture = GRAPHICS.CreateTexture(64, 8, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+  _fluidTexture = g_Graphics->CreateTexture(64, 8, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
 #else
   _fluidTexture =
-      GRAPHICS.CreateTexture(FluidSim::FLUID_SIZE, FluidSim::FLUID_SIZE, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+      g_Graphics->CreateTexture(FluidSim::FLUID_SIZE, FluidSim::FLUID_SIZE, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
 #endif
 
   {
@@ -114,7 +114,7 @@ bool Fluid::Render()
 
   static Color black(0, 0, 0, 0);
 
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
+  _ctx->SetSwapChain(g_Graphics->DefaultSwapChain(), black);
 #if !SHOW_GREETS
   {
     // background

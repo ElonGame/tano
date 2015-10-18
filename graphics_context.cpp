@@ -19,7 +19,7 @@ GraphicsContext::GraphicsContext(ID3D11DeviceContext* ctx)
 //------------------------------------------------------------------------------
 void GraphicsContext::GenerateMips(ObjectHandle h)
 {
-  auto r = GRAPHICS._renderTargets.Get(h)->srv.ptr;
+  auto r = g_Graphics->_renderTargets.Get(h)->srv.ptr;
   _ctx->GenerateMips(r);
 }
 
@@ -28,10 +28,10 @@ void GraphicsContext::SetRenderTarget(
   ObjectHandle renderTarget,
   const Color* clearColor)
 {
-  RenderTargetResource* rt = GRAPHICS._renderTargets.Get(renderTarget);
+  RenderTargetResource* rt = g_Graphics->_renderTargets.Get(renderTarget);
   ID3D11RenderTargetView* rtv = rt->view.ptr;
   D3D11_TEXTURE2D_DESC textureDesc = rt->texture.desc;
-  DepthStencilResource* ds = GRAPHICS._depthStencils.Get(GRAPHICS.GetDepthStencil());
+  DepthStencilResource* ds = g_Graphics->_depthStencils.Get(g_Graphics->GetDepthStencil());
   ID3D11DepthStencilView* dsv = ds ? ds->view.ptr : nullptr;
 
   if (clearColor)
@@ -49,10 +49,10 @@ void GraphicsContext::SetRenderTarget(
     ObjectHandle depthStencil,
     const Color* clearColor)
 {
-  RenderTargetResource* rt = GRAPHICS._renderTargets.Get(renderTarget);
+  RenderTargetResource* rt = g_Graphics->_renderTargets.Get(renderTarget);
   ID3D11RenderTargetView* rtv = rt->view.ptr;
   D3D11_TEXTURE2D_DESC textureDesc = rt->texture.desc;
-  DepthStencilResource* ds = GRAPHICS._depthStencils.Get(depthStencil);
+  DepthStencilResource* ds = g_Graphics->_depthStencils.Get(depthStencil);
   ID3D11DepthStencilView* dsv = ds ? ds->view.ptr : nullptr;
   if (clearColor)
   {
@@ -75,7 +75,7 @@ void GraphicsContext::SetRenderTargets(
 {
   ID3D11RenderTargetView *rts[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
   D3D11_TEXTURE2D_DESC textureDesc;
-  DepthStencilResource* ds = GRAPHICS._depthStencils.Get(depthStencil);
+  DepthStencilResource* ds = g_Graphics->_depthStencils.Get(depthStencil);
   ID3D11DepthStencilView* dsv = ds ? ds->view.ptr : nullptr;
 
   if (clearTargets && dsv)
@@ -87,7 +87,7 @@ void GraphicsContext::SetRenderTargets(
   {
     ObjectHandle h = renderTargets[i];
     assert(h.IsValid());
-    RenderTargetResource* rt = GRAPHICS._renderTargets.Get(h);
+    RenderTargetResource* rt = g_Graphics->_renderTargets.Get(h);
     textureDesc = rt->texture.desc;
     rts[i] = rt->view.ptr;
     // clear render target (and depth stenci)
@@ -111,9 +111,9 @@ void GraphicsContext::SetSwapChain(ObjectHandle h, const Color& clearColor)
 //------------------------------------------------------------------------------
 void GraphicsContext::SetSwapChain(ObjectHandle h, const float* clearColor)
 {
-  SwapChain* swapChain = GRAPHICS._swapChains.Get(h);
-  RenderTargetResource* rt = GRAPHICS._renderTargets.Get(swapChain->_renderTarget);
-  DepthStencilResource* ds = GRAPHICS._depthStencils.Get(swapChain->_depthStencil);
+  SwapChain* swapChain = g_Graphics->_swapChains.Get(h);
+  RenderTargetResource* rt = g_Graphics->_renderTargets.Get(swapChain->_renderTarget);
+  DepthStencilResource* ds = g_Graphics->_depthStencils.Get(swapChain->_depthStencil);
   _ctx->OMSetRenderTargets(1, &rt->view.ptr, ds->view.ptr);
 
   if (clearColor)
@@ -128,41 +128,41 @@ void GraphicsContext::SetSwapChain(ObjectHandle h, const float* clearColor)
 void GraphicsContext::SetVertexShader(ObjectHandle vs)
 {
   assert(vs.type() == ObjectHandle::kVertexShader || !vs.IsValid());
-  _ctx->VSSetShader(vs.IsValid() ? GRAPHICS._vertexShaders.Get(vs) : nullptr, nullptr, 0);
+  _ctx->VSSetShader(vs.IsValid() ? g_Graphics->_vertexShaders.Get(vs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
 void GraphicsContext::SetComputeShader(ObjectHandle cs)
 {
   assert(cs.type() == ObjectHandle::kComputeShader || !cs.IsValid());
-  _ctx->CSSetShader(cs.IsValid() ? GRAPHICS._computeShaders.Get(cs) : nullptr, nullptr, 0);
+  _ctx->CSSetShader(cs.IsValid() ? g_Graphics->_computeShaders.Get(cs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
 void GraphicsContext::SetGeometryShader(ObjectHandle gs)
 {
   assert(gs.type() == ObjectHandle::kGeometryShader || !gs.IsValid());
-  _ctx->GSSetShader(gs.IsValid() ? GRAPHICS._geometryShaders.Get(gs) : nullptr, nullptr, 0);
+  _ctx->GSSetShader(gs.IsValid() ? g_Graphics->_geometryShaders.Get(gs) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
 void GraphicsContext::SetPixelShader(ObjectHandle ps)
 {
   assert(ps.type() == ObjectHandle::kPixelShader || !ps.IsValid());
-  _ctx->PSSetShader(ps.IsValid() ? GRAPHICS._pixelShaders.Get(ps) : nullptr, nullptr, 0);
+  _ctx->PSSetShader(ps.IsValid() ? g_Graphics->_pixelShaders.Get(ps) : nullptr, nullptr, 0);
 }
 
 //------------------------------------------------------------------------------
 void GraphicsContext::SetLayout(ObjectHandle layout)
 {
-  _ctx->IASetInputLayout(layout.IsValid() ? GRAPHICS._inputLayouts.Get(layout) : nullptr);
+  _ctx->IASetInputLayout(layout.IsValid() ? g_Graphics->_inputLayouts.Get(layout) : nullptr);
 }
 
 //------------------------------------------------------------------------------
 void GraphicsContext::SetIndexBuffer(ObjectHandle ib)
 {
   if (ib.IsValid())
-    SetIndexBuffer(GRAPHICS._indexBuffers.Get(ib), (DXGI_FORMAT)ib.data());
+    SetIndexBuffer(g_Graphics->_indexBuffers.Get(ib), (DXGI_FORMAT)ib.data());
   else
     SetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN);
 }
@@ -186,7 +186,7 @@ void GraphicsContext::SetVertexBuffer(ID3D11Buffer* buf, u32 stride)
 void GraphicsContext::SetVertexBuffer(ObjectHandle vb) 
 {
   if (vb.IsValid())
-    SetVertexBuffer(GRAPHICS._vertexBuffers.Get(vb), vb.data());
+    SetVertexBuffer(g_Graphics->_vertexBuffers.Get(vb), vb.data());
   else
     SetVertexBuffer(nullptr, 0);
 }
@@ -200,19 +200,19 @@ void GraphicsContext::SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY top)
 //------------------------------------------------------------------------------
 void GraphicsContext::SetRasterizerState(ObjectHandle rs)
 {
-  _ctx->RSSetState(GRAPHICS._rasterizerStates.Get(rs));
+  _ctx->RSSetState(g_Graphics->_rasterizerStates.Get(rs));
 }
 
 //------------------------------------------------------------------------------
 void GraphicsContext::SetDepthStencilState(ObjectHandle dss, UINT stencil_ref)
 {
-  _ctx->OMSetDepthStencilState(GRAPHICS._depthStencilStates.Get(dss), stencil_ref);
+  _ctx->OMSetDepthStencilState(g_Graphics->_depthStencilStates.Get(dss), stencil_ref);
 }
 
 //------------------------------------------------------------------------------
 void GraphicsContext::SetBlendState(ObjectHandle bs, const float* blendFactors, UINT sampleMask)
 {
-  _ctx->OMSetBlendState(GRAPHICS._blendStates.Get(bs), blendFactors, sampleMask);
+  _ctx->OMSetBlendState(g_Graphics->_blendStates.Get(bs), blendFactors, sampleMask);
 }
 
 //------------------------------------------------------------------------------
@@ -256,13 +256,13 @@ HRESULT GraphicsContext::Map(
   switch (h.type())
   {
   case ObjectHandle::kTexture:
-    return _ctx->Map(GRAPHICS._textures.Get(h)->texture.ptr, sub, type, flags, res);
+    return _ctx->Map(g_Graphics->_textures.Get(h)->texture.ptr, sub, type, flags, res);
 
   case ObjectHandle::kVertexBuffer:
-    return _ctx->Map(GRAPHICS._vertexBuffers.Get(h), sub, type, flags, res);
+    return _ctx->Map(g_Graphics->_vertexBuffers.Get(h), sub, type, flags, res);
 
   case ObjectHandle::kIndexBuffer:
-    return _ctx->Map(GRAPHICS._indexBuffers.Get(h), sub, type, flags, res);
+    return _ctx->Map(g_Graphics->_indexBuffers.Get(h), sub, type, flags, res);
 
   default:
     return S_OK;
@@ -277,15 +277,15 @@ void GraphicsContext::Unmap(ObjectHandle h, UINT sub)
   switch (h.type())
   {
   case ObjectHandle::kTexture:
-    _ctx->Unmap(GRAPHICS._textures.Get(h)->texture.ptr, sub);
+    _ctx->Unmap(g_Graphics->_textures.Get(h)->texture.ptr, sub);
     break;
 
   case ObjectHandle::kVertexBuffer:
-    _ctx->Unmap(GRAPHICS._vertexBuffers.Get(h), sub);
+    _ctx->Unmap(g_Graphics->_vertexBuffers.Get(h), sub);
     break;
 
   case ObjectHandle::kIndexBuffer:
-    _ctx->Unmap(GRAPHICS._indexBuffers.Get(h), sub);
+    _ctx->Unmap(g_Graphics->_indexBuffers.Get(h), sub);
     break;
 
   default:
@@ -364,7 +364,7 @@ void GraphicsContext::SetShaderResources(
   static ID3D11ShaderResourceView* v[16];
   for (int i = 0; i < numHandles; ++i)
   {
-    v[i] = GRAPHICS.GetShaderResourceView(handles[i]);
+    v[i] = g_Graphics->GetShaderResourceView(handles[i]);
     if (!v[i])
     {
       LOG_ERROR("Unable to get shader resource view");
@@ -394,8 +394,8 @@ void GraphicsContext::SetShaderResources(
 //------------------------------------------------------------------------------
 void GraphicsContext::SetShaderResource(ObjectHandle h, ShaderType shaderType, int slot)
 {
-  ID3D11ShaderResourceView* view = view = GRAPHICS.GetShaderResourceView(h);
-  view = GRAPHICS.GetShaderResourceView(h);
+  ID3D11ShaderResourceView* view = view = g_Graphics->GetShaderResourceView(h);
+  view = g_Graphics->GetShaderResourceView(h);
   if (!view)
   {
     LOG_ERROR("Unable to get shader resource view");
@@ -429,12 +429,12 @@ void GraphicsContext::SetUnorderedAccessView(ObjectHandle h, Color* clearColor)
   ID3D11UnorderedAccessView* view = nullptr;
   if (type == ObjectHandle::kStructuredBuffer)
   {
-    StructuredBuffer* buf = GRAPHICS._structuredBuffers.Get(h);
+    StructuredBuffer* buf = g_Graphics->_structuredBuffers.Get(h);
     view = buf->uav.ptr;
   }
   else if (type == ObjectHandle::kRenderTarget)
   {
-    RenderTargetResource* res = GRAPHICS._renderTargets.Get(h);
+    RenderTargetResource* res = g_Graphics->_renderTargets.Get(h);
     view = res->uav.ptr;
 
     if (clearColor)
@@ -455,7 +455,7 @@ void GraphicsContext::SetUnorderedAccessView(ObjectHandle h, Color* clearColor)
 //------------------------------------------------------------------------------
 void GraphicsContext::SetSamplerState(ObjectHandle h, ShaderType shaderType, u32 slot)
 {
-  ID3D11SamplerState* samplerState = GRAPHICS._samplerStates.Get(h);
+  ID3D11SamplerState* samplerState = g_Graphics->_samplerStates.Get(h);
 
   if (shaderType == ShaderType::VertexShader)
     _ctx->VSSetSamplers(slot, 1, &samplerState);
@@ -476,7 +476,7 @@ void GraphicsContext::SetSamplers(
 {
   vector<ID3D11SamplerState*> samplers;
   for (u32 i = 0; i < numSamplers; ++i)
-    samplers.push_back(GRAPHICS._samplerStates.Get(h[i]));
+    samplers.push_back(g_Graphics->_samplerStates.Get(h[i]));
 
   if (shaderType == ShaderType::VertexShader)
     _ctx->VSSetSamplers(slot, numSamplers, samplers.data());
@@ -496,7 +496,7 @@ void GraphicsContext::SetConstantBuffer(
     u32 shaderFlags,
     u32 slot)
 {
-  ID3D11Buffer *buffer = GRAPHICS._constantBuffers.Get(h);
+  ID3D11Buffer *buffer = g_Graphics->_constantBuffers.Get(h);
   D3D11_MAPPED_SUBRESOURCE sub;
   if (SUCCEEDED(_ctx->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &sub)))
   {

@@ -106,7 +106,7 @@ bool Credits::Init()
 
   // clang-format on
 
-  INIT_RESOURCE(_csBlur, GRAPHICS.LoadComputeShaderFromFile("shaders/out/credits.blur", "BoxBlurY"));
+  INIT_RESOURCE(_csBlur, g_Graphics->LoadComputeShaderFromFile("shaders/out/credits.blur", "BoxBlurY"));
 
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
   INIT_RESOURCE(_creditsTexture, RESOURCE_MANAGER.LoadTexture("gfx/abstract1.jpg"));
@@ -248,7 +248,7 @@ void Credits::UpdateParticles(const FixedUpdateState& state)
 bool Credits::InitParticles()
 {
   int w, h;
-  GRAPHICS.GetBackBufferSize(&w, &h);
+  g_Graphics->GetBackBufferSize(&w, &h);
 
   int dimX = w / GRID_SIZE + 1;
   int dimY = h / GRID_SIZE + 1;
@@ -623,10 +623,10 @@ bool Credits::Render()
   float s = 0.01f;
   static Color black(s, s, s, 0);
 
-  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+  FullscreenEffect* fullscreen = g_Graphics->GetFullscreenEffect();
 
   ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
+  _ctx->SetRenderTarget(rtColor, g_Graphics->GetDepthStencil(), &black);
 
   {
     ObjectHandle h = _particleBundle.objects._vb;
@@ -656,9 +656,9 @@ bool Credits::Render()
     ObjectHandle inputs[] = { rtColor, rtBlur, _creditsTexture };
     fullscreen->Execute(inputs,
       3,
-      GRAPHICS.GetBackBuffer(),
-      GRAPHICS.GetBackBufferDesc(),
-      GRAPHICS.GetDepthStencil(),
+      g_Graphics->GetBackBuffer(),
+      g_Graphics->GetBackBufferDesc(),
+      g_Graphics->GetDepthStencil(),
       _compositeBundle.objects._ps,
       false);
   }

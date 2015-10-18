@@ -13,10 +13,10 @@ namespace tano
   //------------------------------------------------------------------------------
   enum ShaderType
   {
-    VertexShader   = 1 << 0,
-    PixelShader    = 1 << 1,
+    VertexShader = 1 << 0,
+    PixelShader = 1 << 1,
     GeometryShader = 1 << 2,
-    ComputeShader  = 1 << 3,
+    ComputeShader = 1 << 3,
   };
 
   //------------------------------------------------------------------------------
@@ -25,8 +25,8 @@ namespace tano
     enum Enum
     {
       CreateMipMaps = 1 << 0,
-      CreateSrv     = 1 << 1,
-      CreateUav     = 1 << 2,
+      CreateSrv = 1 << 1,
+      CreateUav = 1 << 2,
     };
 
     struct Bits
@@ -48,17 +48,16 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
-  struct Setup
+  struct GraphicsSettings
   {
     CComPtr<IDXGIFactory1> dxgi_factory;
     vector<VideoAdapter> videoAdapters;
-    int selectedAdapter     = -1;
+    int selectedAdapter = -1;
     int SelectedDisplayMode = -1;
-    int selectedAspectRatio = -1;
-    int multisampleCount    = -1;
-    int width               = -1;
-    int height              = -1;
-    bool windowed           = false;
+    int width = -1;
+    int height = -1;
+    bool windowed = false;
+    bool vsync = true;
   };
 
   //------------------------------------------------------------------------------
@@ -165,7 +164,8 @@ namespace tano
   struct RenderTargetDesc
   {
     RenderTargetDesc() {}
-    RenderTargetDesc(int width, int height, DXGI_FORMAT format) : width(width), height(height), format(format)
+    RenderTargetDesc(int width, int height, DXGI_FORMAT format)
+        : width(width), height(height), format(format)
     {
     }
     int width;
@@ -177,10 +177,12 @@ namespace tano
   struct ScopedRenderTarget
   {
     ScopedRenderTarget() {}
-    ScopedRenderTarget(int width, int height, DXGI_FORMAT format,
+    ScopedRenderTarget(int width,
+        int height,
+        DXGI_FORMAT format,
         const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
-    ScopedRenderTarget(
-        const RenderTargetDesc& desc, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
+    ScopedRenderTarget(const RenderTargetDesc& desc,
+        const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ScopedRenderTarget(
         DXGI_FORMAT format, const BufferFlags& bufferFlags = BufferFlags(BufferFlag::CreateSrv));
     ~ScopedRenderTarget();

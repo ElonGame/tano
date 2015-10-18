@@ -72,5 +72,5 @@ void RenderQueue::FrameStart()
   _memoryOfs = 0;
 }
 
-SetSwapChain* setSwapChain = renderQueue.AllocateCommand<SetSwapChain>(0, GRAPHICS.DefaultSwapChain(), Color(0, 0, 0, 0));
+SetSwapChain* setSwapChain = renderQueue.AllocateCommand<SetSwapChain>(0, g_Graphics->DefaultSwapChain(), Color(0, 0, 0, 0));
 SetConstantBuffer* setConstantBuffer = renderQueue.AppendCommand<SetConstantBuffer>(setSwapChain, 0);

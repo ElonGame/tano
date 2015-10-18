@@ -241,9 +241,9 @@ namespace tano
 
         scene::MeshBuffer* buf = new scene::MeshBuffer();
         scene->meshBuffers.push_back(buf);
-        ObjectHandle vb = GRAPHICS.CreateBuffer(
+        ObjectHandle vb = g_Graphics->CreateBuffer(
             D3D11_BIND_VERTEX_BUFFER, info.vertexCount * vertexSize, false, info.verts.data(), vertexSize);
-        ObjectHandle ib = GRAPHICS.CreateBuffer(D3D11_BIND_INDEX_BUFFER, info.indexCount * sizeof(u32), false,
+        ObjectHandle ib = g_Graphics->CreateBuffer(D3D11_BIND_INDEX_BUFFER, info.indexCount * sizeof(u32), false,
             info.indices.data(), DXGI_FORMAT_R32_UINT);
 
         buf->vb = vb;

@@ -95,7 +95,7 @@ bool Intro::Init()
 
   INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.texture.c_str()));
   INIT_RESOURCE_FATAL(
-      _csParticleBlur, GRAPHICS.LoadComputeShaderFromFile("shaders/out/intro.blur", "BoxBlurY"));
+      _csParticleBlur, g_Graphics->LoadComputeShaderFromFile("shaders/out/intro.blur", "BoxBlurY"));
 
   // Create default emitter
   for (int i = 0; i < 20; ++i)
@@ -140,7 +140,7 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
     vec3 dir = Normalize(target - pos);
    
     int w, h;
-    GRAPHICS.GetBackBufferSize(&w, &h);
+    g_Graphics->GetBackBufferSize(&w, &h);
     float aspect = (float)w / h;
     Matrix view = Matrix::CreateLookAt(ToVector3(pos), Vector3(0, 0, 0), Vector3(0, 1, 0));
     Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), aspect, 0.1f, 3000.f);
@@ -298,7 +298,7 @@ bool Intro::Render()
 
   static Color black(0, 0, 0, 0);
 
-  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+  FullscreenEffect* fullscreen = g_Graphics->GetFullscreenEffect();
 
   ScopedRenderTarget rtColor(DXGI_FORMAT_R11G11B10_FLOAT);
   {
@@ -306,7 +306,7 @@ bool Intro::Render()
      rmt_ScopedD3D11Sample(Background);
 
     _cbBackground.Set(_ctx, 0);
-    _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
+    _ctx->SetRenderTarget(rtColor, g_Graphics->GetDepthStencil(), &black);
     _ctx->SetBundle(_backgroundBundle);
     _ctx->Draw(3, 0);
   }
@@ -329,7 +329,7 @@ bool Intro::Render()
     // text
     rmt_ScopedD3D11Sample(Text);
 
-    _ctx->SetRenderTarget(rtText, GRAPHICS.GetDepthStencil(), &black);
+    _ctx->SetRenderTarget(rtText, g_Graphics->GetDepthStencil(), &black);
 
     float right = g_Blackboard->GetFloatVar("intro.textRight");
     float s = g_Blackboard->GetFloatVar("intro.textSize");
@@ -408,9 +408,9 @@ bool Intro::Render()
     ObjectHandle inputs[] = {rtColor, rtLines, rtBlur, rtBlur2, rtTextDistort, rtBlurText };
     fullscreen->Execute(inputs,
         6,
-        GRAPHICS.GetBackBuffer(),
-        GRAPHICS.GetBackBufferDesc(),
-        GRAPHICS.GetDepthStencil(),
+        g_Graphics->GetBackBuffer(),
+        g_Graphics->GetBackBufferDesc(),
+        g_Graphics->GetDepthStencil(),
         _compositeBundle.objects._ps,
         true,
         true,

@@ -549,7 +549,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   Matrix proj = _curCamera->_proj;
   Matrix viewProj = view * proj;
 
-  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+  RenderTargetDesc desc = g_Graphics->GetBackBufferDesc();
   vec4 dim((float)desc.width, (float)desc.height, 0, 0);
   _cbSky.ps0.dim = dim;
   _cbSky.ps0.cameraPos = _curCamera->_pos;
@@ -966,7 +966,7 @@ bool Landscape::Render()
   rmt_ScopedCPUSample(Landscape_Render);
   static Color clearColor(0, 0, 0, 0);
   static const Color* clearColors[] = {&clearColor, &clearColor};
-  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+  FullscreenEffect* fullscreen = g_Graphics->GetFullscreenEffect();
 
   ScopedRenderTargetFull rtColor(
       DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
@@ -1069,25 +1069,25 @@ bool Landscape::Render()
       ObjectHandle inputs[] = {rtColor, rtColorBlurred, rtEmissiveBlurred, rtLensFlare};
       fullscreen->Execute(inputs,
           4,
-          GRAPHICS.GetBackBuffer(),
-          GRAPHICS.GetBackBufferDesc(),
-          GRAPHICS.GetDepthStencil(),
+          g_Graphics->GetBackBuffer(),
+          g_Graphics->GetBackBufferDesc(),
+          g_Graphics->GetDepthStencil(),
           _compositeBundle.objects._ps,
           false);
     }
     else if (showBuffer == 1)
     {
       fullscreen->Copy(
-          rtColorBlurred, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
+          rtColorBlurred, g_Graphics->GetBackBuffer(), g_Graphics->GetBackBufferDesc(), false);
     }
     else if (showBuffer == 2)
     {
       fullscreen->Copy(
-          rtEmissiveBlurred, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
+          rtEmissiveBlurred, g_Graphics->GetBackBuffer(), g_Graphics->GetBackBufferDesc(), false);
     }
     else
     {
-      fullscreen->Copy(rtLensFlare, GRAPHICS.GetBackBuffer(), GRAPHICS.GetBackBufferDesc(), false);
+      fullscreen->Copy(rtLensFlare, g_Graphics->GetBackBuffer(), g_Graphics->GetBackBufferDesc(), false);
     }
   }
 

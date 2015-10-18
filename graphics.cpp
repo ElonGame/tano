@@ -3,6 +3,7 @@
 #include "resource_manager.hpp"
 #include "init_sequence.hpp"
 #include "fullscreen_effect.hpp"
+#include <dxgi.h>
 
 extern const TCHAR* g_AppWindowTitle;
 
@@ -11,18 +12,12 @@ using namespace bristol;
 
 //------------------------------------------------------------------------------
 static ObjectHandle emptyHandle;
-Graphics* Graphics::_instance;
+Graphics* tano::g_Graphics = nullptr;
 
 #if WITH_DXGI_DEBUG
 IDXGIDebug* Graphics::_debugInterface;
 HMODULE Graphics::_debugModule;
 #endif
-
-//------------------------------------------------------------------------------
-Graphics& Graphics::Instance()
-{
-  return *_instance;
-}
 
 //------------------------------------------------------------------------------
 Graphics::~Graphics()
@@ -32,12 +27,28 @@ Graphics::~Graphics()
 }
 
 //------------------------------------------------------------------------------
+bool Graphics::CreateWithConfigDialog(HINSTANCE hInstance, WNDPROC wndProc)
+{
+  if (!Graphics::Create(hInstance))
+    return false;
+
+  const GraphicsSettings& settings = g_Graphics->GetGraphicsSettings();
+  g_Graphics->CreateDefaultSwapChain(settings.width,
+      settings.height,
+      settings.width,
+      settings.height,
+      settings.windowed,
+      DXGI_FORMAT_R8G8B8A8_UNORM,
+      wndProc,
+      hInstance);
+  return true;
+}
+
+//------------------------------------------------------------------------------
 bool Graphics::Create(HINSTANCE hInstance)
 {
-  if (_instance)
-    return true;
-
-  _instance = new Graphics();
+  assert(!g_Graphics);
+  g_Graphics = new Graphics();
 
 #if WITH_DXGI_DEBUG
   // Get the DXGIGetDebugInterface
@@ -49,14 +60,22 @@ bool Graphics::Create(HINSTANCE hInstance)
   }
 #endif
 
-  return _instance->Init(hInstance);
+  bool cancelled;
+  return g_Graphics->Init(hInstance, &cancelled) && !cancelled;
 }
 
 //------------------------------------------------------------------------------
-bool Graphics::Init(HINSTANCE hInstance)
+bool Graphics::Init(HINSTANCE hInstance, bool* cancelled)
 {
+  *cancelled = false;
+
   BEGIN_INIT_SEQUENCE();
-  INIT(InitConfigDialog(hInstance));
+  if (!InitConfigDialog(hInstance))
+  {
+    *cancelled = true;
+    return true;
+  }
+
   INIT(CreateDevice());
   InitDefaultDescs();
 
@@ -69,7 +88,7 @@ bool Graphics::Init(HINSTANCE hInstance)
 //------------------------------------------------------------------------------
 bool Graphics::Destroy()
 {
-  delete exch_null(_instance);
+  delete exch_null(g_Graphics);
 #if WITH_DXGI_DEBUG
   if (_debugModule)
   {
@@ -86,8 +105,8 @@ bool Graphics::Destroy()
 //------------------------------------------------------------------------------
 const DXGI_MODE_DESC& Graphics::SelectedDisplayMode() const
 {
-  return _curSetup.videoAdapters[_curSetup.selectedAdapter]
-      .displayModes[_curSetup.SelectedDisplayMode];
+  return _graphicsSettings.videoAdapters[_graphicsSettings.selectedAdapter]
+      .displayModes[_graphicsSettings.SelectedDisplayMode];
 }
 
 //------------------------------------------------------------------------------
@@ -101,7 +120,7 @@ bool Graphics::CreateDevice()
   // flags |= D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 
   // Create the DX11 device and context
-  CComPtr<IDXGIAdapter> adapter = _curSetup.videoAdapters[_curSetup.selectedAdapter].adapter;
+  CComPtr<IDXGIAdapter> adapter = _graphicsSettings.videoAdapters[_graphicsSettings.selectedAdapter].adapter;
   if (FAILED(D3D11CreateDevice(adapter,
           D3D_DRIVER_TYPE_UNKNOWN,
           NULL,
@@ -115,7 +134,7 @@ bool Graphics::CreateDevice()
     return false;
 
   LOG_INFO("Using adapter: ",
-      wide_char_to_utf8(_curSetup.videoAdapters[_curSetup.selectedAdapter].desc.Description));
+      wide_char_to_utf8(_graphicsSettings.videoAdapters[_graphicsSettings.selectedAdapter].desc.Description));
   _graphicsContext = new GraphicsContext(_immediateContext);
 
   if (_featureLevel < D3D_FEATURE_LEVEL_9_3)
@@ -855,6 +874,7 @@ ObjectHandle Graphics::CreateSwapChain(const char* name,
     u32 windowHeight,
     u32 backBufferWidth,
     u32 backBufferHeight,
+    bool windowed,
     DXGI_FORMAT format,
     WNDPROC wndProc,
     HINSTANCE instance)
@@ -874,7 +894,7 @@ ObjectHandle Graphics::CreateSwapChain(const char* name,
   if (!RegisterClassEx(&wcex))
     return emptyHandle;
 
-#if BORDERLESS_WINDOW
+  #if BORDERLESS_WINDOW
   UINT windowStyle = WS_POPUP;
 #else
   UINT windowStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
@@ -919,11 +939,11 @@ ObjectHandle Graphics::CreateSwapChain(const char* name,
   swapChainDesc.BufferDesc.RefreshRate = SelectedDisplayMode().RefreshRate;
   swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
   swapChainDesc.OutputWindow = hwnd;
-  swapChainDesc.SampleDesc.Count = _curSetup.multisampleCount;
+  swapChainDesc.SampleDesc.Count = 1;
   swapChainDesc.SampleDesc.Quality = 0;
-  swapChainDesc.Windowed = _curSetup.windowed;
+  swapChainDesc.Windowed = windowed;
 
-  if (FAILED(_curSetup.dxgi_factory->CreateSwapChain(_device, &swapChainDesc, &sc)))
+  if (FAILED(_graphicsSettings.dxgi_factory->CreateSwapChain(_device, &swapChainDesc, &sc)))
     return emptyHandle;
 
   SwapChain* swapChain = new SwapChain(name);
@@ -965,6 +985,7 @@ void Graphics::CreateDefaultSwapChain(u32 windowWidth,
     u32 windowHeight,
     u32 backBufferWidth,
     u32 backBufferHeight,
+    bool windowed,
     DXGI_FORMAT format,
     WNDPROC wndProc,
     HINSTANCE instance)
@@ -974,6 +995,7 @@ void Graphics::CreateDefaultSwapChain(u32 windowWidth,
       windowHeight,
       backBufferWidth,
       backBufferHeight,
+      windowed,
       format,
       wndProc,
       instance);
@@ -1053,7 +1075,7 @@ ObjectHandle Graphics::LoadVertexShaderFromFile(const string& filenameBase,
 
         if (inputLayout)
         {
-          INIT_RESOURCE_FATAL(*inputLayout, GRAPHICS.CreateInputLayout(localElementDesc, buf));
+          INIT_RESOURCE_FATAL(*inputLayout, CreateInputLayout(localElementDesc, buf));
         }
 
         END_INIT_SEQUENCE();
@@ -1156,7 +1178,7 @@ ObjectHandle Graphics::LoadComputeShaderFromFile(const string& filenameBase, con
 void Graphics::ClearRenderTarget(ObjectHandle h)
 {
   static Color black(0, 0, 0, 0);
-  RenderTargetResource* rt = GRAPHICS._renderTargets.Get(h);
+  RenderTargetResource* rt = _renderTargets.Get(h);
   ID3D11RenderTargetView* rtv = rt->view.ptr;
   _immediateContext->ClearRenderTargetView(rtv, &black.x);
 }

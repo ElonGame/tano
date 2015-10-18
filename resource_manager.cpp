@@ -215,7 +215,7 @@ ObjectHandle ResourceManager::LoadTexture(
   }
   _readFiles.insert(FileInfo(filename, fullPath));
 
-  return GRAPHICS.LoadTexture(fullPath.c_str(), srgb, info);
+  return g_Graphics->LoadTexture(fullPath.c_str(), srgb, info);
 }
 
 //------------------------------------------------------------------------------
@@ -225,7 +225,7 @@ ObjectHandle ResourceManager::LoadTextureFromMemory(
     bool srgb,
     D3DX11_IMAGE_INFO* info)
 {
-  return GRAPHICS.LoadTextureFromMemory(buf, len, srgb, info);
+  return g_Graphics->LoadTextureFromMemory(buf, len, srgb, info);
 }
 
 //------------------------------------------------------------------------------
@@ -368,7 +368,7 @@ ObjectHandle PackedResourceManager::LoadTexture(
 {
   vector<char> tmp;
   LoadFile(filename, &tmp);
-  return GRAPHICS.LoadTextureFromMemory(
+  return g_Graphics->LoadTextureFromMemory(
     tmp.data(), 
     (u32)tmp.size(), 
     srgb, 
@@ -379,7 +379,7 @@ ObjectHandle PackedResourceManager::LoadTexture(
 ObjectHandle PackedResourceManager::LoadTextureFromMemory(
   const char* buf, size_t len, bool srgb, D3DX11_IMAGE_INFO* info)
 {
-  return GRAPHICS.LoadTextureFromMemory(buf, (u32)len, srgb, info);
+  return g_Graphics->LoadTextureFromMemory(buf, (u32)len, srgb, info);
 }
 
 //------------------------------------------------------------------------------

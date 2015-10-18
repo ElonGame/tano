@@ -38,7 +38,7 @@ bool RayMarcher::Init()
 
   int w, h;
   INIT(_cbPerFrame.Create());
-  GRAPHICS.GetBackBufferSize(&w, &h);
+  g_Graphics->GetBackBufferSize(&w, &h);
   _cbPerFrame.dim.x = (float)w;
   _cbPerFrame.dim.y = (float)h;
 
@@ -60,7 +60,7 @@ bool RayMarcher::Render()
 {
   rmt_ScopedCPUSample(RayMarcher_Render);
 
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
+  _ctx->SetSwapChain(g_Graphics->DefaultSwapChain(), Color(0.1f, 0.1f, 0.1f, 0));
   _ctx->SetConstantBuffer(_cbPerFrame, ShaderType::PixelShader, 0);
 
   _ctx->SetGpuObjects(_raymarcherGpuObjects);

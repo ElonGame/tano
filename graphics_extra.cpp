@@ -89,25 +89,25 @@ namespace tano
   //------------------------------------------------------------------------------
   bool InitConfigDialog(HINSTANCE hInstance)
   {
-    int res = (int)DialogBox(hInstance, MAKEINTRESOURCE(IDD_SETUP_DLG), NULL, dialogWndProc);
+    int res = (int)DialogBox(hInstance, MAKEINTRESOURCE(IDD_SETUP_DLG), NULL, DialogWndProc);
     return res == IDOK;
   }
 
   //------------------------------------------------------------------------------
   bool EnumerateDisplayModes(HWND hWnd)
   {
-    vector<VideoAdapter>& videoAdapters = GRAPHICS._curSetup.videoAdapters;
+    vector<VideoAdapter>& videoAdapters = g_Graphics->_graphicsSettings.videoAdapters;
     videoAdapters.clear();
 
     // Create DXGI factory to enumerate adapters
-    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&GRAPHICS._curSetup.dxgi_factory))))
+    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&g_Graphics->_graphicsSettings.dxgi_factory))))
     {
       return false;
     }
 
     // Enumerate the adapters
     IDXGIAdapter* adapter;
-    for (int i = 0; SUCCEEDED(GRAPHICS._curSetup.dxgi_factory->EnumAdapters(i, &adapter)); ++i)
+    for (int i = 0; SUCCEEDED(g_Graphics->_graphicsSettings.dxgi_factory->EnumAdapters(i, &adapter)); ++i)
     {
       videoAdapters.push_back(VideoAdapter());
       VideoAdapter& curAdapter = videoAdapters.back();
@@ -116,7 +116,7 @@ namespace tano
       HWND hAdapter = GetDlgItem(hWnd, IDC_VIDEO_ADAPTER);
       ComboBox_AddString(hAdapter, wide_char_to_utf8(curAdapter.desc.Description).c_str());
       ComboBox_SetCurSel(hAdapter, 0);
-      GRAPHICS._curSetup.selectedAdapter = 0;
+      g_Graphics->_graphicsSettings.selectedAdapter = 0;
 
       CComPtr<IDXGIOutput> output;
       vector<CComPtr<IDXGIOutput>> outputs;
@@ -135,7 +135,7 @@ namespace tano
         displayModes.resize(displayModes.size() + numModes);
         output->GetDisplayModeList(
             DXGI_FORMAT_R8G8B8A8_UNORM, 0, &numModes, displayModes.data() + prevSize);
-        if (!GRAPHICS._enumerateAllOutputs)
+        if (!g_Graphics->_enumerateAllOutputs)
           break;
       }
 
@@ -144,7 +144,7 @@ namespace tano
       {
         return r.Denominator == 0 ? 0 : r.Numerator / r.Denominator;
       };
-      if (GRAPHICS.DisplayAllModes())
+      if (g_Graphics->DisplayAllModes())
       {
         curAdapter.displayModes = displayModes;
       }
@@ -195,32 +195,13 @@ namespace tano
       adapter->Release();
     }
 
-    HWND hMultisample = GetDlgItem(hWnd, IDC_MULTISAMPLE);
-    ComboBox_InsertString(hMultisample, -1, "No multisample");
-    ComboBox_InsertString(hMultisample, -1, "2x multisample");
-    ComboBox_InsertString(hMultisample, -1, "4x multisample");
-    ComboBox_InsertString(hMultisample, -1, "8x multisample");
-
-    ComboBox_SetItemData(hMultisample, 0, 1);
-    ComboBox_SetItemData(hMultisample, 1, 2);
-    ComboBox_SetItemData(hMultisample, 2, 4);
-    ComboBox_SetItemData(hMultisample, 3, 8);
-
-    ComboBox_SetCurSel(hMultisample, 0);
-    GRAPHICS._curSetup.multisampleCount = 1;
-
-#if DISTRIBUTION
-    GRAPHICS._curSetup.windowed = false;
-#else
-    GRAPHICS._curSetup.windowed = true;
-    Button_SetCheck(GetDlgItem(hWnd, IDC_WINDOWED), TRUE);
-#endif
-
+    Button_SetCheck(GetDlgItem(hWnd, IDC_WINDOWED), FALSE);
+    Button_SetCheck(GetDlgItem(hWnd, IDC_VSYNC), TRUE);
     return true;
   }
 
   //------------------------------------------------------------------------------
-  INT_PTR CALLBACK dialogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+  INT_PTR CALLBACK DialogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   {
     switch (message)
     {
@@ -231,10 +212,10 @@ namespace tano
           EndDialog(hWnd, -1);
         }
 #if !WITH_CONFIG_DLG
-        if (!GRAPHICS._curSetup.videoAdapters.empty())
+        if (!g_Graphics->_graphicsSettings.videoAdapters.empty())
         {
           ComboBox_SetCurSel(GetDlgItem(hWnd, IDC_DISPLAY_MODES),
-              3 * GRAPHICS._curSetup.videoAdapters[0].displayModes.size() / 4);
+              3 * g_Graphics->_graphicsSettings.videoAdapters[0].displayModes.size() / 4);
         }
         EndDialog(hWnd, 1);
 #endif
@@ -263,14 +244,12 @@ namespace tano
 
       case WM_DESTROY:
       {
-        // read the settings
-        Setup& cur = GRAPHICS._curSetup;
+        // copy the settings over
+        GraphicsSettings& cur = g_Graphics->_graphicsSettings;
         cur.windowed = !!Button_GetCheck(GetDlgItem(hWnd, IDC_WINDOWED));
-        cur.SelectedDisplayMode = ComboBox_GetCurSel(GetDlgItem(hWnd, IDC_DISPLAY_MODES));
+        cur.vsync = !!Button_GetCheck(GetDlgItem(hWnd, IDC_WINDOWED));
 
-        HWND hMultisample = GetDlgItem(hWnd, IDC_MULTISAMPLE);
-        cur.multisampleCount =
-            (int)ComboBox_GetItemData(hMultisample, ComboBox_GetCurSel(hMultisample));
+        cur.SelectedDisplayMode = ComboBox_GetCurSel(GetDlgItem(hWnd, IDC_DISPLAY_MODES));
 
         HWND hDisplayModes = GetDlgItem(hWnd, IDC_DISPLAY_MODES);
         int sel = ComboBox_GetCurSel(hDisplayModes);
@@ -410,7 +389,7 @@ bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
                                  ? D3D11_RTV_DIMENSION_TEXTURE2D
                                  : D3D11_RTV_DIMENSION_TEXTURE2DMS;
   INIT_HR_FATAL(
-      GRAPHICS._device->CreateRenderTargetView(rt->texture.ptr, &rtViewDesc, &rt->view.ptr));
+      g_Graphics->_device->CreateRenderTargetView(rt->texture.ptr, &rtViewDesc, &rt->view.ptr));
   rt->view.ptr->GetDesc(&rt->view.desc);
 
   DepthStencilResource* depthStencil = new DepthStencilResource();
@@ -427,18 +406,18 @@ bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
 
   // Create depth stencil buffer and view
   INIT_HR_FATAL(
-      GRAPHICS._device->CreateTexture2D(&depthStencilDesc, NULL, &depthStencil->texture.ptr));
+      g_Graphics->_device->CreateTexture2D(&depthStencilDesc, NULL, &depthStencil->texture.ptr));
   depthStencil->texture.ptr->GetDesc(&depthStencil->texture.desc);
 
-  INIT_HR_FATAL(GRAPHICS._device->CreateDepthStencilView(
+  INIT_HR_FATAL(g_Graphics->_device->CreateDepthStencilView(
       depthStencil->texture.ptr, NULL, &depthStencil->view.ptr));
   depthStencil->view.ptr->GetDesc(&depthStencil->view.desc);
 
   // register the render-target and depth-stencil
-  u32 rtIdx = GRAPHICS._renderTargets.Append(rt);
+  u32 rtIdx = g_Graphics->_renderTargets.Append(rt);
   _renderTarget = ObjectHandle(ObjectHandle::kRenderTarget, rtIdx);
 
-  u32 dsIdx = GRAPHICS._depthStencils.Append(depthStencil);
+  u32 dsIdx = g_Graphics->_depthStencils.Append(depthStencil);
   _depthStencil = ObjectHandle(ObjectHandle::kDepthStencil, rtIdx);
 
   _viewport = CD3D11_VIEWPORT(0.0f, 0.0f, (float)width, (float)height);
@@ -449,21 +428,21 @@ bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
 //------------------------------------------------------------------------------
 void SwapChain::Present()
 {
-  _swapChain->Present(GRAPHICS._vsync ? 1 : 0, 0);
+  _swapChain->Present(g_Graphics->_vsync ? 1 : 0, 0);
 }
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::ScopedRenderTarget(
     int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags)
     : _desc(width, height, format)
-    , _rtHandle(GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags))
+    , _rtHandle(g_Graphics->GetTempRenderTarget(width, height, format, bufferFlags))
 {
 }
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::ScopedRenderTarget(const RenderTargetDesc& desc, const BufferFlags& bufferFlags)
     : _desc(desc)
-    , _rtHandle(GRAPHICS.GetTempRenderTarget(desc.width, desc.height, desc.format, bufferFlags))
+    , _rtHandle(g_Graphics->GetTempRenderTarget(desc.width, desc.height, desc.format, bufferFlags))
 {
 }
 
@@ -471,14 +450,14 @@ ScopedRenderTarget::ScopedRenderTarget(const RenderTargetDesc& desc, const Buffe
 ScopedRenderTarget::ScopedRenderTarget(DXGI_FORMAT format, const BufferFlags& bufferFlags)
 {
   _desc.format = format;
-  GRAPHICS.GetBackBufferSize(&_desc.width, &_desc.height);
-  _rtHandle = GRAPHICS.GetTempRenderTarget(_desc.width, _desc.height, _desc.format, bufferFlags);
+  g_Graphics->GetBackBufferSize(&_desc.width, &_desc.height);
+  _rtHandle = g_Graphics->GetTempRenderTarget(_desc.width, _desc.height, _desc.format, bufferFlags);
 }
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::~ScopedRenderTarget()
 {
-  GRAPHICS.ReleaseTempRenderTarget(_rtHandle);
+  g_Graphics->ReleaseTempRenderTarget(_rtHandle);
 }
 
 //----------------------------------------------outputDe--------------------------------
@@ -486,14 +465,14 @@ ScopedRenderTargetFull::ScopedRenderTargetFull(
     DXGI_FORMAT format, BufferFlags rtFlags, BufferFlags dsFlags)
 {
   _desc.format = format;
-  GRAPHICS.GetBackBufferSize(&_desc.width, &_desc.height);
-  _rtHandle = GRAPHICS.GetTempRenderTarget(_desc.width, _desc.height, format, rtFlags);
-  _dsHandle = GRAPHICS.GetTempDepthStencil(_desc.width, _desc.height, dsFlags);
+  g_Graphics->GetBackBufferSize(&_desc.width, &_desc.height);
+  _rtHandle = g_Graphics->GetTempRenderTarget(_desc.width, _desc.height, format, rtFlags);
+  _dsHandle = g_Graphics->GetTempDepthStencil(_desc.width, _desc.height, dsFlags);
 }
 
 //------------------------------------------------------------------------------
 ScopedRenderTargetFull::~ScopedRenderTargetFull()
 {
-  GRAPHICS.ReleaseTempRenderTarget(_rtHandle);
-  GRAPHICS.ReleaseTempDepthStencil(_dsHandle);
+  g_Graphics->ReleaseTempRenderTarget(_rtHandle);
+  g_Graphics->ReleaseTempDepthStencil(_dsHandle);
 }

@@ -114,7 +114,7 @@ bool InitDeviceD3D()
 // - in your Render function, try translating your projection matrix by (0.5f,0.5f) or (0.375f,0.375f)
 static void ImImpl_RenderDrawLists(ImDrawData* draw_data)
 {
-  g_ctx->SetRenderTarget(GRAPHICS.GetBackBuffer(), GRAPHICS.GetDepthStencil(), nullptr);
+  g_ctx->SetRenderTarget(g_Graphics->GetBackBuffer(), g_Graphics->GetDepthStencil(), nullptr);
 
   ImDrawVert* vtx_dst = g_ctx->MapWriteDiscard<ImDrawVert>(g_gpuObjects._vb);
   ImDrawIdx* idx_dst = g_ctx->MapWriteDiscard<ImDrawIdx>(g_gpuObjects._ib);
@@ -199,7 +199,7 @@ static void ImImpl_RenderDrawLists(ImDrawData* draw_data)
   }
 
   // reset to full screen scissor rect
-  SwapChain* swapChain = GRAPHICS.GetSwapChain(GRAPHICS.DefaultSwapChain());
+  SwapChain* swapChain = g_Graphics->GetSwapChain(g_Graphics->DefaultSwapChain());
   CD3D11_RECT rect = CD3D11_RECT(
     (LONG)swapChain->_viewport.TopLeftX,
     (LONG)swapChain->_viewport.TopLeftY,
@@ -223,7 +223,7 @@ void LoadFontsTexture()
   unsigned char* pixels;
   int width, height;
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-  g_texture = GRAPHICS.CreateTexture(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, pixels, width*4);
+  g_texture = g_Graphics->CreateTexture(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, pixels, width*4);
 
   // Store our identifier
   //io.Fonts->TexID = (void *)*(u32*)&h;
@@ -306,11 +306,11 @@ namespace tano
   //------------------------------------------------------------------------------
   bool InitImGui(HWND hWnd)
   {
-    g_ctx = GRAPHICS.GetGraphicsContext();
+    g_ctx = g_Graphics->GetGraphicsContext();
     InitDeviceD3D();
 
     int display_w, display_h;
-    GRAPHICS.GetBackBufferSize(&display_w, &display_h);
+    g_Graphics->GetBackBufferSize(&display_w, &display_h);
 
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize = ImVec2((float)display_w, (float)display_h);    // Display size, in pixels. For clamping windows positions.

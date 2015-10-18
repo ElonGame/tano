@@ -64,10 +64,10 @@ bool FullscreenEffect::Init()
   // clang-format on
 
   // blur setup
-  INIT_RESOURCE(_csBlurTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BlurTranspose"));
-  INIT_RESOURCE(_csCopyTranspose, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "CopyTranspose"));
-  INIT_RESOURCE(_csBlurX, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BoxBlurX"));
-  INIT_RESOURCE(_csBlurY, GRAPHICS.LoadComputeShaderFromFile("shaders/out/blur", "BoxBlurY"));
+  INIT_RESOURCE(_csBlurTranspose, g_Graphics->LoadComputeShaderFromFile("shaders/out/blur", "BlurTranspose"));
+  INIT_RESOURCE(_csCopyTranspose, g_Graphics->LoadComputeShaderFromFile("shaders/out/blur", "CopyTranspose"));
+  INIT_RESOURCE(_csBlurX, g_Graphics->LoadComputeShaderFromFile("shaders/out/blur", "BoxBlurX"));
+  INIT_RESOURCE(_csBlurY, g_Graphics->LoadComputeShaderFromFile("shaders/out/blur", "BoxBlurY"));
 
   INIT_FATAL(_cbRenderTexture.Create());
 
@@ -206,7 +206,7 @@ void FullscreenEffect::Blur(
   ObjectHandle scaledRt;
   if (scale > 1)
   {
-    scaledRt = GRAPHICS.GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+    scaledRt = g_Graphics->GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
     Copy(input, scaledRt, RenderTargetDesc(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT), true);
   }
 
@@ -281,7 +281,7 @@ void FullscreenEffect::Blur(
   if (scale > 1)
   {
     Copy(scaledRt, output, outputDesc, true);
-    GRAPHICS.ReleaseTempRenderTarget(scaledRt);
+    g_Graphics->ReleaseTempRenderTarget(scaledRt);
   }
 }
 
@@ -296,7 +296,7 @@ void FullscreenEffect::BlurHoriz(
   ObjectHandle scaledRt;
   if (scale > 1)
   {
-    scaledRt = GRAPHICS.GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+    scaledRt = g_Graphics->GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
     Copy(input, scaledRt, RenderTargetDesc(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT), true);
   }
 
@@ -356,7 +356,7 @@ void FullscreenEffect::BlurVertCustom(ObjectHandle input,
   ObjectHandle scaledRt;
   if (scale > 1)
   {
-    scaledRt = GRAPHICS.GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
+    scaledRt = g_Graphics->GetTempRenderTarget(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, f);
     Copy(input, scaledRt, RenderTargetDesc(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT), true);
   }
 

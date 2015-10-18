@@ -59,7 +59,7 @@ BaseEffect::BaseEffect(const string& instanceName, const string& config, u32 id)
     , _configName(config)
     , _id(id)
     , _running(false)
-    , _ctx(GRAPHICS.GetGraphicsContext())
+    , _ctx(g_Graphics->GetGraphicsContext())
     , _firstTick(true)
 {
   FindFileVersions(_configName.c_str(), &_configFileVersions, &_configVersionToFilename);

@@ -58,7 +58,7 @@ void FreeflyCamera::ToProtocol(FreeflyCameraSettings* settings)
 Camera::Camera()
 {
   int w, h;
-  GRAPHICS.GetBackBufferSize(&w, &h);
+  g_Graphics->GetBackBufferSize(&w, &h);
   _aspectRatio = (float)w / h;
   _proj = Matrix::CreatePerspectiveFieldOfView(_fov, _aspectRatio, _nearPlane, _farPlane);
 }

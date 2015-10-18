@@ -77,9 +77,9 @@ App::App()
 {
   memset(&_ioState, 0, sizeof(_ioState));
   bristol::SetLogCallback([](const LogEntry& entry)
-  {
-    InitSequence::AddLog(entry.file, entry.line, entry.msg);
-  });
+      {
+        InitSequence::AddLog(entry.file, entry.line, entry.msg);
+      });
 }
 
 //------------------------------------------------------------------------------
@@ -112,8 +112,7 @@ bool App::Destroy()
   Scheduler::Destroy();
 #endif
 
-
-  delete exch_null(_instance);
+      delete exch_null(_instance);
 
   END_INIT_SEQUENCE();
 }
@@ -159,11 +158,10 @@ bool App::Init(HINSTANCE hinstance)
   INIT_FATAL(Scheduler::Create());
 #endif
 
+#if WITH_CONFIG_DLG
+  INIT_FATAL(Graphics::CreateWithConfigDialog(hinstance, WndProc));
+#else
   INIT_FATAL(Graphics::Create(hinstance));
-  INIT_FATAL(DebugApi::Create(GRAPHICS.GetGraphicsContext()));
-
-  INIT_FATAL(g_ScratchMemory.Init(scratchMemory, scratchMemory + ARENA_MEMORY_SIZE));
-  Perlin2D::Init();
 
   int width = GetSystemMetrics(SM_CXFULLSCREEN);
   int height = GetSystemMetrics(SM_CYFULLSCREEN);
@@ -173,10 +171,16 @@ bool App::Init(HINSTANCE hinstance)
   int bbWidth = width / BACKBUFFER_SCALE;
   int bbHeight = height / BACKBUFFER_SCALE;
 
-  GRAPHICS.CreateDefaultSwapChain(width, height, bbWidth, bbHeight, DXGI_FORMAT_R8G8B8A8_UNORM, WndProc, hinstance);
+  g_Graphics->CreateDefaultSwapChain(
+      width, height, bbWidth, bbHeight, true, DXGI_FORMAT_R8G8B8A8_UNORM, WndProc, hinstance);
+#endif
+  INIT_FATAL(DebugApi::Create(g_Graphics->GetGraphicsContext()));
+
+  INIT_FATAL(g_ScratchMemory.Init(scratchMemory, scratchMemory + ARENA_MEMORY_SIZE));
+  Perlin2D::Init();
 
 #if WITH_IMGUI
-  INIT_FATAL(InitImGui(GRAPHICS.GetSwapChain(GRAPHICS.DefaultSwapChain())->_hwnd));
+  INIT_FATAL(InitImGui(g_Graphics->GetSwapChain(g_Graphics->DefaultSwapChain())->_hwnd));
 #endif
 
 #if WITH_REMOTERY
@@ -205,7 +209,7 @@ bool App::Init(HINSTANCE hinstance)
 //------------------------------------------------------------------------------
 bool App::Run()
 {
-  MSG msg ={ 0 };
+  MSG msg = {0};
 
   g_DemoEngine->Start();
 
@@ -241,9 +245,9 @@ bool App::Run()
     UpdateImGui();
 #endif
 
-    //ImGui::ShowTestWindow();
+// ImGui::ShowTestWindow();
 #if WITH_EXPRESSION_EDITOR
-    GRAPHICS.ClearRenderTarget(GRAPHICS.GetBackBuffer());
+    g_Graphics->ClearRenderTarget(g_Graphics->GetBackBuffer());
     static bool showExpressionEditor = false;
     if (g_KeyUpTrigger.IsTriggered('0'))
       showExpressionEditor = !showExpressionEditor;
@@ -278,8 +282,11 @@ bool App::Run()
       float minValue, maxValue;
       avgFrameTime.GetMinMax(&minValue, &maxValue);
       ImGui::Text("Min: %.2f Max: %.2f Avg: %.2f",
-        minValue * 1000, maxValue * 1000, avgFrameTime.GetAverage() * 1000);
-      ImGui::PlotLines("Frame time", times, (int)numSamples, 0, 0, FLT_MAX, FLT_MAX, ImVec2(200, 50));
+          minValue * 1000,
+          maxValue * 1000,
+          avgFrameTime.GetAverage() * 1000);
+      ImGui::PlotLines(
+          "Frame time", times, (int)numSamples, 0, 0, FLT_MAX, FLT_MAX, ImVec2(200, 50));
 
       // Invoke any custom perf callbacks
       for (const fnPerfCallback& cb : _perfCallbacks)
@@ -297,7 +304,7 @@ bool App::Run()
     if (++numFrames > 10)
       avgFrameTime.AddSample((float)frameTime);
 
-    GRAPHICS.Present();
+    g_Graphics->Present();
   }
 
   return true;
@@ -309,7 +316,7 @@ bool App::LoadSettings()
   BEGIN_INIT_SEQUENCE();
 
   vector<char> buf;
-  //INIT(RESOURCE_MANAGER.LoadFile(PathJoin(_appRoot.c_str(), "app.gb").c_str(), &buf));
+  // INIT(RESOURCE_MANAGER.LoadFile(PathJoin(_appRoot.c_str(), "app.gb").c_str(), &buf));
   INIT_FATAL(RESOURCE_MANAGER.LoadFile("app.gb", &buf));
   _settings = ParseAppSettings(InputBuffer(buf.data(), buf.size()));
 
@@ -337,40 +344,24 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   switch (message)
   {
     case WM_SIZE:
-      //GRAPHICS.Resize(LOWORD(lParam), HIWORD(lParam));
+      // g_Graphics->Resize(LOWORD(lParam), HIWORD(lParam));
       break;
 
-    case WM_APP_CLOSE:
-      DestroyWindow(hWnd);
-      break;
+    case WM_APP_CLOSE: DestroyWindow(hWnd); break;
 
-    case WM_DESTROY:
-      PostQuitMessage(0);
-      break;
+    case WM_DESTROY: PostQuitMessage(0); break;
 
-    case WM_LBUTTONUP:
-      TANO._ioState.buttons[IoState::ButtonLeft] = false;
-      break;
+    case WM_LBUTTONUP: TANO._ioState.buttons[IoState::ButtonLeft] = false; break;
 
-    case WM_MBUTTONUP:
-      TANO._ioState.buttons[IoState::ButtonMiddle] = false;
-      break;
+    case WM_MBUTTONUP: TANO._ioState.buttons[IoState::ButtonMiddle] = false; break;
 
-    case WM_RBUTTONUP:
-      TANO._ioState.buttons[IoState::ButtonRight] = false;
-      break;
+    case WM_RBUTTONUP: TANO._ioState.buttons[IoState::ButtonRight] = false; break;
 
-    case WM_LBUTTONDOWN:
-      TANO._ioState.buttons[IoState::ButtonLeft] = true;
-      break;
+    case WM_LBUTTONDOWN: TANO._ioState.buttons[IoState::ButtonLeft] = true; break;
 
-    case WM_MBUTTONDOWN:
-      TANO._ioState.buttons[IoState::ButtonMiddle] = true;
-      break;
+    case WM_MBUTTONDOWN: TANO._ioState.buttons[IoState::ButtonMiddle] = true; break;
 
-    case WM_RBUTTONDOWN:
-      TANO._ioState.buttons[IoState::ButtonRight] = true;
-      break;
+    case WM_RBUTTONDOWN: TANO._ioState.buttons[IoState::ButtonRight] = true; break;
 
     case WM_MOUSEMOVE:
       TANO._ioState.mouseX = (signed short)(lParam);
@@ -383,28 +374,30 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_KEYDOWN:
 
-      switch (wParam) {
-      case VK_LEFT:
-        g_DemoEngine->SetPos(g_DemoEngine->Pos() - TimeDuration::Seconds(1));
-        return 0;
+      switch (wParam)
+      {
+        case VK_LEFT:
+          g_DemoEngine->SetPos(g_DemoEngine->Pos() - TimeDuration::Seconds(1));
+          return 0;
 
-      case VK_RIGHT:
-        g_DemoEngine->SetPos(g_DemoEngine->Pos() + TimeDuration::Seconds(1));
-        return 0;
+        case VK_RIGHT:
+          g_DemoEngine->SetPos(g_DemoEngine->Pos() + TimeDuration::Seconds(1));
+          return 0;
 
-      case VK_UP:
-        g_DemoEngine->SetPos(g_DemoEngine->Pos() - TimeDuration::Milliseconds(100));
-        return 0;
+        case VK_UP:
+          g_DemoEngine->SetPos(g_DemoEngine->Pos() - TimeDuration::Milliseconds(100));
+          return 0;
 
-      case VK_DOWN:
-        g_DemoEngine->SetPos(g_DemoEngine->Pos() + TimeDuration::Milliseconds(100));
-        return 0;
+        case VK_DOWN:
+          g_DemoEngine->SetPos(g_DemoEngine->Pos() + TimeDuration::Milliseconds(100));
+          return 0;
       }
       break;
 
     case WM_KEYUP:
 
-      switch (wParam) {
+      switch (wParam)
+      {
 
         case 'S':
 #if WITH_UNPACKED_RESOUCES
@@ -415,9 +408,7 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 #endif
           break;
 
-        case 'V':
-          GRAPHICS.SetVSync(!GRAPHICS.GetVSync());
-          return 0;
+        case 'V': g_Graphics->SetVSync(!g_Graphics->GetVSync()); return 0;
 
         case 'M': {
 #if _DEBUG
@@ -426,12 +417,12 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           _CrtMemState curState;
           _CrtMemCheckpoint(&curState);
 
-          if (!firstTime) {
+          if (!firstTime)
+          {
             _CrtMemState stateDiff;
             OutputDebugStringA("*** MEM DIFF ***\n");
             _CrtMemDifference(&stateDiff, &prevState, &curState);
             _CrtMemDumpStatistics(&stateDiff);
-
           }
           firstTime = false;
           OutputDebugStringA("*** MEM STATS ***\n");
@@ -441,13 +432,9 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           return 0;
         }
 
-        case VK_ESCAPE:
-          PostQuitMessage(0);
-          return 0;
+        case VK_ESCAPE: PostQuitMessage(0); return 0;
 
-        case VK_SPACE:
-          g_DemoEngine->SetPaused(!g_DemoEngine->Paused());
-          return 0;
+        case VK_SPACE: g_DemoEngine->SetPaused(!g_DemoEngine->Paused()); return 0;
 
         case VK_PRIOR:
           g_DemoEngine->SetPos(g_DemoEngine->Pos() - TimeDuration::Seconds(30));
@@ -457,12 +444,9 @@ LRESULT App::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           g_DemoEngine->SetPos(g_DemoEngine->Pos() + TimeDuration::Seconds(30));
           return 0;
 
-        case VK_HOME:
-          g_DemoEngine->SetPos(TimeDuration::Seconds(0));
-          return 0;
+        case VK_HOME: g_DemoEngine->SetPos(TimeDuration::Seconds(0)); return 0;
 
-        default:
-          break;
+        default: break;
       }
       break;
   }
@@ -554,4 +538,3 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line
   GlobalClose();
   return 0;
 }
-

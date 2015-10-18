@@ -188,7 +188,7 @@ bool ParticleTrail::Render()
   rmt_ScopedCPUSample(ParticleTrail_Render);
 
   static Color black(0, 0, 0, 0);
-  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+  FullscreenEffect* fullscreen = g_Graphics->GetFullscreenEffect();
 
   ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
@@ -197,7 +197,7 @@ bool ParticleTrail::Render()
   {
     // Render the background
     _cbBackground.Set(_ctx, 0);
-    _ctx->SetRenderTarget(rtColor, GRAPHICS.GetDepthStencil(), &black);
+    _ctx->SetRenderTarget(rtColor, g_Graphics->GetDepthStencil(), &black);
     _ctx->SetBundle(_backgroundBundle);
     _ctx->Draw(3, 0);
   }
@@ -214,7 +214,7 @@ bool ParticleTrail::Render()
 #else
     {
       // lines
-      RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+      RenderTargetDesc desc = g_Graphics->GetBackBufferDesc();
       _cbPlexus.gs0.dim = vec4((float)desc.width, (float)desc.height, 0, 0);
       vec3 params = g_Blackboard->GetVec3Var("particle_trail.lineParams");
       _cbPlexus.ps0.lineParams = vec4(params.x, params.y, params.z, 1);
@@ -232,9 +232,9 @@ bool ParticleTrail::Render()
     ObjectHandle inputs[] = {rtColor};
     fullscreen->Execute(inputs,
         1,
-        GRAPHICS.GetBackBuffer(),
-        GRAPHICS.GetBackBufferDesc(),
-        GRAPHICS.GetDepthStencil(),
+        g_Graphics->GetBackBuffer(),
+        g_Graphics->GetBackBufferDesc(),
+        g_Graphics->GetDepthStencil(),
         _compositeBundle.objects._ps,
         false);
   }

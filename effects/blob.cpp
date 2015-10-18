@@ -104,17 +104,17 @@ bool Blob::Render()
   rmt_ScopedCPUSample(Blob_Render);
 
   static Color black(0, 0, 0, 0);
-  FullscreenEffect* fullscreen = GRAPHICS.GetFullscreenEffect();
+  FullscreenEffect* fullscreen = g_Graphics->GetFullscreenEffect();
 
-  _ctx->SetSwapChain(GRAPHICS.DefaultSwapChain(), black);
-  RenderTargetDesc desc = GRAPHICS.GetBackBufferDesc();
+  _ctx->SetSwapChain(g_Graphics->DefaultSwapChain(), black);
+  RenderTargetDesc desc = g_Graphics->GetBackBufferDesc();
 
   ScopedRenderTarget rtOpacity(DXGI_FORMAT_R16G16B16A16_FLOAT);
   ScopedRenderTarget rtRevealage(DXGI_FORMAT_R16_FLOAT);
 
   const Color* clearColors[] = {&Color(0, 0, 0, 0), &Color(1, 1, 1, 1)};
   ObjectHandle targets[] = {rtOpacity, rtRevealage};
-  _ctx->SetRenderTargets(targets, 2, GRAPHICS.GetDepthStencil(), clearColors);
+  _ctx->SetRenderTargets(targets, 2, g_Graphics->GetDepthStencil(), clearColors);
 
   {
     // meshes
@@ -152,9 +152,9 @@ bool Blob::Render()
     ObjectHandle inputs[] = { rtOpacity, rtRevealage };
     fullscreen->Execute(inputs,
       2,
-      GRAPHICS.GetBackBuffer(),
-      GRAPHICS.GetBackBufferDesc(),
-      GRAPHICS.GetDepthStencil(),
+      g_Graphics->GetBackBuffer(),
+      g_Graphics->GetBackBufferDesc(),
+      g_Graphics->GetDepthStencil(),
       _compositeBundle.objects._ps,
       false,
       false,
