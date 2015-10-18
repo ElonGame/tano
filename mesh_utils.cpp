@@ -641,27 +641,28 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
-  void GeneratePlaneIndices(int width, int height, vector<u32>* out)
+  void GeneratePlaneIndices(int width, int height, int ofs, vector<u32>* out)
   {
-    out->resize((width - 1) * (height - 1) * 6);
-    u32* res = out->data();
+    size_t oldSize = out->size();
+    out->resize(oldSize + (width - 1) * (height - 1) * 6);
+    u32* res = out->data() + oldSize;
 
     // 1 2
     // 0 3
 
-    for (int i = 1; i < height; ++i)
+    for (int i = 0; i < height - 1; ++i)
     {
       for (int j = 0; j < width - 1; ++j)
       {
         // 0, 1, 3
-        res[0] = (i + 0) * width + (j + 0);
-        res[1] = (i - 1) * width + (j + 0);
-        res[2] = (i + 0) * width + (j + 1);
+        res[0] = ofs + (i + 0) * width + (j + 0);
+        res[1] = ofs + (i + 1) * width + (j + 0);
+        res[2] = ofs + (i + 0) * width + (j + 1);
 
         // 3, 1, 2
-        res[3] = (i + 0) * width + (j + 1);
-        res[4] = (i - 1) * width + (j + 0);
-        res[5] = (i - 1) * width + (j + 1);
+        res[3] = ofs + (i + 0) * width + (j + 1);
+        res[4] = ofs + (i + 1) * width + (j + 0);
+        res[5] = ofs + (i + 1) * width + (j + 1);
 
         res += 6;
       }

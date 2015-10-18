@@ -78,5 +78,5 @@ namespace tano
   vec3* AddCube(vec3* buf, const vec3& pos, float scale);
   vec3* AddCubeWithNormal(vec3* buf, const vec3& pos, float scale, bool singleFace = false);
 
-  void GeneratePlaneIndices(int width, int height, vector<u32>* out);
+  void GeneratePlaneIndices(int width, int height, int ofs, vector<u32>* out);
 }

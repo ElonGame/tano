@@ -25,20 +25,26 @@ namespace tano
 
   struct BehaviorLandscapeFollow : public ParticleKinematics
   {
-    BehaviorLandscapeFollow(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
+    BehaviorLandscapeFollow(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed)
+    {
+    }
     virtual void Update(const ParticleKinematics::UpdateParams& params) override;
   };
 
   class Landscape : public BaseEffect
   {
   public:
+    enum
+    {
+      NUM_CHUNK_QUADS = 32,
+      NUM_CHUNK_VERTS = NUM_CHUNK_QUADS + 1,
+      HALF_CHUNK_SIZE = NUM_CHUNK_VERTS / 2,
 
-    enum { 
-      CHUNK_SIZE = 32,
-      HALF_CHUNK_SIZE = CHUNK_SIZE / 2,
+      UPPER_NUM_CHUNK_QUADS = NUM_CHUNK_QUADS / 2,
+      UPPER_NUM_CHUNK_VERTS = UPPER_NUM_CHUNK_QUADS + 1,
     };
 
-    Landscape(const string &name, const string& config, u32 id);
+    Landscape(const string& name, const string& config, u32 id);
     ~Landscape();
     virtual bool OnConfigChanged(const vector<char>& buf) override;
     virtual bool Init() override;
@@ -53,7 +59,7 @@ namespace tano
     static BaseEffect* Create(const char* name, const char* config, u32 id);
     static void Register();
 
-  //private:
+    // private:
 
     void Reset();
 #if WITH_IMGUI
@@ -77,18 +83,16 @@ namespace tano
       vec3 center;
       float dist = 0;
       int lastAccessed = 0;
-      enum {
-        UPPER_INDICES = HALF_CHUNK_SIZE * HALF_CHUNK_SIZE * 2 * 3,
-        LOWER_INDICES = CHUNK_SIZE * CHUNK_SIZE * 2 * 3, 
-        UPPER_VERTS = HALF_CHUNK_SIZE * HALF_CHUNK_SIZE * 4,
-        LOWER_VERTS = CHUNK_SIZE * CHUNK_SIZE * 4,
-        // pos/normal, 3 components
-        UPPER_DATA_SIZE = UPPER_VERTS * 2 * 3,
-        LOWER_DATA_SIZE = LOWER_VERTS * 2 * 3,
+      enum
+      {
+        UPPER_INDICES = UPPER_NUM_CHUNK_QUADS * UPPER_NUM_CHUNK_QUADS * 6,
+        LOWER_INDICES = NUM_CHUNK_QUADS * NUM_CHUNK_QUADS * 6,
+        UPPER_VERTS = UPPER_NUM_CHUNK_VERTS * UPPER_NUM_CHUNK_VERTS,
+        LOWER_VERTS = NUM_CHUNK_VERTS * NUM_CHUNK_VERTS,
       };
-      vec3 noiseValues[(CHUNK_SIZE+1)*(CHUNK_SIZE+1)];
-      float upperData[UPPER_DATA_SIZE];
-      float lowerData[LOWER_DATA_SIZE];
+      vec3 noiseValues[NUM_CHUNK_VERTS * NUM_CHUNK_VERTS];
+      vec3 upperData[UPPER_NUM_CHUNK_VERTS * UPPER_NUM_CHUNK_VERTS];
+      vec3 lowerData[NUM_CHUNK_VERTS * NUM_CHUNK_VERTS];
       int id;
       static int nextId;
     };
@@ -102,10 +106,11 @@ namespace tano
     struct CopyKernelData
     {
       const Chunk* chunk;
-      float* landscapeBuf;
+      vec3* lowerBuf;
+      vec3* upperBuf;
       vec3* particleBuf;
     };
-    
+
 #if WITH_ENKI_SCHEDULER
     static void FillChunk(ChunkKernelData* chunkData);
 #else
@@ -157,10 +162,8 @@ namespace tano
     ConstantBufferBundle<cb::LandscapeLandscapeV, void, cb::LandscapeLandscapeG> _cbLandscape;
     ConstantBufferBundle<void, cb::LandscapeParticleP, cb::LandscapeParticleG> _cbParticle;
 
-    GpuBundle _landscapeBundle;
-    GpuState _landscapeState;
-    GpuObjects _landscapeGpuObjects;
-    GpuState _landscapeLowerState;
+    GpuBundle _landscapeLowerBundle;
+    GpuBundle _landscapeUpperBundle;
 
     LandscapeSettings _settings;
     MeshLoader _meshLoader;
@@ -172,16 +175,18 @@ namespace tano
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
 
-    enum DrawFlags {
-      DrawUpper       = 0x1,
-      DrawLower       = 0x2,
-      DrawParticles   = 0x4,
+    enum DrawFlags
+    {
+      DrawUpper = 0x1,
+      DrawLower = 0x2,
+      DrawParticles = 0x4,
     };
-    u32 _drawFlags    = 0x7;
+    u32 _drawFlags = 0x7;
 
     u32 _numUpperIndices = 0;
     u32 _numLowerIndices = 0;
     u32 _numParticles = 0;
+    u32 _numChunks = 0;
 
     GpuBundle _boidsBundle;
     bool _renderLandscape = true;
@@ -193,8 +198,8 @@ namespace tano
     BehaviorLandscapeFollow* _landscapeFollow = nullptr;
 
     FlockCamera _flockCamera;
-    //Camera* _curCamera = &_flockCamera;
-    Camera* _curCamera = &_freeflyCamera;
+    Camera* _curCamera = &_flockCamera;
+    //Camera* _curCamera = &_freeflyCamera;
     int _followFlock = 0;
 
     CardinalSpline _spline;

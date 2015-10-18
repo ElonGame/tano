@@ -241,9 +241,6 @@
     <ClCompile Include="..\enkits\TaskScheduler.cpp">
       <Filter>enkits</Filter>
     </ClCompile>
-    <ClCompile Include="..\tristripper.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\precompiled.hpp">
@@ -509,9 +506,6 @@
     </ClInclude>
     <ClInclude Include="..\enkits\Threads.h">
       <Filter>enkits</Filter>
-    </ClInclude>
-    <ClInclude Include="..\tristripper.hpp">
-      <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

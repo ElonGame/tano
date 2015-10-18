@@ -15,7 +15,7 @@ cbuffer G : register(b0)
 struct VsParticleIn
 {
   float3 pos : Position;
-  // float3 normal : Normal;
+//  float3 normal : Normal;
 };
 
 struct GsParticleIn

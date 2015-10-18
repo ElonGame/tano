@@ -16,13 +16,11 @@ cbuffer V : register(b0)
 struct VsLandscapeIn
 {
   float3 pos : Position;
-  float3 normal : Normal;
 };
 
 struct VsLandscapeOut
 {
     float4 pos  : SV_Position;
-    float3 normal : Normal;
     float3 rayDir : Texture0;
     float distance : TexCoord1;
 };
@@ -52,7 +50,7 @@ VsLandscapeOut VsLandscape(VsLandscapeIn v)
   pos.y *= (1 + musicParams.y / 5);
 
   res.pos = mul(float4(pos, 1), worldViewProj);
-  res.normal = mul(float4(v.normal, 0), world).xyz;
+  // res.normal = mul(float4(v.normal, 0), world).xyz;
   float3 dir = pos - cameraPos;
   res.distance = length(dir);
   res.rayDir = dir * 1/res.distance;
@@ -84,6 +82,10 @@ void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandsc
     points[0] = projToWindow(input[0].pos);
     points[1] = projToWindow(input[1].pos);
     points[2] = projToWindow(input[2].pos);
+
+    float3 faceEdgeA = input[1].pos.xyz - input[0].pos.xyz;
+    float3 faceEdgeB = input[2].pos.xyz - input[0].pos.xyz;
+    output.normal = normalize(cross(faceEdgeB, faceEdgeA));
 
     // If Case is 0, all projected points are defined, do the
     // general case computation
@@ -119,7 +121,7 @@ void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandsc
         output.EdgeA[0] = 0;
         output.EdgeA[1] = lengths[2]*sqrt(1 - cosAngles[2]*cosAngles[2]);
         output.EdgeA[2] = 0;
-        output.normal = input[0].normal;
+        //output.normal = input[0].normal;
         output.rayDir = input[0].rayDir;
         output.distance = input[0].distance;
         outStream.Append( output );
@@ -128,7 +130,7 @@ void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandsc
         output.EdgeA[0] = 0;
         output.EdgeA[1] = 0;
         output.EdgeA[2]= lengths[0]*sqrt(1 - cosAngles[0]*cosAngles[0]);
-        output.normal = input[1].normal;
+        //output.normal = input[1].normal;
         output.rayDir = input[1].rayDir;
         output.distance = input[1].distance;
         outStream.Append( output );
@@ -137,7 +139,7 @@ void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandsc
         output.EdgeA.x = lengths[1]*sqrt(1 - cosAngles[1]*cosAngles[1]);
         output.EdgeA[1] = 0;
         output.EdgeA[2] = 0;
-        output.normal = input[2].normal;
+        //output.normal = input[2].normal;
         output.rayDir = input[2].rayDir;
         output.distance = input[2].distance;
         outStream.Append( output );
@@ -163,19 +165,19 @@ void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandsc
     
         // Generate vertices
         output.pos =( input[0].pos );
-        output.normal = input[0].normal;
+        //output.normal = input[0].normal;
         output.rayDir = input[0].rayDir;
         output.distance = input[0].distance;
         outStream.Append( output );
      
         output.pos = ( input[1].pos );
-        output.normal = input[1].normal;
+        //output.normal = input[1].normal;
         output.rayDir = input[1].rayDir;
         output.distance = input[1].distance;
         outStream.Append( output );
 
         output.pos = ( input[2].pos );
-        output.normal = input[2].normal;
+        //output.normal = input[2].normal;
         output.rayDir = input[2].rayDir;
         output.distance = input[2].distance;
         outStream.Append( output );

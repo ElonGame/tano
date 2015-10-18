@@ -227,6 +227,4 @@ namespace tano
   };
 
 #define GRAPHICS Graphics::Instance()
-#define GFX_CreateBuffer(bind, size, dynamic, buf, data)                                                     \
-  GRAPHICS.CreateBuffer(bind, size, dynamic, buf, data);
 }

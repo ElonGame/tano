@@ -19,7 +19,7 @@ namespace tano
   CD3D11_RASTERIZER_DESC rasterizeDescCullNone;
   CD3D11_RASTERIZER_DESC rasterizeDescCullFrontFace;
   CD3D11_RASTERIZER_DESC rasterizeDescWireframe;
-  
+
   CD3D11_DEPTH_STENCIL_DESC depthDescDepthDisabled;
   CD3D11_DEPTH_STENCIL_DESC depthDescDepthWriteDisabled;
 
@@ -67,7 +67,8 @@ namespace tano
     blendDescWeightedBlendResolve.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
     blendDescWeightedBlendResolve.RenderTarget[0].DestBlend = D3D11_BLEND_SRC_ALPHA;
     blendDescWeightedBlendResolve.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_DEST_ALPHA;
-    blendDescWeightedBlendResolve.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL & ~D3D11_COLOR_WRITE_ENABLE_ALPHA;
+    blendDescWeightedBlendResolve.RenderTarget[0].RenderTargetWriteMask =
+        D3D11_COLOR_WRITE_ENABLE_ALL & ~D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
     rasterizeDescCullNone = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
     rasterizeDescCullNone.CullMode = D3D11_CULL_NONE;
@@ -109,7 +110,7 @@ namespace tano
     for (int i = 0; SUCCEEDED(GRAPHICS._curSetup.dxgi_factory->EnumAdapters(i, &adapter)); ++i)
     {
       videoAdapters.push_back(VideoAdapter());
-      VideoAdapter &curAdapter = videoAdapters.back();
+      VideoAdapter& curAdapter = videoAdapters.back();
       curAdapter.adapter = adapter;
       adapter->GetDesc(&curAdapter.desc);
       HWND hAdapter = GetDlgItem(hWnd, IDC_VIDEO_ADAPTER);
@@ -132,13 +133,17 @@ namespace tano
         output->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, 0, &numModes, NULL);
         size_t prevSize = displayModes.size();
         displayModes.resize(displayModes.size() + numModes);
-        output->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, 0, &numModes, displayModes.data() + prevSize);
+        output->GetDisplayModeList(
+            DXGI_FORMAT_R8G8B8A8_UNORM, 0, &numModes, displayModes.data() + prevSize);
         if (!GRAPHICS._enumerateAllOutputs)
           break;
       }
 
       // Only keep the version of each display mode with the highest refresh rate
-      auto &safeRational = [](const DXGI_RATIONAL &r) { return r.Denominator == 0 ? 0 : r.Numerator / r.Denominator; };
+      auto& safeRational = [](const DXGI_RATIONAL& r)
+      {
+        return r.Denominator == 0 ? 0 : r.Numerator / r.Denominator;
+      };
       if (GRAPHICS.DisplayAllModes())
       {
         curAdapter.displayModes = displayModes;
@@ -148,7 +153,7 @@ namespace tano
         unordered_map<pair<int, int>, DXGI_RATIONAL> highestRate;
         for (size_t i = 0; i < displayModes.size(); ++i)
         {
-          auto &cur = displayModes[i];
+          auto& cur = displayModes[i];
           auto key = make_pair(cur.Width, cur.Height);
           if (safeRational(cur.RefreshRate) > safeRational(highestRate[key]))
           {
@@ -165,7 +170,7 @@ namespace tano
           curAdapter.displayModes.push_back(desc);
         }
 
-        auto &resSorter = [&](const DXGI_MODE_DESC &a, const DXGI_MODE_DESC &b)
+        auto& resSorter = [&](const DXGI_MODE_DESC& a, const DXGI_MODE_DESC& b)
         {
           return a.Width < b.Width;
         };
@@ -176,7 +181,7 @@ namespace tano
       HWND hDisplayMode = GetDlgItem(hWnd, IDC_DISPLAY_MODES);
       for (size_t k = 0; k < curAdapter.displayModes.size(); ++k)
       {
-        auto &cur = curAdapter.displayModes[k];
+        auto& cur = curAdapter.displayModes[k];
         char buf[256];
         sprintf(buf, "%dx%d (%dHz)", cur.Width, cur.Height, safeRational(cur.RefreshRate));
         ComboBox_InsertString(hDisplayMode, k, buf);
@@ -185,7 +190,7 @@ namespace tano
       }
 
       int cnt = ComboBox_GetCount(hDisplayMode);
-      ComboBox_SetCurSel(hDisplayMode, cnt-1);
+      ComboBox_SetCurSel(hDisplayMode, cnt - 1);
 
       adapter->Release();
     }
@@ -228,7 +233,8 @@ namespace tano
 #if !WITH_CONFIG_DLG
         if (!GRAPHICS._curSetup.videoAdapters.empty())
         {
-          ComboBox_SetCurSel(GetDlgItem(hWnd, IDC_DISPLAY_MODES), 3 * GRAPHICS._curSetup.videoAdapters[0].displayModes.size() / 4);
+          ComboBox_SetCurSel(GetDlgItem(hWnd, IDC_DISPLAY_MODES),
+              3 * GRAPHICS._curSetup.videoAdapters[0].displayModes.size() / 4);
         }
         EndDialog(hWnd, 1);
 #endif
@@ -236,21 +242,22 @@ namespace tano
         GetClientRect(hWnd, &rect);
         int width = GetSystemMetrics(SM_CXSCREEN);
         int height = GetSystemMetrics(SM_CYSCREEN);
-        SetWindowPos(hWnd, NULL, width/2 - (rect.right - rect.left) / 2, height/2 - (rect.bottom - rect.top)/2, -1, -1,
-          SWP_NOZORDER | SWP_NOSIZE);
+        SetWindowPos(hWnd,
+            NULL,
+            width / 2 - (rect.right - rect.left) / 2,
+            height / 2 - (rect.bottom - rect.top) / 2,
+            -1,
+            -1,
+            SWP_NOZORDER | SWP_NOSIZE);
         break;
       }
 
       case WM_COMMAND:
         switch (LOWORD(wParam))
         {
-          case IDCANCEL:
-            EndDialog(hWnd, 0);
-            return TRUE;
+          case IDCANCEL: EndDialog(hWnd, 0); return TRUE;
 
-          case IDOK:
-            EndDialog(hWnd, 1);
-            return TRUE;
+          case IDOK: EndDialog(hWnd, 1); return TRUE;
         }
         break; // end WM_COMMAND
 
@@ -262,7 +269,8 @@ namespace tano
         cur.SelectedDisplayMode = ComboBox_GetCurSel(GetDlgItem(hWnd, IDC_DISPLAY_MODES));
 
         HWND hMultisample = GetDlgItem(hWnd, IDC_MULTISAMPLE);
-        cur.multisampleCount = (int)ComboBox_GetItemData(hMultisample, ComboBox_GetCurSel(hMultisample));
+        cur.multisampleCount =
+            (int)ComboBox_GetItemData(hMultisample, ComboBox_GetCurSel(hMultisample));
 
         HWND hDisplayModes = GetDlgItem(hWnd, IDC_DISPLAY_MODES);
         int sel = ComboBox_GetCurSel(hDisplayModes);
@@ -296,19 +304,22 @@ namespace tano
     u32 ofs = 0;
     if (vertexFlags & VF_POS)
     {
-      desc->push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+      desc->push_back(
+          {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0});
       ofs += 12;
     }
 
     if (vertexFlags & VF_POS_XY)
     {
-      desc->push_back({ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+      desc->push_back(
+          {"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0});
       ofs += 8;
     }
 
     if (vertexFlags & VF_NORMAL)
     {
-      desc->push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+      desc->push_back(
+          {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0});
       ofs += 12;
     }
 
@@ -318,25 +329,29 @@ namespace tano
       // uv before col
       if (vertexFlags & VF_TEX2_0)
       {
-        desc->push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+        desc->push_back(
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0});
         ofs += 8;
       }
 
       if (vertexFlags & VF_TEX3_0)
       {
-        desc->push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+        desc->push_back(
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0});
         ofs += 12;
       }
 
       if (vertexFlags & VF_COLOR)
       {
-        desc->push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+        desc->push_back(
+            {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0});
         ofs += 16;
       }
 
       if (vertexFlags & VF_COLOR_U32)
       {
-        desc->push_back({ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+        desc->push_back(
+            {"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0});
         ofs += 4;
       }
     }
@@ -345,32 +360,34 @@ namespace tano
       // col before uv
       if (vertexFlags & VF_COLOR)
       {
-        desc->push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+        desc->push_back(
+            {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0});
         ofs += 16;
       }
 
       if (vertexFlags & VF_COLOR_U32)
       {
-        desc->push_back({ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+        desc->push_back(
+            {"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0});
         ofs += 4;
       }
 
       if (vertexFlags & VF_TEX2_0)
       {
-        desc->push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+        desc->push_back(
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0});
         ofs += 8;
       }
 
       if (vertexFlags & VF_TEX3_0)
       {
-        desc->push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+        desc->push_back(
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, ofs, D3D11_INPUT_PER_VERTEX_DATA, 0});
         ofs += 12;
       }
-
     }
   }
 }
-
 
 //------------------------------------------------------------------------------
 bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
@@ -389,22 +406,32 @@ bool SwapChain::CreateBackBuffers(u32 width, u32 height, DXGI_FORMAT format)
   D3D11_RENDER_TARGET_VIEW_DESC rtViewDesc;
   ZeroMemory(&rtViewDesc, sizeof(rtViewDesc));
   rtViewDesc.Format = rt->texture.desc.Format;
-  rtViewDesc.ViewDimension = 
-    rt->texture.desc.SampleDesc.Count == 1 ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DMS;
-  INIT_HR_FATAL(GRAPHICS._device->CreateRenderTargetView(rt->texture.ptr, &rtViewDesc, &rt->view.ptr));
+  rtViewDesc.ViewDimension = rt->texture.desc.SampleDesc.Count == 1
+                                 ? D3D11_RTV_DIMENSION_TEXTURE2D
+                                 : D3D11_RTV_DIMENSION_TEXTURE2DMS;
+  INIT_HR_FATAL(
+      GRAPHICS._device->CreateRenderTargetView(rt->texture.ptr, &rtViewDesc, &rt->view.ptr));
   rt->view.ptr->GetDesc(&rt->view.desc);
 
   DepthStencilResource* depthStencil = new DepthStencilResource();
 
-  CD3D11_TEXTURE2D_DESC depthStencilDesc(
-    DXGI_FORMAT_D24_UNORM_S8_UINT, width, height, 1, 1,
-    D3D11_BIND_DEPTH_STENCIL, D3D11_USAGE_DEFAULT, 0, _desc.SampleDesc.Count);
+  CD3D11_TEXTURE2D_DESC depthStencilDesc(DXGI_FORMAT_D24_UNORM_S8_UINT,
+      width,
+      height,
+      1,
+      1,
+      D3D11_BIND_DEPTH_STENCIL,
+      D3D11_USAGE_DEFAULT,
+      0,
+      _desc.SampleDesc.Count);
 
   // Create depth stencil buffer and view
-  INIT_HR_FATAL(GRAPHICS._device->CreateTexture2D(&depthStencilDesc, NULL, &depthStencil->texture.ptr));
+  INIT_HR_FATAL(
+      GRAPHICS._device->CreateTexture2D(&depthStencilDesc, NULL, &depthStencil->texture.ptr));
   depthStencil->texture.ptr->GetDesc(&depthStencil->texture.desc);
 
-  INIT_HR_FATAL(GRAPHICS._device->CreateDepthStencilView(depthStencil->texture.ptr, NULL, &depthStencil->view.ptr));
+  INIT_HR_FATAL(GRAPHICS._device->CreateDepthStencilView(
+      depthStencil->texture.ptr, NULL, &depthStencil->view.ptr));
   depthStencil->view.ptr->GetDesc(&depthStencil->view.desc);
 
   // register the render-target and depth-stencil
@@ -426,16 +453,17 @@ void SwapChain::Present()
 }
 
 //------------------------------------------------------------------------------
-ScopedRenderTarget::ScopedRenderTarget(int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags)
-  : _desc(width, height, format)
-  , _rtHandle(GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags))
+ScopedRenderTarget::ScopedRenderTarget(
+    int width, int height, DXGI_FORMAT format, const BufferFlags& bufferFlags)
+    : _desc(width, height, format)
+    , _rtHandle(GRAPHICS.GetTempRenderTarget(width, height, format, bufferFlags))
 {
 }
 
 //------------------------------------------------------------------------------
 ScopedRenderTarget::ScopedRenderTarget(const RenderTargetDesc& desc, const BufferFlags& bufferFlags)
-  : _desc(desc)
-  , _rtHandle(GRAPHICS.GetTempRenderTarget(desc.width, desc.height, desc.format, bufferFlags))
+    : _desc(desc)
+    , _rtHandle(GRAPHICS.GetTempRenderTarget(desc.width, desc.height, desc.format, bufferFlags))
 {
 }
 
@@ -454,7 +482,8 @@ ScopedRenderTarget::~ScopedRenderTarget()
 }
 
 //----------------------------------------------outputDe--------------------------------
-ScopedRenderTargetFull::ScopedRenderTargetFull(DXGI_FORMAT format, BufferFlags rtFlags, BufferFlags dsFlags)
+ScopedRenderTargetFull::ScopedRenderTargetFull(
+    DXGI_FORMAT format, BufferFlags rtFlags, BufferFlags dsFlags)
 {
   _desc.format = format;
   GRAPHICS.GetBackBufferSize(&_desc.width, &_desc.height);

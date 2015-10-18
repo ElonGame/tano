@@ -60,7 +60,7 @@ bool Fluid::Init()
     };
 
     vector<u32> indices;
-    GeneratePlaneIndices(NUM_GRIDS + 1, NUM_GRIDS + 1, &indices);
+    GeneratePlaneIndices(NUM_GRIDS + 1, NUM_GRIDS + 1, 0, &indices);
     // clang-format off
     INIT(_backgroundBundle.Create(BundleOptions()
       .RasterizerDesc(rasterizeDescCullNone)
