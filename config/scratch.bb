@@ -83,14 +83,19 @@ namespace plexus
 
 namespace tunnel
 {
-    vec3 lineParams = { 5.0, 1.25, 1500 };
+    vec3 lineParams = { 7.0, 2.25, 1500 };
     float radius = 200;
     float speed = 5;
     int segments = 50;
 
     vec2 cameraParams = { 100, 100 };
 
-    float dirScale = 0.1; 
+    float dirScale = 0.1;
+
+    float ofsScale = 23.12;
+    float lenScale = 0.01;
+    float rScale = 5.233;
+    float rProb = 0.5;
 }
 
 namespace fluid

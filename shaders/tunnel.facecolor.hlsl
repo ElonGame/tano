@@ -69,15 +69,9 @@ void GsFace(triangle VsFaceOut input[3], inout TriangleStream<PsFaceIn> outStrea
 float4 PsFace(PsFaceIn p) : SV_Target
 {
   float3 n = normalize(p.normal);
-
   float3 l = normalize(cameraPos - p.pos_ws);
 
-  int idx = (p.pos_ws.z / 50) % 3;
-  float4 cols[3] = {
-    float4(0.8, 0.8, 0.8, 1),
-    float4(0.3, 0.5, 0.8, 1),
-    float4(0.8, 0.8, 0.8, 1),
-  };
+  float diffuse = saturate(dot(n, l));
 
-  return saturate(dot(n, l)) * cols[idx];
+  return float4(diffuse, diffuse, diffuse, diffuse);
 }

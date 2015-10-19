@@ -8,6 +8,7 @@ cbuffer PS : register(b0)
 cbuffer GS : register(b0)
 {
   matrix world;
+  matrix view;
   matrix viewProj;
   float3 cameraPos;
   float4 dim;
@@ -30,6 +31,7 @@ struct VsLinesOut
 struct PsLinesIn
 {
   float4 pos  : SV_Position;
+  float3 pos_vs : Position;
   // These values represent a point and direction in screen space, so
   // we don't want them perspectively interpolated
   noperspective float4 posDir: TEXCOORD0;
@@ -94,21 +96,25 @@ void GsTunnelLines(line VsLinesOut input[2], inout TriangleStream<PsLinesIn> out
   output.endPoints.xy = points[0];
   output.endPoints.zw = points[1];
   output.pos = mul(float4(p0, 1), worldViewProj);
+  output.pos_vs = mul(float4(p0, 1), view).xyz;
   output.posDir.xy = points[0];
   output.posDir.zw = dirs[0];
   outStream.Append(output);
 
   output.pos = mul(float4(p1, 1), worldViewProj);
+  output.pos_vs = mul(float4(p1, 1), view).xyz;
   output.posDir.xy = points[0];
   output.posDir.zw = dirs[0];
   outStream.Append(output);
 
   output.pos = mul(float4(p2, 1), worldViewProj);
+  output.pos_vs = mul(float4(p2, 1), view).xyz;
   output.posDir.xy = points[1];
   output.posDir.zw = dirs[1];
   outStream.Append(output);
 
   output.pos = mul(float4(p3, 1), worldViewProj);
+  output.pos_vs = mul(float4(p3, 1), view).xyz;
   output.posDir.xy = points[1];
   output.posDir.zw = dirs[1];
   outStream.Append(output);
@@ -146,5 +152,7 @@ float4 PsTunnelLines(PsLinesIn p) : SV_Target
   float alpha = 1 - pow(t, params.y);
   alpha *= 1-smoothstep(0, params.z, distAB);
 
-  return WireColor * alpha * fade;
+  // scale with view space distance
+  float s = saturate(1 - p.pos_vs.z / 2000); 
+  return s * WireColor * alpha * fade;
 }

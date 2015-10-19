@@ -17,6 +17,7 @@
 using namespace tano;
 using namespace bristol;
 
+static float START_OFS = -2;
 static float Z_SPACING = 50;
 static int CAMERA_STEP = 10;
 static int TUNNEL_DEPTH = 100;
@@ -107,12 +108,28 @@ bool Tunnel::Init()
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT))
     .PixelShader("shaders/out/tunnel.mesh", "PsMesh")));
+
+  INIT(_particleBundle.Create(BundleOptions()
+    .DynamicVb(1024 * 1024, sizeof(vec3))
+    .VertexShader("shaders/out/tunnel.particle", "VsParticle")
+    .GeometryShader("shaders/out/tunnel.particle", "GsParticle")
+    .PixelShader("shaders/out/tunnel.particle", "PsParticle")
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
+    .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
+    .DepthStencilDesc(depthDescDepthWriteDisabled)
+    .BlendDesc(blendDescBlendOneOne)
+    .RasterizerDesc(rasterizeDescCullNone)));
+
   // clang-format on
 
-  INIT(_cbLines.Create());
-  INIT(_cbComposite.Create());
-  INIT(_cbMesh.Create());
-  INIT(_cbFace.Create());
+  INIT_FATAL(_cbLines.Create());
+  INIT_FATAL(_cbComposite.Create());
+  INIT_FATAL(_cbMesh.Create());
+  INIT_FATAL(_cbFace.Create());
+  INIT_FATAL(_cbParticle.Create());
+
+  // Particles
+  INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture("gfx/particle_white.png"));
 
   // MeshLoader loader;
   // INIT_FATAL(loader.Load("gfx/newblob2.boba"));
@@ -145,7 +162,6 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
   int MAX_N = 16;
   int* neighbours = g_ScratchMemory.Alloc<int>(16 * 1024 * MAX_N);
 
-  float START_OFS = -2;
   int tmp = (int)((_freeflyCamera._pos.z / Z_SPACING) / Z_SPACING * Z_SPACING);
   float distSnapped = (float)tmp;
 
@@ -161,9 +177,8 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
     for (int i = 0; i < numSegments; ++i)
     {
       vec3 p = pos + radius * vec3(cosf(angle), sinf(angle), 0);
-      //_tunnelFaceVerts.Append(p);
       points[idx] = p;
-      //points[idx] = p;
+
       // add neighbours
       int n = 0;
 
@@ -205,22 +220,39 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
   }
 
   // Add the face polygons
-  for (int j = 0; j < TUNNEL_DEPTH - 1; ++j)
   {
-    for (int i = 0; i < TUNNEL_SEGMENTS; ++i)
+    float a = g_Blackboard->GetFloatVar("tunnel.ofsScale");
+    float b = g_Blackboard->GetFloatVar("tunnel.lenScale");
+    float c = g_Blackboard->GetFloatVar("tunnel.rScale");
+    float prob = g_Blackboard->GetFloatVar("tunnel.rProb");
+    float distSnapped = (float)tmp;
+    for (int j = 0; j < TUNNEL_DEPTH - 1; ++j)
     {
-      _tunnelFaceVerts.Append(points[(j + 1) * TUNNEL_SEGMENTS + i]);
-      _tunnelFaceVerts.Append(points[(j + 0) * TUNNEL_SEGMENTS + i]);
-      _tunnelFaceVerts.Append(points[(j + 1) * TUNNEL_SEGMENTS + (i + 1) % TUNNEL_SEGMENTS]);
+      vec3 pos = _spline.Interpolate(distSnapped + (float)j + START_OFS);
 
-      _tunnelFaceVerts.Append(points[(j + 1) * TUNNEL_SEGMENTS + (i + 1) % TUNNEL_SEGMENTS]);
-      _tunnelFaceVerts.Append(points[(j + 0) * TUNNEL_SEGMENTS + i]);
-      _tunnelFaceVerts.Append(points[(j + 0) * TUNNEL_SEGMENTS + (i + 1) % TUNNEL_SEGMENTS]);
+      int startSegment = (int)(pos.z * a) % TUNNEL_SEGMENTS;
+      int numSegments = (int)(pos.z * b) % TUNNEL_SEGMENTS;
 
-      _numTunnelFaces += 2;
+      // check if we should draw this segment at all
+      float zz = (pos.z * c) - floorf(pos.z * c);
+      if (prob < zz)
+        continue;
+
+      for (int i = 0; i < numSegments; ++i)
+      {
+        int s = (i + startSegment) % TUNNEL_SEGMENTS;
+        _tunnelFaceVerts.Append(points[(j + 1) * TUNNEL_SEGMENTS + s]);
+        _tunnelFaceVerts.Append(points[(j + 0) * TUNNEL_SEGMENTS + s]);
+        _tunnelFaceVerts.Append(points[(j + 1) * TUNNEL_SEGMENTS + (s + 1) % TUNNEL_SEGMENTS]);
+
+        _tunnelFaceVerts.Append(points[(j + 1) * TUNNEL_SEGMENTS + (s + 1) % TUNNEL_SEGMENTS]);
+        _tunnelFaceVerts.Append(points[(j + 0) * TUNNEL_SEGMENTS + s]);
+        _tunnelFaceVerts.Append(points[(j + 0) * TUNNEL_SEGMENTS + (s + 1) % TUNNEL_SEGMENTS]);
+
+        _numTunnelFaces += 2;
+      }
     }
   }
-
 
   int plexusVerts = CalcPlexusGrouping(
       _tunnelPlexusVerts.Data(), points, idx, neighbours, MAX_N, _settings.plexus);
@@ -265,6 +297,7 @@ void Tunnel::UpdateCameraMatrix(const UpdateState& state)
   Matrix viewProj = view * proj;
   _cbLines.gs0.world = Matrix::Identity();
   _cbLines.gs0.viewProj = viewProj.Transpose();
+  _cbLines.gs0.view = view.Transpose();
   _cbLines.gs0.cameraPos = _freeflyCamera._pos;
 
   float t = state.localTime.TotalSecondsAsFloat();
@@ -274,11 +307,19 @@ void Tunnel::UpdateCameraMatrix(const UpdateState& state)
   RenderTargetDesc desc = g_Graphics->GetBackBufferDesc();
   vec4 dim((float)desc.width, (float)desc.height, 0, 0);
   _cbFace.vs0.viewProj = viewProj.Transpose();
-  //_cbFace.vs0.world = Matrix::Identity();
-  //_cbFace.vs0.cameraPos = _freeflyCamera._pos;
   _cbFace.ps0.cameraPos = _freeflyCamera._pos;
 
-  //_cbFace.gs0.dim = dim;
+  // The depth value written to the z-buffer is after the w-divide,
+  // but the z-value we compare against is still in proj-space, so
+  // we'll need to do the backward transform:
+  // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))
+  float n = _freeflyCamera._nearPlane;
+  float f = _freeflyCamera._farPlane;
+
+  _cbParticle.ps0.nearFar = vec4(n, f, f * n, f - n);
+  _cbParticle.gs0.world = Matrix::Identity();
+  _cbParticle.gs0.viewProj = viewProj.Transpose();
+  _cbParticle.gs0.cameraPos = _freeflyCamera._pos;
 }
 
 //------------------------------------------------------------------------------
@@ -292,10 +333,9 @@ bool Tunnel::Render()
   _ctx->SetSwapChain(g_Graphics->DefaultSwapChain(), black);
 
   ScopedRenderTargetFull rtColor(
-      DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
+    DXGI_FORMAT_R11G11B10_FLOAT, BufferFlag::CreateSrv, BufferFlag::CreateSrv);
   _ctx->SetRenderTarget(rtColor._rtHandle, rtColor._dsHandle, &black);
 
-#if 1
   {
     // tunnel face
 
@@ -307,12 +347,13 @@ bool Tunnel::Render()
     _cbFace.Set(_ctx, 0);
     _ctx->SetBundle(_tunnelFaceBundle);
     _ctx->Draw(_tunnelFaceVerts.Size(), 0);
-    //_ctx->DrawIndexed(_numTunnelFaceIndices, 0, 0);
   }
+
+  ScopedRenderTarget rtLines(DXGI_FORMAT_R11G11B10_FLOAT, BufferFlag::CreateSrv);
+  _ctx->SetRenderTarget(rtLines, g_Graphics->GetBackBuffer(), &black);
 
   {
     // tunnel
-
     ObjectHandle h = _linesBundle.objects._vb;
     vec3* verts = _ctx->MapWriteDiscard<vec3>(h);
     memcpy(verts, _tunnelPlexusVerts.Data(), _tunnelPlexusVerts.DataSize());
@@ -328,42 +369,41 @@ bool Tunnel::Render()
     _ctx->Draw(numVerts, 0);
   }
 
-
-#endif
+  _ctx->UnsetRenderTargets(0, 1);
 
   {
-    // mesh
-    _cbMesh.Set(_ctx, 0);
-    _ctx->SetBundle(_meshBundle);
-
-    for (scene::MeshBuffer* buf : _scene.meshBuffers)
+    vec3* vtx = _ctx->MapWriteDiscard<vec3>(_particleBundle.objects._vb);
+    int numBoids = 1000;
+    for (int i = 0; i < numBoids; ++i)
     {
-      _ctx->SetVertexBuffer(buf->vb);
-      _ctx->SetIndexBuffer(buf->ib);
-
-      for (scene::Mesh* mesh : buf->meshes)
-      {
-        Matrix mtx = mesh->mtxLocal;
-        if (mesh->parentPtr)
-        {
-          mtx = mtx * mesh->parentPtr->mtxLocal;
-        }
-
-        _cbMesh.vs1.objWorld = mtx.Transpose();
-        _cbMesh.Set(_ctx, 1);
-        _ctx->DrawIndexed(mesh->indexCount, mesh->startIndexLocation, mesh->baseVertexLocation);
-      }
+      vec3 pos = _spline.Interpolate(i + START_OFS);
+      vtx[i] = pos;
     }
+
+    _ctx->Unmap(_particleBundle.objects._vb);
+
+    _cbParticle.Set(_ctx, 0);
+    _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
+
+    // Unset the DSV, as we want to use it as a texture resource
+    _ctx->SetRenderTarget(rtColor._rtHandle, ObjectHandle(), nullptr);
+    ObjectHandle srv[] = { _particleTexture, rtColor._dsHandle };
+    _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
+    _ctx->Draw(numBoids, 0);
+    _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
   }
+
+  ScopedRenderTarget rtColorBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
+  fullscreen->Blur(rtColor, rtColorBlurred, rtColorBlurred._desc, 10, 2);
 
   {
     // composite
     _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
-    ObjectHandle inputs[] = {rtColor, rtColor._dsHandle};
+    ObjectHandle inputs[] = {rtColor, rtLines, rtColorBlurred};
     fullscreen->Execute(inputs,
-        2,
+        3,
         g_Graphics->GetBackBuffer(),
         g_Graphics->GetBackBufferDesc(),
         g_Graphics->GetDepthStencil(),

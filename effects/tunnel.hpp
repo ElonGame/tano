@@ -10,6 +10,8 @@
 #include "../shaders/out/tunnel.mesh_vsmesh.cbuffers.hpp"
 #include "../shaders/out/tunnel.facecolor_vsface.cbuffers.hpp"
 #include "../shaders/out/tunnel.facecolor_psface.cbuffers.hpp"
+#include "../shaders/out/tunnel.particle_gsparticle.cbuffers.hpp"
+#include "../shaders/out/tunnel.particle_psparticle.cbuffers.hpp"
 #include "../scene.hpp"
 
 namespace tano
@@ -70,6 +72,10 @@ namespace tano
       cb::TunnelMeshO, void, void> _cbMesh;
     GpuBundle _meshBundle;
     scene::Scene _scene;
+
+    ObjectHandle _particleTexture;
+    GpuBundle _particleBundle;
+    ConstantBufferBundle<void, cb::TunnelParticleP, cb::TunnelParticleG> _cbParticle;
 
     float _bonusTime = 0;
 

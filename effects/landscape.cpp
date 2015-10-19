@@ -265,9 +265,6 @@ bool Landscape::Init()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/landscape.lensflare", "PsLensFlare")));
 
-  CD3D11_BLEND_DESC particleBlendDesc(blendDescBlendOneOne);
-  //particleBlendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
-
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024, sizeof(vec3))
     .VertexShader("shaders/out/landscape.particle", "VsParticle")
@@ -276,7 +273,7 @@ bool Landscape::Init()
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
-    .BlendDesc(particleBlendDesc)));
+    .BlendDesc(blendDescBlendOneOne)));
 
   INIT(_boidsBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024, sizeof(vec3))
@@ -286,7 +283,7 @@ bool Landscape::Init()
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DepthStencilDesc(depthDescDepthWriteDisabled)
-    .BlendDesc(particleBlendDesc)
+    .BlendDesc(blendDescBlendOneOne)
     .RasterizerDesc(rasterizeDescCullNone)));
   // clang-format on
 
