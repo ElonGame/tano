@@ -32,9 +32,23 @@ static const float NOISE_SCALE_Z = 0.01f;
 
 static const float SPLINE_RADIUS = 500;
 
-/*
-  custom task scheduler: 24.2 ms
-*/
+struct FlockTiming
+{
+  float time;
+  int idx;
+};
+
+static const float FLOCK_FADE = 0.5f;
+
+vector<FlockTiming> FLOCK_TIMING = {
+  { 0.0f, 5 }, { 5.0f, 2 }, { 10.0f, 6 }, { 15.0f, 8 }, { 20.0f, 3 }, { 25.0f, 9 }, { 30.0f, 1 }, { 1000, 0 },
+};
+
+#define DEBUG_DRAW_PATH 0
+#define PROFILE_UPDATES 0
+
+int Landscape::Chunk::nextId = 1;
+
 
 //------------------------------------------------------------------------------
 inline float Dot(const DirectX::SimpleMath::Plane& plane, const vec3& pt)
@@ -137,23 +151,6 @@ int ClipPolygonAgainstPlane(int vertexCount, const vec3* vertex, const Plane& pl
 
   return (count);
 }
-
-struct FlockTiming
-{
-  float time;
-  int idx;
-};
-
-static const float FLOCK_FADE = 0.5f;
-
-vector<FlockTiming> FLOCK_TIMING = {
-    {0.0f, 5}, {5.0f, 2}, {10.0f, 6}, {15.0f, 8}, {20.0f, 3}, {25.0f, 9}, {30.0f, 1}, {1000, 0},
-};
-
-#define DEBUG_DRAW_PATH 0
-#define PROFILE_UPDATES 0
-
-int Landscape::Chunk::nextId = 1;
 
 //------------------------------------------------------------------------------
 float NoiseAtPoint(const vec3& v)
@@ -269,7 +266,7 @@ bool Landscape::Init()
     .PixelShader("shaders/out/landscape.lensflare", "PsLensFlare")));
 
   CD3D11_BLEND_DESC particleBlendDesc(blendDescBlendOneOne);
-  particleBlendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
+  //particleBlendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALPHA;
 
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024, sizeof(vec3))
@@ -558,13 +555,6 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   _cbLandscape.vs0.world = Matrix::Identity();
   _cbLandscape.vs0.viewProj = viewProj.Transpose();
   _cbLandscape.vs0.cameraPos = _curCamera->_pos;
-
-  // XXX: move scratch to shared
-  // float beatHi = g_Blackboard->GetFloatVar("Beat-Hi", state.globalTime.TotalSecondsAsFloat());
-  // float beatLo = g_Blackboard->GetFloatVar("Beat-Lo", state.globalTime.TotalSecondsAsFloat());
-  float beatHi = 0;
-  float beatLo = 0;
-  _cbLandscape.vs0.musicParams = vec4(beatHi, beatLo, 0, 0);
 
   _cbLandscape.gs0.dim = dim;
 
@@ -953,7 +943,7 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
   _ctx->SetBundleWithSamplers(_boidsBundle, ShaderType::PixelShader);
 
   // Unset the DSV, as we want to use it as a texture resource
-  _ctx->SetRenderTargets(renderTargets, 2, ObjectHandle(), nullptr);
+  _ctx->SetRenderTargets(renderTargets, 1, ObjectHandle(), nullptr);
   ObjectHandle srv[] = {_particleTexture, dsHandle};
   _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
   _ctx->Draw(numBoids, 0);

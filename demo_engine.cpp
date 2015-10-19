@@ -82,13 +82,6 @@ void DemoEngine::Create()
 //------------------------------------------------------------------------------
 bool DemoEngine::Start()
 {
-#if WITH_MUSIC
-  BASS_Start();
-  BASS_ChannelPlay(_stream, false);
-  if (_settings.silent)
-    BASS_ChannelSetAttribute(_stream, BASS_ATTRIB_VOL, 0);
-#endif
-
   // Tick a few zero frames to make sure everything is allocated up front etc
   for (int i = 0; i < 3; ++i)
   {
@@ -102,6 +95,13 @@ bool DemoEngine::Start()
       }
     }
   }
+
+#if WITH_MUSIC
+  BASS_Start();
+  BASS_ChannelPlay(_stream, false);
+  if (_settings.silent)
+    BASS_ChannelSetAttribute(_stream, BASS_ATTRIB_VOL, 0);
+#endif
 
   _demoTimer.Start();
   _globalTimer.Start();

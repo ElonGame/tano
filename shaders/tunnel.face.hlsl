@@ -12,12 +12,12 @@ cbuffer V : register(b0)
   float3 cameraPos;
 };
 
-struct VsLandscapeIn
+struct VsFaceIn
 {
   float3 pos : Position;
 };
 
-struct VsLandscapeOut
+struct VsFaceOut
 {
     float4 pos  : SV_Position;
     float3 pos_ws : Position;
@@ -25,9 +25,10 @@ struct VsLandscapeOut
     float distance : TexCoord1;
 };
 
-struct PsLandscapeIn
+struct PsFaceIn
 {
     float4 pos : SV_POSITION;
+    float3 pos_ws : Position;
     noperspective float4 EdgeA: TEXCOORD1;
     noperspective float4 EdgeB: TEXCOORD2;
     uint Case : TEXCOORD3;
@@ -37,9 +38,9 @@ struct PsLandscapeIn
 };
 
 // entry-point: vs
-VsLandscapeOut VsLandscape(VsLandscapeIn v)
+VsFaceOut VsFace(VsFaceIn v)
 {
-  VsLandscapeOut res;
+  VsFaceOut res;
   matrix worldViewProj = mul(world, viewProj);
 
   // This is the biggest cheese, but if I don't do it, everything goes to hell..
@@ -65,9 +66,9 @@ float2 projToWindow(in float4 pos)
 
 [maxvertexcount(3)]
 // entry-point: gs
-void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandscapeIn> outStream)
+void GsFace(triangle VsFaceOut input[3], inout TriangleStream<PsFaceIn> outStream)
 {
-    PsLandscapeIn output;
+    PsFaceIn output;
 
     // Compute the case from the positions of point in space.
     output.Case = (input[0].pos.z <= 0)*4 + (input[1].pos.z <= 0)*2 + (input[2].pos.z <= 0);
@@ -116,32 +117,35 @@ void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandsc
         // To compute the height for each vertex, use ex:
         // sin(P2) = h1/e2 => h1 = e2 * sin(P2)
         // and: sin(theta) = sqrt(1 - cos^2(theta))
-        output.pos =( input[0].pos );
+        output.pos = input[0].pos;
+        output.pos_ws = input[0].pos_ws;
         output.EdgeA[0] = 0;
         output.EdgeA[1] = lengths[2]*sqrt(1 - cosAngles[2]*cosAngles[2]);
         output.EdgeA[2] = 0;
         //output.normal = input[0].normal;
         output.rayDir = input[0].rayDir;
         output.distance = input[0].distance;
-        outStream.Append( output );
+        outStream.Append(output);
 
-        output.pos = ( input[1].pos );
+        output.pos = input[1].pos;
+        output.pos_ws = input[1].pos_ws;
         output.EdgeA[0] = 0;
         output.EdgeA[1] = 0;
         output.EdgeA[2]= lengths[0]*sqrt(1 - cosAngles[0]*cosAngles[0]);
         //output.normal = input[1].normal;
         output.rayDir = input[1].rayDir;
         output.distance = input[1].distance;
-        outStream.Append( output );
+        outStream.Append(output);
 
-        output.pos = ( input[2].pos );
+        output.pos = input[2].pos;
+        output.pos_ws = input[2].pos_ws;
         output.EdgeA.x = lengths[1]*sqrt(1 - cosAngles[1]*cosAngles[1]);
         output.EdgeA[1] = 0;
         output.EdgeA[2] = 0;
         //output.normal = input[2].normal;
         output.rayDir = input[2].rayDir;
         output.distance = input[2].distance;
-        outStream.Append( output );
+        outStream.Append(output);
 
         outStream.RestartStrip();
     }
@@ -163,29 +167,29 @@ void GsLandscape(triangle VsLandscapeOut input[3], inout TriangleStream<PsLandsc
         output.EdgeB.zw = normalize( output.EdgeB.xy - points[ infoBd[output.Case] ] );
     
         // Generate vertices
-        output.pos =( input[0].pos );
-        //output.normal = input[0].normal;
+        output.pos = input[0].pos;
+        output.pos_ws = input[0].pos_ws;
         output.rayDir = input[0].rayDir;
         output.distance = input[0].distance;
-        outStream.Append( output );
+        outStream.Append(output);
      
-        output.pos = ( input[1].pos );
-        //output.normal = input[1].normal;
+        output.pos = input[1].pos;
+        output.pos_ws = input[1].pos_ws;
         output.rayDir = input[1].rayDir;
         output.distance = input[1].distance;
-        outStream.Append( output );
+        outStream.Append(output);
 
-        output.pos = ( input[2].pos );
-        //output.normal = input[2].normal;
+        output.pos = input[2].pos;
+        output.pos_ws = input[2].pos_ws;
         output.rayDir = input[2].rayDir;
         output.distance = input[2].distance;
-        outStream.Append( output );
+        outStream.Append(output);
 
         outStream.RestartStrip();
     }
 }
 
-float MainDistanceToEdge(in PsLandscapeIn input)
+float MainDistanceToEdge(in PsFaceIn input)
 {
     float dist;
 
@@ -224,23 +228,12 @@ float MainDistanceToEdge(in PsLandscapeIn input)
     return dist;
 }
 
-static float4 ColorCases[] = {
-    { 1, 1, 1, 1 }, 
-    { 1, 1, 0, 1 },
-    { 1, 0, 1, 1 },
-    { 1, 0, 0, 1 },
-    { 0, 1, 1, 1 },
-    { 0, 1, 0, 1 },
-    { 0, 0, 1, 1 }
-}; 
-
 static float4 WireColor = float4(1, 1, 1, 1);
-static float LineWidth = 2;
+static float LineWidth = 3;
 
 // entry-point: ps
-PsColBrightnessOut PsLandscape(PsLandscapeIn p)
+float4 PsFace(PsFaceIn p) : SV_Target
 {
-    PsColBrightnessOut res;
 
     // Compute the shortest distance between the fragment and the edges.
     float dist = MainDistanceToEdge(p);
@@ -254,7 +247,10 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
     float alpha = exp2(-2*dist);
 
     float3 amb = float3(0.01, 0.01, 0.01);
-    float dff = saturate(dot(-SUN_DIR, p.normal));
+
+    float3 l = normalize(cameraPos - p.pos_ws);
+
+    float dff = saturate(dot(l, p.normal));
 
     float3 diffuseCol = float3(130, 45, 130) / 255;
 
@@ -266,9 +262,5 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
     float3 fogColor = FogColor(p.rayDir);
     col = lerp(col, fogColor, fogAmount);
 
-    res.col = float4(col, 0.9);
-    float lum = Luminance(col.rgb);
-    res.emissive.rgb = 0;
-    res.emissive.a = smoothstep(0.3, 1, 2 * lum);
-    return res;
+    return float4(col, 1);
 }

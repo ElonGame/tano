@@ -19,6 +19,9 @@ using namespace bristol;
 
 static float Z_SPACING = 50;
 static int CAMERA_STEP = 10;
+static int TUNNEL_DEPTH = 100;
+// note, this is mirrored in scratch.bb
+static int TUNNEL_SEGMENTS = 50;
 
 //------------------------------------------------------------------------------
 Tunnel::Tunnel(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
@@ -68,6 +71,20 @@ bool Tunnel::Init()
   }
 
   // clang-format off
+
+  vector<u32> indices = CreateCylinderIndices(TUNNEL_SEGMENTS, TUNNEL_DEPTH);
+  _numTunnelFaceIndices = (u32)indices.size();
+
+  INIT_FATAL(_tunnelFaceBundle.Create(BundleOptions()
+    .VertexShader("shaders/out/tunnel.facecolor", "VsFace")
+    .GeometryShader("shaders/out/tunnel.facecolor", "GsFace")
+    .PixelShader("shaders/out/tunnel.facecolor", "PsFace")
+    .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
+    //.InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
+    .RasterizerDesc(rasterizeDescCullNone)
+    .DynamicVb(128 * 1024, sizeof(vec3))
+    .StaticIb(indices)));
+
   INIT_FATAL(_linesBundle.Create(BundleOptions()
     .VertexShader("shaders/out/tunnel.lines", "VsTunnelLines")
     .GeometryShader("shaders/out/tunnel.lines", "GsTunnelLines")
@@ -75,6 +92,7 @@ bool Tunnel::Init()
     .VertexFlags(VF_POS)
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
+    //.DepthStencilDesc(depthDescDepthWriteDisabled)
     .DepthStencilDesc(depthDescDepthDisabled)
     .DynamicVb(128 * 1024, sizeof(vec3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
@@ -94,10 +112,11 @@ bool Tunnel::Init()
   INIT(_cbLines.Create());
   INIT(_cbComposite.Create());
   INIT(_cbMesh.Create());
+  INIT(_cbFace.Create());
 
-  //MeshLoader loader;
-  //INIT_FATAL(loader.Load("gfx/newblob2.boba"));
-  //INIT_FATAL(CreateScene(loader, SceneOptions(), &_scene));
+  // MeshLoader loader;
+  // INIT_FATAL(loader.Load("gfx/newblob2.boba"));
+  // INIT_FATAL(CreateScene(loader, SceneOptions(), &_scene));
 
   END_INIT_SEQUENCE();
 }
@@ -108,9 +127,9 @@ bool Tunnel::Update(const UpdateState& state)
   vec3 pos(vec3(_freeflyCamera._pos));
 
   vec2 cameraParams = g_Blackboard->GetVec2Var("tunnel.cameraParams");
-  _tunnelVerts.Clear();
+  _tunnelPlexusVerts.Clear();
+  _tunnelOrgVerts.Clear();
 
-  // NormalUpdate(state);
   PlexusUpdate(state);
   UpdateCameraMatrix(state);
   return true;
@@ -122,33 +141,40 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
   float radius = g_Blackboard->GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
   int numSegments = g_Blackboard->GetIntVar("tunnel.segments");
 
-  vec3* points = g_ScratchMemory.Alloc<vec3>(16 * 1024);
   int MAX_N = 16;
   int* neighbours = g_ScratchMemory.Alloc<int>(16 * 1024 * MAX_N);
 
   float START_OFS = -2;
   int tmp = (int)((_freeflyCamera._pos.z / Z_SPACING) / Z_SPACING * Z_SPACING);
-  float distClamped = (float)tmp;
-  int depth = 50;
+  float distSnapped = (float)tmp;
 
-  int num = depth * numSegments;
+  int numVerts = TUNNEL_DEPTH * numSegments;
 
   int idx = 0;
-  for (int j = 0; j < depth; ++j)
+  for (int j = 0; j < TUNNEL_DEPTH; ++j)
   {
-    vec3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
+    vec3 pos = _spline.Interpolate(distSnapped + (float)j + START_OFS);
 
     float angle = 0;
     float angleInc = 2 * XM_PI / numSegments;
     for (int i = 0; i < numSegments; ++i)
     {
       vec3 p = pos + radius * vec3(cosf(angle), sinf(angle), 0);
-      points[idx] = p;
+      _tunnelOrgVerts.Append(p);
+      //points[idx] = p;
       // add neighbours
       int n = 0;
 
-      auto dn = [=](int n) { int tmp = i - n; return tmp < 0 ? tmp + numSegments : tmp; };
-      auto up = [=](int n) { int tmp = i + n; return tmp % numSegments; };
+      auto dn = [=](int n)
+      {
+        int tmp = i - n;
+        return tmp < 0 ? tmp + numSegments : tmp;
+      };
+      auto up = [=](int n)
+      {
+        int tmp = i + n;
+        return tmp % numSegments;
+      };
       int dn1 = dn(1), dn2 = dn(2);
       int up1 = up(1), up2 = up(2);
 
@@ -159,18 +185,14 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
       {
         neighbours[idx * MAX_N + n++] = ((j - 1) * numSegments) + i;
         neighbours[idx * MAX_N + n++] = ((j - 1) * numSegments) + dn1;
-        //neighbours[idx * MAX_N + n++] = ((j - 1) * numSegments) + dn2;
         neighbours[idx * MAX_N + n++] = ((j - 1) * numSegments) + up1;
-        //neighbours[idx * MAX_N + n++] = ((j - 1) * numSegments) + up2;
       }
 
-      if (j < depth - 1)
+      if (j < TUNNEL_DEPTH - 1)
       {
         neighbours[idx * MAX_N + n++] = ((j + 1) * numSegments) + i;
         neighbours[idx * MAX_N + n++] = ((j + 1) * numSegments) + dn1;
-        //neighbours[idx * MAX_N + n++] = ((j + 1) * numSegments) + dn2;
         neighbours[idx * MAX_N + n++] = ((j + 1) * numSegments) + up1;
-        //neighbours[idx * MAX_N + n++] = ((j + 1) * numSegments) + up2;
       }
 
       neighbours[idx * MAX_N + n] = -1;
@@ -180,74 +202,9 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
     }
   }
 
-  int numVerts = CalcPlexusGrouping(_tunnelVerts.Data(), points, idx, neighbours, MAX_N, _settings.plexus);
-  _tunnelVerts.Resize(numVerts);
-}
-
-//------------------------------------------------------------------------------
-void Tunnel::NormalUpdate(const UpdateState& state)
-{
-  float radius = g_Blackboard->GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
-  int numSegments = g_Blackboard->GetIntVar("tunnel.segments");
-
-  SimpleAppendBuffer<vec3, 512> ring1, ring2;
-  SimpleAppendBuffer<vec3, 512>* rings[] = {&ring1, &ring2};
-
-  float START_OFS = -2;
-  int tmp = (int)((_freeflyCamera._pos.z / Z_SPACING) / Z_SPACING * Z_SPACING);
-  float distClamped = (float)tmp;
-  // create the first 2 rings
-  for (int j = 0; j < 2; ++j)
-  {
-    vec3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
-    float angle = 0;
-    float angleInc = 2 * XM_PI / numSegments;
-    vec3 prev = pos + radius * vec3(cosf(angle), sinf(angle), 0);
-    for (int i = 0; i < numSegments; ++i)
-    {
-      angle += angleInc;
-      vec3 p = pos + radius * vec3(cosf(angle), sinf(angle), 0);
-      rings[j]->Append(prev);
-      rings[j]->Append(p);
-      prev = p;
-    }
-  }
-
-  for (int j = 0; j < 50; ++j)
-  {
-    // copy out the first ring, add lines to the second, fill the first, and
-    // flip the buffers
-
-    auto& ring0 = *rings[0];
-    auto& ring1 = *rings[1];
-    for (int i = 0; i < numSegments * 2; ++i)
-    {
-      _tunnelVerts.Append(ring0[i]);
-    }
-
-    for (int i = 0; i < numSegments * 2; i += 2)
-    {
-      _tunnelVerts.Append(ring0[i]);
-      _tunnelVerts.Append(ring1[i]);
-    }
-
-    ring0.Clear();
-    vec3 pos = _spline.Interpolate(distClamped + (float)j + START_OFS);
-
-    float angle = 0;
-    float angleInc = 2 * XM_PI / numSegments;
-    vec3 prev = pos + radius * vec3(cosf(angle), sinf(angle), 0);
-    for (int i = 0; i < numSegments; ++i)
-    {
-      angle += angleInc;
-      vec3 p = pos + radius * vec3(cosf(angle), sinf(angle), 0);
-      ring0.Append(prev);
-      ring0.Append(p);
-      prev = p;
-    }
-
-    swap(rings[0], rings[1]);
-  }
+  int plexusVerts = CalcPlexusGrouping(
+      _tunnelPlexusVerts.Data(), _tunnelOrgVerts.Data(), idx, neighbours, MAX_N, _settings.plexus);
+  _tunnelPlexusVerts.Resize(plexusVerts);
 }
 
 //------------------------------------------------------------------------------
@@ -261,22 +218,20 @@ bool Tunnel::FixedUpdate(const FixedUpdateState& state)
 
   vec3 pos = _cameraSpline.Interpolate(_dist / CAMERA_STEP);
 
-  static bool useFreeFly = true;
-  if (!useFreeFly)
+  if (!_useFreeFly)
   {
-    _freeflyCamera._pos = pos + vec3(5 * sinf(state.localTime.TotalSecondsAsFloat()),
-      5 * cosf(state.localTime.TotalSecondsAsFloat()),
-      0);
+    // ha, anything related to using lo here pretty much makes you sick :)
+    float lo = g_Blackboard->GetFloatVar("Beat-Lo", state.globalTime.TotalSecondsAsFloat());
 
-    _freeflyCamera._dir = vec3(sinf(state.localTime.TotalSecondsAsFloat()) * dirScale,
-      cosf(state.localTime.TotalSecondsAsFloat()) * dirScale,
-      1);
+    float t = state.localTime.TotalSecondsAsFloat();
+    _freeflyCamera._pos = pos + vec3(5 * sinf(t + _bonusTime), 5 * cosf(t + _bonusTime), 0);
+    _freeflyCamera._dir = vec3(sinf(t) * dirScale, cosf(t) * dirScale, 1);
   }
 
   if (g_KeyUpTrigger.IsTriggered('1'))
-    useFreeFly = !useFreeFly;
+    _useFreeFly = !_useFreeFly;
 
-  //_freeflyCamera.SetFollowTarget(ToVector3(pos));
+  //_freeflyCamera .SetFollowTarget(ToVector3(pos));
   _freeflyCamera.Update(state.delta);
   return true;
 }
@@ -292,8 +247,18 @@ void Tunnel::UpdateCameraMatrix(const UpdateState& state)
   _cbLines.gs0.viewProj = viewProj.Transpose();
   _cbLines.gs0.cameraPos = _freeflyCamera._pos;
 
+  float t = state.localTime.TotalSecondsAsFloat();
   _cbMesh.vs0.viewProj = viewProj.Transpose();
-  _cbMesh.vs0.time = state.localTime.TotalSecondsAsFloat();
+  _cbMesh.vs0.time = t;
+
+  RenderTargetDesc desc = g_Graphics->GetBackBufferDesc();
+  vec4 dim((float)desc.width, (float)desc.height, 0, 0);
+  _cbFace.vs0.viewProj = viewProj.Transpose();
+  //_cbFace.vs0.world = Matrix::Identity();
+  //_cbFace.vs0.cameraPos = _freeflyCamera._pos;
+  _cbFace.ps0.cameraPos = _freeflyCamera._pos;
+
+  //_cbFace.gs0.dim = dim;
 }
 
 //------------------------------------------------------------------------------
@@ -312,21 +277,36 @@ bool Tunnel::Render()
 
 #if 1
   {
+    // tunnel face
+
+    ObjectHandle h = _tunnelFaceBundle.objects._vb;
+    vec3* verts = _ctx->MapWriteDiscard<vec3>(h);
+    memcpy(verts, _tunnelOrgVerts.Data(), _tunnelOrgVerts.DataSize());
+    _ctx->Unmap(h);
+
+    _cbFace.Set(_ctx, 0);
+    _ctx->SetBundle(_tunnelFaceBundle);
+    _ctx->DrawIndexed(_numTunnelFaceIndices, 0, 0);
+  }
+
+  {
     // tunnel
+
+    ObjectHandle h = _linesBundle.objects._vb;
+    vec3* verts = _ctx->MapWriteDiscard<vec3>(h);
+    memcpy(verts, _tunnelPlexusVerts.Data(), _tunnelPlexusVerts.DataSize());
+    _ctx->Unmap(h);
+
     _cbLines.gs0.dim = vec4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
     vec3 params = g_Blackboard->GetVec3Var("tunnel.lineParams");
     _cbLines.ps0.lineParams = vec4(params.x, params.y, params.z, 1);
     _cbLines.Set(_ctx, 0);
 
-    ObjectHandle h = _linesBundle.objects._vb;
-    vec3* verts = _ctx->MapWriteDiscard<vec3>(h);
-    memcpy(verts, _tunnelVerts.Data(), _tunnelVerts.DataSize());
-    _ctx->Unmap(h);
-
-    int numVerts = _tunnelVerts.Size();
+    int numVerts = _tunnelPlexusVerts.Size();
     _ctx->SetBundle(_linesBundle);
     _ctx->Draw(numVerts, 0);
   }
+
 
 #endif
 
@@ -403,9 +383,6 @@ void Tunnel::SaveParameterSet()
 void Tunnel::Reset()
 {
   _freeflyCamera._pos = vec3(0.f, 0.f, 0.f);
-  //_freeflyCamera._pitch = _freeflyCamera._yaw = _freeflyCamera._roll = 0.f;
-
-  //_greetsBlock.Init();
 }
 
 //------------------------------------------------------------------------------

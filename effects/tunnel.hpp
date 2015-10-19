@@ -8,6 +8,8 @@
 #include "../shaders/out/tunnel.lines_pstunnellines.cbuffers.hpp"
 #include "../shaders/out/tunnel.composite_pscomposite.cbuffers.hpp"
 #include "../shaders/out/tunnel.mesh_vsmesh.cbuffers.hpp"
+#include "../shaders/out/tunnel.facecolor_vsface.cbuffers.hpp"
+#include "../shaders/out/tunnel.facecolor_psface.cbuffers.hpp"
 #include "../scene.hpp"
 
 namespace tano
@@ -41,17 +43,22 @@ namespace tano
     void UpdateCameraMatrix(const UpdateState& state);
 
     void PlexusUpdate(const UpdateState& state);
-    void NormalUpdate(const UpdateState& state);
 
+    u32 _numTunnelFaceIndices = 0;
+    GpuBundle _tunnelFaceBundle;
+    //ConstantBufferBundle<cb::TunnelFaceV, cb::TunnelFaceV, cb::TunnelFaceG> _cbFace;
+    ConstantBufferBundle<cb::TunnelFacecolorV, cb::TunnelFacecolorP> _cbFace;
 
     GpuBundle _linesBundle;
-    GpuBundle _compositeBundle;
-
     ConstantBufferBundle<void, cb::TunnelLinesPS, cb::TunnelLinesGS> _cbLines;
+
+    GpuBundle _compositeBundle;
     ConstantBufferBundle<void, cb::TunnelCompositeF> _cbComposite;
 
-    SimpleAppendBuffer<vec3, 64 * 1024> _tunnelVerts;
+    SimpleAppendBuffer<vec3, 64 * 1024> _tunnelPlexusVerts;
+    SimpleAppendBuffer<vec3, 64 * 1024> _tunnelOrgVerts;
 
+    bool _useFreeFly = false;
     float _dist = 0;
     CardinalSpline _spline;
     CardinalSpline _cameraSpline;
@@ -62,5 +69,8 @@ namespace tano
       cb::TunnelMeshO, void, void> _cbMesh;
     GpuBundle _meshBundle;
     scene::Scene _scene;
+
+    float _bonusTime = 0;
+
   };
 }

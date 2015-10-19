@@ -86,7 +86,7 @@ namespace tunnel
     vec3 lineParams = { 5.0, 1.25, 1500 };
     float radius = 200;
     float speed = 5;
-    int segments = 20;
+    int segments = 50;
 
     vec2 cameraParams = { 100, 100 };
 

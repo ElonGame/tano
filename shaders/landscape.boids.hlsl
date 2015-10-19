@@ -91,10 +91,8 @@ static float intensity = 1.0;
 static float zEpsilon = 0.0;
 
 // entry-point: ps
-PsColBrightnessOut PsParticle(VsParticleOut p)
+float4 PsParticle(VsParticleOut p) : SV_Target
 {
-  PsColBrightnessOut res;
-
   // Texture0 = particle texture
   // Texture1 = zbuffer
   float2 uv = p.uv.xy;
@@ -118,9 +116,5 @@ PsColBrightnessOut PsParticle(VsParticleOut p)
   float3 fogColor = FogColor(p.rayDir);
   col.xyz = lerp(col.xyz, col.xyz * fogColor, fogAmount);
 
-  res.col = col;
-
-  res.emissive.rgb = 0;
-  res.emissive.a = 0; //Luminance(intensity * c * col.rgb);
-  return res;
+  return col;
 }

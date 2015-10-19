@@ -411,7 +411,6 @@
     <ClInclude Include="..\precompiled.hpp" />
     <ClInclude Include="..\property_manager.hpp" />
     <ClInclude Include="..\Remotery\lib\Remotery.h" />
-    <ClInclude Include="..\render_queue.hpp" />
     <ClInclude Include="..\resource_manager.hpp" />
     <ClInclude Include="..\scene.hpp" />
     <ClInclude Include="..\scheduler.hpp" />

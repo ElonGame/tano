@@ -11,7 +11,6 @@
       settings: 'config/intro.gb';
     },
     {
-      force: true;
       name: 'landscape';
       factory: 'landscape';
       start_time: 22500;
@@ -33,6 +32,7 @@
       settings: 'config/plexus.gb';
     },
     {
+      force: true;
       name: 'tunnel';
       factory: 'tunnel';
       start_time: 112000;

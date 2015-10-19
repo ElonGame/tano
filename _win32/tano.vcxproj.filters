@@ -285,9 +285,6 @@
     <ClInclude Include="..\generated\app.types.hpp">
       <Filter>generated</Filter>
     </ClInclude>
-    <ClInclude Include="..\render_queue.hpp">
-      <Filter>inc</Filter>
-    </ClInclude>
     <ClInclude Include="..\imgui\imconfig.h">
       <Filter>imgui</Filter>
     </ClInclude>
