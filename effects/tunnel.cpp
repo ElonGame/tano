@@ -82,8 +82,8 @@ bool Tunnel::Init()
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     //.InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
     .RasterizerDesc(rasterizeDescCullNone)
-    .DynamicVb(128 * 1024, sizeof(vec3))
-    .StaticIb(indices)));
+    .DynamicVb(128 * 1024, sizeof(vec3))));
+    //.StaticIb(indices)));
 
   INIT_FATAL(_linesBundle.Create(BundleOptions()
     .VertexShader("shaders/out/tunnel.lines", "VsTunnelLines")
@@ -128,7 +128,7 @@ bool Tunnel::Update(const UpdateState& state)
 
   vec2 cameraParams = g_Blackboard->GetVec2Var("tunnel.cameraParams");
   _tunnelPlexusVerts.Clear();
-  _tunnelOrgVerts.Clear();
+  _tunnelFaceVerts.Clear();
 
   PlexusUpdate(state);
   UpdateCameraMatrix(state);
@@ -141,6 +141,7 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
   float radius = g_Blackboard->GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
   int numSegments = g_Blackboard->GetIntVar("tunnel.segments");
 
+  vec3* points = g_ScratchMemory.Alloc<vec3>(16 * 1024);
   int MAX_N = 16;
   int* neighbours = g_ScratchMemory.Alloc<int>(16 * 1024 * MAX_N);
 
@@ -160,7 +161,8 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
     for (int i = 0; i < numSegments; ++i)
     {
       vec3 p = pos + radius * vec3(cosf(angle), sinf(angle), 0);
-      _tunnelOrgVerts.Append(p);
+      //_tunnelFaceVerts.Append(p);
+      points[idx] = p;
       //points[idx] = p;
       // add neighbours
       int n = 0;
@@ -202,8 +204,26 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
     }
   }
 
+  // Add the face polygons
+  for (int j = 0; j < TUNNEL_DEPTH - 1; ++j)
+  {
+    for (int i = 0; i < TUNNEL_SEGMENTS; ++i)
+    {
+      _tunnelFaceVerts.Append(points[(j + 1) * TUNNEL_SEGMENTS + i]);
+      _tunnelFaceVerts.Append(points[(j + 0) * TUNNEL_SEGMENTS + i]);
+      _tunnelFaceVerts.Append(points[(j + 1) * TUNNEL_SEGMENTS + (i + 1) % TUNNEL_SEGMENTS]);
+
+      _tunnelFaceVerts.Append(points[(j + 1) * TUNNEL_SEGMENTS + (i + 1) % TUNNEL_SEGMENTS]);
+      _tunnelFaceVerts.Append(points[(j + 0) * TUNNEL_SEGMENTS + i]);
+      _tunnelFaceVerts.Append(points[(j + 0) * TUNNEL_SEGMENTS + (i + 1) % TUNNEL_SEGMENTS]);
+
+      _numTunnelFaces += 2;
+    }
+  }
+
+
   int plexusVerts = CalcPlexusGrouping(
-      _tunnelPlexusVerts.Data(), _tunnelOrgVerts.Data(), idx, neighbours, MAX_N, _settings.plexus);
+      _tunnelPlexusVerts.Data(), points, idx, neighbours, MAX_N, _settings.plexus);
   _tunnelPlexusVerts.Resize(plexusVerts);
 }
 
@@ -281,12 +301,13 @@ bool Tunnel::Render()
 
     ObjectHandle h = _tunnelFaceBundle.objects._vb;
     vec3* verts = _ctx->MapWriteDiscard<vec3>(h);
-    memcpy(verts, _tunnelOrgVerts.Data(), _tunnelOrgVerts.DataSize());
+    memcpy(verts, _tunnelFaceVerts.Data(), _tunnelFaceVerts.DataSize());
     _ctx->Unmap(h);
 
     _cbFace.Set(_ctx, 0);
     _ctx->SetBundle(_tunnelFaceBundle);
-    _ctx->DrawIndexed(_numTunnelFaceIndices, 0, 0);
+    _ctx->Draw(_tunnelFaceVerts.Size(), 0);
+    //_ctx->DrawIndexed(_numTunnelFaceIndices, 0, 0);
   }
 
   {
@@ -373,9 +394,9 @@ void Tunnel::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void Tunnel::SaveParameterSet()
+void Tunnel::SaveParameterSet(bool inc)
 {
-  SaveSettings(_settings);
+  SaveSettings(_settings, inc);
 }
 #endif
 

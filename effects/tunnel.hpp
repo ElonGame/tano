@@ -36,7 +36,7 @@ namespace tano
 
 #if WITH_IMGUI
     void RenderParameterSet();
-    void SaveParameterSet();
+    void SaveParameterSet(bool inc);
 #endif
 
     void Reset();
@@ -45,6 +45,7 @@ namespace tano
     void PlexusUpdate(const UpdateState& state);
 
     u32 _numTunnelFaceIndices = 0;
+    u32 _numTunnelFaces = 0;
     GpuBundle _tunnelFaceBundle;
     //ConstantBufferBundle<cb::TunnelFaceV, cb::TunnelFaceV, cb::TunnelFaceG> _cbFace;
     ConstantBufferBundle<cb::TunnelFacecolorV, cb::TunnelFacecolorP> _cbFace;
@@ -56,7 +57,7 @@ namespace tano
     ConstantBufferBundle<void, cb::TunnelCompositeF> _cbComposite;
 
     SimpleAppendBuffer<vec3, 64 * 1024> _tunnelPlexusVerts;
-    SimpleAppendBuffer<vec3, 64 * 1024> _tunnelOrgVerts;
+    SimpleAppendBuffer<vec3, 64 * 1024> _tunnelFaceVerts;
 
     bool _useFreeFly = false;
     float _dist = 0;
