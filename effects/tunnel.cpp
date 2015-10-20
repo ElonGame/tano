@@ -24,6 +24,195 @@ static int TUNNEL_DEPTH = 100;
 // note, this is mirrored in scratch.bb
 static int TUNNEL_SEGMENTS = 50;
 
+int GRID_SIZE = 20;
+float CLOTH_SIZE = 10;
+
+struct ClothStrip
+{
+  struct Particle
+  {
+    vec3 pos;
+    vec3 lastPos;
+    vec3 acc;
+  };
+
+  struct Constraint
+  {
+    Particle* p0;
+    Particle* p1;
+    float restLength;
+  };
+
+  //------------------------------------------------------------------------------
+  void UpdateParticles(float dt)
+  {
+    size_t numParticles = _particles.size();
+    float dt2 = dt * dt;
+
+    vec3 gg = g_Blackboard->GetVec3Var("tunnel.gravity");
+    float damping = g_Blackboard->GetFloatVar("tunnel.damping");
+
+    // Add forces
+    for (size_t i = 0; i < numParticles; ++i)
+    {
+      _particles[i].acc = gg;
+      _particles[i].acc += 10 * vec3{randf(-1.f, 1.f), randf(-1.f, 1.f), randf(-1.f, 1.f)};
+    }
+
+    Particle* p = &_particles[0];
+    for (size_t i = 0; i < numParticles; ++i)
+    {
+      // verlet integration
+      vec3 tmp = p->pos;
+      p->pos = p->pos + (1.0f - damping) * (p->pos - p->lastPos) + p->acc * dt2;
+      p->lastPos = tmp;
+      ++p;
+    }
+
+    // apply the constraints
+    for (int i = 0; i < 2; ++i)
+    {
+      for (const Constraint& c : _constraints)
+      {
+        Particle* p0 = c.p0;
+        Particle* p1 = c.p1;
+
+        float dist = Distance(p0->pos, p1->pos);
+        vec3 dir = ((dist - c.restLength) / dist) * (p1->pos - p0->pos);
+        p0->pos += 0.5f * dir;
+        p1->pos -= 0.5f * dir;
+      }
+    }
+
+    vec3 aa(0, 0, 50);
+    float w = 10;
+    for (int j = 0; j < _clothDimX; ++j)
+    {
+      vec3 pp(aa.x - _clothDimX / 2 * w + j * 2, aa.y, aa.z);
+      _particles[j].pos = pp;
+    }
+
+
+    // top row is fixed
+    //float incX = CLOTH_SIZE / (_clothDimX - 1);
+    //vec3 cur(-CLOTH_SIZE / 2.f, CLOTH_SIZE / 2.f, 0);
+    //for (int i = 0; i < _clothDimX; ++i)
+    //{
+    //  _particles[i].pos = cur;
+    //  cur.x += incX;
+    //  ++p;
+    //}
+
+    // CopyOut
+  }
+
+  //------------------------------------------------------------------------------
+  void Create(int dimX, int dimY)
+  {
+    int numParticles = dimX * dimY;
+
+    _clothDimX = dimX;
+    _clothDimY = dimY;
+    _numParticles = numParticles;
+
+    // create the grid
+    //vector<u32> indices((width - 1)*(height - 1) * 2 * 3);
+    //u32* idx = &indices[0];
+
+    //for (int i = 0; i < height - 1; ++i)
+    //{
+    //  for (int j = 0; j < width - 1; ++j)
+    //  {
+    //    // 0--1
+    //    // 2--3
+    //    u32 i0 = (i + 0)*width + j + 0;
+    //    u32 i1 = (i + 0)*width + j + 1;
+    //    u32 i2 = (i + 1)*width + j + 0;
+    //    u32 i3 = (i + 1)*width + j + 1;
+
+    //    idx[0] = i0;
+    //    idx[1] = i1;
+    //    idx[2] = i2;
+
+    //    idx[3] = i2;
+    //    idx[4] = i1;
+    //    idx[5] = i3;
+
+    //    _numTris += 2;
+    //    idx += 6;
+    //  }
+    //}
+    //_clothGpuObjects.CreateIndexBuffer(
+    //    (u32)indices.size() * sizeof(u32), DXGI_FORMAT_R32_UINT, indices.data());
+
+    _particles.resize(numParticles);
+    Particle* cur = &_particles[0];
+    for (int i = 0; i < dimY; ++i)
+    {
+      vec3 p(0, -i * 20.f, 50);
+      float w = 10;
+      for (int j = 0; j < dimX; ++j)
+      {
+        vec3 pp(p.x - dimX/2 * w + j * 2, p.y, p.z);
+        cur->pos = pp;
+        cur->lastPos = pp;
+        cur->acc = vec3{0,0,0};
+        cur++;
+      }
+    }
+
+    //ResetParticles();
+
+    // create cloth constraints
+    // each particle is connected horiz, vert and diag (both 1 and 2 steps away)
+    for (int i = 0; i < dimY; ++i)
+    {
+      for (int j = 0; j < dimX; ++j)
+      {
+        u32 idx0 = i*dimX + j;
+        Particle* p0 = &_particles[idx0];
+
+        static int ofs[] = {
+          -1, +0,
+          -1, +1,
+          +0, +1,
+          +1, +1,
+          +1, +0,
+          +1, -1,
+          +0, -1,
+          -1, -1
+        };
+
+        for (int idx = 0; idx < 8; ++idx)
+        {
+          for (int s = 1; s <= 2; ++s)
+          {
+            int xx = j + s * ofs[idx * 2 + 0];
+            int yy = i + s * ofs[idx * 2 + 1];
+            if (xx < 0 || xx >= dimX || yy < 0 || yy >= dimY)
+              continue;
+
+            u32 idx1 = yy*dimX + xx;
+            Particle* p1 = &_particles[idx1];
+            _constraints.push_back({ p0, p1, Distance(p0->pos, p1->pos) });
+          }
+        }
+      }
+    }
+  }
+
+  vec3 _gravity = vec3{0, 0, 0};
+  float _damping = 0.99f;
+  int _clothDimX, _clothDimY;
+  int _numParticles = 0;
+  int _numTris = 0;
+
+  vector<Particle> _particles;
+  vector<Constraint> _constraints;
+};
+
+ClothStrip g_cloth;
+
 //------------------------------------------------------------------------------
 Tunnel::Tunnel(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
@@ -72,19 +261,13 @@ bool Tunnel::Init()
   }
 
   // clang-format off
-
-  vector<u32> indices = CreateCylinderIndices(TUNNEL_SEGMENTS, TUNNEL_DEPTH);
-  _numTunnelFaceIndices = (u32)indices.size();
-
   INIT_FATAL(_tunnelFaceBundle.Create(BundleOptions()
     .VertexShader("shaders/out/tunnel.facecolor", "VsFace")
     .GeometryShader("shaders/out/tunnel.facecolor", "GsFace")
     .PixelShader("shaders/out/tunnel.facecolor", "PsFace")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
-    //.InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
     .RasterizerDesc(rasterizeDescCullNone)
     .DynamicVb(128 * 1024, sizeof(vec3))));
-    //.StaticIb(indices)));
 
   INIT_FATAL(_linesBundle.Create(BundleOptions()
     .VertexShader("shaders/out/tunnel.lines", "VsTunnelLines")
@@ -121,6 +304,8 @@ bool Tunnel::Init()
     .RasterizerDesc(rasterizeDescCullNone)));
 
   // clang-format on
+
+  g_cloth.Create(4, 20);
 
   INIT_FATAL(_cbLines.Create());
   INIT_FATAL(_cbComposite.Create());
@@ -262,6 +447,8 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Tunnel::FixedUpdate(const FixedUpdateState& state)
 {
+  g_cloth.UpdateParticles(state.delta);
+
   // Update how far along the spline we've travelled
   float t = state.localTime.TotalSecondsAsFloat();
   float speed = g_Blackboard->GetFloatVar("tunnel.speed", t);
@@ -372,14 +559,22 @@ bool Tunnel::Render()
   _ctx->UnsetRenderTargets(0, 1);
 
   {
+    // particles
     vec3* vtx = _ctx->MapWriteDiscard<vec3>(_particleBundle.objects._vb);
+
+    for (int i = 0; i < g_cloth._numParticles; ++i)
+    {
+      vtx[i] = g_cloth._particles[i].pos;
+    }
+
+#if 0
     int numBoids = 1000;
     for (int i = 0; i < numBoids; ++i)
     {
       vec3 pos = _spline.Interpolate(i + START_OFS);
       vtx[i] = pos;
     }
-
+#endif
     _ctx->Unmap(_particleBundle.objects._vb);
 
     _cbParticle.Set(_ctx, 0);
@@ -389,7 +584,7 @@ bool Tunnel::Render()
     _ctx->SetRenderTarget(rtColor._rtHandle, ObjectHandle(), nullptr);
     ObjectHandle srv[] = { _particleTexture, rtColor._dsHandle };
     _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
-    _ctx->Draw(numBoids, 0);
+    _ctx->Draw(g_cloth._numParticles, 0);
     _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
   }
 

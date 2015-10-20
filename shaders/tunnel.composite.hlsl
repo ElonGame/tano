@@ -20,7 +20,7 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float exposure = tonemap.x;
   float minWhite = tonemap.y;
   col.rgb = 0.8 * col.rgb;
-  col.rgb += pow(abs(col.a * float3(1, 1, 1.5) * blur.rgb), 1.5);
+  col.rgb += pow(abs(col.a * float3(1, 1, 1.5) * blur.rgb), 1.2);
   col.rgb += lines.rgb;
 
   col = ToneMapReinhard(col, exposure, minWhite);

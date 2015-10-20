@@ -61,7 +61,7 @@ namespace tano
     SimpleAppendBuffer<vec3, 64 * 1024> _tunnelPlexusVerts;
     SimpleAppendBuffer<vec3, 64 * 1024> _tunnelFaceVerts;
 
-    bool _useFreeFly = false;
+    bool _useFreeFly = true;
     float _dist = 0;
     CardinalSpline _spline;
     CardinalSpline _cameraSpline;
