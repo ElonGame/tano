@@ -90,8 +90,9 @@ namespace tunnel
 
     vec2 cameraParams = { 100, 100 };
 
-    vec3 gravity = { 0, -10, 0 };
-    float damping = 0.01;
+    vec3 gravity = { 0, -5, 0 };
+    float damping = 0.0001;
+    float windForce = 0;
 
     float dirScale = 0.1;
 

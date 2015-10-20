@@ -49,8 +49,9 @@ namespace tano
     u32 _numTunnelFaceIndices = 0;
     u32 _numTunnelFaces = 0;
     GpuBundle _tunnelFaceBundle;
-    //ConstantBufferBundle<cb::TunnelFaceV, cb::TunnelFaceV, cb::TunnelFaceG> _cbFace;
     ConstantBufferBundle<cb::TunnelFacecolorV, cb::TunnelFacecolorP> _cbFace;
+
+    GpuBundle _snakeBundle;
 
     GpuBundle _linesBundle;
     ConstantBufferBundle<void, cb::TunnelLinesPS, cb::TunnelLinesGS> _cbLines;
