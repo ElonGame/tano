@@ -36,7 +36,7 @@ namespace tano
 
     u32 GetId() const { return _id; }
 
-    void CommonUpdate(float deltaTime);
+    void UpdateCommon(float deltaTime);
 
 #if WITH_IMGUI
     void RegisterParameters();

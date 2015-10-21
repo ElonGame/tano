@@ -82,20 +82,21 @@ void DemoEngine::Create()
 //------------------------------------------------------------------------------
 bool DemoEngine::Start()
 {
+#if 0
   // Tick a few zero frames to make sure everything is allocated up front etc
-  for (int i = 0; i < 3; ++i)
+  for (int i = 0; i < 1; ++i)
   {
     for (BaseEffect* effect : _effects)
     {
       if (!_forceEffect || effect == _forceEffect)
       {
-        effect->Update(_initialState);
         effect->FixedUpdate(_initialFixedState);
+        effect->Update(_initialState);
         effect->Render();
       }
     }
   }
-
+#endif
 #if WITH_MUSIC
   BASS_Start();
   BASS_ChannelPlay(_stream, false);
@@ -244,6 +245,12 @@ bool DemoEngine::Tick()
 }
 
 //------------------------------------------------------------------------------
+bool DemoEngine::IsDone()
+{
+  return _expiredEffects.size() == _effects.size();
+}
+
+//------------------------------------------------------------------------------
 void DemoEngine::UpdateEffects()
 {
   rmt_ScopedCPUSample(DemoEngine_UpdateEffects);
@@ -275,14 +282,14 @@ void DemoEngine::UpdateEffects()
   // do the common update for all effects (right now just updating the freefly camera)
   for (BaseEffect* effect : _effects)
   {
-    effect->CommonUpdate(globalDelta.TotalSecondsAsFloat());
+    effect->UpdateCommon(globalDelta.TotalSecondsAsFloat());
   }
 
   // If a force effect is set, just tick this guy
   if (_forceEffect)
   {
-    curState.localTime = current - _forceEffect->StartTime();
     curState.globalTime = current;
+    curState.localTime = current - _forceEffect->StartTime();
 
     fixedState.localTime = current - _forceEffect->StartTime();
     if (_initForceEffect)
@@ -316,13 +323,14 @@ void DemoEngine::UpdateEffects()
   // Update all active effects
   for (BaseEffect* effect : _activeEffects)
   {
-    curState.localTime = current - effect->StartTime();
-    effect->Update(curState);
-
+    fixedState.localTime = current - effect->StartTime();
     for (int i = 0; i < numTicks; ++i)
     {
       effect->FixedUpdate(fixedState);
     }
+
+    curState.localTime = current - effect->StartTime();
+    effect->Update(curState);
   }
 
   _initialState.globalTime = current;
@@ -334,6 +342,8 @@ void DemoEngine::UpdateEffects()
     BaseEffect* e = Transfer(_inactiveEffects, _activeEffects);
     e->SetRunning(true);
     e->InitAnimatedParameters();
+    _initialState.localTime = current - e->StartTime();
+    _initialFixedState.localTime = current - e->StartTime();
     e->Update(_initialState);
     e->FixedUpdate(_initialFixedState);
   }

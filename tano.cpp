@@ -40,7 +40,7 @@ static const int WM_APP_CLOSE = WM_APP + 2;
 const TCHAR* g_AppWindowClass = _T("TanoClass");
 const TCHAR* g_AppWindowTitle = _T("tano - neurotica e.f.s");
 
-const int ARENA_MEMORY_SIZE = 256 * 1024 * 1024;
+const int ARENA_MEMORY_SIZE = 512 * 1024 * 1024;
 static u8 scratchMemory[ARENA_MEMORY_SIZE];
 
 namespace tano
@@ -218,7 +218,7 @@ bool App::Run()
   u64 numFrames = 0;
   bool renderImgui = true;
 
-  while (WM_QUIT != msg.message)
+  while (WM_QUIT != msg.message && !g_DemoEngine->IsDone())
   {
     rmt_ScopedCPUSample(App_Run);
 
@@ -246,7 +246,7 @@ bool App::Run()
 #endif
 
 // ImGui::ShowTestWindow();
-#if WITH_EXPRESSION_EDITOR
+#if WITH_IMGUI && WITH_EXPRESSION_EDITOR
     g_Graphics->ClearRenderTarget(g_Graphics->GetBackBuffer());
     static bool showExpressionEditor = false;
     if (g_KeyUpTrigger.IsTriggered('0'))

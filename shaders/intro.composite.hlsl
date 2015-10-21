@@ -7,22 +7,6 @@ cbuffer F : register(b0)
   float4 time; // x = local-time, y = text fade
 };
 
-float4 DistortOld1(Texture2D tex, float2 uv, float time)
-{
-  float angle = 0;
-  int NUM_SAMPLES = 10;
-  float angleInc = 3.1415926 / NUM_SAMPLES * uv.x * uv.y;
-  float4 res = float4(0,0,0,0);
-  float radius = 0.01 * time;
-  for (int i = 0; i < NUM_SAMPLES; ++i)
-  {
-    float2 ofs = sin(radius) * float2(0.5 + 0.5 * cos(angle), 0.5 + 0.5 * sin(angle));
-    res += Texture4.Sample(LinearWrap, uv + ofs);
-    angle += angleInc;
-  }
-  return res;
-}
-
 // entry-point: ps
 float4 PsComposite(VSQuadOut p) : SV_Target
 {
@@ -38,7 +22,7 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float4 bgBlur = Texture3.Sample(LinearSampler, uv);
 
   float4 textCol = Texture4.Sample(LinearSampler, uv);
-  float4 textBlurCol = Texture5.Sample(LinearSampler, uv);
+  float4 textBlurCol = 0.5 * Texture5.Sample(LinearSampler, uv);
 
   backgroundCol = backgroundCol + pow(abs(bgBlur), 1.5);
 
@@ -56,7 +40,10 @@ float4 PsComposite(VSQuadOut p) : SV_Target
   float exposure = tonemap.x;
   float minWhite = tonemap.y;
   col = ToneMapReinhard(col, exposure, minWhite);
-  return col;
+
+  // fade out
+  float tt = smoothstep(23.5, 24.0, time.x);
+  return lerp(col, float4(0,0,0,0), tt);
 }
 
 

@@ -34,10 +34,10 @@ namespace intro
     float newText1Pos = 0.90;
     float newText2Pos = 0.96;
 
-    expr distortBrightness = "lfade_in(9.0, 13, t)";
-    expr text0Brightness = "1 + 3 * step(1, t - 10) * (1 - lfade_in(10, 12, t))";
-    expr text1Thing = "pulse(1, 2, t) * ldecay(0.1, t)";
-    expr text2Thing = "sin(3*t)";
+    expr distortBrightness = "lfade_in(9.3, 14, t)";
+    expr text0Brightness = "1 + max(pulselfade(14.5, 15.0, 16, t), pulselfade(20, 20.5, 21.5, t))";
+    expr text1Brightness = "1 + max(pulselfade(15.5, 16.0, 17, t), pulselfade(20, 20.5, 21.5, t))";
+    expr text2Brightness = "1 + max(pulselfade(16.5, 17.0, 18, t), pulselfade(20, 20.5, 21.5, t))";
 
     float maxStrength = 5000;
 }

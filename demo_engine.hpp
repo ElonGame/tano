@@ -21,7 +21,6 @@ namespace tano
     bool Init(const char* config, HINSTANCE instance);
     void RegisterFactory(const string& type, const EffectFactory& factory);
 
-
     bool Start();
     void SetPaused(bool pause);
     bool Paused() const;
@@ -33,6 +32,7 @@ namespace tano
     TimeDuration Duration() const;
     void SetDuration(const TimeDuration& duration);
     bool Tick();
+    bool IsDone();
 
     void WndProc(UINT message, WPARAM wParam, LPARAM lParam);
     double GetRow() const;

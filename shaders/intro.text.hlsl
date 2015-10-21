@@ -37,13 +37,13 @@ float4 Distort(Texture2D tex, float2 uv, float time)
   float f = 3;
   for (int i = 0; i < 4; ++i)
   {
-    float n = 1 / f * noise(xx * f + float2(5, 0));
+    float n = 1 / f * noise(xx * f + float2(5, 2));
     r += n;
     f *= 2;
   }
 
   float2 polar = ToPolar(xx);
-  float timeScale = pow(saturate(1 - time / 5), 3);
+  float timeScale = pow(saturate(1 - time / 10), 2);
   polar.x += 1 * timeScale * r;
   polar.y += 10 * timeScale * r;
   float2 uv2r = ToCartesian(float2(polar.x, polar.y)) + center;
@@ -60,7 +60,7 @@ float4 Distort(Texture2D tex, float2 uv, float time)
 // entry-point: ps
 float4 PsIntroTextDistort(VSQuadOut p) : SV_Target
 {
-  return brightness * Distort(Texture0, p.uv, time - 9);
+  return brightness * Distort(Texture0, p.uv, time - 9.3);
 }
 
 

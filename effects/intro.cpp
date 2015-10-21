@@ -344,15 +344,17 @@ bool Intro::Render()
     {
       eval::Environment env;
       env.constants["t"] = _curTime;
-      float bb = g_Blackboard->GetExpr("intro.text0Brightness", &env);
+      float bb0 = g_Blackboard->GetExpr("intro.text0Brightness", &env);
+      float bb1 = g_Blackboard->GetExpr("intro.text1Brightness", &env);
+      float bb2 = g_Blackboard->GetExpr("intro.text2Brightness", &env);
       fullscreen->RenderTexture(
-          _introTexture[0].h, vec2{right - ar0 * s, y0 - s}, vec2{right, y0}, bb);
+          _introTexture[0].h, vec2{right - ar0 * s, y0 - s}, vec2{right, y0}, bb0);
 
       fullscreen->RenderTexture(
-          _introTexture[1].h, vec2{right - ar1 * s, y1 - s}, vec2{right, y1}, bb);
+          _introTexture[1].h, vec2{right - ar1 * s, y1 - s}, vec2{right, y1}, bb1);
 
       fullscreen->RenderTexture(
-          _introTexture[2].h, vec2{right - ar2 * s, y2 - s}, vec2{right, y2}, bb);
+          _introTexture[2].h, vec2{right - ar2 * s, y2 - s}, vec2{right, y2}, bb2);
 
       _cbText.ps0.brightness = g_Blackboard->GetExpr("intro.distortBrightness", &env);
       _cbText.Set(_ctx, 0);

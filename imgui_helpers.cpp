@@ -1,4 +1,10 @@
 #if WITH_IMGUI
+#ifdef GetWindowFont
+#undef GetWindowFont
+#endif
+#include "imgui/imgui.cpp"
+#include "imgui/imgui_demo.cpp"
+#include "imgui/imgui_draw.cpp"
 #include "imgui_helpers.hpp"
 #include "graphics.hpp"
 #include "graphics_context.hpp"

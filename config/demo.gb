@@ -7,18 +7,17 @@
       name: 'intro';
       factory: 'intro';
       start_time: 0;
-      end_time: 22500;
+      end_time: 24000;
       settings: 'config/intro.gb';
     },
     {
       name: 'landscape';
       factory: 'landscape';
-      start_time: 22500;
+      start_time: 24000;
       end_time: 53000;
       settings: 'config/landscape.gb';
     },
     {
-      force: true;
       name: 'split';
       factory: 'split';
       start_time: 53000;

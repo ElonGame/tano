@@ -458,7 +458,7 @@ bool Landscape::Update(const UpdateState& state)
   float t = state.localTime.TotalSecondsAsFloat();
   vec3 pp = _spline.Interpolate(t * _settings.spline_speed);
 
-  //_followCamera.SetFollowTarget(XMLoadFloat3(&XMFLOAT3(pp.x, pp.y, pp.z)));
+  _cbComposite.ps0.time = vec4(t, 0, 0, 0);
 
   const BoidSettings& b = _settings.boids;
   float ks = b.separation_scale * sinf(state.localTime.TotalSecondsAsFloat());
@@ -1076,7 +1076,7 @@ bool Landscape::Render()
     else
     {
       fullscreen->Copy(rtLensFlare, g_Graphics->GetBackBuffer(), g_Graphics->GetBackBufferDesc(), false);
-    }
+   } 
   }
 
 #if DEBUG_DRAW_PATH

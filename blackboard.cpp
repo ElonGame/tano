@@ -1,7 +1,9 @@
 #include "blackboard.hpp"
 #include "resource_manager.hpp"
 #include "init_sequence.hpp"
+#if WITH_IMGUI
 #include "imgui/imgui_internal.h"
+#endif
 
 using namespace tano;
 using namespace bristol;
@@ -646,7 +648,7 @@ void Blackboard::Process()
 
 #endif
 
-#if WITH_EXPRESSION_EDITOR
+#if WITH_IMGUI && WITH_EXPRESSION_EDITOR
 //------------------------------------------------------------------------------
 void Blackboard::DrawExpressionEditor()
 {

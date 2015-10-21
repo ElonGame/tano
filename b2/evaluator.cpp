@@ -111,6 +111,29 @@ namespace eval
       e->PushValue((t >= start && t < stop) ? 1.f : 0.f);
     });
 
+    RegisterFunction("pulselfade", 3, [](eval::Evaluator* e) {
+      // pulselfade(start, fade-start, fade-end, t)
+      float t = e->PopValue();
+      float fadeEnd = e->PopValue();
+      float fadeStart = e->PopValue();
+      float start = e->PopValue();
+      if (t <= start || t >= fadeEnd)
+      {
+        e->PushValue(0);
+      }
+      else if (t <= fadeStart)
+      {
+        e->PushValue(1);
+      }
+      else
+      {
+        float ss = fadeEnd - fadeStart;
+        float tt = (t - fadeStart) / ss;
+        e->PushValue(Lerp(1.f, 0.f, tt));
+      }
+    });
+
+
     RegisterFunction("edecay", 2, [](eval::Evaluator* e) {
       // edecay(k, t)
       float t = e->PopValue();
