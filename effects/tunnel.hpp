@@ -7,15 +7,53 @@
 #include "../shaders/out/tunnel.lines_gstunnellines.cbuffers.hpp"
 #include "../shaders/out/tunnel.lines_pstunnellines.cbuffers.hpp"
 #include "../shaders/out/tunnel.composite_pscomposite.cbuffers.hpp"
-#include "../shaders/out/tunnel.mesh_vsmesh.cbuffers.hpp"
 #include "../shaders/out/tunnel.facecolor_vsface.cbuffers.hpp"
 #include "../shaders/out/tunnel.facecolor_psface.cbuffers.hpp"
 #include "../shaders/out/tunnel.particle_gsparticle.cbuffers.hpp"
 #include "../shaders/out/tunnel.particle_psparticle.cbuffers.hpp"
-#include "../scene.hpp"
 
 namespace tano
 {
+  struct Snake
+  {
+    Snake(int dimX,
+      int dimY,
+      float segmentWidth,
+      float segmentHeight,
+      const vec3& anchor,
+      const vec3& dir);
+
+    void Update(float dt);
+    int CopyOutLines(vec3* out);
+
+    struct Particle
+    {
+      vec3 pos;
+      vec3 lastPos;
+      vec3 acc;
+    };
+
+    struct Constraint
+    {
+      u16 i0;
+      u16 i1;
+      float restLength;
+    };
+
+    vec3 _gravity = vec3{ 0, 0, 0 };
+    float _damping = 0.99f;
+    int _clothDimX, _clothDimY;
+    float _segmentWidth, _segmentHeight;
+    vec3 _anchor;
+    vec3 _dir;
+    int _numParticles = 0;
+    float _forceAngle;
+
+    vector<Particle> _particles;
+    vector<Constraint> _constraints;
+  };
+
+  //------------------------------------------------------------------------------
   class Tunnel : public BaseEffect
   {
   public:
@@ -62,23 +100,16 @@ namespace tano
     SimpleAppendBuffer<vec3, 64 * 1024> _tunnelPlexusVerts;
     SimpleAppendBuffer<vec3, 64 * 1024> _tunnelFaceVerts;
 
-    bool _useFreeFly = true;
+    bool _useFreeFly = false;
     float _dist = 0;
     CardinalSpline _spline;
     CardinalSpline _cameraSpline;
     TunnelSettings _settings;
 
-    ConstantBufferBundle<
-      cb::TunnelMeshF, void, void,
-      cb::TunnelMeshO, void, void> _cbMesh;
-    GpuBundle _meshBundle;
-    scene::Scene _scene;
-
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
     ConstantBufferBundle<void, cb::TunnelParticleP, cb::TunnelParticleG> _cbParticle;
 
-    float _bonusTime = 0;
-
+    vector<Snake> _snakes;
   };
 }

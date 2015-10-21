@@ -27,41 +27,68 @@ static int TUNNEL_SEGMENTS = 50;
 int GRID_SIZE = 20;
 float CLOTH_SIZE = 10;
 
-struct ClothStrip
+//------------------------------------------------------------------------------
+Snake::Snake(int dimX,
+    int dimY,
+    float segmentWidth,
+    float segmentHeight,
+    const vec3& anchor,
+    const vec3& dir)
+    : _clothDimX(dimX)
+    , _clothDimY(dimY)
+    , _segmentWidth(segmentWidth)
+    , _segmentHeight(segmentHeight)
+    , _anchor(anchor)
+    , _dir(dir)
+    , _numParticles(dimX * dimY)
+    , _forceAngle(randf(-2.f, 2.f))
 {
-  //------------------------------------------------------------------------------
-  ClothStrip(int dimX,
-      int dimY,
-      float segmentWidth,
-      float segmentHeight,
-      const vec3& anchor,
-      const vec3& dir)
-      : _clothDimX(dimX)
-      , _clothDimY(dimY)
-      , _segmentWidth(segmentWidth)
-      , _segmentHeight(segmentHeight)
-      , _anchor(anchor)
-      , _dir(dir)
-      , _numParticles(dimX * dimY)
-  {
-    _particles.resize(_numParticles);
-    Particle* p = &_particles[0];
+  _particles.resize(_numParticles);
+  Particle* p = &_particles[0];
 
+  for (int i = 0; i < dimY; ++i)
+  {
+    vec3 cur = anchor + (float)(i * segmentHeight) * dir;
+    for (int j = 0; j < dimX; ++j)
+    {
+      cur.x = (-((dimX / 2 - 1) + 0.5f) + j) * segmentWidth;
+      p->pos = cur;
+      p->lastPos = cur;
+      p->acc = vec3{0, 0, 0};
+      p++;
+    }
+  }
+
+  // if a rope, only add constraints in the y-dimension
+  if (dimX == 1)
+  {
+    // create cloth constraints
+    // each particle is connected horiz, vert and diag (both 1 and 2 steps away)
     for (int i = 0; i < dimY; ++i)
     {
-      vec3 cur = anchor + (float)(i * segmentHeight) * dir;
-      for (int j = 0; j < dimX; ++j)
+      u32 idx0 = i * dimX;
+      Particle* p0 = &_particles[idx0];
+
+      static int ofs[] = {-1, +1};
+
+      for (int idx = 0; idx < 2; ++idx)
       {
-        cur.x = (-((dimX / 2 - 1) + 0.5f) + j) * segmentWidth;
-        p->pos = cur;
-        p->lastPos = cur;
-        p->acc = vec3{0, 0, 0};
-        p++;
+        for (int s = 1; s <= 2; ++s)
+        {
+          int yy = i + s * ofs[idx];
+          if (yy < 0 || yy >= dimY)
+            continue;
+
+          u32 idx1 = yy * dimX;
+          Particle* p1 = &_particles[idx1];
+          //_constraints.push_back({ p0, p1, Distance(p0->pos, p1->pos) });
+          _constraints.push_back({ idx0, idx1, Distance(p0->pos, p1->pos) });
+        }
       }
     }
-
-    // ResetParticles();
-
+  }
+  else
+  {
     // create cloth constraints
     // each particle is connected horiz, vert and diag (both 1 and 2 steps away)
     for (int i = 0; i < dimY; ++i)
@@ -84,116 +111,94 @@ struct ClothStrip
 
             u32 idx1 = yy * dimX + xx;
             Particle* p1 = &_particles[idx1];
-            _constraints.push_back({p0, p1, Distance(p0->pos, p1->pos)});
+            //_constraints.push_back({ p0, p1, Distance(p0->pos, p1->pos) });
+            _constraints.push_back({ idx0, idx1, Distance(p0->pos, p1->pos) });
           }
         }
       }
     }
   }
+}
 
-  //------------------------------------------------------------------------------
-  void UpdateParticles(float dt)
+//------------------------------------------------------------------------------
+void Snake::Update(float dt)
+{
+  size_t numParticles = _particles.size();
+  float dt2 = dt * dt;
+
+  vec3 gg = g_Blackboard->GetVec3Var("tunnel.gravity");
+  float damping = g_Blackboard->GetFloatVar("tunnel.damping");
+  float windForce = g_Blackboard->GetFloatVar("tunnel.windForce");
+
+  vec3 force = windForce * vec3{sinf(_forceAngle), 0, cosf(_forceAngle)};
+  _forceAngle += dt * g_Blackboard->GetFloatVar("tunnel.forceSpeed");
+
+  // Add forces
+  for (size_t i = 0; i < numParticles; ++i)
   {
-    size_t numParticles = _particles.size();
-    float dt2 = dt * dt;
+    _particles[i].acc = gg;
+    _particles[i].acc += force;
+  }
 
-    vec3 gg = g_Blackboard->GetVec3Var("tunnel.gravity");
-    float damping = g_Blackboard->GetFloatVar("tunnel.damping");
-    float windForce = g_Blackboard->GetFloatVar("tunnel.windForce");
+  Particle* p = &_particles[0];
+  for (size_t i = 0; i < numParticles; ++i)
+  {
+    // verlet integration
+    vec3 tmp = p->pos;
+    p->pos = p->pos + (1.0f - damping) * (p->pos - p->lastPos) + p->acc * dt2;
+    p->lastPos = tmp;
+    ++p;
+  }
 
-    // Add forces
-    for (size_t i = 0; i < numParticles; ++i)
+  // apply the constraints
+  for (int i = 0; i < 2; ++i)
+  {
+    for (const Constraint& c : _constraints)
     {
-      _particles[i].acc = gg;
-      _particles[i].acc += windForce * vec3{randf(-1.f, 1.f), randf(-1.f, 1.f), randf(-1.f, 1.f)};
-    }
+      Particle* p0 = &_particles[c.i0];
+      Particle* p1 = &_particles[c.i1];
 
-    Particle* p = &_particles[0];
-    for (size_t i = 0; i < numParticles; ++i)
-    {
-      // verlet integration
-      vec3 tmp = p->pos;
-      p->pos = p->pos + (1.0f - damping) * (p->pos - p->lastPos) + p->acc * dt2;
-      p->lastPos = tmp;
-      ++p;
-    }
-
-    // apply the constraints
-    for (int i = 0; i < 2; ++i)
-    {
-      for (const Constraint& c : _constraints)
-      {
-        Particle* p0 = c.p0;
-        Particle* p1 = c.p1;
-
-        float dist = Distance(p0->pos, p1->pos);
-        vec3 dir = ((dist - c.restLength) / dist) * (p1->pos - p0->pos);
-        p0->pos += 0.5f * dir;
-        p1->pos -= 0.5f * dir;
-      }
-    }
-
-    // fix the upper row
-    vec3 cur = _anchor;
-    for (int i = 0; i < _clothDimX; ++i)
-    {
-      cur.x = (-((_clothDimX / 2 - 1) + 0.5f) + i) * _segmentWidth;
-      _particles[i].pos = cur;
+      float dist = Distance(p0->pos, p1->pos);
+      vec3 dir = ((dist - c.restLength) / dist) * (p1->pos - p0->pos);
+      p0->pos += 0.5f * dir;
+      p1->pos -= 0.5f * dir;
     }
   }
 
-  //------------------------------------------------------------------------------
-  int CopyOutLines(vec3* out)
+  // fix the upper row
+  vec3 cur = _anchor;
+  for (int i = 0; i < _clothDimX; ++i)
   {
-    int numVerts = 0;
-    for (int i = 0; i < _clothDimY; ++i)
-    {
-      *out++ = _particles[i * _clothDimX].pos;
-      *out++ = _particles[i * _clothDimX + _clothDimX - 1].pos;
-      numVerts += 2;
-    }
-
-    for (int i = 0; i < _clothDimY - 1; ++i)
-    {
-      *out++ = _particles[i * _clothDimX].pos;
-      *out++ = _particles[(i + 1) * _clothDimX].pos;
-
-      *out++ = _particles[i * _clothDimX + _clothDimX - 1].pos;
-      *out++ = _particles[(i + 1) * _clothDimX + _clothDimX - 1].pos;
-      numVerts += 4;
-    }
-
-    return numVerts;
+    _particles[i].pos = cur;
   }
-  //------------------------------------------------------------------------------
+}
 
-  struct Particle
+//------------------------------------------------------------------------------
+int Snake::CopyOutLines(vec3* out)
+{
+  int numVerts = 0;
+  for (int i = 0; i < _clothDimY; ++i)
   {
-    vec3 pos;
-    vec3 lastPos;
-    vec3 acc;
-  };
+    *out++ = _particles[i * _clothDimX].pos;
+    *out++ = _particles[i * _clothDimX + _clothDimX - 1].pos;
+    numVerts += 2;
+  }
 
-  struct Constraint
+  for (int i = 0; i < _clothDimY - 1; ++i)
   {
-    Particle* p0;
-    Particle* p1;
-    float restLength;
-  };
+    *out++ = _particles[i * _clothDimX].pos;
+    *out++ = _particles[(i + 1) * _clothDimX].pos;
 
-  vec3 _gravity = vec3{0, 0, 0};
-  float _damping = 0.99f;
-  int _clothDimX, _clothDimY;
-  int _numParticles = 0;
-  vec3 _anchor;
-  vec3 _dir;
-  float _segmentWidth, _segmentHeight;
+    *out++ = _particles[i * _clothDimX + _clothDimX - 1].pos;
+    *out++ = _particles[(i + 1) * _clothDimX + _clothDimX - 1].pos;
+    numVerts += 4;
+  }
 
-  vector<Particle> _particles;
-  vector<Constraint> _constraints;
-};
+  return numVerts;
+}
 
-ClothStrip g_cloth(2, 20, 10, 10, vec3(0, 100, 200), vec3(0, -1, 0));
+//------------------------------------------------------------------------------
+// ClothStrip g_cloth(1, 75, 10, 2, vec3(0, 100, 200), vec3(0, -1, 0));
 //------------------------------------------------------------------------------
 Tunnel::Tunnel(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
@@ -225,6 +230,8 @@ bool Tunnel::Init()
     vector<vec3> controlPoints;
     vector<vec3> cameraControlPoints;
 
+    float radius = g_Blackboard->GetFloatVar("tunnel.radius");
+
     for (int i = 0; i < numPoints; ++i)
     {
       float xOfs = randf(-s, +s);
@@ -239,6 +246,12 @@ bool Tunnel::Init()
 
     _spline.Create(controlPoints.data(), (int)controlPoints.size());
     _cameraSpline.Create(cameraControlPoints.data(), (int)cameraControlPoints.size());
+
+    for (int i = 0; i < 20; ++i)
+    {
+      vec3 cur = _spline.Interpolate(i*10.f + START_OFS);
+      _snakes.push_back(Snake{ 1, 50, 5, 5, cur + vec3{ 0, radius, 0 }, vec3{ 0, -1, 0 } });
+    }
   }
 
   // clang-format off
@@ -257,8 +270,7 @@ bool Tunnel::Init()
     .VertexFlags(VF_POS)
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
-    //.DepthStencilDesc(depthDescDepthWriteDisabled)
-    .DepthStencilDesc(depthDescDepthDisabled)
+    .DepthStencilDesc(depthDescDepthWriteDisabled)
     .DynamicVb(128 * 1024, sizeof(vec3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
@@ -269,20 +281,13 @@ bool Tunnel::Init()
     .VertexFlags(VF_POS)
     .RasterizerDesc(rasterizeDescCullNone)
     .BlendDesc(blendDescBlendOneOne)
-    .DepthStencilDesc(depthDescDepthDisabled)
+    .DepthStencilDesc(depthDescDepthWriteDisabled)
     .DynamicVb(128 * 1024, sizeof(vec3))
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST)));
 
   INIT_FATAL(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/tunnel.composite", "PsComposite")));
-
-  INIT_FATAL(_meshBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/tunnel.mesh", "VsMesh")
-    .InputElement(CD3D11_INPUT_ELEMENT_DESC("SV_POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
-    .InputElement(CD3D11_INPUT_ELEMENT_DESC("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT))
-    .InputElement(CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT))
-    .PixelShader("shaders/out/tunnel.mesh", "PsMesh")));
 
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024, sizeof(vec3))
@@ -299,16 +304,19 @@ bool Tunnel::Init()
 
   INIT_FATAL(_cbLines.Create());
   INIT_FATAL(_cbComposite.Create());
-  INIT_FATAL(_cbMesh.Create());
   INIT_FATAL(_cbFace.Create());
   INIT_FATAL(_cbParticle.Create());
 
   // Particles
   INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture("gfx/particle_white.png"));
 
-  // MeshLoader loader;
-  // INIT_FATAL(loader.Load("gfx/newblob2.boba"));
-  // INIT_FATAL(CreateScene(loader, SceneOptions(), &_scene));
+  for (int i = 0; i < 1000; ++i)
+  {
+    for (Snake& s : _snakes)
+    {
+      s.Update(0.01f);
+    }
+  }
 
   END_INIT_SEQUENCE();
 }
@@ -316,6 +324,11 @@ bool Tunnel::Init()
 //------------------------------------------------------------------------------
 bool Tunnel::Update(const UpdateState& state)
 {
+  for (Snake& s : _snakes)
+  {
+    s.Update(state.delta.TotalSecondsAsFloat());
+  }
+
   vec3 pos(vec3(_freeflyCamera._pos));
 
   vec2 cameraParams = g_Blackboard->GetVec2Var("tunnel.cameraParams");
@@ -330,7 +343,7 @@ bool Tunnel::Update(const UpdateState& state)
 //------------------------------------------------------------------------------
 void Tunnel::PlexusUpdate(const UpdateState& state)
 {
-  float radius = g_Blackboard->GetFloatVar("tunnel.radius", state.localTime.TotalSecondsAsFloat());
+  float radius = g_Blackboard->GetFloatVar("tunnel.radius");
   int numSegments = g_Blackboard->GetIntVar("tunnel.segments");
 
   vec3* points = g_ScratchMemory.Alloc<vec3>(16 * 1024);
@@ -437,8 +450,6 @@ void Tunnel::PlexusUpdate(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Tunnel::FixedUpdate(const FixedUpdateState& state)
 {
-  g_cloth.UpdateParticles(state.delta);
-
   // Update how far along the spline we've travelled
   float t = state.localTime.TotalSecondsAsFloat();
   float speed = g_Blackboard->GetFloatVar("tunnel.speed", t);
@@ -449,11 +460,8 @@ bool Tunnel::FixedUpdate(const FixedUpdateState& state)
 
   if (!_useFreeFly)
   {
-    // ha, anything related to using lo here pretty much makes you sick :)
-    float lo = g_Blackboard->GetFloatVar("Beat-Lo", state.globalTime.TotalSecondsAsFloat());
-
     float t = state.localTime.TotalSecondsAsFloat();
-    _freeflyCamera._pos = pos + vec3(5 * sinf(t + _bonusTime), 5 * cosf(t + _bonusTime), 0);
+    _freeflyCamera._pos = pos + vec3(5 * sinf(t), 5 * cosf(t), 0);
     _freeflyCamera._dir = vec3(sinf(t) * dirScale, cosf(t) * dirScale, 1);
   }
 
@@ -477,13 +485,10 @@ void Tunnel::UpdateCameraMatrix(const UpdateState& state)
   _cbLines.gs0.view = view.Transpose();
   _cbLines.gs0.cameraPos = _freeflyCamera._pos;
 
-  float t = state.localTime.TotalSecondsAsFloat();
-  _cbMesh.vs0.viewProj = viewProj.Transpose();
-  _cbMesh.vs0.time = t;
-
   RenderTargetDesc desc = g_Graphics->GetBackBufferDesc();
   vec4 dim((float)desc.width, (float)desc.height, 0, 0);
   _cbFace.vs0.viewProj = viewProj.Transpose();
+  _cbFace.vs0.view = view.Transpose();
   _cbFace.ps0.cameraPos = _freeflyCamera._pos;
 
   // The depth value written to the z-buffer is after the w-divide,
@@ -526,10 +531,10 @@ bool Tunnel::Render()
   }
 
   ScopedRenderTarget rtLines(DXGI_FORMAT_R11G11B10_FLOAT, BufferFlag::CreateSrv);
+  _ctx->SetRenderTarget(rtLines, g_Graphics->GetBackBuffer(), &black);
+
   {
     // tunnel
-    _ctx->SetRenderTarget(rtLines, g_Graphics->GetBackBuffer(), &black);
-
     ObjectHandle h = _linesBundle.objects._vb;
     vec3* verts = _ctx->MapWriteDiscard<vec3>(h);
     memcpy(verts, _tunnelPlexusVerts.Data(), _tunnelPlexusVerts.DataSize());
@@ -543,29 +548,44 @@ bool Tunnel::Render()
     int numVerts = _tunnelPlexusVerts.Size();
     _ctx->SetBundle(_linesBundle);
     _ctx->Draw(numVerts, 0);
-
-    _ctx->UnsetRenderTargets(0, 1);
   }
 
   {
     // snakes!
-    _ctx->SetRenderTarget(rtLines, g_Graphics->GetBackBuffer(), &black);
-
     ObjectHandle h = _snakeBundle.objects._vb;
     vec3* verts = _ctx->MapWriteDiscard<vec3>(h);
-    int numVerts = g_cloth.CopyOutLines(verts);
+    int numVerts = 0;
+    for (Snake& c : _snakes)
+    {
+      int tmp = c.CopyOutLines(verts);
+      verts += tmp;
+      numVerts += tmp;
+    }
     _ctx->Unmap(h);
 
     _cbLines.gs0.dim = vec4((float)rtColor._desc.width, (float)rtColor._desc.height, 0, 0);
-    vec3 params = g_Blackboard->GetVec3Var("tunnel.lineParams");
+    vec3 params = g_Blackboard->GetVec3Var("tunnel.snakeLineParams");
     _cbLines.ps0.lineParams = vec4(params.x, params.y, params.z, 1);
     _cbLines.Set(_ctx, 0);
 
     _ctx->SetBundle(_snakeBundle);
     _ctx->Draw(numVerts, 0);
 
-    _ctx->UnsetRenderTargets(0, 1);
+    // snake particles
+    _cbParticle.gs0.particleSize = g_Blackboard->GetFloatVar("tunnel.snakeParticleSize");
+    _cbParticle.Set(_ctx, 0);
+    _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
+    _ctx->SetVertexBuffer(h);
+
+    // Unset the DSV, as we want to use it as a texture resource
+    _ctx->SetRenderTarget(rtColor._rtHandle, ObjectHandle(), nullptr);
+    ObjectHandle srv[] = { _particleTexture, rtColor._dsHandle };
+    _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
+    _ctx->Draw(numVerts, 0);
+    _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
+
   }
+  _ctx->UnsetRenderTargets(0, 1);
 
   {
     // particles
@@ -578,7 +598,7 @@ bool Tunnel::Render()
       vtx[i] = pos;
     }
     _ctx->Unmap(_particleBundle.objects._vb);
-
+    _cbParticle.gs0.particleSize = g_Blackboard->GetFloatVar("tunnel.cloudParticleSize");
     _cbParticle.Set(_ctx, 0);
     _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
 

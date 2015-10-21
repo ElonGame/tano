@@ -10,6 +10,7 @@ cbuffer G : register(b0)
   matrix world;
   matrix viewProj;
   float3 cameraPos;
+  float particleSize;
 };
 
 struct VsParticleIn
@@ -60,7 +61,7 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   VsParticleOut p;
   p.alpha = 1;
   p.rayDir = dir;
-  float s = 15;
+  float s = particleSize;
   float3 p0 = float3(pos - s * right - s * up);
   float3 p1 = float3(pos - s * right + s * up);
   float3 p2 = float3(pos + s * right - s * up);
