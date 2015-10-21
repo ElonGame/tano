@@ -308,8 +308,6 @@ ObjectHandle Graphics::GetTempRenderTarget(
     }
   }
 
-  LOG_WARN("new temp");
-
   // Render target not found, so create a new one
   RenderTargetResource* rt = CreateRenderTargetPtr(width, height, format, flags);
   int rtIdx = _renderTargets.Append(rt);

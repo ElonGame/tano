@@ -321,9 +321,7 @@ bool Intro::Render()
     _ctx->Draw(_numSpawnedParticles, VB_INDEX * MAX_NUM_PARTICLES);
   }
 
-  //ScopedRenderTarget rtText(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  //ScopedRenderTarget rtTextDistort(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  ScopedRenderTarget rtText(DXGI_FORMAT_R11G11B10_FLOAT); // 16G16B16A16_FLOAT);
+  ScopedRenderTarget rtText(DXGI_FORMAT_R11G11B10_FLOAT);
   ScopedRenderTarget rtTextDistort(DXGI_FORMAT_R11G11B10_FLOAT);
   if (true) {
     // text

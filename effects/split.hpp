@@ -9,7 +9,6 @@
 #include "../shaders/out/split.mesh_psmeshtrans.cbuffers.hpp"
 #include "../shaders/out/split.sky_pssky.cbuffers.hpp"
 #include "../shaders/out/split.particle_gsparticle.cbuffers.hpp"
-#include "../mesh_loader.hpp"
 
 namespace tano
 {
@@ -27,7 +26,7 @@ namespace tano
       POINTS_PER_CHILD = 1024,
       MAX_NUM_LINES = 32
     };
-    void Create(const MeshLoader& meshLoader);
+    void Create();
 
     void CreateTubesIncremental(float t);
 
@@ -136,9 +135,6 @@ namespace tano
     GpuBundle _compositeBundle;
     ConstantBufferBundle<void, cb::SplitComposeP> _cbComposite;
 
-    GpuState _meshBlockerState;
-    ObjectHandle _meshBlockerPs;
-
     GpuBundle _meshBundle;
     ConstantBufferBundle<
       cb::SplitMeshV, cb::SplitMeshP, void,
@@ -152,7 +148,6 @@ namespace tano
     GpuBundle _particleBundle;
 
     SplitSettings _settings;
-    MeshLoader _meshLoader;
 
     Camera _camera;
     Camera* _curCamera = &_camera;

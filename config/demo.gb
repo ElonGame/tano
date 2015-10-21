@@ -18,6 +18,7 @@
       settings: 'config/landscape.gb';
     },
     {
+      force: true;
       name: 'split';
       factory: 'split';
       start_time: 53000;
@@ -32,7 +33,6 @@
       settings: 'config/plexus.gb';
     },
     {
-      force: true;
       name: 'tunnel';
       factory: 'tunnel';
       start_time: 112000;

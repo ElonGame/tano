@@ -25,7 +25,7 @@ using namespace DirectX;
 
 static const vec3 ZERO3(0, 0, 0);
 static const float GRID_SIZE = 5;
-static const int MAX_CHUNKS = 500;
+static const int MAX_CHUNKS = 750;
 static const float NOISE_HEIGHT = 50;
 static const float NOISE_SCALE_X = 0.01f;
 static const float NOISE_SCALE_Z = 0.01f;
@@ -906,6 +906,7 @@ void Landscape::RasterizeLandscape()
   _ctx->Unmap(_landscapeUpperBundle.objects._vb);
 
   u32 numChunks = (u32)chunks.Size();
+  assert(numChunks < MAX_CHUNKS);
   _numChunks = numChunks;
   _numLowerIndices = numChunks * Chunk::LOWER_INDICES;
   _numUpperIndices = numChunks * Chunk::UPPER_INDICES;
@@ -1014,14 +1015,14 @@ bool Landscape::Render()
   _ctx->UnsetRenderTargets(0, 2);
 
   ScopedRenderTarget rtColorBlurred(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
-  fullscreen->Blur(rtColor, rtColorBlurred, rtColorBlurred._desc, 10, 1);
+  fullscreen->Blur(rtColor, rtColorBlurred, rtColorBlurred._desc, 10, 2);
 
   ScopedRenderTarget rtEmissiveBlurred(
       rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
-  fullscreen->Blur(rtBloomEmissive, rtEmissiveBlurred, rtEmissiveBlurred._desc, 10, 1);
+  fullscreen->Blur(rtBloomEmissive, rtEmissiveBlurred, rtEmissiveBlurred._desc, 10, 2);
 
   RenderTargetDesc halfSize(
-      rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
+      rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R11G11B10_FLOAT);
   ScopedRenderTarget rtScaleBias(halfSize);
   ScopedRenderTarget rtLensFlare(halfSize);
 

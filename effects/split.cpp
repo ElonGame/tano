@@ -13,7 +13,6 @@
 #include "../fullscreen_effect.hpp"
 #include "../mesh_utils.hpp"
 #include "../debug_api.hpp"
-#include "../mesh_loader.hpp"
 #include "../tano_math_convert.hpp"
 
 using namespace tano;
@@ -26,7 +25,6 @@ static int NUM_INITIAL_SEGMENTS = 20;
 static float INITIAL_SPREAD = 30;
 
 #define DEBUG_DRAW_SPLINE 0
-#define USE_MESH_SPLINE 0
 
 //------------------------------------------------------------------------------
 void AddRing(float curT,
@@ -73,7 +71,7 @@ void AddRing(float curT,
 }
 
 //------------------------------------------------------------------------------
-void Pathy::Create(const MeshLoader& meshLoader)
+void Pathy::Create()
 {
   SeqDelete(&segments);
 
@@ -82,32 +80,6 @@ void Pathy::Create(const MeshLoader& meshLoader)
 
   float time = 0;
   float delta = 1.f / SEGMENT_SPLITS;
-
-#if USE_MESH_SPLINE
-  for (protocol::SplineBlob* spline : meshLoader.splines)
-  {
-    // if (strcmp(spline->name, "MoSpline") != 0)
-    //  continue;
-
-    Segment* s = new Segment{vec3(spline->points[0], spline->points[1], spline->points[2]),
-        1,
-        GaussianRand(speedMean, speedMean),
-        0,
-        0,
-        0};
-    segments.push_back(s);
-    segmentStart.push_back(SegmentStart{time, s});
-
-    vector<vec3> pts(spline->numPoints);
-    memcpy(pts.data(), spline->points, spline->numPoints * sizeof(vec3));
-    for (u32 i = 0; i < spline->numPoints; ++i)
-    {
-      pts[i] = 1.0f / 2 * pts[i];
-    }
-
-    s->spline.Create(pts.data(), spline->numPoints, 1.0f / 5);
-  }
-#else
 
   for (int i = 0; i < NUM_INITIAL_SEGMENTS; ++i)
   {
@@ -165,14 +137,11 @@ void Pathy::Create(const MeshLoader& meshLoader)
     }
     time++;
   }
-#endif
 
   for (int i = 0; i < (int)segments.size(); ++i)
   {
     Segment* segment = segments[i];
-#if !USE_MESH_SPLINE
     segment->spline.Create(segment->verts.data(), (int)segment->verts.size(), 1.0f / 4.0f);
-#endif
 
     float tt = segmentStart[i].time;
 
@@ -298,10 +267,6 @@ bool Split::Init()
     .VertexShader("shaders/out/split.mesh", "VsMesh")
     .PixelShader("shaders/out/split.mesh", "PsMeshTrans")));
 
-  INIT_FATAL(_meshBlockerState.Create());
-  INIT_RESOURCE_FATAL(
-    _meshBlockerPs, g_Graphics->LoadPixelShaderFromFile("shaders/out/split.mesh", "PsMeshBlocker"));
-
   INIT(_particleBundle.Create(BundleOptions()
     .DynamicVb(1024 * 1024 * 6, sizeof(vec4))
     .VertexShader("shaders/out/split.particle", "VsParticle")
@@ -327,10 +292,7 @@ bool Split::Init()
   INIT_FATAL(_cbSky.Create());
   INIT_FATAL(_cbParticle.Create());
 
-#if USE_MESH_SPLINE
-  INIT_FATAL(_meshLoader.Load("gfx/krumlins3.boba"));
-#endif
-  _pathy.Create(_meshLoader);
+  _pathy.Create();
 
   INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture("gfx/particle_white.png"));
 
@@ -495,7 +457,7 @@ bool Split::Render()
   static Color black(0, 0, 0, 0);
   FullscreenEffect* fullscreen = g_Graphics->GetFullscreenEffect();
 
-  ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtColor(DXGI_FORMAT_R11G11B10_FLOAT);
 
   //_ctx->SetRenderTarget(rtColor, &black);
   _ctx->SetRenderTarget(rtColor, g_Graphics->GetDepthStencil(), &black);
@@ -508,8 +470,6 @@ bool Split::Render()
 
   ScopedRenderTarget rtOpacity(DXGI_FORMAT_R16G16B16A16_FLOAT);
   ScopedRenderTarget rtRevealage(DXGI_FORMAT_R16_FLOAT);
-
-  ScopedRenderTarget rtBlocker(DXGI_FORMAT_R32_FLOAT);
 
   ObjectHandle handle = _meshBundle.objects._vb;
   PN* vtx = _ctx->MapWriteDiscard<PN>(handle);
@@ -527,29 +487,6 @@ bool Split::Render()
     }
   }
   _ctx->Unmap(handle);
-
-  {
-    // blocker
-    _ctx->SetRenderTarget(rtBlocker, g_Graphics->GetDepthStencil(), &black);
-    _cbMesh.Set(_ctx, 0);
-    _cbMesh.Set(_ctx, 1);
-    _ctx->SetBundle(_meshBundle);
-    _ctx->SetGpuState(_meshBlockerState);
-    _ctx->SetPixelShader(_meshBlockerPs);
-
-    int startVtx = 0;
-    for (const Pathy::Segment* s : _pathy.segments)
-    {
-      if (s->isStarted)
-      {
-        // calc # faces at the current segment
-        int numVerts = (int)(s->completeRings.size() + s->inprogressRing.size());
-        int n = ((numVerts / SEGMENT_SPLITS) - 1) * 6 * ROTATION_SEGMENTS;
-        _ctx->DrawIndexed(n, 0, startVtx);
-        startVtx += numVerts;
-      }
-    }
-  }
 
   const Color* clearColors[] = {&Color(0, 0, 0, 0), &Color(1, 1, 1, 1)};
   ObjectHandle targets[] = {rtOpacity, rtRevealage};
@@ -624,9 +561,9 @@ bool Split::Render()
     _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
-    ObjectHandle inputs[] = {rtColor, rtBlocker, rtOpacity, rtRevealage};
+    ObjectHandle inputs[] = {rtColor, rtOpacity, rtRevealage};
     fullscreen->Execute(inputs,
-        4,  
+        3,  
         g_Graphics->GetBackBuffer(),
         g_Graphics->GetBackBufferDesc(),
         g_Graphics->GetDepthStencil(),
@@ -655,7 +592,7 @@ void Split::RenderParameterSet()
   recalc |= ImGui::SliderFloat("z-var", &_pathy.angleZVariance, 0, 1);
 
   if (recalc)
-    _pathy.Create(_meshLoader);
+    _pathy.Create();
 
   ImGui::Separator();
   ImGui::SliderFloat("Exposure", &_settings.tonemap.exposure, 0.1f, 2.0f);
