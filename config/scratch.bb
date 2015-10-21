@@ -103,9 +103,11 @@ namespace tunnel
     float rProb = 0.5;
 
     float cloudParticleSize = 15;
+    vec4 cloudParticleColor = {1, 1, 1, 1};
 
     vec3 snakeLineParams = { 5.0, 2.25, 1500 };
     float snakeParticleSize = 10;
+    vec4 snakeParticleColor = {0.8, 0.8, 1, 1};
 }
 
 namespace fluid

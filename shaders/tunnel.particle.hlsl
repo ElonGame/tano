@@ -3,6 +3,7 @@
 cbuffer P : register(b0)
 {
   float4 nearFar : NEAR_FAR;
+  float4 particleColor;
 };
 
 cbuffer G : register(b0)
@@ -110,7 +111,7 @@ float4 PsParticle(VsParticleOut p) : SV_Target
   if( c * zdiff <= zEpsilon )
       discard;
 
-  col = intensity * c * col;
+  col = intensity * c * col * particleColor;
 
   // Apply fog
   float fogAmount = max(0, 1 - exp(-(p.z) * FOG_SCALE));

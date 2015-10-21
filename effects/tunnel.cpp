@@ -573,6 +573,8 @@ bool Tunnel::Render()
 
     // snake particles
     _cbParticle.gs0.particleSize = g_Blackboard->GetFloatVar("tunnel.snakeParticleSize");
+    _cbParticle.ps0.particleColor = g_Blackboard->GetVec4Var("tunnel.snakeParticleColor");
+
     _cbParticle.Set(_ctx, 0);
     _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
     _ctx->SetVertexBuffer(h);
@@ -599,6 +601,7 @@ bool Tunnel::Render()
     }
     _ctx->Unmap(_particleBundle.objects._vb);
     _cbParticle.gs0.particleSize = g_Blackboard->GetFloatVar("tunnel.cloudParticleSize");
+    _cbParticle.ps0.particleColor = g_Blackboard->GetVec4Var("tunnel.cloudParticleColor");
     _cbParticle.Set(_ctx, 0);
     _ctx->SetBundleWithSamplers(_particleBundle, ShaderType::PixelShader);
 
