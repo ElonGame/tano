@@ -1,6 +1,6 @@
 {
   soundtrack: 'music.ogg';
-  silent: true;
+  silent: false;
   
   effects: [
     {
@@ -11,6 +11,7 @@
       settings: 'config/intro.gb';
     },
     {
+      force: true;
       name: 'landscape';
       factory: 'landscape';
       start_time: 24000;

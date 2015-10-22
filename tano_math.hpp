@@ -259,7 +259,7 @@ namespace tano
   };
 
   //------------------------------------------------------------------------------
-  vec3 PointOnHemisphere(const vec3& axis);
+  //vec3 PointOnHemisphere(const vec3& axis);
   vec3 RandomVector(float scaleX = 1, float scaleY = 1, float scaleZ = 1);
 
   //------------------------------------------------------------------------------

@@ -11,17 +11,19 @@
 #include "../shaders/out/tunnel.facecolor_psface.cbuffers.hpp"
 #include "../shaders/out/tunnel.particle_gsparticle.cbuffers.hpp"
 #include "../shaders/out/tunnel.particle_psparticle.cbuffers.hpp"
+#include "../random.hpp"
 
 namespace tano
 {
   struct Snake
   {
-    Snake(int dimX,
-      int dimY,
-      float segmentWidth,
-      float segmentHeight,
-      const vec3& anchor,
-      const vec3& dir);
+    Snake(RandomUniform& randomFloat,
+        int dimX,
+        int dimY,
+        float segmentWidth,
+        float segmentHeight,
+        const vec3& anchor,
+        const vec3& dir);
 
     void Update(float dt);
     int CopyOutLines(vec3* out);
@@ -111,5 +113,7 @@ namespace tano
     ConstantBufferBundle<void, cb::TunnelParticleP, cb::TunnelParticleG> _cbParticle;
 
     vector<Snake> _snakes;
+
+    RandomUniform _randomFloat;
   };
 }

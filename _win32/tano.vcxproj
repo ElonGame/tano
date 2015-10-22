@@ -169,14 +169,9 @@
     <ClCompile Include="..\camera.cpp" />
     <ClCompile Include="..\debug_api.cpp" />
     <ClCompile Include="..\dyn_particles.cpp" />
-    <ClCompile Include="..\effects\blob.cpp" />
     <ClCompile Include="..\effects\credits.cpp" />
-    <ClCompile Include="..\effects\fluid.cpp" />
     <ClCompile Include="..\effects\landscape.cpp" />
-    <ClCompile Include="..\effects\particle_trail.cpp" />
     <ClCompile Include="..\effects\plexus.cpp" />
-    <ClCompile Include="..\effects\raymarcher.cpp" />
-    <ClCompile Include="..\effects\sample.cpp" />
     <ClCompile Include="..\effects\split.cpp" />
     <ClCompile Include="..\effects\tunnel.cpp" />
     <ClCompile Include="..\enkits\TaskScheduler.cpp" />
@@ -286,6 +281,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Public|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="..\property_manager.cpp" />
+    <ClCompile Include="..\random.cpp" />
     <ClCompile Include="..\Remotery\lib\Remotery.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -350,14 +346,9 @@
     <ClInclude Include="..\circular_buffer.hpp" />
     <ClInclude Include="..\debug_api.hpp" />
     <ClInclude Include="..\dyn_particles.hpp" />
-    <ClInclude Include="..\effects\blob.hpp" />
     <ClInclude Include="..\effects\credits.hpp" />
-    <ClInclude Include="..\effects\fluid.hpp" />
     <ClInclude Include="..\effects\landscape.hpp" />
-    <ClInclude Include="..\effects\particle_trail.hpp" />
     <ClInclude Include="..\effects\plexus.hpp" />
-    <ClInclude Include="..\effects\raymarcher.hpp" />
-    <ClInclude Include="..\effects\sample.hpp" />
     <ClInclude Include="..\effects\split.hpp" />
     <ClInclude Include="..\effects\tunnel.hpp" />
     <ClInclude Include="..\enkits\Atomics.h" />
@@ -397,6 +388,7 @@
     <ClInclude Include="..\fullscreen_effect.hpp" />
     <ClInclude Include="..\precompiled.hpp" />
     <ClInclude Include="..\property_manager.hpp" />
+    <ClInclude Include="..\random.hpp" />
     <ClInclude Include="..\Remotery\lib\Remotery.h" />
     <ClInclude Include="..\resource_manager.hpp" />
     <ClInclude Include="..\scene.hpp" />

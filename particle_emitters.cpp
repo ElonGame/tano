@@ -7,6 +7,8 @@ using namespace tano::scheduler;
 using namespace bristol;
 using namespace DirectX;
 
+static RandomUniform RANDOM_FLOAT;
+
 //------------------------------------------------------------------------------
 template <typename T>
 void UpdateEmitter(const scheduler::TaskData& data)
@@ -52,9 +54,9 @@ void ParticleEmitter::Create(const vec3& center, int numParticles)
 void ParticleEmitter::CreateParticle(int idx, float s)
 {
   // lifetime and lifetime decay is stored in the w-component
-  XMFLOAT4 p(_center.x + randf(-s, s), _center.y + randf(-s, s), _center.z + randf(1500.f, 2000.f), 0.f);
+  XMFLOAT4 p(_center.x + RANDOM_FLOAT.Next(-s, s), _center.y + RANDOM_FLOAT.Next(-s, s), _center.z + RANDOM_FLOAT.Next(1500.f, 2000.f), 0.f);
 
-  XMFLOAT4 v(randf(-s, s), randf(-s, s), -randf(10.f, 200.f), 0);
+  XMFLOAT4 v(RANDOM_FLOAT.Next(-s, s), RANDOM_FLOAT.Next(-s, s), -RANDOM_FLOAT.Next(10.f, 200.f), 0);
 
   _pos[idx] = XMLoadFloat4(&p);
   _vel[idx] = XMLoadFloat4(&v);
@@ -146,11 +148,11 @@ void RadialParticleEmitter::Create(const vec3& center, float radius, int numPart
 void RadialParticleEmitter::CreateParticle(int idx, float s)
 {
   // lifetime and lifetime decay is stored in the w-component
-  XMFLOAT4 p(_center.x + randf(-s, s), _center.y + randf(-s, s), _center.z + randf(1500.f, 2000.f), 0.f);
+  XMFLOAT4 p(_center.x + RANDOM_FLOAT.Next(-s, s), _center.y + RANDOM_FLOAT.Next(-s, s), _center.z + RANDOM_FLOAT.Next(1500.f, 2000.f), 0.f);
 
-  XMFLOAT4 v(randf(-s, s), randf(-s, s), -randf(10.f, 200.f), 0);
+  XMFLOAT4 v(RANDOM_FLOAT.Next(-s, s), RANDOM_FLOAT.Next(-s, s), -RANDOM_FLOAT.Next(10.f, 200.f), 0);
 
-  float newAngle = randf(0.1f, 1.0f);
+  float newAngle = RANDOM_FLOAT.Next(0.1f, 1.0f);
   XMFLOAT4 newPos(_radius * sinf(newAngle), 0, _radius * cosf(newAngle), 1);
 
   _pos[idx] = XMLoadFloat4(&newPos);

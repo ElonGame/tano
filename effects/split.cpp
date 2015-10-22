@@ -14,6 +14,7 @@
 #include "../mesh_utils.hpp"
 #include "../debug_api.hpp"
 #include "../tano_math_convert.hpp"
+#include "../random.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -25,6 +26,9 @@ static int NUM_INITIAL_SEGMENTS = 20;
 static float INITIAL_SPREAD = 30;
 
 #define DEBUG_DRAW_SPLINE 0
+
+static RandomGauss150 RANDOM_10;
+RandomUniform RANDOM_FLOAT;
 
 //------------------------------------------------------------------------------
 void AddRing(float curT,
@@ -84,9 +88,9 @@ void Pathy::Create()
   for (int i = 0; i < NUM_INITIAL_SEGMENTS; ++i)
   {
     float ss = INITIAL_SPREAD;
-    float x = randf(-ss, ss);
-    float z = randf(-ss, ss);
-    Segment* s = new Segment{vec3(x, 0, z), 1, GaussianRand(speedMean, speedMean), 0, 0, 0};
+    float x = RANDOM_FLOAT.Next(-ss, ss);
+    float z = RANDOM_FLOAT.Next(-ss, ss);
+    Segment* s = new Segment{vec3(x, 0, z), 1, RANDOM_10.Next(speedMean, speedMean), 0, 0, 0};
     segments.push_back(s);
     segmentStart.push_back(SegmentStart{time, s});
   }
@@ -113,15 +117,15 @@ void Pathy::Create()
       if (numVerts >= TOTAL_POINTS)
         break;
 
-      float r = randf(0.f, 1.f);
+      float r = RANDOM_FLOAT.Next(0.f, 1.f);
       if (r >= childProb && (int)segments.size() < maxChildren)
       {
         Segment* s = new Segment{cur,
             scale * childScale,
-            scale * GaussianRand(speedMean, speedVar),
-            angleX + GaussianRand(angleXMean, angleXVariance),
-            angleY + GaussianRand(angleYMean, angleYVariance),
-            angleZ + GaussianRand(angleZMean, angleZVariance)};
+            scale * RANDOM_10.Next(speedMean, speedVar),
+            angleX + RANDOM_10.Next(angleXMean, angleXVariance),
+            angleY + RANDOM_10.Next(angleYMean, angleYVariance),
+            angleZ + RANDOM_10.Next(angleZMean, angleZVariance)};
 
         segments.push_back(s);
         segmentStart.push_back(SegmentStart{time, s});
@@ -130,9 +134,9 @@ void Pathy::Create()
       Matrix mtx = Matrix::CreateFromYawPitchRoll(angleX, angleY, angleZ);
       vec3 delta = curLen * FromVector3(Vector3::Transform(Vector3(0, -1, 0), mtx));
 
-      segment.angleX += GaussianRand(angleXMean, angleXVariance);
-      segment.angleY += GaussianRand(angleYMean, angleYVariance);
-      segment.angleZ += GaussianRand(angleZMean, angleZVariance);
+      segment.angleX += RANDOM_10.Next(angleXMean, angleXVariance);
+      segment.angleY += RANDOM_10.Next(angleYMean, angleYVariance);
+      segment.angleZ += RANDOM_10.Next(angleZMean, angleZVariance);
       segment.cur += delta;
     }
     time++;
@@ -321,7 +325,7 @@ void Split::UpdateParticles(const UpdateState& state)
 
     if (now - segment->lastSpawn > 0.20f)
     {
-      segment->particles.push_back(Pathy::Particle{0, GaussianRand(0.25f, 0.20f), now, 0});
+      segment->particles.push_back(Pathy::Particle{0, RANDOM_10.Next(0.25f, 0.20f), now, 0});
       segment->lastSpawn = now;
     }
   }
@@ -358,19 +362,20 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
   float tt = state.localTime.TotalSecondsAsFloat();
 
   g_Blackboard->SetNamespace("split");
-  _camera._pos.y = g_Blackboard->GetFloatVar("camOffsetY") - tt * g_Blackboard->GetFloatVar("camSpeedY");
+  _camera._pos.y =
+      g_Blackboard->GetFloatVar("camOffsetY") - tt * g_Blackboard->GetFloatVar("camSpeedY");
 
-  float r = lerp(
-    g_Blackboard->GetFloatVar("camStartRadius"),
-    g_Blackboard->GetFloatVar("camEndRadius"),
-    SmoothStep(0, 1, tt / g_Blackboard->GetFloatVar("camRotTime")));
+  float r = lerp(g_Blackboard->GetFloatVar("camStartRadius"),
+      g_Blackboard->GetFloatVar("camEndRadius"),
+      SmoothStep(0, 1, tt / g_Blackboard->GetFloatVar("camRotTime")));
 
   _camera._pos.x = r * sinf(tt * g_Blackboard->GetFloatVar("camRotSpeed"));
   _camera._pos.z = r * cosf(tt * g_Blackboard->GetFloatVar("camRotSpeed"));
-  _camera._target = vec3{
-    0,
-    _camera._pos.y + g_Blackboard->GetFloatVar("camTargetJitter") * sinf(tt * g_Blackboard->GetFloatVar("camTargetJitterSpeed")),
-    0};
+  _camera._target = vec3{0,
+      _camera._pos.y
+          + g_Blackboard->GetFloatVar("camTargetJitter")
+                * sinf(tt * g_Blackboard->GetFloatVar("camTargetJitterSpeed")),
+      0};
   _camera.Update(state.delta.TotalSecondsAsFloat());
 
   Matrix view = _curCamera->_view;
@@ -402,7 +407,6 @@ void Split::UpdateCameraMatrix(const UpdateState& state)
   lightPosP.y /= lightPosP.w;
   _cbComposite.ps0.lightPos = vec2(lightPosP.x, lightPosP.y);
   _cbComposite.ps0.camDir = _curCamera->_dir;
-
 
 #if DEBUG_DRAW_SPLINE
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
@@ -563,7 +567,7 @@ bool Split::Render()
 
     ObjectHandle inputs[] = {rtColor, rtOpacity, rtRevealage};
     fullscreen->Execute(inputs,
-        3,  
+        3,
         g_Graphics->GetBackBuffer(),
         g_Graphics->GetBackBufferDesc(),
         g_Graphics->GetDepthStencil(),

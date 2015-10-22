@@ -10,6 +10,7 @@
 #include "../shaders/out/plexus.greets_psgreets.cbuffers.hpp"
 #include "../shaders/out/plexus.compose_pscomposite.cbuffers.hpp"
 #include "../shaders/out/plexus.sky_pssky.cbuffers.hpp"
+#include "../random.hpp"
 
 namespace tano
 {
@@ -37,56 +38,6 @@ namespace tano
     int greetsIdx = 0;
     int prevGreetsIdx = -1;
     int width, height;
-    int curText = 0;
-    int numGreetsCubes = 0;
-  };
-
-  //------------------------------------------------------------------------------
-  struct GreetsBlock
-  {
-    ~GreetsBlock();
-
-    struct PathElem
-    {
-      PathElem(int x, int y) : x(x), y(y) {}
-      int x, y;
-    };
-
-    struct Particle
-    {
-      int x, y;
-      float speed;
-      float cur;
-      int dir;
-    };
-
-    struct GreetsData
-    {
-      GreetsData(int w, int h);
-      ~GreetsData();
-      void CalcPath(int w, int h, const char* buf);
-
-      void Update(const UpdateState& state);
-
-      bool IsValid(int x, int y);
-
-      vector<Particle> particles;
-
-      vector<vector<PathElem*>> paths;
-      vector<PathElem*> startingPoints;
-
-      vector<float> curParticleCount;
-      vector<float> targetParticleCount;
-      vector<u8> background;
-      int width, height;
-    };
-
-    void Update(const UpdateState& state);
-    bool Init();
-    void Reset();
-    void CopyOut(vec3* verts);
-
-    vector<GreetsData*> _data;
     int curText = 0;
     int numGreetsCubes = 0;
   };
@@ -150,7 +101,7 @@ namespace tano
     ObjectHandle _perlinTexture;
 
     int _numGreetsCubes = 0;
-    //GreetsBlock _greetsBlock;
     GreetsBlock2 _greetsBlock;
+    RandomUniform _randomFloat;
   };
 }

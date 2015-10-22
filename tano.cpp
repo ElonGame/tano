@@ -13,16 +13,12 @@
 #include "blackboard.hpp"
 #include "generated/app.parse.hpp"
 #include "effects/intro.hpp"
-#include "effects/raymarcher.hpp"
 #include "effects/landscape.hpp"
 #include "effects/credits.hpp"
 #include "effects/plexus.hpp"
 #include "effects/tunnel.hpp"
-#include "effects/fluid.hpp"
-#include "effects/sample.hpp"
-#include "effects/particle_trail.hpp"
 #include "effects/split.hpp"
-#include "effects/blob.hpp"
+#include "random.hpp"
 
 #if WITH_IMGUI
 #include "imgui_helpers.hpp"
@@ -190,16 +186,11 @@ bool App::Init(HINSTANCE hinstance)
   DemoEngine::Create();
 
   Intro::Register();
-  RayMarcher::Register();
   Landscape::Register();
   Credits::Register();
   Plexus::Register();
   Tunnel::Register();
-  Fluid::Register();
-  Sample::Register();
-  ParticleTrail::Register();
   Split::Register();
-  Blob::Register();
 
   INIT_FATAL(g_DemoEngine->Init(_settings.demo_config.c_str(), hinstance));
 
@@ -246,16 +237,19 @@ bool App::Run()
 #endif
 
 // ImGui::ShowTestWindow();
-#if WITH_IMGUI && WITH_EXPRESSION_EDITOR
     g_Graphics->ClearRenderTarget(g_Graphics->GetBackBuffer());
+
+#if WITH_IMGUI && WITH_EXPRESSION_EDITOR
     static bool showExpressionEditor = false;
-    if (g_KeyUpTrigger.IsTriggered('0'))
-      showExpressionEditor = !showExpressionEditor;
+    static bool showRandomDistribution = false;
+    if (g_KeyUpTrigger.IsTriggered('0')) showExpressionEditor = !showExpressionEditor;
+    if (g_KeyUpTrigger.IsTriggered('9')) showRandomDistribution = !showRandomDistribution;
 
     if (showExpressionEditor)
-    {
       g_Blackboard->DrawExpressionEditor();
-    }
+
+    if (showRandomDistribution)
+      ShowRandomDistribution();
 #endif
 
     g_DemoEngine->Tick();

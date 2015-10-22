@@ -28,7 +28,8 @@ int GRID_SIZE = 20;
 float CLOTH_SIZE = 10;
 
 //------------------------------------------------------------------------------
-Snake::Snake(int dimX,
+Snake::Snake(RandomUniform& randomFloat,
+    int dimX,
     int dimY,
     float segmentWidth,
     float segmentHeight,
@@ -41,7 +42,7 @@ Snake::Snake(int dimX,
     , _anchor(anchor)
     , _dir(dir)
     , _numParticles(dimX * dimY)
-    , _forceAngle(randf(-2.f, 2.f))
+    , _forceAngle(randomFloat.Next(-2.f, 2.f))
 {
   _particles.resize(_numParticles);
   Particle* p = &_particles[0];
@@ -82,7 +83,7 @@ Snake::Snake(int dimX,
           u32 idx1 = yy * dimX;
           Particle* p1 = &_particles[idx1];
           //_constraints.push_back({ p0, p1, Distance(p0->pos, p1->pos) });
-          _constraints.push_back({ idx0, idx1, Distance(p0->pos, p1->pos) });
+          _constraints.push_back({idx0, idx1, Distance(p0->pos, p1->pos)});
         }
       }
     }
@@ -112,7 +113,7 @@ Snake::Snake(int dimX,
             u32 idx1 = yy * dimX + xx;
             Particle* p1 = &_particles[idx1];
             //_constraints.push_back({ p0, p1, Distance(p0->pos, p1->pos) });
-            _constraints.push_back({ idx0, idx1, Distance(p0->pos, p1->pos) });
+            _constraints.push_back({idx0, idx1, Distance(p0->pos, p1->pos)});
           }
         }
       }
@@ -234,8 +235,8 @@ bool Tunnel::Init()
 
     for (int i = 0; i < numPoints; ++i)
     {
-      float xOfs = randf(-s, +s);
-      float yOfs = randf(-s, +s);
+      float xOfs = _randomFloat.Next(-s, +s);
+      float yOfs = _randomFloat.Next(-s, +s);
 
       controlPoints.push_back(cur);
       cur += vec3(xOfs, yOfs, Z_SPACING);
@@ -249,8 +250,8 @@ bool Tunnel::Init()
 
     for (int i = 0; i < 20; ++i)
     {
-      vec3 cur = _spline.Interpolate(i*10.f + START_OFS);
-      _snakes.push_back(Snake{ 1, 50, 5, 5, cur + vec3{ 0, radius, 0 }, vec3{ 0, -1, 0 } });
+      vec3 cur = _spline.Interpolate(i * 10.f + START_OFS);
+      _snakes.push_back(Snake{_randomFloat, 1, 50, 5, 5, cur + vec3{0, radius, 0}, vec3{0, -1, 0}});
     }
   }
 
@@ -581,11 +582,10 @@ bool Tunnel::Render()
 
     // Unset the DSV, as we want to use it as a texture resource
     _ctx->SetRenderTarget(rtColor._rtHandle, ObjectHandle(), nullptr);
-    ObjectHandle srv[] = { _particleTexture, rtColor._dsHandle };
+    ObjectHandle srv[] = {_particleTexture, rtColor._dsHandle};
     _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
     _ctx->Draw(numVerts, 0);
     _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
-
   }
   _ctx->UnsetRenderTargets(0, 1);
 

@@ -1,5 +1,6 @@
 #pragma once
 #include "tano_math.hpp"
+#include "random.hpp"
 
 namespace tano
 {
@@ -66,5 +67,4 @@ namespace tano
     static void UpdateEmitter(const scheduler::TaskData& data);
     static void CopyOutEmitter(const scheduler::TaskData& data);
   };
-
 }

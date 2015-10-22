@@ -8,6 +8,7 @@
 #include "../camera.hpp"
 #include "../dyn_particles.hpp"
 #include "../tano_math.hpp"
+#include "../random.hpp"
 #include "../shaders/out/landscape.lensflare_pslensflare.cbuffers.hpp"
 #include "../shaders/out/landscape.sky_pssky.cbuffers.hpp"
 #include "../shaders/out/landscape.composite_pscomposite.cbuffers.hpp"
@@ -205,5 +206,8 @@ namespace tano
     CardinalSpline _spline;
     int _curFlockIdx = -1;
     float _flockFade = 1;
+
+    RandomUniform _random;
+    RandomInt _randomInt;
   };
 }

@@ -1,4 +1,5 @@
 #include "perlin2d.hpp"
+#include "random.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -7,6 +8,8 @@ static const int GRID_SIZE = 256;
 
 static vec2 gradients[GRID_SIZE];
 static int permutation[GRID_SIZE];
+
+static RandomUniform randomFloat;
 
 //------------------------------------------------------------------------------
 static inline float Interp(float t)
@@ -21,14 +24,17 @@ void Perlin2D::Init()
 {
   // create random gradients
   for (int i = 0; i < GRID_SIZE; ++i)
-    gradients[i] = Normalize(vec2(randf(-1.f, 1.f), randf(-1.f, 1.f)));
+    gradients[i] = Normalize(vec2(randomFloat.Next(-1.f, 1.f), randomFloat.Next(-1.f, 1.f)));
 
   // create permutation table
   for (int i = 0; i < GRID_SIZE; ++i)
     permutation[i] = i;
 
   for (int i = 0; i < GRID_SIZE - 1; ++i)
-    swap(permutation[i], permutation[randf(i + 1, GRID_SIZE - 1)]);
+  {
+    // TODO(magnus): do we actually want random float here?
+    swap(permutation[i], permutation[(int)randomFloat.Next((float)i + 1, (float)GRID_SIZE - 1)]);
+  }
 }
 
 

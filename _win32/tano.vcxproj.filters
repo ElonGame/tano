@@ -103,9 +103,6 @@
     <ClCompile Include="..\text_writer.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\raymarcher.cpp">
-      <Filter>effects</Filter>
-    </ClCompile>
     <ClCompile Include="..\graphics_context.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -169,19 +166,7 @@
     <ClCompile Include="..\effects\plexus.cpp">
       <Filter>effects</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\sample.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\effects\particle_trail.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\effects\credits.cpp">
-      <Filter>effects</Filter>
-    </ClCompile>
-    <ClCompile Include="..\effects\blob.cpp">
-      <Filter>effects</Filter>
-    </ClCompile>
-    <ClCompile Include="..\effects\fluid.cpp">
       <Filter>effects</Filter>
     </ClCompile>
     <ClCompile Include="..\effects\split.cpp">
@@ -231,6 +216,9 @@
     </ClCompile>
     <ClCompile Include="..\enkits\TaskScheduler.cpp">
       <Filter>enkits</Filter>
+    </ClCompile>
+    <ClCompile Include="..\random.cpp">
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -308,9 +296,6 @@
     </ClInclude>
     <ClInclude Include="..\text_writer.hpp">
       <Filter>inc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\effects\raymarcher.hpp">
-      <Filter>effects</Filter>
     </ClInclude>
     <ClInclude Include="..\graphics_context.hpp">
       <Filter>inc</Filter>
@@ -393,19 +378,7 @@
     <ClInclude Include="..\effects\plexus.hpp">
       <Filter>effects</Filter>
     </ClInclude>
-    <ClInclude Include="..\effects\sample.hpp">
-      <Filter>inc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\effects\fluid.hpp">
-      <Filter>inc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\effects\particle_trail.hpp">
-      <Filter>inc</Filter>
-    </ClInclude>
     <ClInclude Include="..\effects\credits.hpp">
-      <Filter>effects</Filter>
-    </ClInclude>
-    <ClInclude Include="..\effects\blob.hpp">
       <Filter>effects</Filter>
     </ClInclude>
     <ClInclude Include="..\effects\split.hpp">
@@ -494,6 +467,9 @@
     </ClInclude>
     <ClInclude Include="..\enkits\Threads.h">
       <Filter>enkits</Filter>
+    </ClInclude>
+    <ClInclude Include="..\random.hpp">
+      <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

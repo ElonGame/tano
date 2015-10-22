@@ -33,6 +33,7 @@ namespace tano
   }
 
   //------------------------------------------------------------------------------
+#if 0
   vec3 PointOnHemisphere(const vec3& axis)
   {
     vec3 tmp(randf(-1.f, +1.f), randf(-1.f, +1.f), randf(-1.f, +1.f));
@@ -42,7 +43,7 @@ namespace tano
 
     return tmp;
   }
-
+#endif
   //------------------------------------------------------------------------------
   vec3 RandomVector(float scaleX, float scaleY, float scaleZ)
   {

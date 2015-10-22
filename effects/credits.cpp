@@ -10,6 +10,7 @@
 #include "../fullscreen_effect.hpp"
 #include "../stop_watch.hpp"
 #include "../blackboard.hpp"
+#include "../random.hpp"
 
 /*
   update timing:
@@ -37,6 +38,10 @@ namespace
 }
 
 StopWatch g_stopWatch;
+
+static RandomGauss01 RANDOM_01;
+static RandomGauss10 RANDOM_10;
+static RandomGauss50 RANDOM_50;
 
 //------------------------------------------------------------------------------
 Credits::Credits(const string &name, const string& config, u32 id)
@@ -100,10 +105,6 @@ bool Credits::Init()
     .BlendDesc(blendDescPreMultipliedAlpha)
     .RasterizerDesc(rasterizeDescCullNone)));
 
-  INIT(_blurBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/credits.gaussian", "PsBlur35")));
-
   // clang-format on
 
   INIT_RESOURCE(_csBlur, g_Graphics->LoadComputeShaderFromFile("shaders/out/credits.blur", "BoxBlurY"));
@@ -115,7 +116,6 @@ bool Credits::Init()
   INIT(_cbComposite.Create());
   INIT(_cbBackground.Create());
   INIT(_cbParticle.Create());
-  INIT(_cbBlur.Create());
   
   ResetParticleSpline();
 
@@ -533,18 +533,18 @@ void Credits::InitParticleSpline(const vector<int>& indices)
 
   for (int i : indices)
   {
-    float s = GaussianRand(angleSpeed, angleSpeedVar);
+    float s = RANDOM_10.Next(angleSpeed, angleSpeedVar);
     if (s == 0.f)
       s += 0.001f;
 
     _particleState[i] = ParticleState{
-      GaussianRand(speed, speedVar),
+      RANDOM_10.Next(speed, speedVar),
       -width,
-      GaussianRand(height, heightVar),
-      GaussianRand(DirectX::XM_2PI, angleVar),
+      RANDOM_10.Next(height, heightVar),
+      RANDOM_10.Next(DirectX::XM_2PI, angleVar),
       XM_2PI / s,
       0,
-      GaussianRand(fadeSpeed, fadeSpeedVar)};
+      RANDOM_10.Next(fadeSpeed, fadeSpeedVar)};
   }
 
   g_Blackboard->ClearNamespace();

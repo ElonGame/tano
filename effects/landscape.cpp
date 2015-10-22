@@ -41,7 +41,7 @@ struct FlockTiming
 static const float FLOCK_FADE = 0.5f;
 
 vector<FlockTiming> FLOCK_TIMING = {
-  { 0.0f, 5 }, { 5.0f, 2 }, { 10.0f, 6 }, { 15.0f, 8 }, { 20.0f, 3 }, { 25.0f, 9 }, { 30.0f, 1 }, { 1000, 0 },
+  { 0.0f, 5 }, { 5.0f, 2 }, { 10.0f, 6 }, { 15.0f, 8 }, { 20.0f, 3 }, { 25.0f, 1 }, { 30.0f, 1 }, { 1000, 0 },
 };
 
 #define DEBUG_DRAW_PATH 0
@@ -361,7 +361,7 @@ void Landscape::InitBoids()
     flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
     flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
 
-    int pointIdx = rand() % _spline._controlPoints.size();
+    int pointIdx = _randomInt.Next() % _spline._controlPoints.size();
 
     vec3 center = vec3(_spline._controlPoints[pointIdx].x,
         _spline._controlPoints[pointIdx].y,
@@ -372,10 +372,10 @@ void Landscape::InitBoids()
     vec3* force = flock->boids._bodies.force;
     for (int i = 0; i < flock->boids._bodies.numBodies; ++i)
     {
-      vec3 pp(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      vec3 pp(_random.Next(-20.f, 20.f), 0, _random.Next(-20.f, 20.f));
       float h = NoiseAtPoint(pp);
       pos[i] = center + vec3(pp.x, h, pp.z);
-      force[i] = vec3(randf(-20.f, 20.f), 0, randf(-20.f, 20.f));
+      force[i] = vec3(_random.Next(-20.f, 20.f), 0, _random.Next(-20.f, 20.f));
     }
 
     _flocks.Append(flock);
@@ -497,9 +497,9 @@ bool Landscape::FixedUpdate(const FixedUpdateState& state)
         _followFlock = FLOCK_TIMING[_curFlockIdx].idx;
         _flockCamera.flock = _flocks[_followFlock];
         _flockCamera._pos = _flockCamera.flock->boids._center;
-        _flockCamera._pos.x += randf(-20, 20);
-        _flockCamera._pos.y += randf(5, 10);
-        _flockCamera._pos.z += randf(5, 20);
+        _flockCamera._pos.x += _random.Next(-20, 20);
+        _flockCamera._pos.y += _random.Next(5, 10);
+        _flockCamera._pos.z += _random.Next(5, 20);
       }
       else
       {

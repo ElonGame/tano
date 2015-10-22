@@ -9,6 +9,7 @@
 #include "../shaders/out/split.mesh_psmeshtrans.cbuffers.hpp"
 #include "../shaders/out/split.sky_pssky.cbuffers.hpp"
 #include "../shaders/out/split.particle_gsparticle.cbuffers.hpp"
+#include "../random.hpp"
 
 namespace tano
 {

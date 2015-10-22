@@ -63,7 +63,7 @@ namespace bristol
     // Generate a gaussian from the sum of uniformly distributed random numbers
     // (Central Limit Theorem)
     double sum = 0;
-    const int numIters = 10;
+    const int numIters = 50;
     for (int i = 0; i < numIters; ++i)
     {
       sum += randf(-variance, variance);

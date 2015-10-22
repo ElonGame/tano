@@ -140,297 +140,6 @@ void GreetsBlock2::Update(const UpdateState& state)
 }
 
 //------------------------------------------------------------------------------
-GreetsBlock::~GreetsBlock()
-{
-  SeqDelete(&_data);
-}
-
-//------------------------------------------------------------------------------
-GreetsBlock::GreetsData::GreetsData(int w, int h)
-  : width(w)
-  , height(h)
-  , targetParticleCount(w*h)
-{
-}
-
-//------------------------------------------------------------------------------
-GreetsBlock::GreetsData::~GreetsData()
-{
-  for (vector<PathElem*>& path : paths)
-  {
-    SeqDelete(&path);
-  }
-  paths.clear();
-}
-
-//------------------------------------------------------------------------------
-void GreetsBlock::Update(const UpdateState& state)
-{
-  for (GreetsData* d : _data)
-  {
-    d->Update(state);
-  }
-}
-
-//------------------------------------------------------------------------------
-bool GreetsBlock::Init()
-{
-  BEGIN_INIT_SEQUENCE();
-
-  SeqDelete(&_data);
-
-  vector<char> buf;
-  INIT(RESOURCE_MANAGER.LoadFile("gfx/greets.png", &buf));
-  int w, h, c;
-  const char* greetsBuf =
-    (const char*)stbi_load_from_memory((const u8*)buf.data(), (int)buf.size(), &w, &h, &c, 4);
-
-  int NUM_PARTICLES = g_Blackboard->GetIntVar("fluid.particlesPerSegment");
-
-  float speedMean = g_Blackboard->GetFloatVar("fluid.speedMean");
-  float speedVariance = g_Blackboard->GetFloatVar("fluid.speedVariance");
-
-  for (int i : {0, 10, 19, 29, 38})
-  {
-    GreetsData* d = new GreetsData(w, 7);
-    d->CalcPath(w, 7, greetsBuf + i * w * 4);
-
-    int total = (int)d->startingPoints.size() * NUM_PARTICLES;
-
-    d->particles.resize(total);
-    int idx = 0;
-    for (const PathElem* p : d->startingPoints)
-    {
-      // find first valid starting dir
-      int dir = 0;
-      for (int i = 0; i < 4; ++i)
-      {
-        if (d->IsValid(p->x + GRID_DIRS[i * 2 + 0], p->y + GRID_DIRS[i * 2 + 1]))
-        {
-          dir = i;
-          break;
-        }
-      }
-
-      for (int i = idx; i < idx + NUM_PARTICLES; ++i)
-      {
-        d->particles[i].x = p->x;
-        d->particles[i].y = p->y;
-        float ll = GaussianRand(speedMean, speedVariance);
-        d->particles[i].speed = ll;
-        d->particles[i].cur = ll;
-        d->particles[i].dir = dir;
-        //d->particles[i].dir = rand() % 4;
-
-        d->targetParticleCount[p->y*d->width + p->x]++;
-      }
-
-      idx += NUM_PARTICLES;
-    }
-
-    d->curParticleCount = d->targetParticleCount;
-
-    _data.push_back(d);
-  }
-
-  END_INIT_SEQUENCE();
-}
-
-//------------------------------------------------------------------------------
-void GreetsBlock::GreetsData::Update(const UpdateState& state)
-{
-  float dt = state.delta.TotalSecondsAsFloat();
-
-  float changeProb = g_Blackboard->GetFloatVar("fluid.changeProb");
-  float updateSpeed = g_Blackboard->GetFloatVar("fluid.updateSpeed");
-
-  for (int i = 0; i < (int)targetParticleCount.size(); ++i)
-  {
-    float diff = targetParticleCount[i] - curParticleCount[i];
-    diff *= updateSpeed * state.delta.TotalSecondsAsFloat();
-    curParticleCount[i] += diff;
-  }
-
-  for (GreetsBlock::Particle& p : particles)
-  {
-    // check if it's time to move
-    p.cur -= dt;
-    if (p.cur > 0)
-      continue;
-
-    p.cur += p.speed;
-
-    // check if we can go in the current direction
-    int forwardDirs[4];
-    int allDirs[4];
-    int numForwardDirs = 0;
-    int numAllDirs = 0;
-
-    int backdir = (p.dir + 2) % 4;
-
-    bool curDirectionValid = false;
-    for (int i = 0; i < 4; ++i)
-    {
-      if (IsValid(p.x + GRID_DIRS[i * 2 + 0], p.y + GRID_DIRS[i * 2 + 1]))
-      {
-        allDirs[numAllDirs++] = i;
-
-        if (i == p.dir)
-        {
-          curDirectionValid = true;
-        }
-        else
-        {
-          if (i != backdir)
-          {
-            forwardDirs[numForwardDirs++] = i;
-          }
-        }
-      }
-    }
-
-    if (numAllDirs == 0)
-    {
-      // TODO: ok, why does this happen? single block?
-      return;
-    }
-
-    if (curDirectionValid)
-    {
-      if (numForwardDirs && randf(0.f, 1.0f) > changeProb)
-      {
-        p.dir = forwardDirs[rand() % numForwardDirs];
-      }
-    }
-    else
-    {
-      if (numForwardDirs)
-      {
-        p.dir = forwardDirs[rand() % numForwardDirs];
-      }
-      else
-      {
-        p.dir = allDirs[rand() % numAllDirs];
-      }
-    }
-
-    targetParticleCount[p.y*width + p.x]--;
-
-    p.x += GRID_DIRS[p.dir * 2 + 0];
-    p.y += GRID_DIRS[p.dir * 2 + 1];
-
-    targetParticleCount[p.y*width + p.x]++;
-  }
-}
-
-//------------------------------------------------------------------------------
-bool GreetsBlock::GreetsData::IsValid(int x, int y)
-{
-  return x >= 0 && x < width && y >= 0 && y < height && background[y*width + x] == 0;
-}
-
-//------------------------------------------------------------------------------
-void GreetsBlock::GreetsData::CalcPath(int w, int h, const char* buf)
-{
-  background.resize(w*h);
-  for (int i = 0; i < h; ++i)
-  {
-    for (int j = 0; j < w; ++j)
-    {
-      background[i*w + j] = *(int*)&buf[4 * (i*w + j)] == 0xffffffff ? 1 : 0;
-    }
-  }
-
-  enum
-  {
-    FREE = 0,
-    PENDING = 1,
-    VISITED = 2
-  };
-
-  u8* visited = g_ScratchMemory.Alloc<u8>(w * h);
-  memset(visited, FREE, w * h);
-
-  struct Char
-  {
-    int xStart, xEnd;
-  };
-
-  vector<Char> chars;
-
-  auto IsPosValid = [=](int x, int y, int w, int h)
-  {
-    return x >= 0 && x < w && y >= 0 && y < h && *(int*)&buf[4 * (x + y*w)] != 0xffffffff;
-  };
-
-  auto IsEmptyCol = [=](int x)
-  {
-    for (int i = 0; i < h; ++i)
-    {
-      if (buf[(x + i * w) * 4] == 0)
-        return false;
-    }
-    return true;
-  };
-
-  vector<pair<int, int>> starts;
-
-  // find each starting point
-  for (int i = 0; i < h; ++i)
-  {
-    for (int j = 0; j < w; ++j)
-    {
-      // bytes are stored as RGBA (from LSB to MSB)
-      u32 rgba = *(u32*)&buf[4 * (i*w + j) + 0];
-      if (rgba == 0xff0000ff)
-      {
-        starts.push_back(make_pair(j, i));
-      }
-    }
-  }
-
-
-  for (const pair<int, int>& s : starts)
-  {
-    vector<PathElem*> path;
-    // this is pretty much a standard flood fill. the only interesting part
-    // is using the tri-state visited flag, and I kind wonder how if made other
-    // stuff that isn't broken without this :)
-    deque<PathElem*> frontier;
-    int x = s.first;
-    int y = s.second;
-    PathElem* p = new PathElem{ x, y };
-    startingPoints.push_back(p);
-    frontier.push_back(p);
-    while (!frontier.empty())
-    {
-      PathElem* cur = frontier.front();
-      frontier.pop_front();
-      if (visited[cur->x + cur->y * w] == VISITED)
-        continue;
-
-      path.push_back(cur);
-
-      visited[cur->x + cur->y * w] = VISITED;
-
-      int ofs[] = { -1, 0, 0, -1, +1, 0, 0, +1 };
-      for (int i = 0; i < 4; ++i)
-      {
-        int xx = cur->x + ofs[i * 2 + 0];
-        int yy = cur->y + ofs[i * 2 + 1];
-        if (IsPosValid(xx, yy, w, h) && visited[xx + yy * w] == FREE)
-        {
-          visited[xx + yy * w] = PENDING;
-          PathElem* p = new PathElem{ xx, yy };
-          frontier.push_front(p);
-        }
-      }
-    }
-    paths.push_back(path);
-  }
-}
-
-//------------------------------------------------------------------------------
 template <typename T>
 void BlurLine(const T* src, T* dst, int size, float r)
 {
@@ -467,12 +176,12 @@ Plexus::~Plexus()
 SimpleAppendBuffer<vec3, 1024> g_randomPoints;
 
 //------------------------------------------------------------------------------
-void GenRandomPoints(float kernelSize)
+void GenRandomPoints(float kernelSize, RandomUniform& r)
 {
   vec3* tmp = g_ScratchMemory.Alloc<vec3>(g_randomPoints.Capacity());
   for (int i = 0; i < g_randomPoints.Capacity(); ++i)
   {
-    vec3 v(randf(-1.f, 1.f), randf(-1.f, 1.f), randf(-1.f, 1.f));
+    vec3 v(r.Next(-1.f, 1.f), r.Next(-1.f, 1.f), r.Next(-1.f, 1.f));
     v = Normalize(v);
     tmp[i] = v;
   }
@@ -496,7 +205,7 @@ bool Plexus::Init()
 
   _freeflyCamera.FromProtocol(_settings.camera);
 
-  GenRandomPoints(_settings.deform.blur_kernel);
+  GenRandomPoints(_settings.deform.blur_kernel, _randomFloat);
 
 
   // clang-format off
@@ -717,37 +426,6 @@ void Plexus::CalcPoints(bool recalcEdges)
 }
 
 //------------------------------------------------------------------------------
-void GreetsBlock::CopyOut(vec3* verts)
-{
-  GreetsBlock::GreetsData* data = _data[curText];
-  int w = data->width;
-  int h = data->height;
-  float fw = (float)w;
-  float fh = (float)h;
-
-  numGreetsCubes = 0;
-
-  float s = 10;
-  vec3 pos(-fw / 2 * s + s / 2, fh / 2 * s - s / 2, 300);
-  float orgX = pos.x;
-  for (int i = 0; i < h; ++i)
-  {
-    pos.x = orgX;
-    for (int j = 0; j < w; ++j)
-    {
-      float ss = s * Clamp(0.f, 1.f, (float)data->curParticleCount[i*w + j] / 10);
-      if (ss > 0)
-      {
-        verts = AddCubeWithNormal(verts, pos, ss / 2);
-        numGreetsCubes++;
-      }
-      pos.x += s;
-    }
-    pos.y -= s;
-  }
-}
-
-//------------------------------------------------------------------------------
 void Plexus::UpdateGreets(const UpdateState& state)
 {
   _greetsBlock.Update(state);
@@ -944,7 +622,7 @@ void Plexus::RenderParameterSet()
     recalc |= ImGui::SliderInt("num-neighbours", &_settings.plexus.num_neighbours, 1, 100);
 
     if (ImGui::SliderFloat("blur-kernel", &_settings.deform.blur_kernel, 1, 250))
-      GenRandomPoints(_settings.deform.blur_kernel);
+      GenRandomPoints(_settings.deform.blur_kernel, _randomFloat);
 
     if (recalc)
     {
