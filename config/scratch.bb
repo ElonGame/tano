@@ -47,6 +47,8 @@ namespace landscape
     float landscapeClearance = 15;
     float gravity = -5;
     float pushForce = 2;
+
+    float sepScale = 0.5;
 }
 
 namespace split

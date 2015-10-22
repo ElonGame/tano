@@ -234,8 +234,8 @@ static float4 ColorCases[] = {
     { 0, 0, 1, 1 }
 }; 
 
-static float4 WireColor = 0.2 * float4(1, 1, 1, 1);
-static float LineWidth = 3;
+static float4 WireColor = 0.2 *  float4(1, 1, 1, 1);
+static float LineWidth = 0;
 
 // entry-point: ps
 PsColBrightnessOut PsLandscape(PsLandscapeIn p)

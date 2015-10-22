@@ -11,7 +11,6 @@ import subprocess
 from collections import OrderedDict, defaultdict
 from string import Template
 import re
-import time
 
 SHADER_DIR = os.path.join('..', 'shaders')
 OUT_DIR = os.path.join(SHADER_DIR, 'out')
@@ -21,6 +20,13 @@ SHADER_FILES = set()
 
 SHADER_DECL_RE = re.compile('(.+)? (.+)\(.*')
 ENTRY_POINT_RE = re.compile('// entry-point: (.+)')
+DEPS_RE = re.compile('#include "(.+?)"')
+
+DEPS = defaultdict(set)
+
+
+def strip_dirs(f):
+    return f.rpartition('\\')[2]
 
 
 def get_shader_root(f):
@@ -258,8 +264,17 @@ def compile():
             obj_ext = shader_data[shader_type]['obj_ext']
             asm_ext = shader_data[shader_type]['asm_ext']
 
+            # shader_file =  ..\shaders\landscape.landscape
             shader_file = os.path.join(SHADER_DIR, basename)
-            hlsl_file_time = os.path.getmtime(shader_file + '.hlsl')
+
+            # get the time for the file, and all files it depends on
+            hlsl_file_name = shader_file + '.hlsl'
+            dd = hlsl_file_name.rpartition('\\')[0]
+            hlsl_file_time = os.path.getmtime(hlsl_file_name)
+            for deps in DEPS[strip_dirs(hlsl_file_name)]:
+                full_deps = os.path.join(dd, deps)
+                hlsl_file_time = max(
+                    hlsl_file_time, os.path.getmtime(full_deps))
 
             # if the compilation has failed, don't try again if the hlsl file
             # hasn't updated
@@ -319,6 +334,14 @@ def compile():
                         parse_cbuffer(basename, entry_point, out_name, asm_ext)
                         if shader_file in last_fail_time:
                             del(last_fail_time[shader_file])
+
+# find any deps
+for f in glob.glob(os.path.join(SHADER_DIR, '*.hlsl')):
+    for row in open(f).readlines():
+        m = DEPS_RE.match(row)
+        if m:
+            dependant = m.groups()[0]
+            DEPS[strip_dirs(f)].add(dependant)
 
 try:
     while True:

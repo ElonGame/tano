@@ -60,7 +60,7 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
   VsParticleOut p;
   p.alpha = 1;
   p.rayDir = dir;
-  float s = 0.75;
+  float s = 1.75;
   float3 p0 = float3(pos - s * right - s * up);
   float3 p1 = float3(pos - s * right + s * up);
   float3 p2 = float3(pos + s * right - s * up);
@@ -87,7 +87,7 @@ void GsParticle(point VsParticleIn input[1], inout TriangleStream<VsParticleOut>
 }
 
 static float SoftParticleContrast = 2.0;
-static float intensity = 1.0;
+static float intensity = 0.1;
 static float zEpsilon = 0.0;
 
 // entry-point: ps
@@ -96,7 +96,7 @@ float4 PsParticle(VsParticleOut p) : SV_Target
   // Texture0 = particle texture
   // Texture1 = zbuffer
   float2 uv = p.uv.xy;
-  float4 col = Texture0.Sample(PointSampler, uv);
+  float4 col = float4(1, 1, 1, 1) * Texture0.Sample(PointSampler, uv);
   float zBuf = Texture1.Load(int3(p.pos.x, p.pos.y, 0)).r;
 
   // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))

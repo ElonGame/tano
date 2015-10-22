@@ -1,0 +1,14 @@
+intro:
+9.3 - fade in
+14.5 - pling 1
+15.5 - pling 2
+16.5 - pling 3
+20.0 - final ping
+23.5 - fade out
+24.0 - swap
+24.5 - fade in
+
+landscape
+27.5 - 28.5
+39.0 - 40.0
+43.0 - 44.0 

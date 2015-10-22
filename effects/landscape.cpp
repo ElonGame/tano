@@ -38,10 +38,15 @@ struct FlockTiming
   int idx;
 };
 
-static const float FLOCK_FADE = 0.5f;
+static const float FLOCK_FADE = 1.0f;
 
+static const float START_TIME = 24.0f;
 vector<FlockTiming> FLOCK_TIMING = {
-  { 0.0f, 5 }, { 5.0f, 2 }, { 10.0f, 6 }, { 15.0f, 8 }, { 20.0f, 3 }, { 25.0f, 1 }, { 30.0f, 1 }, { 1000, 0 },
+    {0.0f, 2},
+    {27.5f - START_TIME, 1},
+    {39.0f - START_TIME, 5},
+    {43.0f - START_TIME, 2},
+    {1000, 0},
 };
 
 #define DEBUG_DRAW_PATH 0
@@ -237,9 +242,9 @@ bool Landscape::Init()
   INIT(_landscapeLowerBundle.Create(BundleOptions()
     .DynamicVb(MAX_CHUNKS * Chunk::LOWER_VERTS, sizeof(vec3))
     .StaticIb(lowerIndices)
-    .VertexShader("shaders/out/landscape.landscape", "VsLandscape")
-    .GeometryShader("shaders/out/landscape.landscape", "GsLandscape")
-    .PixelShader("shaders/out/landscape.landscape", "PsLandscape")
+    .VertexShader("shaders/out/landscape.lower", "VsLandscape")
+    .GeometryShader("shaders/out/landscape.lower", "GsLandscape")
+    .PixelShader("shaders/out/landscape.lower", "PsLandscape")
     .InputElement(CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32B32_FLOAT))
     .BlendDesc(blendDescNoEmissive)));
 
@@ -375,7 +380,8 @@ void Landscape::InitBoids()
       vec3 pp(_random.Next(-20.f, 20.f), 0, _random.Next(-20.f, 20.f));
       float h = NoiseAtPoint(pp);
       pos[i] = center + vec3(pp.x, h, pp.z);
-      force[i] = vec3(_random.Next(-20.f, 20.f), 0, _random.Next(-20.f, 20.f));
+      force[i] =
+          vec3(_random.Next(-20.f, 20.f), _random.Next(-20.f, 20.f), _random.Next(-20.f, 20.f));
     }
 
     _flocks.Append(flock);
@@ -460,9 +466,10 @@ bool Landscape::Update(const UpdateState& state)
 
   _cbComposite.ps0.time = vec4(t, 0, 0, 0);
 
+  float ss = g_Blackboard->GetFloatVar("landscape.sepScale");
   const BoidSettings& b = _settings.boids;
-  float ks = b.separation_scale * sinf(state.localTime.TotalSecondsAsFloat());
-  float kc = b.cohesion_scale * cosf(state.localTime.TotalSecondsAsFloat());
+  float ks = b.separation_scale * ss * sinf(state.localTime.TotalSecondsAsFloat());
+  float kc = b.cohesion_scale * ss * cosf(1.5f * state.localTime.TotalSecondsAsFloat());
 
   float sum = b.wander_scale + ks + kc + b.alignment_scale + b.follow_scale;
 

@@ -1,6 +1,6 @@
 {
   soundtrack: 'music.ogg';
-  silent: true;
+  silent: false;
   
   effects: [
     {
@@ -16,6 +16,13 @@
       start_time: 24000;
       end_time: 53000;
       settings: 'config/landscape.gb';
+    },
+    {
+      name: 'split';
+      factory: 'split';
+      start_time: 53000;
+      end_time: 82500;
+      settings: 'config/split.gb';
     },
   ];
 }
