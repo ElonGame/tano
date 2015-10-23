@@ -363,7 +363,8 @@ bool Landscape::Update(const UpdateState& state)
   float t = state.localTime.TotalSecondsAsFloat();
   vec3 pp = _spline.Interpolate(t * _settings.spline_speed);
 
-  _cbComposite.ps0.time = vec4(t, 0, 0, 0);
+  _cbComposite.ps0.time =
+      vec2(state.localTime.TotalSecondsAsFloat(), state.globalTime.TotalSecondsAsFloat());
 
   float ss = g_Blackboard->GetFloatVar("landscape.sepScale");
   const BoidSettings& b = _settings.boids;
@@ -903,7 +904,7 @@ bool Landscape::Render()
   fullscreen->Blur(rtBloomEmissive, rtEmissiveBlurred, rtEmissiveBlurred._desc, 10, 2);
 
   RenderTargetDesc halfSize(
-      rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R11G11B10_FLOAT);
+      rtColor._desc.width / 2, rtColor._desc.height / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
   ScopedRenderTarget rtScaleBias(halfSize);
   ScopedRenderTarget rtLensFlare(halfSize);
 

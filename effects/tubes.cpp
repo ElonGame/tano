@@ -359,6 +359,9 @@ bool Tubes::FixedUpdate(const FixedUpdateState& state)
 //------------------------------------------------------------------------------
 void Tubes::UpdateCameraMatrix(const UpdateState& state)
 {
+  _cbComposite.ps0.time =
+    vec2(state.localTime.TotalSecondsAsFloat(), state.globalTime.TotalSecondsAsFloat());
+
   if (g_KeyUpTrigger.IsTriggered('1'))
   {
     _curCamera = _curCamera == &_freeflyCamera ? &_camera : &_freeflyCamera;
@@ -477,7 +480,7 @@ bool Tubes::Render()
   }
 
   ScopedRenderTarget rtOpacity(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  ScopedRenderTarget rtRevealage(DXGI_FORMAT_R16_FLOAT);
+  ScopedRenderTarget rtRevealage(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
   ObjectHandle handle = _meshBundle.objects._vb;
   PN* vtx = _ctx->MapWriteDiscard<PN>(handle);

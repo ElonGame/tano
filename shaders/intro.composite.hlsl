@@ -4,7 +4,7 @@
 cbuffer F : register(b0)
 {
   float4 tonemap;
-  float4 time; // x = local-time, y = text fade
+  float2 time; // x = local-time
 };
 
 // entry-point: ps

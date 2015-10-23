@@ -336,6 +336,9 @@ bool Tunnel::Update(const UpdateState& state)
   _tunnelPlexusVerts.Clear();
   _tunnelFaceVerts.Clear();
 
+  _cbComposite.ps0.time =
+    vec2(state.localTime.TotalSecondsAsFloat(), state.globalTime.TotalSecondsAsFloat());
+
   PlexusUpdate(state);
   UpdateCameraMatrix(state);
   return true;

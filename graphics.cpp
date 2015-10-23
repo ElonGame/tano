@@ -41,6 +41,12 @@ bool Graphics::CreateWithConfigDialog(HINSTANCE hInstance, WNDPROC wndProc)
       DXGI_FORMAT_R8G8B8A8_UNORM,
       wndProc,
       hInstance);
+
+  if (!settings.windowed)
+  {
+    ShowCursor(FALSE);
+  }
+
   return true;
 }
 
@@ -88,6 +94,12 @@ bool Graphics::Init(HINSTANCE hInstance, bool* cancelled)
 //------------------------------------------------------------------------------
 bool Graphics::Destroy()
 {
+  const GraphicsSettings& settings = g_Graphics->GetGraphicsSettings();
+  if (!settings.windowed)
+  {
+    ShowCursor(TRUE);
+  }
+
   delete exch_null(g_Graphics);
 #if WITH_DXGI_DEBUG
   if (_debugModule)

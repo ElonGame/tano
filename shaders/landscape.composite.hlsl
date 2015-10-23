@@ -3,7 +3,7 @@
 cbuffer F : register(b0)
 {
   float4 tonemap; // x = exposure/lumAvg, y = min_white
-  float4 time; // x = local-time
+  float2 time; // x = local-time
 };
 
 // entry-point: ps
@@ -36,6 +36,7 @@ float4 PsComposite(VSQuadOut p) : SV_Target
    // gamma correction
   col = pow(abs(col), 1.0/2.2);
 
-  float tt = smoothstep(0, 0.5, time.x);
-  return lerp(float4(0,0,0,0), col, tt);
+  float fadeIn = smoothstep(24, 24.5, time.y);
+  float fadeOut = 1 - smoothstep(52.5, 53.0, time.y);
+  return min(fadeIn, fadeOut) * col;
 }

@@ -91,7 +91,6 @@ namespace tano
 
     bool LoadFile(const char* filename, vector<char>* buf);
     ObjectHandle LoadTexture(const char* filename,
-        const char* friendlyName = nullptr,
         bool srgb = false,
         D3DX11_IMAGE_INFO* info = nullptr);
 

@@ -135,13 +135,13 @@ namespace credits
 
     float waveWidth = 200;
 
-    float textRight = 0.97;
-    float textSize = 0.03;
+    float textRight = 0.75;
+    float textSize = 0.045;
 
-    float newText0Pos = 0.74;
-    float newText1Pos = 0.90;
-    float newText2Pos = 0.96;
+    float textLeft = 0.025;
 
+    float textPos0 = 0.75;
+    float textPos1 = 0.85;
 }
 
 namespace radial

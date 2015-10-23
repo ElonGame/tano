@@ -362,7 +362,6 @@ bool PackedResourceManager::LoadFile(const char* filename, vector<char>* buf)
 //------------------------------------------------------------------------------
 ObjectHandle PackedResourceManager::LoadTexture(
     const char* filename,
-    const char* friendlyName,
     bool srgb,
     D3DX11_IMAGE_INFO* info)
 {

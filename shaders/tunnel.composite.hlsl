@@ -3,6 +3,7 @@
 cbuffer F : register(b0)
 {
   float2 tonemap; // x = exposure/lumAvg, y = min_white
+  float2 time;
 };
 
 // entry-point: ps
@@ -30,5 +31,10 @@ float4 PsComposite(VSQuadOut p) : SV_Target
 
   float2 xx = -1 + 2 * uv;
   float r = 0.7 + 0.9 - smoothstep(0, 1, sqrt(xx.x*xx.x + xx.y*xx.y));
-  return r * col;
+
+  col = r * col;
+
+  float fadeIn = smoothstep(112, 112.5, time.y);
+  float fadeOut = 1 - smoothstep(143, 144, time.y);
+  return min(fadeIn, fadeOut) * col;
 }

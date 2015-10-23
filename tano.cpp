@@ -34,7 +34,7 @@ using namespace bristol;
 static const int WM_APP_CLOSE = WM_APP + 2;
 
 const TCHAR* g_AppWindowClass = _T("TanoClass");
-const TCHAR* g_AppWindowTitle = _T("tano - neurotica e.f.s");
+const TCHAR* g_AppWindowTitle = _T("radio silence- neurotica e.f.s");
 
 const int ARENA_MEMORY_SIZE = 512 * 1024 * 1024;
 static u8 scratchMemory[ARENA_MEMORY_SIZE];

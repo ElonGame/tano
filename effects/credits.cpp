@@ -107,9 +107,9 @@ bool Credits::Init()
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
 
   INIT_RESOURCE_FATAL(_creditsTexture[0].h,
-    RESOURCE_MANAGER.LoadTexture("gfx/intro_1.png", false, &_creditsTexture[0].info));
+    RESOURCE_MANAGER.LoadTexture("gfx/credits_1.png", false, &_creditsTexture[0].info));
   INIT_RESOURCE_FATAL(_creditsTexture[1].h,
-    RESOURCE_MANAGER.LoadTexture("gfx/intro_2.png", false, &_creditsTexture[1].info));
+    RESOURCE_MANAGER.LoadTexture("gfx/credits_2.png", false, &_creditsTexture[1].info));
 
   INIT(_cbText.Create());
   INIT(_cbComposite.Create());
@@ -585,6 +585,9 @@ void Credits::UpdateParticleSpline(float dt)
 //------------------------------------------------------------------------------
 bool Credits::Update(const UpdateState& state)
 {
+  _cbComposite.ps0.time =
+      vec4(state.localTime.TotalSecondsAsFloat(), state.globalTime.TotalSecondsAsFloat(), 0, 0);
+
   UpdateCameraMatrix(state);
   UpdateParticleSpline(state.delta.TotalSecondsAsFloat());
   return true;
@@ -642,9 +645,10 @@ bool Credits::Render()
   {
     // text
     float right = g_Blackboard->GetFloatVar("credits.textRight");
+    float left = g_Blackboard->GetFloatVar("credits.textLeft");
     float s = g_Blackboard->GetFloatVar("credits.textSize");
-    float y0 = g_Blackboard->GetFloatVar("credits.newText0Pos");
-    float y1 = g_Blackboard->GetFloatVar("credits.newText1Pos");
+    float y0 = g_Blackboard->GetFloatVar("credits.textPos0");
+    float y1 = g_Blackboard->GetFloatVar("credits.textPos1");
 
     float ar0 = _creditsTexture[0].info.Width / (float)_creditsTexture[0].info.Height;
     float ar1 = _creditsTexture[1].info.Width / (float)_creditsTexture[1].info.Height;
@@ -652,7 +656,10 @@ bool Credits::Render()
     float bb0 = 1;
 
     fullscreen->RenderTexture(
-      _creditsTexture[0].h, vec2{ right - ar0 * s, y0 - s }, vec2{ right, y0 }, bb0);
+      _creditsTexture[0].h, vec2{ left, y0 - s }, vec2{ left + ar0 * s, y0 }, bb0);
+
+    fullscreen->RenderTexture(
+      _creditsTexture[1].h, vec2{ left, y1 - s }, vec2{ left + ar1 * s, y1 }, bb0);
   }
 
   ScopedRenderTarget rtBlur(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
@@ -664,7 +671,7 @@ bool Credits::Render()
 
   {
     // composite
-    _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
+    _cbComposite.ps0.tonemap = vec4(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
     _cbComposite.Set(_ctx, 0);
 
     ObjectHandle inputs[] = { rtColor, rtBlur, rtText };

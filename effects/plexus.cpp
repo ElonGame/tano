@@ -442,6 +442,8 @@ void Plexus::UpdateGreets(const UpdateState& state)
 //------------------------------------------------------------------------------
 bool Plexus::Update(const UpdateState& state)
 {
+  _cbComposite.ps0.time =
+    vec2(state.localTime.TotalSecondsAsFloat(), state.globalTime.TotalSecondsAsFloat());
 
   float globalTime = state.globalTime.TotalSecondsAsFloat();
   g_Blackboard->ClearNamespace();

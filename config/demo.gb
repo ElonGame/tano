@@ -1,6 +1,6 @@
 {
   soundtrack: 'music.ogg';
-  silent: true;
+  silent: false;
   
   effects: [
     {
@@ -35,11 +35,10 @@
       name: 'tunnel';
       factory: 'tunnel';
       start_time: 112000;
-      end_time: 142000;
+      end_time: 144000;
       settings: 'config/tunnel.gb';
     },
     {
-      force: true;
       name: 'credits';
       factory: 'credits';
       start_time: 144000;

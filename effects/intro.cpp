@@ -167,7 +167,7 @@ bool Intro::Update(const UpdateState& state)
 
   _cbText.ps0.time = ms;
 
-  _cbComposite.ps0.time.x = ms;
+  _cbComposite.ps0.time = vec2{state.localTime.TotalSecondsAsFloat(), state.globalTime.TotalSecondsAsFloat()};
   _cbComposite.ps0.tonemap = vec4(1, 1, 0, 0);
 
   CopyOutParticleEmitters();
