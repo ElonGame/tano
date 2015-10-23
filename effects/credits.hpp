@@ -11,6 +11,7 @@
 #include "../shaders/out/credits.particle_gsparticle.cbuffers.hpp"
 #include "../shaders/out/credits.composite_pscomposite.cbuffers.hpp"
 #include "../shaders/out/credits.background_psbackground.cbuffers.hpp"
+#include "../shaders/out/credits.text_pstext.cbuffers.hpp"
 
 namespace tano
 {
@@ -95,18 +96,24 @@ namespace tano
 
     ConstantBufferBundle<void, void, cb::CreditsParticleF> _cbParticle;
 
-    GpuBundle _backgroundBundle;
-    ConstantBufferBundle<void, cb::CreditsBackgroundF> _cbBackground;
+    GpuBundle _textBundle;
+    ConstantBufferBundle<void, cb::CreditsTextP> _cbText;
 
     GpuBundle _compositeBundle;
     ConstantBufferBundle<void, cb::CreditsCompositeP> _cbComposite;
+
+    struct CreditsTexture
+    {
+      ObjectHandle h;
+      D3DX11_IMAGE_INFO info;
+    };
+    CreditsTexture _creditsTexture[2];
 
     u32 _numTris = 0;
     u32 _numClothParticles = 0;
     int _clothDimX = 0;
     int _clothDimY = 0;
 
-    ObjectHandle _creditsTexture;
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
     int _numParticles = 0;

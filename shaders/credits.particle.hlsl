@@ -91,10 +91,8 @@ void GsParticle(point GsParticleIn input[1], inout TriangleStream<VsParticleOut>
 float4 PsParticle(VsParticleOut p) : SV_Target
 {
   float fade =  0.5 + 0.5 * p.uv.z;
-  //float fade = saturate(0.5 + 0.5 * p.uv.z);
   float2 uv = p.uv.xy;
-  float4 col = Texture0.Sample(PointSampler, uv);
+  float4 col = Texture0.Sample(LinearSampler, uv);
   float lum = Luminance(col.rgb);
-  //return float4(fade * col.rgb, lum);
   return fade * float4(col.rgb * float3(0.5, 0.5, 0.3), 0.5 * col.g);
 }

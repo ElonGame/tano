@@ -15,7 +15,7 @@
 namespace tano
 {
   //------------------------------------------------------------------------------
-  struct GreetsBlock2
+  struct GreesBlock
   {
     bool Init();
     void Update(const UpdateState& state);
@@ -101,7 +101,7 @@ namespace tano
     ObjectHandle _perlinTexture;
 
     int _numGreetsCubes = 0;
-    GreetsBlock2 _greetsBlock;
+    GreesBlock _greetsBlock;
     RandomUniform _randomFloat;
   };
 }

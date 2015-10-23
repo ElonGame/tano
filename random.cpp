@@ -22,10 +22,10 @@ static bool GenTables()
   for (int i = 0; i < NUM_VALUES; ++i)
   {
     FLOAT_TABLE[i] = randf(0.f, 1.f);
-    GAUSS_1_01_TABLE[i] = GaussianRand(1.0f, 0.10f);
-    GAUSS_1_10_TABLE[i] = GaussianRand(1.0f, 0.50f);
-    GAUSS_1_50_TABLE[i] = GaussianRand(1.0f, 1.50f);
-    GAUSS_1_150_TABLE[i] = GaussianRand(1.0f, 2.50f);
+    GAUSS_1_01_TABLE[i] = GaussianRand(0.f, 0.10f);
+    GAUSS_1_10_TABLE[i] = GaussianRand(0.f, 0.50f);
+    GAUSS_1_50_TABLE[i] = GaussianRand(0.f, 1.50f);
+    GAUSS_1_150_TABLE[i] = GaussianRand(0.f, 2.50f);
     INT_TABLE[i] = rand();
   }
   return true;
@@ -59,8 +59,7 @@ RandomGaussBase::RandomGaussBase(float* table) : _table(table)
 //------------------------------------------------------------------------------
 float RandomGaussBase::Next(float mean, float variance)
 {
-  float ofs = 1.f - mean;
-  float res = variance * (_table[_idx] - ofs);
+  float res = mean + variance * _table[_idx];
   _idx = (_idx + 1) % NUM_VALUES;
   return res;
 }
@@ -96,7 +95,8 @@ void tano::ShowRandomDistribution()
 
   float* distTables[] = {
       GAUSS_1_01_TABLE, GAUSS_1_10_TABLE, GAUSS_1_50_TABLE, GAUSS_1_150_TABLE, FLOAT_TABLE};
-  float scaleFactors[] = {0.5f, 0.5f, 0.5f, 0.5f, 1.0f};
+  float scaleFactors[] = { 0.5f, 0.5f, 0.5f, 0.5f, 1.0f };
+  float ofs[] = { 0.5f, 0.5f, 0.5f, 0.5f, 0 };
   static char* distributions[] = {
       "Gaussian 1/0.01", "Gaussian 1/0.10", "Gaussian 1/0.50", "Gaussian 1/1.50", "Uniform"};
   auto fnGetParam = [](void* data, int idx, const char** out_text)
@@ -113,7 +113,7 @@ void tano::ShowRandomDistribution()
   for (int i = 0; i < NUM_VALUES; ++i)
   {
     float v = distTables[curDist][i];
-    int idx = (int)(numBuckets * scaleFactors[curDist] * v);
+    int idx = (int)(numBuckets * (scaleFactors[curDist] * v + ofs[curDist]));
     if (idx >= 0 && idx < numBuckets)
       values[idx] += 1;
   }

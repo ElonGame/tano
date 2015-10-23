@@ -1,4 +1,4 @@
-#include "split.hpp"
+#include "tubes.hpp"
 #include "../tano.hpp"
 #include "../graphics.hpp"
 #include "../graphics_context.hpp"
@@ -27,7 +27,7 @@ static float INITIAL_SPREAD = 30;
 
 #define DEBUG_DRAW_SPLINE 0
 
-static RandomGauss150 RANDOM_10;
+static RandomGauss150 RANDOM_150;
 RandomUniform RANDOM_FLOAT;
 
 //------------------------------------------------------------------------------
@@ -90,7 +90,7 @@ void Pathy::Create()
     float ss = INITIAL_SPREAD;
     float x = RANDOM_FLOAT.Next(-ss, ss);
     float z = RANDOM_FLOAT.Next(-ss, ss);
-    Segment* s = new Segment{vec3(x, 0, z), 1, RANDOM_10.Next(speedMean, speedMean), 0, 0, 0};
+    Segment* s = new Segment{vec3(x, 0, z), 1, RANDOM_150.Next(speedMean, speedMean), 0, 0, 0};
     segments.push_back(s);
     segmentStart.push_back(SegmentStart{time, s});
   }
@@ -122,10 +122,10 @@ void Pathy::Create()
       {
         Segment* s = new Segment{cur,
             scale * childScale,
-            scale * RANDOM_10.Next(speedMean, speedVar),
-            angleX + RANDOM_10.Next(angleXMean, angleXVariance),
-            angleY + RANDOM_10.Next(angleYMean, angleYVariance),
-            angleZ + RANDOM_10.Next(angleZMean, angleZVariance)};
+            scale * RANDOM_150.Next(speedMean, speedVar),
+            angleX + RANDOM_150.Next(angleXMean, angleXVariance),
+            angleY + RANDOM_150.Next(angleYMean, angleYVariance),
+            angleZ + RANDOM_150.Next(angleZMean, angleZVariance)};
 
         segments.push_back(s);
         segmentStart.push_back(SegmentStart{time, s});
@@ -134,9 +134,9 @@ void Pathy::Create()
       Matrix mtx = Matrix::CreateFromYawPitchRoll(angleX, angleY, angleZ);
       vec3 delta = curLen * FromVector3(Vector3::Transform(Vector3(0, -1, 0), mtx));
 
-      segment.angleX += RANDOM_10.Next(angleXMean, angleXVariance);
-      segment.angleY += RANDOM_10.Next(angleYMean, angleYVariance);
-      segment.angleZ += RANDOM_10.Next(angleZMean, angleZVariance);
+      segment.angleX += RANDOM_150.Next(angleXMean, angleXVariance);
+      segment.angleY += RANDOM_150.Next(angleYMean, angleYVariance);
+      segment.angleZ += RANDOM_150.Next(angleZMean, angleZVariance);
       segment.cur += delta;
     }
     time++;
@@ -224,17 +224,17 @@ void Pathy::CreateTubesIncremental(float orgTime)
 }
 
 //------------------------------------------------------------------------------
-Split::Split(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
+Tubes::Tubes(const string& name, const string& config, u32 id) : BaseEffect(name, config, id)
 {
 }
 
 //------------------------------------------------------------------------------
-Split::~Split()
+Tubes::~Tubes()
 {
 }
 
 //------------------------------------------------------------------------------
-bool Split::OnConfigChanged(const vector<char>& buf)
+bool Tubes::OnConfigChanged(const vector<char>& buf)
 {
   _settings = ParseSplitSettings(InputBuffer(buf));
   _freeflyCamera.FromProtocol(_settings.camera);
@@ -242,17 +242,13 @@ bool Split::OnConfigChanged(const vector<char>& buf)
 }
 
 //------------------------------------------------------------------------------
-bool Split::Init()
+bool Tubes::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
   _camera._useTarget = true;
 
   // clang-format off
-  INIT_FATAL(_backgroundBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/trail.background", "PsBackground")));
-
   INIT_FATAL(_skyBundle.Create(BundleOptions()
     .DepthStencilDesc(depthDescDepthDisabled)
     .VertexShader("shaders/out/common", "VsQuad")
@@ -291,12 +287,21 @@ bool Split::Init()
   // clang-format on
 
   INIT_FATAL(_cbComposite.Create());
-  INIT_FATAL(_cbBackground.Create());
   INIT_FATAL(_cbMesh.Create());
   INIT_FATAL(_cbSky.Create());
   INIT_FATAL(_cbParticle.Create());
 
   _pathy.Create();
+
+  for (int i = 0; i < 1024; ++i)
+  {
+    float ss = 300;
+    _cloudParticles.push_back(vec4{
+      RANDOM_FLOAT.Next(-ss, ss),
+      RANDOM_FLOAT.Next(-ss, ss),
+      RANDOM_FLOAT.Next(-ss, ss),
+      RANDOM_FLOAT.Next()});
+  }
 
   INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture("gfx/particle_white.png"));
 
@@ -304,7 +309,7 @@ bool Split::Init()
 }
 
 //------------------------------------------------------------------------------
-void Split::UpdateParticles(const UpdateState& state)
+void Tubes::UpdateParticles(const UpdateState& state)
 {
   float now = state.localTime.TotalSecondsAsFloat();
   float dt = state.delta.TotalSecondsAsFloat();
@@ -317,42 +322,42 @@ void Split::UpdateParticles(const UpdateState& state)
     if (segment->particles.size() > 10000)
       continue;
 
+    float splineEnd = now * segment->speed;
+
     for (Pathy::Particle& p : segment->particles)
     {
       p.pos += p.speed * dt;
-      p.fade = SmoothStep(0, 2, now - p.spawnTime);
+      p.fade = min(
+          SmoothStepT(0, 5, now - p.spawnTime), 1.f - SmoothStepT(splineEnd - 5, splineEnd, p.pos));
     }
 
     if (now - segment->lastSpawn > 0.20f)
     {
-      segment->particles.push_back(Pathy::Particle{0, RANDOM_10.Next(0.25f, 0.20f), now, 0});
+      segment->particles.push_back(Pathy::Particle{0, RANDOM_150.Next(0.5f, 0.25f), now, 0});
       segment->lastSpawn = now;
     }
   }
 }
 
 //------------------------------------------------------------------------------
-bool Split::Update(const UpdateState& state)
+bool Tubes::Update(const UpdateState& state)
 {
   UpdateParticles(state);
 
   UpdateCameraMatrix(state);
 
   _pathy.CreateTubesIncremental(state.localTime.TotalSecondsAsFloat());
-
-  _cbBackground.ps0.upper = g_Blackboard->GetVec4Var("particle_trail.upper");
-  _cbBackground.ps0.lower = g_Blackboard->GetVec4Var("particle_trail.lower");
   return true;
 }
 
 //------------------------------------------------------------------------------
-bool Split::FixedUpdate(const FixedUpdateState& state)
+bool Tubes::FixedUpdate(const FixedUpdateState& state)
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
-void Split::UpdateCameraMatrix(const UpdateState& state)
+void Tubes::UpdateCameraMatrix(const UpdateState& state)
 {
   if (g_KeyUpTrigger.IsTriggered('1'))
   {
@@ -454,7 +459,7 @@ vec3 RingCenter(const PN* verts)
 }
 
 //------------------------------------------------------------------------------
-bool Split::Render()
+bool Tubes::Render()
 {
   rmt_ScopedCPUSample(Split_Render);
 
@@ -463,7 +468,6 @@ bool Split::Render()
 
   ScopedRenderTarget rtColor(DXGI_FORMAT_R11G11B10_FLOAT);
 
-  //_ctx->SetRenderTarget(rtColor, &black);
   _ctx->SetRenderTarget(rtColor, g_Graphics->GetDepthStencil(), &black);
   {
     // sky
@@ -549,6 +553,9 @@ bool Split::Render()
 
       numParticles += (int)s->particles.size();
     }
+
+    memcpy(vtx, _cloudParticles.data(), _cloudParticles.size() * sizeof(vec4));
+    numParticles += (int)_cloudParticles.size();
     _ctx->Unmap(handle);
 
     _cbParticle.Set(_ctx, 0);
@@ -582,7 +589,7 @@ bool Split::Render()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void Split::RenderParameterSet()
+void Tubes::RenderParameterSet()
 {
   bool recalc = false;
   recalc |= ImGui::SliderFloat("len", &_pathy.len, 1.f, 25.f);
@@ -609,7 +616,7 @@ void Split::RenderParameterSet()
 
 //------------------------------------------------------------------------------
 #if WITH_IMGUI
-void Split::SaveParameterSet(bool inc)
+void Tubes::SaveParameterSet(bool inc)
 {
   _freeflyCamera.ToProtocol(&_settings.camera);
   SaveSettings(_settings, inc);
@@ -617,32 +624,32 @@ void Split::SaveParameterSet(bool inc)
 #endif
 
 //------------------------------------------------------------------------------
-void Split::Reset()
+void Tubes::Reset()
 {
   _freeflyCamera._pos = vec3(0.f, 0.f, 0.f);
   _freeflyCamera._pitch = _freeflyCamera._yaw = _freeflyCamera._roll = 0.f;
 }
 
 //------------------------------------------------------------------------------
-bool Split::Close()
+bool Tubes::Close()
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
-BaseEffect* Split::Create(const char* name, const char* config, u32 id)
+BaseEffect* Tubes::Create(const char* name, const char* config, u32 id)
 {
-  return new Split(name, config, id);
+  return new Tubes(name, config, id);
 }
 
 //------------------------------------------------------------------------------
-const char* Split::Name()
+const char* Tubes::Name()
 {
   return "split";
 }
 
 //------------------------------------------------------------------------------
-void Split::Register()
+void Tubes::Register()
 {
-  g_DemoEngine->RegisterFactory(Name(), Split::Create);
+  g_DemoEngine->RegisterFactory(Name(), Tubes::Create);
 }

@@ -10,6 +10,7 @@ cbuffer G : register(b0)
   matrix world;
   matrix viewProj;
   float3 cameraPos;
+  float4 time;
 };
 
 struct VsParticleIn

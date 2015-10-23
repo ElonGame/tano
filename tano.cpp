@@ -17,7 +17,7 @@
 #include "effects/credits.hpp"
 #include "effects/plexus.hpp"
 #include "effects/tunnel.hpp"
-#include "effects/split.hpp"
+#include "effects/Tubes.hpp"
 #include "random.hpp"
 
 #if WITH_IMGUI
@@ -190,7 +190,7 @@ bool App::Init(HINSTANCE hinstance)
   Credits::Register();
   Plexus::Register();
   Tunnel::Register();
-  Split::Register();
+  Tubes::Register();
 
   INIT_FATAL(g_DemoEngine->Init(_settings.demo_config.c_str(), hinstance));
 

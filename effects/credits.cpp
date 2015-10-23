@@ -38,10 +38,7 @@ namespace
 }
 
 StopWatch g_stopWatch;
-
-static RandomGauss01 RANDOM_01;
-static RandomGauss10 RANDOM_10;
-static RandomGauss50 RANDOM_50;
+static RandomGauss150 RANDOM_150;
 
 //------------------------------------------------------------------------------
 Credits::Credits(const string &name, const string& config, u32 id)
@@ -85,10 +82,6 @@ bool Credits::Init()
   INIT(_clothGpuObjects.LoadPixelShader("shaders/out/basic", "PsPos"));
 
   // clang-format off
-  INIT(_backgroundBundle.Create(BundleOptions()
-    .VertexShader("shaders/out/common", "VsQuad")
-    .PixelShader("shaders/out/credits.background", "PsBackground")));
-
   INIT(_compositeBundle.Create(BundleOptions()
     .VertexShader("shaders/out/common", "VsQuad")
     .PixelShader("shaders/out/credits.composite", "PsComposite")));
@@ -101,20 +94,25 @@ bool Credits::Init()
     .Topology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST)
     .DynamicVb(MAX_PARTICLES, sizeof(vec4))
     .DepthStencilDesc(depthDescDepthDisabled)
-    //.BlendDesc(blendDescBlendOneOne)
     .BlendDesc(blendDescPreMultipliedAlpha)
     .RasterizerDesc(rasterizeDescCullNone)));
+
+  INIT(_textBundle.Create(BundleOptions()
+    .PixelShader("shaders/out/intro.text", "PsIntroTextDistort")));
 
   // clang-format on
 
   INIT_RESOURCE(_csBlur, g_Graphics->LoadComputeShaderFromFile("shaders/out/credits.blur", "BoxBlurY"));
 
   INIT_RESOURCE(_particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
-  INIT_RESOURCE(_creditsTexture, RESOURCE_MANAGER.LoadTexture("gfx/abstract1.jpg"));
 
-  //INIT(InitParticles());
+  INIT_RESOURCE_FATAL(_creditsTexture[0].h,
+    RESOURCE_MANAGER.LoadTexture("gfx/intro_1.png", false, &_creditsTexture[0].info));
+  INIT_RESOURCE_FATAL(_creditsTexture[1].h,
+    RESOURCE_MANAGER.LoadTexture("gfx/intro_2.png", false, &_creditsTexture[1].info));
+
+  INIT(_cbText.Create());
   INIT(_cbComposite.Create());
-  INIT(_cbBackground.Create());
   INIT(_cbParticle.Create());
   
   ResetParticleSpline();
@@ -533,18 +531,18 @@ void Credits::InitParticleSpline(const vector<int>& indices)
 
   for (int i : indices)
   {
-    float s = RANDOM_10.Next(angleSpeed, angleSpeedVar);
+    float s = RANDOM_150.Next(angleSpeed, angleSpeedVar);
     if (s == 0.f)
       s += 0.001f;
 
     _particleState[i] = ParticleState{
-      RANDOM_10.Next(speed, speedVar),
+      RANDOM_150.Next(speed, speedVar),
       -width,
-      RANDOM_10.Next(height, heightVar),
-      RANDOM_10.Next(DirectX::XM_2PI, angleVar),
+      RANDOM_150.Next(height, heightVar),
+      RANDOM_150.Next(DirectX::XM_2PI, angleVar),
       XM_2PI / s,
       0,
-      RANDOM_10.Next(fadeSpeed, fadeSpeedVar)};
+      RANDOM_150.Next(fadeSpeed, fadeSpeedVar)};
   }
 
   g_Blackboard->ClearNamespace();
@@ -587,9 +585,6 @@ void Credits::UpdateParticleSpline(float dt)
 //------------------------------------------------------------------------------
 bool Credits::Update(const UpdateState& state)
 {
-  _cbBackground.ps0.upper = g_Blackboard->GetVec4Var("credits.upper");
-  _cbBackground.ps0.lower = g_Blackboard->GetVec4Var("credits.lower");
-
   UpdateCameraMatrix(state);
   UpdateParticleSpline(state.delta.TotalSecondsAsFloat());
   return true;
@@ -625,10 +620,11 @@ bool Credits::Render()
 
   FullscreenEffect* fullscreen = g_Graphics->GetFullscreenEffect();
 
-  ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtColor(DXGI_FORMAT_R11G11B10_FLOAT);
   _ctx->SetRenderTarget(rtColor, g_Graphics->GetDepthStencil(), &black);
 
   {
+    // particles
     ObjectHandle h = _particleBundle.objects._vb;
     vec4* vtx = _ctx->MapWriteDiscard<vec4>(h);
     memcpy(vtx, _particles.data(), (int)_particles.size() * sizeof(vec4));
@@ -639,6 +635,24 @@ bool Credits::Render()
     _ctx->SetBundleWithSamplers(_particleBundle, PixelShader);
     _ctx->SetShaderResource(_particleTexture);
     _ctx->Draw((int)_particles.size(), 0);
+  }
+
+  ScopedRenderTarget rtText(DXGI_FORMAT_R11G11B10_FLOAT);
+  _ctx->SetRenderTarget(rtText, g_Graphics->GetDepthStencil(), &black);
+  {
+    // text
+    float right = g_Blackboard->GetFloatVar("credits.textRight");
+    float s = g_Blackboard->GetFloatVar("credits.textSize");
+    float y0 = g_Blackboard->GetFloatVar("credits.newText0Pos");
+    float y1 = g_Blackboard->GetFloatVar("credits.newText1Pos");
+
+    float ar0 = _creditsTexture[0].info.Width / (float)_creditsTexture[0].info.Height;
+    float ar1 = _creditsTexture[1].info.Width / (float)_creditsTexture[1].info.Height;
+
+    float bb0 = 1;
+
+    fullscreen->RenderTexture(
+      _creditsTexture[0].h, vec2{ right - ar0 * s, y0 - s }, vec2{ right, y0 }, bb0);
   }
 
   ScopedRenderTarget rtBlur(rtColor._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
@@ -653,7 +667,7 @@ bool Credits::Render()
     _cbComposite.ps0.tonemap = vec2(_settings.tonemap.exposure, _settings.tonemap.min_white);
     _cbComposite.Set(_ctx, 0);
 
-    ObjectHandle inputs[] = { rtColor, rtBlur, _creditsTexture };
+    ObjectHandle inputs[] = { rtColor, rtBlur, rtText };
     fullscreen->Execute(inputs,
       3,
       g_Graphics->GetBackBuffer(),

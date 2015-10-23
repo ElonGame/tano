@@ -13,6 +13,7 @@
 #include "../perlin2d.hpp"
 #include "../blackboard.hpp"
 #include "../fixed_deque.hpp"
+#include "../random.hpp"
 
 using namespace tano;
 using namespace bristol;
@@ -27,8 +28,10 @@ static int MAX_GREETS_HEIGHT = 8;
 
 static int GRID_DIRS[] = { -1, 0, 0, -1, 1, 0, 0, 1 };
 
+static RandomUniform RANDOM_FLOAT;
+
 //------------------------------------------------------------------------------
-void GreetsBlock2::GreetsData::CopyToTarget(vector<float>* target)
+void GreesBlock::GreetsData::CopyToTarget(vector<float>* target)
 {
   for (int i = 0; i < (int)block.size(); ++i)
   {
@@ -37,7 +40,7 @@ void GreetsBlock2::GreetsData::CopyToTarget(vector<float>* target)
 }
 
 //------------------------------------------------------------------------------
-bool GreetsBlock2::Init()
+bool GreesBlock::Init()
 {
   BEGIN_INIT_SEQUENCE();
 
@@ -76,7 +79,7 @@ bool GreetsBlock2::Init()
 }
 
 //------------------------------------------------------------------------------
-void GreetsBlock2::CopyOut(vec3* verts)
+void GreesBlock::CopyOut(vec3* verts)
 {
   int w = width;
   int h = height;
@@ -106,7 +109,7 @@ void GreetsBlock2::CopyOut(vec3* verts)
 }
 
 //------------------------------------------------------------------------------
-void GreetsBlock2::Update(const UpdateState& state)
+void GreesBlock::Update(const UpdateState& state)
 { 
   float localTime = state.localTime.TotalSecondsAsFloat();
   float dt = state.delta.TotalSecondsAsFloat();
@@ -131,7 +134,7 @@ void GreetsBlock2::Update(const UpdateState& state)
   for (int i = 0; i < width * height; ++i)
   {
     float diff = targetSize[i] - blockSize[i];
-    blockAcc[i] = 2.0f * diff;
+    blockAcc[i] =  RANDOM_FLOAT.Next(1.5f, 2.0f) * diff;
 
     blockVel[i] = (0.99f * blockVel[i]) + blockAcc[i] * dt;
     blockSize[i] += blockVel[i] * dt;

@@ -54,9 +54,13 @@ void ParticleEmitter::Create(const vec3& center, int numParticles)
 void ParticleEmitter::CreateParticle(int idx, float s)
 {
   // lifetime and lifetime decay is stored in the w-component
-  XMFLOAT4 p(_center.x + RANDOM_FLOAT.Next(-s, s), _center.y + RANDOM_FLOAT.Next(-s, s), _center.z + RANDOM_FLOAT.Next(1500.f, 2000.f), 0.f);
+  XMFLOAT4 p(_center.x + RANDOM_FLOAT.Next(-s, s),
+      _center.y + RANDOM_FLOAT.Next(-s, s),
+      _center.z + RANDOM_FLOAT.Next(1500.f, 2000.f),
+      0.f);
 
-  XMFLOAT4 v(RANDOM_FLOAT.Next(-s, s), RANDOM_FLOAT.Next(-s, s), -RANDOM_FLOAT.Next(10.f, 200.f), 0);
+  XMFLOAT4 v(
+      RANDOM_FLOAT.Next(-s, s), RANDOM_FLOAT.Next(-s, s), -RANDOM_FLOAT.Next(10.f, 200.f), 0);
 
   _pos[idx] = XMLoadFloat4(&p);
   _vel[idx] = XMLoadFloat4(&v);
@@ -148,9 +152,13 @@ void RadialParticleEmitter::Create(const vec3& center, float radius, int numPart
 void RadialParticleEmitter::CreateParticle(int idx, float s)
 {
   // lifetime and lifetime decay is stored in the w-component
-  XMFLOAT4 p(_center.x + RANDOM_FLOAT.Next(-s, s), _center.y + RANDOM_FLOAT.Next(-s, s), _center.z + RANDOM_FLOAT.Next(1500.f, 2000.f), 0.f);
+  XMFLOAT4 p(_center.x + RANDOM_FLOAT.Next(-s, s),
+      _center.y + RANDOM_FLOAT.Next(-s, s),
+      _center.z + RANDOM_FLOAT.Next(1500.f, 2000.f),
+      0.f);
 
-  XMFLOAT4 v(RANDOM_FLOAT.Next(-s, s), RANDOM_FLOAT.Next(-s, s), -RANDOM_FLOAT.Next(10.f, 200.f), 0);
+  XMFLOAT4 v(
+      RANDOM_FLOAT.Next(-s, s), RANDOM_FLOAT.Next(-s, s), -RANDOM_FLOAT.Next(10.f, 200.f), 0);
 
   float newAngle = RANDOM_FLOAT.Next(0.1f, 1.0f);
   XMFLOAT4 newPos(_radius * sinf(newAngle), 0, _radius * cosf(newAngle), 1);
@@ -182,7 +190,7 @@ void RadialParticleEmitter::Update(float dt)
     int toSpawn = (int)(ratio * diff);
     for (int i = 0; i < toSpawn; ++i)
     {
-      CreateParticle(i+_spawnedParticles, 100);
+      CreateParticle(i + _spawnedParticles, 100);
     }
     _spawnedParticles += toSpawn;
   }
@@ -194,22 +202,12 @@ void RadialParticleEmitter::Update(float dt)
   {
     float angle = _angle[i] + dt * _angleVel[i];
     angle = fmodf(angle, XM_2PI);
-
-    float dist = fabsf(angle - XM_PI);
-    float ff = XM_PIDIV4;
-    float y = 0;
-    if (dist < ff) {
-      float t = SmoothStep(0, 1, dist/ff);
-      //y = _radius * cosf(t);
-    }
     _angle[i] = angle;
-    
+
     float newAngle = _angle[i];
     float x = _radius * sinf(newAngle);
     float z = _radius * cosf(newAngle);
-    XMFLOAT4 newPos(x, y, z, 1);
-
-
+    XMFLOAT4 newPos(x, 0, z, 1);
 
     _pos[i] = XMLoadFloat4(&newPos);
   }

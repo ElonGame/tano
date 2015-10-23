@@ -172,7 +172,7 @@
     <ClCompile Include="..\effects\credits.cpp" />
     <ClCompile Include="..\effects\landscape.cpp" />
     <ClCompile Include="..\effects\plexus.cpp" />
-    <ClCompile Include="..\effects\split.cpp" />
+    <ClCompile Include="..\effects\tubes.cpp" />
     <ClCompile Include="..\effects\tunnel.cpp" />
     <ClCompile Include="..\enkits\TaskScheduler.cpp" />
     <ClCompile Include="..\filewatcher_win32.cpp" />
@@ -349,7 +349,7 @@
     <ClInclude Include="..\effects\credits.hpp" />
     <ClInclude Include="..\effects\landscape.hpp" />
     <ClInclude Include="..\effects\plexus.hpp" />
-    <ClInclude Include="..\effects\split.hpp" />
+    <ClInclude Include="..\effects\tubes.hpp" />
     <ClInclude Include="..\effects\tunnel.hpp" />
     <ClInclude Include="..\enkits\Atomics.h" />
     <ClInclude Include="..\enkits\LockLessMultiReadPipe.h" />

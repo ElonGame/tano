@@ -169,9 +169,6 @@
     <ClCompile Include="..\effects\credits.cpp">
       <Filter>effects</Filter>
     </ClCompile>
-    <ClCompile Include="..\effects\split.cpp">
-      <Filter>effects</Filter>
-    </ClCompile>
     <ClCompile Include="..\effects\tunnel.cpp">
       <Filter>effects</Filter>
     </ClCompile>
@@ -219,6 +216,9 @@
     </ClCompile>
     <ClCompile Include="..\random.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\effects\tubes.cpp">
+      <Filter>effects</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -381,9 +381,6 @@
     <ClInclude Include="..\effects\credits.hpp">
       <Filter>effects</Filter>
     </ClInclude>
-    <ClInclude Include="..\effects\split.hpp">
-      <Filter>effects</Filter>
-    </ClInclude>
     <ClInclude Include="..\effects\tunnel.hpp">
       <Filter>effects</Filter>
     </ClInclude>
@@ -470,6 +467,9 @@
     </ClInclude>
     <ClInclude Include="..\random.hpp">
       <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\effects\tubes.hpp">
+      <Filter>effects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

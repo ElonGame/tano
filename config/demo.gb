@@ -1,6 +1,6 @@
 {
   soundtrack: 'music.ogg';
-  silent: false;
+  silent: true;
   
   effects: [
     {
@@ -11,7 +11,6 @@
       settings: 'config/intro.gb';
     },
     {
-      force: true;
       name: 'landscape';
       factory: 'landscape';
       start_time: 24000;
@@ -40,6 +39,7 @@
       settings: 'config/tunnel.gb';
     },
     {
+      force: true;
       name: 'credits';
       factory: 'credits';
       start_time: 144000;

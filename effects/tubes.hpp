@@ -9,6 +9,8 @@
 #include "../shaders/out/split.mesh_psmeshtrans.cbuffers.hpp"
 #include "../shaders/out/split.sky_pssky.cbuffers.hpp"
 #include "../shaders/out/split.particle_gsparticle.cbuffers.hpp"
+//#include "../shaders/out/split.cloudparticle_gsparticle.cbuffers.hpp"
+//#include "../shaders/out/split.cloudparticle_gsparticle.cbuffers.hpp"
 #include "../random.hpp"
 
 namespace tano
@@ -97,11 +99,11 @@ namespace tano
     vector<Line> lines;
   };
 
-  class Split : public BaseEffect
+  class Tubes : public BaseEffect
   {
   public:
-    Split(const string& name, const string& config, u32 id);
-    ~Split();
+    Tubes(const string& name, const string& config, u32 id);
+    ~Tubes();
     virtual bool OnConfigChanged(const vector<char>& buf) override;
     virtual bool Init() override;
     virtual bool Update(const UpdateState& state) override;
@@ -130,9 +132,6 @@ namespace tano
 
     Pathy _pathy;
 
-    GpuBundle _backgroundBundle;
-    ConstantBufferBundle<void, cb::TrailBackgroundF> _cbBackground;
-
     GpuBundle _compositeBundle;
     ConstantBufferBundle<void, cb::SplitComposeP> _cbComposite;
 
@@ -147,6 +146,8 @@ namespace tano
     ConstantBufferBundle<void, void, cb::SplitParticleG> _cbParticle;
     ObjectHandle _particleTexture;
     GpuBundle _particleBundle;
+
+    vector<vec4> _cloudParticles;
 
     SplitSettings _settings;
 

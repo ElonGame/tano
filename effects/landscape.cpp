@@ -55,107 +55,6 @@ vector<FlockTiming> FLOCK_TIMING = {
 int Landscape::Chunk::nextId = 1;
 
 
-//------------------------------------------------------------------------------
-inline float Dot(const DirectX::SimpleMath::Plane& plane, const vec3& pt)
-{
-  // Note, this is just the dot product between the plane's normal and pt
-  return plane.x * pt.x + plane.y * pt.y + plane.z * pt.z;
-}
-
-//------------------------------------------------------------------------------
-float DistanceToPoint(const DirectX::SimpleMath::Plane& plane, const vec3& pt)
-{
-  return plane.x * pt.x + plane.y * pt.y + plane.z * pt.z + plane.w;
-}
-
-//------------------------------------------------------------------------------
-int ClipPolygonAgainstPlane(int vertexCount, const vec3* vertex, const Plane& plane, vec3* result)
-{
-  // from http://www.terathon.com/code/clipping.html
-  enum Side
-  {
-    polygonInterior = 1,
-    polygonBoundary = 0,
-    polygonExterior = -1
-  };
-
-  Side location[16];
-
-  const float boundaryEpsilon = 1.0e-3F;
-
-  int positive = 0;
-  int negative = 0;
-
-  for (int a = 0; a < vertexCount; a++)
-  {
-    float d = DistanceToPoint(plane, vertex[a]);
-    if (d > boundaryEpsilon)
-    {
-      location[a] = polygonInterior;
-      positive++;
-    }
-    else
-    {
-      if (d < -boundaryEpsilon)
-      {
-        location[a] = polygonExterior;
-        negative++;
-      }
-      else
-      {
-        location[a] = polygonBoundary;
-      }
-    }
-  }
-
-  if (negative == 0)
-  {
-    for (int a = 0; a < vertexCount; a++)
-      result[a] = vertex[a];
-    return (vertexCount);
-  }
-  else if (positive == 0)
-  {
-    return (0);
-  }
-
-  int count = 0;
-  int previous = vertexCount - 1;
-  for (int index = 0; index < vertexCount; index++)
-  {
-    int loc = location[index];
-    if (loc == polygonExterior)
-    {
-      if (location[previous] == polygonInterior)
-      {
-        const vec3& v1 = vertex[previous];
-        const vec3& v2 = vertex[index];
-
-        vec3 dv = v2 - v1;
-        float t = DistanceToPoint(plane, v2) / Dot(plane, dv);
-        result[count++] = v2 - dv * t;
-      }
-    }
-    else
-    {
-      const vec3& v1 = vertex[index];
-      if ((loc == polygonInterior) && (location[previous] == polygonExterior))
-      {
-        const vec3& v2 = vertex[previous];
-        vec3 dv = v2 - v1;
-
-        float t = DistanceToPoint(plane, v2) / Dot(plane, dv);
-        result[count++] = v2 - dv * t;
-      }
-
-      result[count++] = v1;
-    }
-
-    previous = index;
-  }
-
-  return (count);
-}
 
 //------------------------------------------------------------------------------
 float NoiseAtPoint(const vec3& v)
@@ -573,6 +472,8 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
   _cbParticle.gs0.world = Matrix::Identity();
   _cbParticle.gs0.viewProj = viewProj.Transpose();
   _cbParticle.gs0.cameraPos = _curCamera->_pos;
+  _cbParticle.gs0.time =
+      vec4(state.localTime.TotalSecondsAsFloat(), state.globalTime.TotalSecondsAsFloat(), 0, 0);
 
 #if DEBUG_DRAW_PATH
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
@@ -862,7 +763,6 @@ void Landscape::RasterizeLandscape()
   vec3* upperBuf = _ctx->MapWriteDiscard<vec3>(_landscapeUpperBundle.objects._vb);
   vec3* particleBuf = _ctx->MapWriteDiscard<vec3>(_particleBundle.objects._vb);
 
-#if 1
   // upper chunks, and particles
   SimpleAppendBuffer<TaskId, 2048> copyTasks;
 
@@ -878,35 +778,10 @@ void Landscape::RasterizeLandscape()
     lowerBuf += Chunk::LOWER_VERTS;
     upperBuf += Chunk::UPPER_VERTS;
     particleBuf += Chunk::UPPER_VERTS;
-
-    //landscapeBuf += Chunk::UPPER_DATA_SIZE;
-    //particleBuf += Chunk::UPPER_VERTS;
-    //numParticles += Chunk::UPPER_VERTS;
-
-    //memcpy(lowerBuf, chunk->lowerData, Chunk::LOWER_VERTS * sizeof(vec3));
-
-    //memcpy(upperBuf, chunk->upperData, Chunk::UPPER_VERTS * sizeof(vec3));
-
-    //memcpy(particleBuf, chunk->upperData, Chunk::UPPER_VERTS * sizeof(vec3));
-
   }
 
   for (const TaskId& taskId : copyTasks)
     g_Scheduler->Wait(taskId);
-
-#else
-  for (const Chunk* chunk : chunks)
-  {
-    memcpy(lowerBuf, chunk->lowerData, Chunk::LOWER_VERTS * sizeof(vec3));
-    lowerBuf += Chunk::LOWER_VERTS;
-
-    memcpy(upperBuf, chunk->upperData, Chunk::UPPER_VERTS * sizeof(vec3));
-    upperBuf += Chunk::UPPER_VERTS;
-
-    memcpy(particleBuf, chunk->upperData, Chunk::UPPER_VERTS * sizeof(vec3));
-    particleBuf += Chunk::UPPER_VERTS;
-  }
-#endif
 
   _ctx->Unmap(_particleBundle.objects._vb);
   _ctx->Unmap(_landscapeLowerBundle.objects._vb);
@@ -985,7 +860,6 @@ bool Landscape::Render()
   {
     RasterizeLandscape();
 
-    //_ctx->SetGpuObjects(_landscapeGpuObjects);
     _cbLandscape.Set(_ctx, 0);
 
     if (_drawFlags & DrawLower)

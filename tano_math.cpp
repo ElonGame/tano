@@ -249,4 +249,108 @@ namespace tano
     matrix[15] = 0;
     return matrix;
   }
+
+  //------------------------------------------------------------------------------
+  inline float Dot(const DirectX::SimpleMath::Plane& plane, const vec3& pt)
+  {
+    // Note, this is just the dot product between the plane's normal and pt
+    return plane.x * pt.x + plane.y * pt.y + plane.z * pt.z;
+  }
+
+  //------------------------------------------------------------------------------
+  inline float DistanceToPoint(const DirectX::SimpleMath::Plane& plane, const vec3& pt)
+  {
+    return plane.x * pt.x + plane.y * pt.y + plane.z * pt.z + plane.w;
+  }
+
+  //------------------------------------------------------------------------------
+  int ClipPolygonAgainstPlane(int vertexCount, const vec3* vertex, const Plane& plane, vec3* result)
+  {
+    // from http://www.terathon.com/code/clipping.html
+    enum Side
+    {
+      polygonInterior = 1,
+      polygonBoundary = 0,
+      polygonExterior = -1
+    };
+
+    Side location[16];
+
+    const float boundaryEpsilon = 1.0e-3F;
+
+    int positive = 0;
+    int negative = 0;
+
+    for (int a = 0; a < vertexCount; a++)
+    {
+      float d = DistanceToPoint(plane, vertex[a]);
+      if (d > boundaryEpsilon)
+      {
+        location[a] = polygonInterior;
+        positive++;
+      }
+      else
+      {
+        if (d < -boundaryEpsilon)
+        {
+          location[a] = polygonExterior;
+          negative++;
+        }
+        else
+        {
+          location[a] = polygonBoundary;
+        }
+      }
+    }
+
+    if (negative == 0)
+    {
+      for (int a = 0; a < vertexCount; a++)
+        result[a] = vertex[a];
+      return (vertexCount);
+    }
+    else if (positive == 0)
+    {
+      return (0);
+    }
+
+    int count = 0;
+    int previous = vertexCount - 1;
+    for (int index = 0; index < vertexCount; index++)
+    {
+      int loc = location[index];
+      if (loc == polygonExterior)
+      {
+        if (location[previous] == polygonInterior)
+        {
+          const vec3& v1 = vertex[previous];
+          const vec3& v2 = vertex[index];
+
+          vec3 dv = v2 - v1;
+          float t = DistanceToPoint(plane, v2) / Dot(plane, dv);
+          result[count++] = v2 - dv * t;
+        }
+      }
+      else
+      {
+        const vec3& v1 = vertex[index];
+        if ((loc == polygonInterior) && (location[previous] == polygonExterior))
+        {
+          const vec3& v2 = vertex[previous];
+          vec3 dv = v2 - v1;
+
+          float t = DistanceToPoint(plane, v2) / Dot(plane, dv);
+          result[count++] = v2 - dv * t;
+        }
+
+        result[count++] = v1;
+      }
+
+      previous = index;
+    }
+
+    return (count);
+  }
+
 }
+

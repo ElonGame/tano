@@ -196,12 +196,20 @@ namespace bristol
   // SmoothStep - Like the step function but provides a smooth transition from a to b
   //              using the cubic function 3x^2 - 2x^3.  From The Renderman Companion.
   //
+
+  inline float SmoothStepT(float a, float b, float t)
+  {
+    if (t <= a)
+      return 0;
+    else if (t >= b)
+      return 1;
+    t = (t - a) / (b - a);    // normalize t to 0..1
+    return t*t*(3 - 2 * t);
+  }
+
   inline float SmoothStep(float a, float b, float t)
   {
-    if (t<=a) return 0;
-    if (t>=b) return 1;
-    t = (t-a)/(b-a);    // normalize t to 0..1
-    return t*t*(3 - 2*t);
+    return lerp(a, b, SmoothStepT(a, b, t));
   }
 
   float GaussianRand(float mean, float variance);

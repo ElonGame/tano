@@ -10,25 +10,20 @@ cbuffer G : register(b0)
   matrix world;
   matrix viewProj;
   float3 cameraPos;
+  float4 time;
 };
 
 struct VsParticleIn
 {
   float3 pos : Position;
-//  float3 normal : Normal;
 };
 
-struct GsParticleIn
-{
-  float3 pos : Position;
-};
-
-struct VsParticleOut
+struct GsParticleOut
 {
   float4 pos : SV_Position;
   float2 uv : TexCoord0;
   float z : TexCoord1;
-  float alpha : TexCoord2;
+  float brightness : TexCoord2;
   float3 rayDir : TexCoord3;
 };
 
@@ -41,16 +36,14 @@ static float2 uvsVtx[4] = {
 };
 
 // entry-point: vs
-GsParticleIn VsParticle(VsParticleIn v)
+VsParticleIn VsParticle(VsParticleIn v)
 {
-  GsParticleIn res;
-  res.pos = v.pos;
-  return res;
+  return v;
 }
 
 [maxvertexcount(4)]
 // entry-point: gs
-void GsParticle(point GsParticleIn input[1], inout TriangleStream<VsParticleOut> outStream)
+void GsParticle(point VsParticleIn input[1], inout TriangleStream<GsParticleOut> outStream)
 {
   // Note, the DirectX strip order differs from my usual order. It might be
   // a good idea to change my stuff..
@@ -65,8 +58,8 @@ void GsParticle(point GsParticleIn input[1], inout TriangleStream<VsParticleOut>
   float3 right = cross(dir, float3(0,1,0));
   float3 up = cross(right, dir);
 
-  VsParticleOut p;
-  p.alpha = 1;
+  GsParticleOut p;
+  p.brightness = saturate(1 + 1.5 * sin(time.x + pos.x));
   p.rayDir = dir;
   float s = 0.75;
   float3 p0 = float3(pos - s * right - s * up);
@@ -99,7 +92,7 @@ static float intensity = 1.0;
 static float zEpsilon = 0.0;
 
 // entry-point: ps
-PsColBrightnessOut PsParticle(VsParticleOut p)
+PsColBrightnessOut PsParticle(GsParticleOut p)
 {
   PsColBrightnessOut res;
 
@@ -126,7 +119,7 @@ PsColBrightnessOut PsParticle(VsParticleOut p)
   float3 fogColor = FogColor(p.rayDir);
   col.xyz = lerp(col.xyz, col.xyz * fogColor, fogAmount);
 
-  res.col = col;
+  res.col = p.brightness * col;
 
   res.emissive.rgb = 0;
   res.emissive.a = 0; //Luminance(intensity * c * col.rgb);

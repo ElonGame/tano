@@ -113,11 +113,11 @@ bool Intro::Init()
   _cbBackground.ps0.outer = ColorToVector4(_settings.outer_color);
 
   INIT_RESOURCE_FATAL(_introTexture[0].h,
-    RESOURCE_MANAGER.LoadTexture("gfx/intro_1.png", false, &_introTexture[0].info));
+      RESOURCE_MANAGER.LoadTexture("gfx/intro_1.png", false, &_introTexture[0].info));
   INIT_RESOURCE_FATAL(_introTexture[1].h,
-    RESOURCE_MANAGER.LoadTexture("gfx/intro_2.png", false, &_introTexture[1].info));
+      RESOURCE_MANAGER.LoadTexture("gfx/intro_2.png", false, &_introTexture[1].info));
   INIT_RESOURCE_FATAL(_introTexture[2].h,
-    RESOURCE_MANAGER.LoadTexture("gfx/intro_3.png", false, &_introTexture[2].info));
+      RESOURCE_MANAGER.LoadTexture("gfx/intro_3.png", false, &_introTexture[2].info));
 
   END_INIT_SEQUENCE();
 }
@@ -138,12 +138,13 @@ void Intro::UpdateCameraMatrix(const UpdateState& state)
     vec3 pos = vec3(x, height, z);
     vec3 target = vec3(0, 0, 0);
     vec3 dir = Normalize(target - pos);
-   
+
     int w, h;
     g_Graphics->GetBackBufferSize(&w, &h);
     float aspect = (float)w / h;
     Matrix view = Matrix::CreateLookAt(ToVector3(pos), Vector3(0, 0, 0), Vector3(0, 1, 0));
-    Matrix proj = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), aspect, 0.1f, 3000.f);
+    Matrix proj =
+        Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(45), aspect, 0.1f, 3000.f);
     Matrix viewProj = view * proj;
   }
 }
@@ -222,8 +223,8 @@ void Intro::CopyOutParticleEmitters()
   }
 
   HRESULT hr = _ctx->Map(_particleBundle.objects._vb, 0, m, 0, &res);
-  //vec4* vtx = _ctx->MapWriteDiscard<vec4>(_particleBundle.objects._vb);
-  vec4* vtx = (vec4*)res.pData;//  _ctx->MapWriteDiscard<vec4>(_particleBundle.objects._vb);
+  // vec4* vtx = _ctx->MapWriteDiscard<vec4>(_particleBundle.objects._vb);
+  vec4* vtx = (vec4*)res.pData; //  _ctx->MapWriteDiscard<vec4>(_particleBundle.objects._vb);
 
   SimpleAppendBuffer<TaskId, 32> tasks;
 
@@ -236,7 +237,7 @@ void Intro::CopyOutParticleEmitters()
         vtx + VB_INDEX * MAX_NUM_PARTICLES + i * _particleEmitters[i]._spawnedParticles};
     KernelData kd;
     kd.data = data;
-    kd.size = sizeof(ParticleEmitter::EmitterKernelData);
+    kd.size = sizeof(RadialParticleEmitter::EmitterKernelData);
 
     tasks.Append(g_Scheduler->AddTask(kd, RadialParticleEmitter::CopyOutEmitter));
 
@@ -270,15 +271,15 @@ bool Intro::FixedUpdate(const FixedUpdateState& state)
 void SetQuadCoords(Pos4Tex* vtx, const vec2& topLeft, const vec2& bottomRight)
 {
   // convert from 0..1 -> -1..1
-  vec2 tl = { -1 + 2 * topLeft.x, 1 - 2 * topLeft.y };
-  vec2 br = { -1 + 2 * bottomRight.x, 1 - 2 * bottomRight.y };
+  vec2 tl = {-1 + 2 * topLeft.x, 1 - 2 * topLeft.y};
+  vec2 br = {-1 + 2 * bottomRight.x, 1 - 2 * bottomRight.y};
 
   // 0--1
   // 2 -3
-  Pos4Tex v0 = { vec4{ tl.x, tl.y, 0, 1 }, vec2{ 0, 0 } };
-  Pos4Tex v1 = { vec4{ br.x, tl.y, 0, 1 }, vec2{ 1, 0 } };
-  Pos4Tex v2 = { vec4{ tl.x, br.y, 0, 1 }, vec2{ 0, 1 } };
-  Pos4Tex v3 = { vec4{ br.x, br.y, 0, 1 }, vec2{ 1, 1 } };
+  Pos4Tex v0 = {vec4{tl.x, tl.y, 0, 1}, vec2{0, 0}};
+  Pos4Tex v1 = {vec4{br.x, tl.y, 0, 1}, vec2{1, 0}};
+  Pos4Tex v2 = {vec4{tl.x, br.y, 0, 1}, vec2{0, 1}};
+  Pos4Tex v3 = {vec4{br.x, br.y, 0, 1}, vec2{1, 1}};
 
   // 0, 1, 2
   // 2, 1, 3
@@ -303,7 +304,7 @@ bool Intro::Render()
   ScopedRenderTarget rtColor(DXGI_FORMAT_R11G11B10_FLOAT);
   {
     // Render the background
-     rmt_ScopedD3D11Sample(Background);
+    rmt_ScopedD3D11Sample(Background);
 
     _cbBackground.Set(_ctx, 0);
     _ctx->SetRenderTarget(rtColor, g_Graphics->GetDepthStencil(), &black);
@@ -323,7 +324,8 @@ bool Intro::Render()
 
   ScopedRenderTarget rtText(DXGI_FORMAT_R11G11B10_FLOAT);
   ScopedRenderTarget rtTextDistort(DXGI_FORMAT_R11G11B10_FLOAT);
-  if (true) {
+  if (true)
+  {
     // text
     rmt_ScopedD3D11Sample(Text);
 
@@ -358,25 +360,24 @@ bool Intro::Render()
 
       _cbText.ps0.brightness = g_Blackboard->GetExpr("intro.distortBrightness", &env);
       _cbText.Set(_ctx, 0);
-      ObjectHandle inputs[] = { rtText };
+      ObjectHandle inputs[] = {rtText};
       fullscreen->Execute(inputs,
-        1,
-        rtTextDistort,
-        rtTextDistort._desc,
-        ObjectHandle(),
-        _textBundle.objects._ps,
-        true,
-        true,
-        &black);
+          1,
+          rtTextDistort,
+          rtTextDistort._desc,
+          ObjectHandle(),
+          _textBundle.objects._ps,
+          true,
+          true,
+          &black);
     }
     else
     {
       // center
       float w0 = ar0 * s;
       fullscreen->RenderTexture(
-        _introTexture[0].h, vec2{ 0.5f - w0 / 2, 0.5f - s / 2 }, vec2{ 0.5f + w0 / 2, 0.5f + s / 2 });
+          _introTexture[0].h, vec2{0.5f - w0 / 2, 0.5f - s / 2}, vec2{0.5f + w0 / 2, 0.5f + s / 2});
     }
-
   }
 
   ScopedRenderTarget rtBlurText(rtText._desc, BufferFlag::CreateSrv | BufferFlag::CreateUav);
@@ -398,14 +399,14 @@ bool Intro::Render()
 
   ScopedRenderTarget rtLines(DXGI_FORMAT_R16G16B16A16_FLOAT);
   ScopedRenderTarget rtBlur(
-    DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
+      DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlags(BufferFlag::CreateSrv | BufferFlag::CreateUav));
 
   ScopedRenderTarget rtCompose(DXGI_FORMAT_R16G16B16A16_FLOAT, BufferFlag::CreateSrv);
   {
     // composite
     _cbComposite.ps0.tonemap = vec4(_settings.tonemap.exposure, _settings.tonemap.min_white, 0, 0);
     _cbComposite.Set(_ctx, 0);
-    ObjectHandle inputs[] = {rtColor, rtLines, rtBlur, rtBlur2, rtTextDistort, rtBlurText };
+    ObjectHandle inputs[] = {rtColor, rtLines, rtBlur, rtBlur2, rtTextDistort, rtBlurText};
     fullscreen->Execute(inputs,
         6,
         g_Graphics->GetBackBuffer(),

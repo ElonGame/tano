@@ -57,12 +57,12 @@ namespace split
     float speedVar = 0.25;
 
     float camOffsetY = -50;
-    float camSpeedY = 2;
+    float camSpeedY = 0;
     float camStartRadius = 20;
     float camEndRadius = 50;
-    float camRotSpeed = 0.525;
+    float camRotSpeed = 0.2425;
     float camRotTime = 30;
-    float camTargetJitter = 10;
+    float camTargetJitter = 5;
     float camTargetJitterSpeed = 0.4;
 }
 
@@ -112,32 +112,6 @@ namespace tunnel
     vec4 snakeParticleColor = {0.8, 0.8, 1, 1};
 }
 
-namespace fluid
-{
-    int blobSize = 20;
-    float timeScale = 1;
-    float diffuseScale = 0.1;
-    float diffuseStrength = 1;
-    float velocityStrength = 1;
-    float diff = 0.0001;
-    float visc = 0.0001;
-
-    float changeProb = 0.55;
-
-    float speedMean = 0.15;
-    float speedVariance = 0.05;
-    int particlesPerSegment = 250;
-
-    float updateSpeed = 1.5;
-}
-
-namespace particle_trail
-{
-    vec3 lineParams = { 10.0, 1.0, 250 };
-    vec4 upper = {0, 0, 0, 0};
-    vec4 lower = {0.03, 0, 0, 0};
-}
-
 namespace credits
 {
     vec4 upper = {0, 0, 0, 0};
@@ -160,6 +134,14 @@ namespace credits
     float angleVar = 2;
 
     float waveWidth = 200;
+
+    float textRight = 0.97;
+    float textSize = 0.03;
+
+    float newText0Pos = 0.74;
+    float newText1Pos = 0.90;
+    float newText2Pos = 0.96;
+
 }
 
 namespace radial
