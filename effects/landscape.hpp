@@ -14,8 +14,10 @@
 #include "../shaders/out/landscape.composite_pscomposite.cbuffers.hpp"
 #include "../shaders/out/landscape.landscape_gslandscape.cbuffers.hpp"
 #include "../shaders/out/landscape.landscape_vslandscape.cbuffers.hpp"
+#include "../shaders/out/landscape.landscape_pslandscape.cbuffers.hpp"
 #include "../shaders/out/landscape.particle_gsparticle.cbuffers.hpp"
 #include "../shaders/out/landscape.particle_psparticle.cbuffers.hpp"
+#include "../random.hpp"
 
 namespace tano
 {
@@ -24,12 +26,24 @@ namespace tano
     struct TaskData;
   }
 
+  struct BehaviorPathFollow : public ParticleKinematics
+  {
+    BehaviorPathFollow(const CardinalSpline& spline);
+    virtual void Update(const UpdateParams& params) override;
+
+    vector<float> _splineOffset;
+    const CardinalSpline& _spline;
+  };
+
   struct BehaviorLandscapeFollow : public ParticleKinematics
   {
-    BehaviorLandscapeFollow(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed)
-    {
-    }
     virtual void Update(const ParticleKinematics::UpdateParams& params) override;
+  };
+
+  struct BehaviorSpacing : public ParticleKinematics
+  {
+    virtual void Update(const ParticleKinematics::UpdateParams& params) override;
+
   };
 
   class Landscape : public BaseEffect
@@ -112,12 +126,8 @@ namespace tano
       vec3* particleBuf;
     };
 
-#if WITH_ENKI_SCHEDULER
-    static void FillChunk(ChunkKernelData* chunkData);
-#else
     static void FillChunk(const scheduler::TaskData& data);
     static void CopyOutTask(const scheduler::TaskData& data);
-#endif
     static void UpdateFlock(const scheduler::TaskData& data);
 
     struct FlockKernelData
@@ -143,10 +153,11 @@ namespace tano
 
     struct Flock
     {
-      Flock(const BoidSettings& settings);
+      Flock(const BoidSettings& settings, const CardinalSpline& spline);
       ~Flock();
       DynParticles boids;
       BehaviorSeek* seek = nullptr;
+      BehaviorPathFollow* follow = nullptr;
     };
 
     struct FlockCamera : public Camera
@@ -159,8 +170,10 @@ namespace tano
 
     ConstantBufferBundle<void, cb::LandscapeLensflareP> _cbLensFlare;
     ConstantBufferBundle<void, cb::LandscapeCompositeF> _cbComposite;
-    ConstantBufferBundle<void, cb::LandscapeSkyF> _cbSky;
-    ConstantBufferBundle<cb::LandscapeLandscapeV, void, cb::LandscapeLandscapeG> _cbLandscape;
+
+    ConstantBufferBundle<void, cb::LandscapeSkyP> _cbSky;
+    ConstantBufferBundle<cb::LandscapeLandscapeV, cb::LandscapeLandscapeP, cb::LandscapeLandscapeG>
+        _cbLandscape;
     ConstantBufferBundle<void, cb::LandscapeParticleP, cb::LandscapeParticleG> _cbParticle;
 
     GpuBundle _landscapeLowerBundle;
@@ -174,6 +187,7 @@ namespace tano
     GpuBundle _lensFlareBundle;
 
     ObjectHandle _particleTexture;
+    ObjectHandle _boidsTexture;
     GpuBundle _particleBundle;
 
     enum DrawFlags
@@ -195,8 +209,8 @@ namespace tano
 
     BehaviorSeparataion* _behaviorSeparataion = nullptr;
     BehaviorCohesion* _behaviorCohesion = nullptr;
-    BehaviorAlignment* _behaviorAlignment = nullptr;
-    BehaviorLandscapeFollow* _landscapeFollow = nullptr;
+    BehaviorLandscapeFollow* _behaviorLandscapeFollow = nullptr;
+    BehaviorSpacing* _behaviorSpacing = nullptr;
 
     FlockCamera _flockCamera;
     Camera* _curCamera = &_flockCamera;

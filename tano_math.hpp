@@ -268,6 +268,7 @@ namespace tano
   {
     void Create(const vec3* pts, int numPoints, float scale = 1.f);
     vec3 Interpolate(float t) const;
+
     std::vector<vec3> _controlPoints;
     float _scale;
   };

@@ -12,6 +12,11 @@ cbuffer V : register(b0)
   float3 cameraPos;
 };
 
+cbuffer P : register(b0)
+{
+  float3 sunDir : SUN_DIR;
+}
+
 struct VsLandscapeIn
 {
   float3 pos : Position;
@@ -234,7 +239,7 @@ static float4 ColorCases[] = {
     { 0, 0, 1, 1 }
 }; 
 
-static float4 WireColor = 0.2 * float4(1, 1, 1, 1);
+static float4 WireColor = 0.2 *  float4(1, 1, 1, 1);
 static float LineWidth = 3;
 
 // entry-point: ps
@@ -254,7 +259,7 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
     float alpha = exp2(-2*dist);
 
     float3 amb = float3(0.01, 0.01, 0.01);
-    float dff = saturate(dot(-SUN_DIR, p.normal));
+    float dff = saturate(dot(-sunDir, p.normal));
 
     float3 diffuseCol = float3(10, 10, 80) / 255;
 
@@ -263,7 +268,7 @@ PsColBrightnessOut PsLandscape(PsLandscapeIn p)
     col = lerp(col, WireColor.rgb, alpha);
 
     float fogAmount = max(0, 1 - exp(-(p.distance) * FOG_SCALE));
-    float3 fogColor = FogColor(p.rayDir);
+    float3 fogColor = FogColor(p.rayDir, sunDir);
     col = lerp(col, fogColor, fogAmount);
 
     res.col = float4(col, 0.9);

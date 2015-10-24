@@ -51,7 +51,7 @@ namespace tano
   struct GraphicsSettings
   {
     CComPtr<IDXGIFactory1> dxgi_factory;
-    vector<VideoAdapter> videoAdapters;
+    deque<VideoAdapter> videoAdapters;
     int selectedAdapter = -1;
     int SelectedDisplayMode = -1;
     int width = -1;

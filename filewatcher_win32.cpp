@@ -4,6 +4,9 @@
 using namespace tano;
 using namespace bristol;
 
+// FILE_NOTIFY_CHANGE_FILE_NAME is needed because photoshop doesn't modify the file directly,
+// instead it saves a temp file, and then deletes/renames
+static DWORD FILE_NOTIFY_FLAGS = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE;
 
 //------------------------------------------------------------------------------
 FileWatcherWin32::~FileWatcherWin32()
@@ -47,7 +50,7 @@ FileWatcherWin32::AddFileWatchResult FileWatcherWin32::AddFileWatch(
     dir->overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
     BOOL res = ReadDirectoryChangesW(
-      dir->dirHandle, _buf, BUF_SIZE, FALSE, FILE_NOTIFY_CHANGE_LAST_WRITE, NULL, &dir->overlapped, NULL);
+      dir->dirHandle, _buf, BUF_SIZE, FALSE, FILE_NOTIFY_FLAGS, NULL, &dir->overlapped, NULL);
     if (!res)
     {
       delete dir;
@@ -160,7 +163,7 @@ void FileWatcherWin32::Tick()
       // Reset the event, and reapply the watch
       ResetEvent(dir->overlapped.hEvent);
       ReadDirectoryChangesW(
-        dir->dirHandle, _buf, BUF_SIZE, FALSE, FILE_NOTIFY_CHANGE_LAST_WRITE, NULL, &dir->overlapped, NULL);
+        dir->dirHandle, _buf, BUF_SIZE, FALSE, FILE_NOTIFY_FLAGS, NULL, &dir->overlapped, NULL);
     }
   }
 }

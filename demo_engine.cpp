@@ -82,9 +82,8 @@ void DemoEngine::Create()
 //------------------------------------------------------------------------------
 bool DemoEngine::Start()
 {
-#if 0
   // Tick a few zero frames to make sure everything is allocated up front etc
-  for (int i = 0; i < 1; ++i)
+  for (int i = 0; i < 3; ++i)
   {
     for (BaseEffect* effect : _effects)
     {
@@ -96,7 +95,7 @@ bool DemoEngine::Start()
       }
     }
   }
-#endif
+
 #if WITH_MUSIC
   BASS_Start();
   BASS_ChannelPlay(_stream, false);

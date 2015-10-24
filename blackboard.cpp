@@ -3,6 +3,7 @@
 #include "init_sequence.hpp"
 #if WITH_IMGUI
 #include "imgui/imgui_internal.h"
+#include "imgui_helpers.hpp"
 #endif
 
 using namespace tano;
@@ -697,8 +698,8 @@ void Blackboard::DrawExpressionEditor()
   ImGuiWindow* window = ImGui::GetCurrentWindow();
 
   ImVec2 size = ImGui::GetContentRegionAvail();
-  ImGui::PlotLines("Func", res, numSteps, 0, NULL, scaleMin, scaleMax, size);
-
+  const float* vals[] = { res };
+  ImGui::PlotLinesMulti("Func", vals, numSteps, 0, 1, NULL, scaleMin, scaleMax, size);
   ImGui::End();
 }
 #endif

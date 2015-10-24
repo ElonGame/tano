@@ -1,4 +1,4 @@
-#include "landscape.hlsl"
+#include "common.hlsl"
 
 cbuffer P : register(b0)
 {
@@ -27,6 +27,20 @@ struct VsParticleOut
   float alpha : TexCoord2;
   float3 rayDir : TexCoord3;
 };
+
+static float3 FOG_COLOR = float3(16, 24, 37) / 4096;
+static float FOG_SCALE = 0.015;
+static float3 SUN_COLOR = float3(140, 140, 160) / 200;
+static float3 SUN_DIR = normalize(float3(-1, -0.1, 1));
+static float3 SUN_POS = float3(0, 0, 2000);
+static float SUN_POWER = 150;
+
+float3 FogColor(float3 rayDir)
+{
+  float sunAmount = max(0, dot(rayDir, -SUN_DIR));
+  float3 fogColor = lerp(FOG_COLOR, SUN_COLOR, pow(sunAmount, SUN_POWER));
+  return fogColor;
+}
 
 // 1--2
 // |  |
@@ -98,7 +112,7 @@ float4 PsParticle(VsParticleOut p) : SV_Target
   // Texture0 = particle texture
   // Texture1 = zbuffer
   float2 uv = p.uv.xy;
-  float4 col = Texture0.Sample(PointSampler, uv);
+  float4 col = Texture0.Sample(LinearSampler, uv);
   float zBuf = Texture1.Load(int3(p.pos.x, p.pos.y, 0)).r;
 
   // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))

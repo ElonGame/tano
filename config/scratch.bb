@@ -44,11 +44,16 @@ namespace intro
 
 namespace landscape
 {
-    float landscapeClearance = 15;
-    float gravity = -5;
+    float clearance = 10;
     float pushForce = 2;
 
-    float sepScale = 0.5;
+    float sepScale = 0.2;
+    float slowingDistance = 5;
+
+    float spacing = 30;
+    float spacingForce = 0.2;
+
+    vec3 sunDir = {0.5, 0, 1};
 }
 
 namespace split

@@ -155,6 +155,7 @@ def dump_cbuffer(cbuffer_filename, cbuffers):
                     (padder, slots_left)
                 )
                 padder += 1
+                slots_left = 4
             cur_len = len(n) + len(var_type)
             padding = (max_len - cur_len + 8) * ' '
             cur += '      %s %s;%s%s\n' % (var_type, n, padding, comments)

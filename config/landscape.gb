@@ -1,46 +1,46 @@
 {
   tonemap: {
-    exposure: 1.000000;
-    min_white: 1.300000;
+    exposure: 0.987000;
+    min_white: 6.011000;
   };
   camera: {
     camera: {
-      pos: { 460.289337, 10.789115, -101.440208 };
-      dir: { 0.578500, -0.095350, -0.810090 };
-      right: { -0.813798, 0.000000, -0.581148 };
-      up: { 0.055412, 0.995444, -0.077596 };
+      pos: { -67.446106, 35.361782, 402.068604 };
+      dir: { 0.732145, -0.031828, 0.680404 };
+      right: { 0.680749, -0.000000, -0.732517 };
+      up: { 0.023314, 0.999493, 0.021667 };
       fov: 1.047000;
       near_plane: 1.000000;
       far_plane: 2000.000000;
     };
-    yaw: 15.087825;
-    pitch: 0.095495;
+    yaw: 19.671568;
+    pitch: 0.031833;
     roll: 0.000000;
   };
   spline_speed: 1.188000;
   boids: {
     separation_scale: 5.000000;
-    cohesion_scale: 5.000000;
+    cohesion_scale: 20.000000;
     alignment_scale: 0.000000;
     wander_scale: 10.000000;
-    follow_scale: 20.000000;
+    follow_scale: 10.000000;
     cohesion_distance: 500.000000;
     separation_distance: 45.500004;
     max_speed: 25.000000;
     max_force: 35.000000;
     waypoint_radius: 10.000000;
     num_flocks: 15;
-    boids_per_flock: 500;
+    boids_per_flock: 250;
   };
   particle_texture: 'gfx/particle_white.png';
   lens_flare: {
     scale_bias: {
-      scale: 0.252000;
+      scale: 0.312000;
       bias: 0.530000;
     };
-    dispersion: 0.604000;
+    dispersion: 0.663000;
     num_ghosts: 4;
     halo_width: 0.386000;
-    strength: 0.124000;
+    strength: 0.094000;
   };
 };

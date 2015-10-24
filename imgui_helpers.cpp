@@ -2,6 +2,7 @@
 #ifdef GetWindowFont
 #undef GetWindowFont
 #endif
+
 #include "imgui/imgui.cpp"
 #include "imgui/imgui_demo.cpp"
 #include "imgui/imgui_draw.cpp"
@@ -18,8 +19,8 @@ namespace
 {
   struct CUSTOMVERTEX
   {
-    float        pos[2];
-    float        uv[2];
+    float pos[2];
+    float uv[2];
     unsigned int col;
   };
 
@@ -29,7 +30,7 @@ namespace
   };
 
   LARGE_INTEGER ticksPerSecond;
-  LARGE_INTEGER lastTime = { 0 };
+  LARGE_INTEGER lastTime = {0};
 
   GraphicsContext* g_ctx;
   ConstantBuffer<VERTEX_CONSTANT_BUFFER> g_cb;
@@ -39,6 +40,8 @@ namespace
   ObjectHandle g_texture;
 }
 
+static int VB_SIZE = 1024 * 1024;
+static int IB_SIZE = 1024 * 1024;
 
 //------------------------------------------------------------------------------
 bool InitDeviceD3D()
@@ -59,7 +62,7 @@ bool InitDeviceD3D()
   RSDesc.AntialiasedLineEnable = FALSE;
 
   // MAGNUS: check for multisampling
-  //RSDesc.MultisampleEnable = (sd.SampleDesc.Count > 1) ? TRUE : FALSE;
+  // RSDesc.MultisampleEnable = (sd.SampleDesc.Count > 1) ? TRUE : FALSE;
 
   // Create the blending setup
   D3D11_BLEND_DESC desc;
@@ -78,11 +81,11 @@ bool InitDeviceD3D()
   depthDesc.DepthEnable = FALSE;
 
   INIT(g_gpuState.Create(&depthDesc, &desc, &RSDesc));
-  INIT(g_gpuObjects.CreateDynamicVb(200000, sizeof(CUSTOMVERTEX)));
-  INIT(g_gpuObjects.CreateDynamicIb(200000, DXGI_FORMAT_R16_UINT));
+  INIT(g_gpuObjects.CreateDynamicVb(VB_SIZE, sizeof(CUSTOMVERTEX)));
+  INIT(g_gpuObjects.CreateDynamicIb(IB_SIZE, DXGI_FORMAT_R32_UINT));
 
-  // (MAGNUS) Ignoring the render target view for now.. maybe later i want the gui to have its
-  // own layer and compose with the main?
+// (MAGNUS) Ignoring the render target view for now.. maybe later i want the gui to have its
+// own layer and compose with the main?
 #if 0
     // Create the render target
     {
@@ -100,10 +103,10 @@ bool InitDeviceD3D()
 #endif
 
   // Create shaders
-  vector<D3D11_INPUT_ELEMENT_DESC> inputDesc = { 
-    CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32_FLOAT),
-    CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
-    CD3D11_INPUT_ELEMENT_DESC("COLOR", DXGI_FORMAT_R8G8B8A8_UNORM),
+  vector<D3D11_INPUT_ELEMENT_DESC> inputDesc = {
+      CD3D11_INPUT_ELEMENT_DESC("POSITION", DXGI_FORMAT_R32G32_FLOAT),
+      CD3D11_INPUT_ELEMENT_DESC("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
+      CD3D11_INPUT_ELEMENT_DESC("COLOR", DXGI_FORMAT_R8G8B8A8_UNORM),
   };
   INIT(g_gpuObjects.LoadVertexShader("shaders/out/imgui", "VsMain", 0, &inputDesc));
   INIT(g_gpuObjects.LoadPixelShader("shaders/out/imgui", "PsMain"));
@@ -114,12 +117,20 @@ bool InitDeviceD3D()
   END_INIT_SEQUENCE();
 }
 
-
-// This is the main rendering function that you have to implement and provide to ImGui (via setting up 'RenderDrawListsFn' in the ImGuiIO structure)
+// This is the main rendering function that you have to implement and provide to ImGui (via setting
+// up 'RenderDrawListsFn' in the ImGuiIO structure)
 // If text or lines are blurry when integrating ImGui in your engine:
-// - in your Render function, try translating your projection matrix by (0.5f,0.5f) or (0.375f,0.375f)
+// - in your Render function, try translating your projection matrix by (0.5f,0.5f) or
+// (0.375f,0.375f)
 static void ImImpl_RenderDrawLists(ImDrawData* draw_data)
 {
+
+  if (draw_data->TotalVtxCount > VB_SIZE || draw_data->TotalIdxCount > IB_SIZE)
+  {
+    LOG_WARN("Too many verts or indices");
+    return;
+  }
+
   g_ctx->SetRenderTarget(g_Graphics->GetBackBuffer(), g_Graphics->GetDepthStencil(), nullptr);
 
   ImDrawVert* vtx_dst = g_ctx->MapWriteDiscard<ImDrawVert>(g_gpuObjects._vb);
@@ -142,12 +153,13 @@ static void ImImpl_RenderDrawLists(ImDrawData* draw_data)
     const float R = ImGui::GetIO().DisplaySize.x;
     const float B = ImGui::GetIO().DisplaySize.y;
     const float T = 0.0f;
-    const float mvp[4][4] =
-    {
-      { 2.0f/(R-L), 0.0f, 0.0f, 0.0f },
-      { 0.0f, 2.0f/(T-B), 0.0f, 0.0f, },
-      { 0.0f, 0.0f, 0.5f, 0.0f },
-      { (R+L)/(L-R), (T+B)/(B-T), 0.5f, 1.0f },
+    const float mvp[4][4] = {
+        {2.0f / (R - L), 0.0f, 0.0f, 0.0f},
+        {
+            0.0f, 2.0f / (T - B), 0.0f, 0.0f,
+        },
+        {0.0f, 0.0f, 0.5f, 0.0f},
+        {(R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f},
     };
     memcpy(&g_cb.mvp, mvp, sizeof(mvp));
   }
@@ -189,7 +201,10 @@ static void ImImpl_RenderDrawLists(ImDrawData* draw_data)
       }
       else
       {
-        const D3D11_RECT r = { (LONG)pcmd->ClipRect.x, (LONG)pcmd->ClipRect.y, (LONG)pcmd->ClipRect.z, (LONG)pcmd->ClipRect.w };
+        const D3D11_RECT r = {(LONG)pcmd->ClipRect.x,
+            (LONG)pcmd->ClipRect.y,
+            (LONG)pcmd->ClipRect.z,
+            (LONG)pcmd->ClipRect.w};
         ObjectHandle* h = (ObjectHandle*)pcmd->TextureId;
         if (h && h->IsValid())
           g_ctx->SetShaderResource(*h, ShaderType::PixelShader);
@@ -206,11 +221,10 @@ static void ImImpl_RenderDrawLists(ImDrawData* draw_data)
 
   // reset to full screen scissor rect
   SwapChain* swapChain = g_Graphics->GetSwapChain(g_Graphics->DefaultSwapChain());
-  CD3D11_RECT rect = CD3D11_RECT(
-    (LONG)swapChain->_viewport.TopLeftX,
-    (LONG)swapChain->_viewport.TopLeftY,
-    (LONG)(swapChain->_viewport.TopLeftX + swapChain->_viewport.Width),
-    (LONG)(swapChain->_viewport.TopLeftY + swapChain->_viewport.Height));
+  CD3D11_RECT rect = CD3D11_RECT((LONG)swapChain->_viewport.TopLeftX,
+      (LONG)swapChain->_viewport.TopLeftY,
+      (LONG)(swapChain->_viewport.TopLeftX + swapChain->_viewport.Width),
+      (LONG)(swapChain->_viewport.TopLeftY + swapChain->_viewport.Height));
   g_ctx->SetScissorRect(1, &rect);
 }
 
@@ -219,20 +233,24 @@ void LoadFontsTexture()
 {
   // Load one or more font
   ImGuiIO& io = ImGui::GetIO();
-  //ImFont* my_font1 = io.Fonts->AddFontDefault();
-  //ImFont* my_font2 = io.Fonts->AddFontFromFileTTF("extra_fonts/Karla-Regular.ttf", 15.0f);
-  ImFont* my_font3 = io.Fonts->AddFontFromFileTTF("imgui/extra_fonts/ProggyClean.ttf", 13.0f); my_font3->DisplayOffset.y += 1;
-  //ImFont* my_font4 = io.Fonts->AddFontFromFileTTF("imgui/extra_fonts/ProggyTiny.ttf", 10.0f); my_font4->DisplayOffset.y += 1;
-  //ImFont* my_font5 = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 20.0f, io.Fonts->GetGlyphRangesJapanese());
+  // ImFont* my_font1 = io.Fonts->AddFontDefault();
+  // ImFont* my_font2 = io.Fonts->AddFontFromFileTTF("extra_fonts/Karla-Regular.ttf", 15.0f);
+  ImFont* my_font3 = io.Fonts->AddFontFromFileTTF("imgui/extra_fonts/ProggyClean.ttf", 13.0f);
+  my_font3->DisplayOffset.y += 1;
+  // ImFont* my_font4 = io.Fonts->AddFontFromFileTTF("imgui/extra_fonts/ProggyTiny.ttf", 10.0f);
+  // my_font4->DisplayOffset.y += 1;
+  // ImFont* my_font5 = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 20.0f,
+  // io.Fonts->GetGlyphRangesJapanese());
 
   // Build
   unsigned char* pixels;
   int width, height;
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-  g_texture = g_Graphics->CreateTexture(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, pixels, width*4);
+  g_texture =
+      g_Graphics->CreateTexture(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, pixels, width * 4);
 
   // Store our identifier
-  //io.Fonts->TexID = (void *)*(u32*)&h;
+  // io.Fonts->TexID = (void *)*(u32*)&h;
 }
 
 namespace tano
@@ -243,18 +261,10 @@ namespace tano
     ImGuiIO& io = ImGui::GetIO();
     switch (msg)
     {
-      case WM_LBUTTONDOWN:
-        io.MouseDown[0] = true;
-        return true;
-      case WM_LBUTTONUP:
-        io.MouseDown[0] = false;
-        return true;
-      case WM_RBUTTONDOWN:
-        io.MouseDown[1] = true;
-        return true;
-      case WM_RBUTTONUP:
-        io.MouseDown[1] = false;
-        return true;
+      case WM_LBUTTONDOWN: io.MouseDown[0] = true; return true;
+      case WM_LBUTTONUP: io.MouseDown[0] = false; return true;
+      case WM_RBUTTONDOWN: io.MouseDown[1] = true; return true;
+      case WM_RBUTTONUP: io.MouseDown[1] = false; return true;
       case WM_MOUSEWHEEL:
         io.MouseWheel += GET_WHEEL_DELTA_WPARAM(wParam) > 0 ? +1.0f : -1.0f;
         return true;
@@ -295,12 +305,12 @@ namespace tano
 
     // Setup inputs
     // (we already got mouse position, buttons, wheel from the window message callback)
-//     BYTE keystate[256];
-//     GetKeyboardState(keystate);
-//     for (int i = 0; i < 256; i++)
-//       io.KeysDown[i] = (keystate[i] & 0x80) != 0;
-//     io.KeyCtrl = (keystate[VK_CONTROL] & 0x80) != 0;
-//     io.KeyShift = (keystate[VK_SHIFT] & 0x80) != 0;
+    //     BYTE keystate[256];
+    //     GetKeyboardState(keystate);
+    //     for (int i = 0; i < 256; i++)
+    //       io.KeysDown[i] = (keystate[i] & 0x80) != 0;
+    //     io.KeyCtrl = (keystate[VK_CONTROL] & 0x80) != 0;
+    //     io.KeyShift = (keystate[VK_SHIFT] & 0x80) != 0;
     // io.MousePos : filled by WM_MOUSEMOVE event
     // io.MouseDown : filled by WM_*BUTTON* events
     // io.MouseWheel : filled by WM_MOUSEWHEEL events
@@ -319,9 +329,14 @@ namespace tano
     g_Graphics->GetBackBufferSize(&display_w, &display_h);
 
     ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize = ImVec2((float)display_w, (float)display_h);    // Display size, in pixels. For clamping windows positions.
-    io.DeltaTime = 1.0f/60.0f;                                      // Time elapsed since last frame, in seconds (in this sample app we'll override this every frame because our time step is variable)
-    io.KeyMap[ImGuiKey_Tab] = VK_TAB;                               // Keyboard mapping. ImGui will use those indices to peek into the io.KeyDown[] array that we will update during the application lifetime.
+    io.DisplaySize = ImVec2((float)display_w,
+        (float)display_h);       // Display size, in pixels. For clamping windows positions.
+    io.DeltaTime = 1.0f / 60.0f; // Time elapsed since last frame, in seconds (in this sample app
+                                 // we'll override this every frame because our time step is
+                                 // variable)
+    io.KeyMap[ImGuiKey_Tab] = VK_TAB; // Keyboard mapping. ImGui will use those indices to peek into
+                                      // the io.KeyDown[] array that we will update during the
+                                      // application lifetime.
     io.KeyMap[ImGuiKey_LeftArrow] = VK_LEFT;
     io.KeyMap[ImGuiKey_RightArrow] = VK_RIGHT;
     io.KeyMap[ImGuiKey_UpArrow] = VK_UP;
@@ -349,4 +364,190 @@ namespace tano
     return true;
   }
 }
+
+//------------------------------------------------------------------------------
+namespace ImGui
+{
+  void PlotExMulti(const char* label,
+      float (*values_getter)(int graph_idx, void* data, int idx),
+      void* data,
+      int values_count,
+      int values_offset,
+      int graph_count,
+      const char* overlay_text,
+      float scale_min,
+      float scale_max,
+      ImVec2 graph_size)
+  {
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+      return;
+
+    ImGuiState& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+
+    const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
+    if (graph_size.x == 0.0f)
+      graph_size.x = CalcItemWidth() + (style.FramePadding.x * 2);
+    if (graph_size.y == 0.0f)
+      graph_size.y = label_size.y + (style.FramePadding.y * 2);
+
+    const ImRect frame_bb(
+        window->DC.CursorPos, window->DC.CursorPos + ImVec2(graph_size.x, graph_size.y));
+    const ImRect inner_bb(frame_bb.Min + style.FramePadding, frame_bb.Max - style.FramePadding);
+    const ImRect total_bb(frame_bb.Min,
+        frame_bb.Max
+            + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0));
+    ItemSize(total_bb, style.FramePadding.y);
+    if (!ItemAdd(total_bb, NULL))
+      return;
+
+    // TODO(magnus): should values_offset be used for the scale?
+    // Determine scale from values if not specified
+    if (scale_min == FLT_MAX || scale_max == FLT_MAX)
+    {
+      float v_min = FLT_MAX;
+      float v_max = -FLT_MAX;
+      for (int i = 0; i < graph_count; ++i)
+      {
+        for (int j = 0; j < values_count; j++)
+        {
+          const float v = values_getter(i, data, j);
+          v_min = ImMin(v_min, v);
+          v_max = ImMax(v_max, v);
+        }
+        if (scale_min == FLT_MAX)
+          scale_min = v_min;
+        if (scale_max == FLT_MAX)
+          scale_max = v_max;
+      }
+    }
+    float scale_span = scale_max - scale_min;
+
+    RenderFrame(
+        frame_bb.Min, frame_bb.Max, window->Color(ImGuiCol_FrameBg), true, style.FrameRounding);
+
+    int res_w = ImMin((int)graph_size.x, values_count) - 1;
+    int item_count = values_count - 1;
+
+    // todo(magnus): tooltip is broken
+#if 0
+    // Tooltip on hover
+    int v_hovered = -1;
+    if (IsHovered(inner_bb, 0))
+    {
+      const float t = ImClamp(
+          (g.IO.MousePos.x - inner_bb.Min.x) / (inner_bb.Max.x - inner_bb.Min.x), 0.0f, 0.9999f);
+      const int v_idx = (int)(t * item_count);
+      IM_ASSERT(v_idx >= 0 && v_idx < values_count);
+
+      const float v0 = values_getter(data, (v_idx + values_offset) % values_count);
+      const float v1 = values_getter(data, (v_idx + 1 + values_offset) % values_count);
+      ImGui::SetTooltip("%d: %8.4g\n%d: %8.4g", v_idx, v0, v_idx + 1, v1);
+      v_hovered = v_idx;
+    }
+#endif
+
+    const float t_step = 1.0f / (float)res_w;
+
+    ImVec4 graph_colors[] = {ImVec4(1, 0, 0, 1),
+        ImVec4(0, 1, 0, 1),
+        ImVec4(0, 0, 1, 1),
+        ImVec4(1, 1, 0, 1),
+        ImVec4(1, 0, 1, 1)};
+
+    for (int ii = 0; ii < graph_count; ++ii)
+    {
+      // get starting value
+      float v0 = values_getter(ii, data, (0 + values_offset) % values_count);
+      float t0 = 0.0f;
+      // Point in the normalized space of our target rectangle
+      ImVec2 tp0 = ImVec2(t0, 1.0f - ImSaturate((v0 - scale_min) / scale_span));
+
+      //const ImU32 col_base = window->Color(ImGuiCol_PlotLines);
+      const ImU32 col_base = window->Color(graph_colors[ii % IM_ARRAYSIZE(graph_colors)]);
+      const ImU32 col_hovered = window->Color(ImGuiCol_PlotLinesHovered);
+
+      // figure out where 0,0 is in the bounding box
+      float originY = -scale_min / (scale_max - scale_min);
+      window->DrawList->AddLine(
+        ImVec2(inner_bb.Min.x, inner_bb.Max.y - originY * inner_bb.GetHeight()),
+        ImVec2(inner_bb.Max.x, inner_bb.Max.y - originY * inner_bb.GetHeight()),
+        col_base);
+
+      for (int n = 0; n < res_w; n++)
+      {
+        const float t1 = t0 + t_step;
+        const int v1_idx = (int)(t0 * item_count + 0.5f);
+        IM_ASSERT(v1_idx >= 0 && v1_idx < values_count);
+        const float v1 = values_getter(ii, data, (v1_idx + values_offset + 1) % values_count);
+        const ImVec2 tp1 = ImVec2(t1, 1.0f - ImSaturate((v1 - scale_min) / scale_span));
+
+        // NB: Draw calls are merged together by the DrawList system. Still, we should render our
+        // batch
+        // are lower level to save a bit of CPU.
+        ImVec2 pos0 = ImLerp(inner_bb.Min, inner_bb.Max, tp0);
+        ImVec2 pos1 = ImLerp(inner_bb.Min, inner_bb.Max, tp1);
+        window->DrawList->AddLine(pos0, pos1, col_base);
+
+        t0 = t1;
+        tp0 = tp1;
+      }
+    }
+
+    // Text overlay
+    if (overlay_text)
+      RenderTextClipped(ImVec2(frame_bb.Min.x, frame_bb.Min.y + style.FramePadding.y),
+          frame_bb.Max,
+          overlay_text,
+          NULL,
+          NULL,
+          ImGuiAlign_Center);
+
+    RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, inner_bb.Min.y), label);
+  }
+
+  //------------------------------------------------------------------------------
+  struct ImGuiPlotMultiArrayGetterData
+  {
+    const float** Values;
+    int Stride;
+
+    ImGuiPlotMultiArrayGetterData(const float** values, int stride) { Values = values; Stride = stride; }
+  };
+
+
+  static float Plot_MultiArrayGetter(int data_idx, void* data, int idx)
+  {
+    ImGuiPlotMultiArrayGetterData* plot_data = (ImGuiPlotMultiArrayGetterData*)data;
+    const float* dd = plot_data->Values[data_idx];
+    const float v = *(float*)(void*)((unsigned char*)dd + (size_t)idx * plot_data->Stride);
+    return v;
+  }
+
+  void PlotLinesMulti(const char* label,
+      PlotValues* values,
+      int values_count,
+      int values_offset,
+      int graph_count,
+      const char* overlay_text,
+      float scale_min,
+      float scale_max,
+      ImVec2 graph_size,
+      int stride)
+  {
+    ImGuiPlotMultiArrayGetterData data(values, stride);
+    PlotExMulti(label,
+        &Plot_MultiArrayGetter,
+        (void*)&data,
+        values_count,
+        values_offset,
+        graph_count,
+        overlay_text,
+        scale_min,
+        scale_max,
+        graph_size);
+  }
+}
+
 #endif

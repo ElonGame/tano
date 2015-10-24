@@ -3,6 +3,7 @@
 cbuffer P : register(b0)
 {
   float4 nearFar : NEAR_FAR;
+  float3 sunDir : SUN_DIR;
 };
 
 cbuffer G : register(b0)
@@ -99,7 +100,7 @@ PsColBrightnessOut PsParticle(GsParticleOut p)
   // Texture0 = particle texture
   // Texture1 = zbuffer
   float2 uv = p.uv.xy;
-  float4 col = Texture0.Sample(PointSampler, uv);
+  float4 col = Texture0.Sample(LinearSampler, uv);
   float zBuf = Texture1.Load(int3(p.pos.x, p.pos.y, 0)).r;
 
   // f*(z-n) / (f-n)*z = zbuf => z = f*n / (f-zbuf(f-n))
@@ -116,7 +117,7 @@ PsColBrightnessOut PsParticle(GsParticleOut p)
 
   // Apply fog
   float fogAmount = max(0, 1 - exp(-(p.z) * FOG_SCALE));
-  float3 fogColor = FogColor(p.rayDir);
+  float3 fogColor = FogColor(p.rayDir, sunDir);
   col.xyz = lerp(col.xyz, col.xyz * fogColor, fogAmount);
 
   res.col = p.brightness * col;

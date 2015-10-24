@@ -96,7 +96,7 @@ namespace tano
   //------------------------------------------------------------------------------
   bool EnumerateDisplayModes(HWND hWnd)
   {
-    vector<VideoAdapter>& videoAdapters = g_Graphics->_graphicsSettings.videoAdapters;
+    deque<VideoAdapter>& videoAdapters = g_Graphics->_graphicsSettings.videoAdapters;
     videoAdapters.clear();
 
     // Create DXGI factory to enumerate adapters
@@ -193,6 +193,14 @@ namespace tano
       ComboBox_SetCurSel(hDisplayMode, cnt - 1);
 
       adapter->Release();
+    }
+
+    // If the first display adapter is "Microsoft Basic Render Driver", put in on the back of the list
+    if (wcscmp(videoAdapters.front().desc.Description, L"Microsoft Basic Render Driver") == 0)
+    {
+      VideoAdapter tmp = videoAdapters.front();
+      videoAdapters.pop_front();
+      videoAdapters.push_back(tmp);
     }
 
     Button_SetCheck(GetDlgItem(hWnd, IDC_WINDOWED), FALSE);

@@ -1,10 +1,11 @@
 #include "landscape.hlsl"
 
-cbuffer F : register(b0)
+cbuffer P : register(b0)
 {
   float4 dim;
   float3 cameraPos;
   float3 cameraLookAt;
+  float3 sunDir;
 };
 
 // entry-point: ps
@@ -29,11 +30,13 @@ PsColBrightnessOut PsSky(VSQuadOut p)
   rayDir.y /= aspectRatio;
   rayDir = normalize(rayDir);
 
+  // float3 sunDir = float3(0, 0, -1);
+
   PsColBrightnessOut res;
-  float3 tmp = FogColor(rayDir);
+  float3 tmp = FogColor(rayDir, sunDir);
   res.col = float4(tmp, 1);
 
-  float sunAmount = pow(max(0, dot(rayDir, -SUN_DIR)), SUN_POWER);
+  float sunAmount = pow(max(0, dot(rayDir, -sunDir)), SUN_POWER);
   res.emissive.rgb = 50 * pow(max(0, Luminance(tmp)), 5);
   res.emissive.a = sunAmount;
   return res;

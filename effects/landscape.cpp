@@ -43,7 +43,7 @@ static const float FLOCK_FADE = 1.0f;
 static const float START_TIME = 24.0f;
 vector<FlockTiming> FLOCK_TIMING = {
     {0.0f, 2},
-    {27.5f - START_TIME, 1},
+    {27.5f - START_TIME, 6},
     {39.0f - START_TIME, 5},
     {43.0f - START_TIME, 2},
     {1000, 0},
@@ -54,7 +54,87 @@ vector<FlockTiming> FLOCK_TIMING = {
 
 int Landscape::Chunk::nextId = 1;
 
+static RandomInt RANDOM_INT;
 
+//------------------------------------------------------------------------------
+void BehaviorSpacing::Update(const ParticleKinematics::UpdateParams& params)
+{
+  vec3* pos = params.bodies->pos;
+  vec3* vel = params.bodies->vel;
+  vec3* force = params.bodies->forces[forceIdx];
+  int numBodies = params.bodies->numBodies;
+  float maxSpeed = params.p->_maxSpeed;
+
+  float spacing = g_Blackboard->GetFloatVar("landscape.spacing");
+  float f = g_Blackboard->GetFloatVar("landscape.spacingForce");
+
+  // pick a random number of points, and try to adjust their spacing
+  for (int i = 0; i < numBodies; ++i)
+  {
+    int a = RANDOM_INT.Next() % numBodies;
+    int b = RANDOM_INT.Next() % numBodies;
+
+    float dist = Distance(pos[a], pos[b]);
+    if (dist > 0.f)
+    {
+      vec3 dir = ((dist - spacing) / dist) * (pos[b] - pos[a]);
+      force[a] += f * 0.5f * dir;
+      force[b] -= f * 0.5f * dir;
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+BehaviorPathFollow::BehaviorPathFollow(const CardinalSpline& spline) : _spline(spline)
+{
+}
+
+//------------------------------------------------------------------------------
+void BehaviorPathFollow::Update(const UpdateParams& params)
+{
+  if (_splineOffset.empty())
+  {
+    _splineOffset.resize(params.bodies->numBodies);
+    for (int i = 0; i < params.bodies->numBodies; ++i)
+    {
+      float t = 0;
+      float dt = 1 / 10.f;
+      float end = (float)_spline._controlPoints.size();
+
+      float closestDist = FLT_MAX;
+      float closestT = 0;
+      while (t < end)
+      {
+        float cand = Distance(params.bodies->pos[i], _spline.Interpolate(t));
+        if (cand < closestDist)
+        {
+          closestDist = cand;
+          closestT = t;
+        }
+
+        t += dt;
+      }
+
+      _splineOffset[i] = closestT;
+    }
+  }
+
+  vec3* pos = params.bodies->pos;
+  vec3* vel = params.bodies->vel;
+  vec3* force = params.bodies->forces[forceIdx];
+  int numBodies = params.bodies->numBodies;
+  float maxSpeed = params.p->_maxSpeed;
+
+  for (int i = params.start; i < params.end; ++i)
+  {
+    float t = _splineOffset[i];
+    vec3 desiredVel = maxSpeed * Normalize(_spline.Interpolate(t) - pos[i]);
+    //force[i] += params.weight * ClampVector(desiredVel - vel[i], maxForce);
+    force[i] += params.weight * (desiredVel - vel[i]);
+
+    _splineOffset[i] += 0.005f;
+  }
+}
 
 //------------------------------------------------------------------------------
 float NoiseAtPoint(const vec3& v)
@@ -63,10 +143,11 @@ float NoiseAtPoint(const vec3& v)
 }
 
 //------------------------------------------------------------------------------
-Landscape::Flock::Flock(const BoidSettings& settings)
+Landscape::Flock::Flock(const BoidSettings& settings, const CardinalSpline& spline)
 {
-  boids.Init(settings.boids_per_flock);
-  seek = new BehaviorSeek(settings.max_force, settings.max_speed);
+  boids.Init(settings.boids_per_flock, settings.max_speed, settings.max_force);
+  seek = new BehaviorSeek();
+  follow = new BehaviorPathFollow(spline);
 }
 
 //------------------------------------------------------------------------------
@@ -197,9 +278,8 @@ bool Landscape::Init()
   INIT_FATAL(_cbLandscape.Create());
   INIT_FATAL(_cbParticle.Create());
 
-  // Particles
-  INIT_RESOURCE_FATAL(
-      _particleTexture, RESOURCE_MANAGER.LoadTexture(_settings.particle_texture.c_str()));
+  INIT_RESOURCE_FATAL(_particleTexture, RESOURCE_MANAGER.LoadTexture("gfx/landscape_particle.png"));
+  INIT_RESOURCE_FATAL(_boidsTexture, RESOURCE_MANAGER.LoadTexture("gfx/landscape_boids.png"));
 
   Reset();
 
@@ -227,14 +307,15 @@ void Landscape::InitBoids()
   _flocks.Clear();
   SAFE_DELETE(_behaviorSeparataion);
   SAFE_DELETE(_behaviorCohesion);
-  SAFE_DELETE(_behaviorAlignment);
-  SAFE_DELETE(_landscapeFollow);
+  SAFE_DELETE(_behaviorLandscapeFollow);
 
   const BoidSettings& b = _settings.boids;
-  _behaviorSeparataion = new BehaviorSeparataion(b.max_force, b.max_speed, b.separation_distance);
-  _behaviorCohesion = new BehaviorCohesion(b.max_force, b.max_speed, b.cohesion_distance);
-  _behaviorAlignment = new BehaviorAlignment(b.max_force, b.max_speed, b.cohesion_distance);
-  _landscapeFollow = new BehaviorLandscapeFollow(b.max_force, b.max_speed);
+  _behaviorSeparataion = new BehaviorSeparataion(b.separation_distance);
+  _behaviorCohesion = new BehaviorCohesion(b.cohesion_distance);
+  _behaviorLandscapeFollow = new BehaviorLandscapeFollow();
+  _behaviorSpacing = new BehaviorSpacing();
+
+  float clearance = g_Blackboard->GetFloatVar("landscape.clearance");
 
   vector<vec3> controlPoints;
   int numPts = 100;
@@ -245,7 +326,8 @@ void Landscape::InitBoids()
     vec3 pt;
     pt.x = SPLINE_RADIUS * sin(angle);
     pt.z = SPLINE_RADIUS * cos(angle);
-    pt.y = 20 + NoiseAtPoint(pt);
+    float h = NoiseAtPoint(pt);
+    pt.y = max(h, h/2) + clearance;
     controlPoints.push_back(pt);
     angle += angleInc;
   }
@@ -254,16 +336,19 @@ void Landscape::InitBoids()
 
   for (int i = 0; i < _settings.boids.num_flocks; ++i)
   {
-    Flock* flock = new Flock(_settings.boids);
+    Flock* flock = new Flock(_settings.boids, _spline);
     flock->boids._maxSpeed = b.max_speed;
 
     float sum =
-        b.wander_scale + b.separation_scale + b.cohesion_scale + b.alignment_scale + b.follow_scale;
+        b.wander_scale + /*b.separation_scale + */b.cohesion_scale + /*b.alignment_scale + */b.follow_scale;
     // Each flock gets its own seek behavior, because they need per flock information
-    flock->boids.AddKinematics(flock->seek, _settings.boids.wander_scale / sum);
-    flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
-    flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
-    flock->boids.AddKinematics(_landscapeFollow, _settings.boids.follow_scale / sum);
+    //flock->boids.AddKinematics(flock->seek, _settings.boids.wander_scale / sum);
+    //flock->boids.AddKinematics(_behaviorSeparataion, _settings.boids.separation_scale / sum);
+    //flock->boids.AddKinematics(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
+
+    flock->boids.AddKinematics(_behaviorLandscapeFollow, _settings.boids.follow_scale / sum);
+    flock->boids.AddKinematics(flock->follow, b.wander_scale / sum);
+    flock->boids.AddKinematics(_behaviorSpacing, b.cohesion_scale / sum);
 
     int pointIdx = _randomInt.Next() % _spline._controlPoints.size();
 
@@ -273,14 +358,15 @@ void Landscape::InitBoids()
 
     // Init the boids
     vec3* pos = flock->boids._bodies.pos;
-    vec3* force = flock->boids._bodies.force;
+    //vec3* force = flock->boids._bodies.force;
     for (int i = 0; i < flock->boids._bodies.numBodies; ++i)
     {
       vec3 pp(_random.Next(-20.f, 20.f), 0, _random.Next(-20.f, 20.f));
       float h = NoiseAtPoint(pp);
+      pp.y = max(h, h / 2) + clearance;
       pos[i] = center + vec3(pp.x, h, pp.z);
-      force[i] =
-          vec3(_random.Next(-20.f, 20.f), _random.Next(-20.f, 20.f), _random.Next(-20.f, 20.f));
+      //force[i] =
+      //    vec3(_random.Next(-20.f, 20.f), _random.Next(-20.f, 20.f), _random.Next(-20.f, 20.f));
     }
 
     _flocks.Append(flock);
@@ -290,33 +376,32 @@ void Landscape::InitBoids()
 //------------------------------------------------------------------------------
 void BehaviorLandscapeFollow::Update(const ParticleKinematics::UpdateParams& params)
 {
-  // NOTE! This is called from the schedular threads, so setting namespace
-  // on the blackboard will probably break :)
-  float clearance = g_Blackboard->GetFloatVar("landscape.landscapeClearance");
+  float clearance = g_Blackboard->GetFloatVar("landscape.clearance");
   vec3* pos = params.bodies->pos;
   vec3* acc = params.bodies->acc;
   vec3* vel = params.bodies->vel;
-  vec3* force = params.bodies->force;
+  vec3* force = params.bodies->forces[forceIdx];
   int numBodies = params.bodies->numBodies;
+  float maxSpeed = params.p->_maxSpeed;
 
+  // NOTE! This is called from the schedular threads, so setting namespace
+  // on the blackboard will probably break :)
   float ff = g_Blackboard->GetFloatVar("landscape.pushForce");
-  vec3 pushForce(0, ff, 0);
+  float slowingDistance = g_Blackboard->GetFloatVar("landscape.slowingDistance");
+
   for (int i = params.start; i < params.end; ++i)
   {
     vec3 curPos = pos[i];
     vec3 curVel = vel[i];
-    float h = NoiseAtPoint(curPos + vec3(curVel.x, 0, curVel.z));
+    vec3 target = curPos + curVel;
 
-    vec3 target = curPos;
-    target.y = h + clearance;
-
+    float h = NoiseAtPoint(target);
+    target.y = max(h, h / 2) + clearance;
+    
     float dist = Distance(curPos, target);
-    float scale = 1;
-    if (dist < 20)
-      scale = dist / 20;
-
-    vec3 desiredVel = maxSpeed * Normalize(target - curPos);
-    force[i] += params.weight * ClampVector(desiredVel - vel[i], scale * ff);
+    float speed = min(maxSpeed, maxSpeed * dist / slowingDistance);
+    vec3 desiredVel = speed * Normalize(target - curPos);
+    force[i] += params.weight * (desiredVel - vel[i]);
   }
 }
 
@@ -363,22 +448,29 @@ bool Landscape::Update(const UpdateState& state)
   float t = state.localTime.TotalSecondsAsFloat();
   vec3 pp = _spline.Interpolate(t * _settings.spline_speed);
 
+  vec3 sunDir = Normalize(g_Blackboard->GetVec3Var("landscape.sunDir"));
+  _cbLandscape.ps0.sunDir = sunDir;
+  _cbParticle.ps0.sunDir = sunDir;
+  _cbSky.ps0.sunDir = sunDir;
+
   _cbComposite.ps0.time =
       vec2(state.localTime.TotalSecondsAsFloat(), state.globalTime.TotalSecondsAsFloat());
 
   float ss = g_Blackboard->GetFloatVar("landscape.sepScale");
   const BoidSettings& b = _settings.boids;
-  float ks = b.separation_scale * ss * sinf(state.localTime.TotalSecondsAsFloat());
-  float kc = b.cohesion_scale * ss * cosf(1.5f * state.localTime.TotalSecondsAsFloat());
 
-  float sum = b.wander_scale + ks + kc + b.alignment_scale + b.follow_scale;
-
-  for (Flock* f : _flocks)
+  for (int i = 0; i < _flocks.Size(); ++i)
   {
+    Flock* f = _flocks[i];
+
+    float ks = b.separation_scale * ss * sinf(state.localTime.TotalSecondsAsFloat() + i * 1.0f);
+    float kc = b.cohesion_scale * ss * cosf(1.5f * state.localTime.TotalSecondsAsFloat() + i * 1.5f);
+
+    float sum = b.wander_scale + ks + kc + b.alignment_scale + b.follow_scale;
+
     f->boids.UpdateWeight(_behaviorSeparataion, ks / sum);
     f->boids.UpdateWeight(_behaviorCohesion, kc / sum);
-    f->boids.UpdateWeight(_behaviorAlignment, b.alignment_scale / sum);
-    f->boids.UpdateWeight(_landscapeFollow, b.follow_scale / sum);
+    f->boids.UpdateWeight(_behaviorLandscapeFollow, b.follow_scale / sum);
     f->boids.UpdateWeight(f->seek, b.wander_scale / sum);
   }
 
@@ -437,6 +529,15 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 {
   const IoState& ioState = TANO.GetIoState();
 
+#if WITH_IMGUI
+  static bool drawForces = false;
+  if (g_KeyUpTrigger.IsTriggered('6'))
+    drawForces = !drawForces;
+
+  if (drawForces)
+    _flocks[0]->boids.DrawForcePlot();
+#endif
+
   if (g_KeyUpTrigger.IsTriggered('7'))
     _drawFlags ^= DrawUpper;
 
@@ -479,7 +580,7 @@ void Landscape::UpdateCameraMatrix(const UpdateState& state)
 #if DEBUG_DRAW_PATH
   DEBUG_API.SetTransform(Matrix::Identity(), viewProj);
   float t = state.localTime.TotalSecondsAsFloat();
-  DEBUG_API.AddDebugSphere(_spline.Interpolate(t * _settings.spline_speed)), 10, Color(1, 1, 1);
+  DEBUG_API.AddDebugSphere(_spline.Interpolate(t * _settings.spline_speed), 10, Color(1, 1, 1));
 #endif
 }
 
@@ -577,14 +678,9 @@ void Landscape::CopyOutTask(const scheduler::TaskData& data)
 }
 
 //------------------------------------------------------------------------------
-#if WITH_ENKI_SCHEDULER
-void Landscape::FillChunk(ChunkKernelData* chunkData)
-{
-#else
 void Landscape::FillChunk(const TaskData& data)
 {
   ChunkKernelData* chunkData = (ChunkKernelData*)data.kernelData.data;
-#endif
   Chunk* chunk = chunkData->chunk;
   float x = chunkData->x;
   float z = chunkData->z;
@@ -601,7 +697,7 @@ void Landscape::FillChunk(const TaskData& data)
       float xx0 = x + (j + 0) * GRID_SIZE;
       float zz0 = z + (i - 1) * GRID_SIZE;
       noise->x = xx0;
-      noise->y = NOISE_HEIGHT * Perlin2D::Value(NOISE_SCALE_X * xx0, NOISE_SCALE_Z * zz0);
+      noise->y = NoiseAtPoint(vec3{xx0, 0, zz0});
       noise->z = zz0;
       ++noise;
     }
@@ -627,25 +723,6 @@ void Landscape::FillChunk(const TaskData& data)
     }
   }
 }
-
-#if WITH_ENKI_SCHEDULER
-struct ChunkTaskSet : public enki::ITaskSet
-{
-  virtual void ExecuteRange(enki::TaskSetPartition range, uint32_t threadnum)
-  {
-    for (u32 i = range.start; i < range.end; ++i)
-    {
-      Landscape::FillChunk(&data[i]);
-    }
-  }
-
-  void Init() { m_SetSize = 0; }
-
-  static Landscape::ChunkKernelData data[2048];
-};
-
-Landscape::ChunkKernelData ChunkTaskSet::data[2048];
-#endif
 
 //------------------------------------------------------------------------------
 void Landscape::RasterizeLandscape()
@@ -699,12 +776,7 @@ void Landscape::RasterizeLandscape()
   vec3 v0, v1, v2, v3;
   vec3 n0, n1;
 
-#if WITH_ENKI_SCHEDULER
-  ChunkTaskSet ts;
-  ts.Init();
-#else
   SimpleAppendBuffer<TaskId, 2048> chunkTasks;
-#endif
 
   SimpleAppendBuffer<Chunk*, 2048> chunks;
 
@@ -723,26 +795,17 @@ void Landscape::RasterizeLandscape()
         ++chunkMisses;
         chunk = _chunkCache.GetFreeChunk(x, z, _curTick);
 
-#if WITH_ENKI_SCHEDULER
-        ChunkTaskSet::data[ts.m_SetSize++] = ChunkKernelData{chunk, x, z};
-#else
         ChunkKernelData* data = (ChunkKernelData*)g_ScratchMemory.Alloc(sizeof(ChunkKernelData));
         *data = ChunkKernelData{chunk, x, z};
         KernelData kd;
         kd.data = data;
         kd.size = sizeof(ChunkKernelData);
         chunkTasks.Append(g_Scheduler->AddTask(kd, FillChunk));
-#endif
       }
 
       chunks.Append(chunk);
     }
   }
-
-#if WITH_ENKI_SCHEDULER
-  g_TS.AddTaskSetToPipe(&ts);
-  g_TS.WaitforTaskSet(&ts);
-#endif
 
   for (const TaskId& taskId : chunkTasks)
     g_Scheduler->Wait(taskId);
@@ -825,7 +888,7 @@ void Landscape::RenderBoids(const ObjectHandle* renderTargets, ObjectHandle dsHa
 
   // Unset the DSV, as we want to use it as a texture resource
   _ctx->SetRenderTargets(renderTargets, 1, ObjectHandle(), nullptr);
-  ObjectHandle srv[] = {_particleTexture, dsHandle};
+  ObjectHandle srv[] = {_boidsTexture, dsHandle};
   _ctx->SetShaderResources(srv, 2, ShaderType::PixelShader);
   _ctx->Draw(numBoids, 0);
   _ctx->UnsetShaderResources(0, 2, ShaderType::PixelShader);
@@ -1025,8 +1088,8 @@ void Landscape::RenderParameterSet()
     newWeights |= ImGui::SliderFloat("Separation", &_settings.boids.separation_scale, 0, 100);
     newWeights |= ImGui::SliderFloat("Cohension", &_settings.boids.cohesion_scale, 0, 100);
     newWeights |= ImGui::SliderFloat("Alignment", &_settings.boids.alignment_scale, 0, 100);
-    newWeights |= ImGui::SliderFloat("Wander", &_settings.boids.wander_scale, 0, 100);
-    newWeights |= ImGui::SliderFloat("Follow", &_settings.boids.follow_scale, 0, 100);
+    newWeights |= ImGui::SliderFloat("Seek", &_settings.boids.wander_scale, 0, 100);
+    newWeights |= ImGui::SliderFloat("Landscape Follow", &_settings.boids.follow_scale, 0, 100);
 
     if (newWeights)
     {
@@ -1035,10 +1098,9 @@ void Landscape::RenderParameterSet()
                   + b.follow_scale;
       UpdateWeight(_behaviorSeparataion, _settings.boids.separation_scale / sum);
       UpdateWeight(_behaviorCohesion, _settings.boids.cohesion_scale / sum);
-      UpdateWeight(_behaviorAlignment, _settings.boids.alignment_scale / sum);
       for (Flock* flock : _flocks)
         UpdateWeight(flock->seek, _settings.boids.wander_scale / sum);
-      UpdateWeight(_landscapeFollow, _settings.boids.follow_scale / sum);
+      UpdateWeight(_behaviorLandscapeFollow, _settings.boids.follow_scale / sum);
     }
 
     ImGui::SliderFloat("MaxSpeed", &_settings.boids.max_speed, 10.f, 1000.f);
@@ -1094,7 +1156,8 @@ void Landscape::Register()
 //------------------------------------------------------------------------------
 void Landscape::FlockCamera::Update(float deltaTime)
 {
-  vec3 targetPos = flock->seek->target;
+  //vec3 targetPos = flock->seek->target;
+  vec3 targetPos = flock->boids._center;
   vec3 curPos = _pos;
 
   vec3 dir = Normalize(targetPos - curPos);

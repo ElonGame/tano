@@ -597,30 +597,43 @@ bool Graphics::ReadTexture(
 //------------------------------------------------------------------------------
 ObjectHandle Graphics::LoadTexture(const char* filename, bool srgb, D3DX11_IMAGE_INFO* info)
 {
-  D3DX11_IMAGE_INFO imageInfo;
-  if (FAILED(D3DX11GetImageInfoFromFileA(filename, NULL, &imageInfo, NULL)))
+  ObjectHandle handle = ReserveObjectHandle(ObjectHandle::kResource);
+  bool firstTime = true;
+
+  FileWatcherWin32::AddFileWatchResult res = RESOURCE_MANAGER.AddFileWatch(filename,
+    true,
+    [&firstTime, info, handle, this](const string& filename) -> bool
   {
-    LOG_INFO("Unable to load texture: ", filename);
-    return emptyHandle;
-  }
+    D3DX11_IMAGE_INFO imageInfo;
+    if (FAILED(D3DX11GetImageInfoFromFileA(filename.c_str(), NULL, &imageInfo, NULL)))
+    {
+      LOG_INFO("Unable to load texture: ", filename);
+      return false;
+    }
 
-  if (info)
-    *info = imageInfo;
+    if (firstTime && info)
+      *info = imageInfo;
 
-  auto data = unique_ptr<SimpleResource>(new SimpleResource());
-  if (FAILED(D3DX11CreateTextureFromFileA(_device, filename, NULL, NULL, &data->resource, NULL)))
-    return emptyHandle;
+    firstTime = false;
 
-  // TODO: allow for srgb loading
-  auto fmt = DXGI_FORMAT_R8G8B8A8_UNORM;
-  // check if this is a cube map
-  auto dim = imageInfo.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE ? D3D11_SRV_DIMENSION_TEXTURECUBE
-                                                                   : D3D11_SRV_DIMENSION_TEXTURE2D;
-  auto desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(dim, fmt);
-  if (FAILED(_device->CreateShaderResourceView(data->resource, &desc, &data->view.ptr)))
-    return emptyHandle;
+    auto data = unique_ptr<SimpleResource>(new SimpleResource());
+    if (FAILED(D3DX11CreateTextureFromFileA(_device, filename.c_str(), NULL, NULL, &data->resource, NULL)))
+      return false;
 
-  return MakeObjectHandle(ObjectHandle::kResource, _resources.Append(data.release()));
+    // TODO: allow for srgb loading
+    auto fmt = DXGI_FORMAT_R8G8B8A8_UNORM;
+    // check if this is a cube map
+    auto dim = imageInfo.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE ? D3D11_SRV_DIMENSION_TEXTURECUBE
+      : D3D11_SRV_DIMENSION_TEXTURE2D;
+    auto desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(dim, fmt);
+    if (FAILED(_device->CreateShaderResourceView(data->resource, &desc, &data->view.ptr)))
+      return false;
+
+    _resources.Update(handle, data.release());
+    return true;
+  });
+
+  return res.initialResult ? handle : ObjectHandle();
 }
 
 //------------------------------------------------------------------------------
@@ -783,7 +796,9 @@ ObjectHandle Graphics::ReserveObjectHandle(ObjectHandle::Type type)
       return AddShader<ID3D11PixelShader>(_pixelShaders, nullptr, type);
     case ObjectHandle::kComputeShader:
       return AddShader<ID3D11ComputeShader>(_computeShaders, nullptr, type);
-    default: assert("Unsupported object type");
+    case ObjectHandle::kResource:
+      return AddShader<SimpleResource>(_resources, nullptr, type);
+    default: assert(!"Unsupported object type");
   }
 
   return emptyHandle;

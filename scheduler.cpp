@@ -6,11 +6,7 @@ using namespace tano::scheduler;
 using namespace bristol;
 
 
-#if WITH_ENKI_SCHEDULER
-enki::TaskScheduler g_TS;
-#else
 tano::scheduler::Scheduler* tano::g_Scheduler = nullptr;
-#endif
 
 //------------------------------------------------------------------------------
 #define SINGLE_THREADED 0

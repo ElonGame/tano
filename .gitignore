@@ -28,4 +28,4 @@ _win32/tano*.vspx
 _win32/My*
 *.swp
 *.etl
-
+dist/*

@@ -11,19 +11,25 @@ namespace tano
   struct DynParticles
   {
     ~DynParticles();
-    void Init(int numBodies);
+    void Init(int numBodies, float maxSpeed, float maxForce);
     void Reset();
     void AddKinematics(ParticleKinematics* kinematics, float weight);
     void UpdateWeight(ParticleKinematics* kinematics, float weight);
     void Update(float deltaTime, bool alwaysUpdate);
 
+#if WITH_IMGUI
+    void DrawForcePlot();
+#endif
+
+    enum { MAX_NUM_FORCES = 5 };
     struct Bodies
     {
+      Bodies() { memset(forces, 0, sizeof(forces)); }
       int numBodies = 0;
       vec3* pos = nullptr;
       vec3* vel = nullptr;
       vec3* acc = nullptr;
-      vec3* force = nullptr;
+      vec3* forces[MAX_NUM_FORCES];
     };
 
     struct Kinematics
@@ -38,12 +44,6 @@ namespace tano
       float weight;
     };
 
-    vector<Kinematic> _kinematics;
-    Bodies _bodies;
-    vec3 _center = {0, 0, 0};
-    float _maxSpeed = 10.f;
-    int _tickCount = 0;
-
     struct Bucket
     {
       u16 count = 0;
@@ -52,13 +52,18 @@ namespace tano
 
     Bucket* _buckets = nullptr;
     vector<Bucket*> _validBuckets;
+
+    vector<Kinematic> _kinematics;
+    Bodies _bodies;
+    vec3 _center = {0, 0, 0};
+    float _maxSpeed = 10.f;
+    float _maxForce = 10.f;
+    int _tickCount = 0;
   };
 
   //------------------------------------------------------------------------------
   struct ParticleKinematics
   {
-    ParticleKinematics(float maxForce, float maxSpeed) : maxForce(maxForce), maxSpeed(maxSpeed) {}
-
     struct UpdateParams
     {
       DynParticles::Bodies* bodies;
@@ -69,14 +74,12 @@ namespace tano
     };
 
     virtual void Update(const UpdateParams& params) = 0;
-    float maxForce = 10.f;
-    float maxSpeed = 10.f;
+    int forceIdx = 0;
   };
 
   //------------------------------------------------------------------------------
   struct BehaviorSeek : public ParticleKinematics
   {
-    BehaviorSeek(float maxForce, float maxSpeed) : ParticleKinematics(maxForce, maxSpeed) {}
     virtual void Update(const UpdateParams& params) override;
     vec3 target = vec3::Zero;
   };
@@ -84,8 +87,8 @@ namespace tano
   //------------------------------------------------------------------------------
   struct BehaviorSeparataion : public ParticleKinematics
   {
-    BehaviorSeparataion(float maxForce, float maxSpeed, float separationDistance) 
-      : ParticleKinematics(maxForce, maxSpeed), separationDistance(separationDistance) {}
+    BehaviorSeparataion(float separationDistance) 
+      : separationDistance(separationDistance) {}
     virtual void Update(const UpdateParams& params) override;
     float separationDistance = 10;
   };
@@ -93,18 +96,11 @@ namespace tano
   //------------------------------------------------------------------------------
   struct BehaviorCohesion : public ParticleKinematics
   {
-    BehaviorCohesion(float maxForce, float maxSpeed, float cohesionDistance) 
-    : ParticleKinematics(maxForce, maxSpeed), cohesionDistance(cohesionDistance) {}
+    BehaviorCohesion(float cohesionDistance) 
+    : cohesionDistance(cohesionDistance) {}
     virtual void Update(const UpdateParams& params) override;
     float cohesionDistance = 10;
   };
 
-  //------------------------------------------------------------------------------
-  struct BehaviorAlignment : public ParticleKinematics
-  {
-    BehaviorAlignment(float maxForce, float maxSpeed, float cohesionDistance) 
-    : ParticleKinematics(maxForce, maxSpeed), cohesionDistance(cohesionDistance) {}
-    virtual void Update(const UpdateParams& params) override;
-    float cohesionDistance = 10;
-  };
+  // NB: BehaviorAlignment has been removed
 }
