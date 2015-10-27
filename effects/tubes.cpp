@@ -466,9 +466,10 @@ bool Tubes::Render()
   rmt_ScopedCPUSample(Split_Render);
 
   static Color black(0, 0, 0, 0);
+  static Color white(1, 1, 1, 1);
   FullscreenEffect* fullscreen = g_Graphics->GetFullscreenEffect();
 
-  ScopedRenderTarget rtColor(DXGI_FORMAT_R11G11B10_FLOAT);
+  ScopedRenderTarget rtColor(DXGI_FORMAT_R16G16B16A16_FLOAT);
 
   _ctx->SetRenderTarget(rtColor, g_Graphics->GetDepthStencil(), &black);
   {
@@ -479,7 +480,7 @@ bool Tubes::Render()
   }
 
   ScopedRenderTarget rtOpacity(DXGI_FORMAT_R16G16B16A16_FLOAT);
-  ScopedRenderTarget rtRevealage(DXGI_FORMAT_R16G16B16A16_FLOAT);
+  ScopedRenderTarget rtRevealage(DXGI_FORMAT_R16_FLOAT);
 
   ObjectHandle handle = _meshBundle.objects._vb;
   PN* vtx = _ctx->MapWriteDiscard<PN>(handle);
@@ -498,7 +499,7 @@ bool Tubes::Render()
   }
   _ctx->Unmap(handle);
 
-  const Color* clearColors[] = {&Color(0, 0, 0, 0), &Color(1, 1, 1, 1)};
+  static const Color* clearColors[] = {&black, &white};
   ObjectHandle targets[] = {rtOpacity, rtRevealage};
   _ctx->SetRenderTargets(targets, 2, g_Graphics->GetDepthStencil(), clearColors);
   {
