@@ -331,11 +331,11 @@ bool Intro::Render()
 
     _ctx->SetRenderTarget(rtText, g_Graphics->GetDepthStencil(), &black);
 
-    float right = g_Blackboard->GetFloatVar("intro.textRight");
-    float s = g_Blackboard->GetFloatVar("intro.textSize");
-    float y0 = g_Blackboard->GetFloatVar("intro.newText0Pos");
-    float y1 = g_Blackboard->GetFloatVar("intro.newText1Pos");
-    float y2 = g_Blackboard->GetFloatVar("intro.newText2Pos");
+    float right = SCRATCH_GET_FLOAT(intro, textRight);
+    float s = SCRATCH_GET_FLOAT(intro, textSize);
+    float y0 = SCRATCH_GET_FLOAT(intro, newText0Pos);
+    float y1 = SCRATCH_GET_FLOAT(intro, newText1Pos);
+    float y2 = SCRATCH_GET_FLOAT(intro, newText2Pos);
 
     float ar0 = _introTexture[0].info.Width / (float)_introTexture[0].info.Height;
     float ar1 = _introTexture[1].info.Width / (float)_introTexture[1].info.Height;
@@ -344,11 +344,9 @@ bool Intro::Render()
     bool rightAlign = true;
     if (rightAlign)
     {
-      eval::Environment env;
-      env.constants["t"] = _curTime;
-      float bb0 = g_Blackboard->GetExpr("intro.text0Brightness", &env);
-      float bb1 = g_Blackboard->GetExpr("intro.text1Brightness", &env);
-      float bb2 = g_Blackboard->GetExpr("intro.text2Brightness", &env);
+      float bb0 = g_Blackboard->GetExpr("intro.text0Brightness", _curTime);
+      float bb1 = g_Blackboard->GetExpr("intro.text1Brightness", _curTime);
+      float bb2 = g_Blackboard->GetExpr("intro.text2Brightness", _curTime);
       fullscreen->RenderTexture(
           _introTexture[0].h, vec2{right - ar0 * s, y0 - s}, vec2{right, y0}, bb0);
 
@@ -358,7 +356,7 @@ bool Intro::Render()
       fullscreen->RenderTexture(
           _introTexture[2].h, vec2{right - ar2 * s, y2 - s}, vec2{right, y2}, bb2);
 
-      _cbText.ps0.brightness = g_Blackboard->GetExpr("intro.distortBrightness", &env);
+      _cbText.ps0.brightness = g_Blackboard->GetExpr("intro.distortBrightness", _curTime);
       _cbText.Set(_ctx, 0);
       ObjectHandle inputs[] = {rtText};
       fullscreen->Execute(inputs,

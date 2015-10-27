@@ -20,4 +20,8 @@ namespace bristol
 
   bool begins_with(const char *str, const char *sub_str);
   bool begins_with(const std::string &str, const std::string &sub_str);
+
+  std::vector<std::string> StringSplit(const std::string& str, char delim);
+  std::string StringJoin(const std::vector<std::string>& v, const std::string& delim);
+
 }

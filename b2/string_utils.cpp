@@ -113,5 +113,49 @@ namespace bristol
     return res;
   }
 #endif
+
+  //------------------------------------------------------------------------------
+  vector<string> StringSplit(const string& str, char delim)
+  {
+    vector<string> res;
+    const char* start = str.c_str();
+    const char* end = str.c_str() + str.size();
+
+    const char* cur = start;
+    const char* prevStart = start;
+    while (cur != end)
+    {
+      if (*cur == delim)
+      {
+        res.push_back(string(prevStart, cur - prevStart));
+        prevStart = cur + 1;
+      }
+      cur++;
+    }
+
+    if (prevStart < end)
+    {
+      res.push_back(string(prevStart, cur - prevStart));
+    }
+
+    return res;
+  }
+
+  //------------------------------------------------------------------------------
+  std::string StringJoin(const std::vector<std::string>& v, const std::string& delim)
+  {
+    string res;
+    size_t cnt = v.size();
+
+    for (size_t i = 0; i < cnt; ++i)
+    {
+      res += v[i];
+      if (i != cnt - 1)
+        res += delim;
+    }
+
+    return res;
+  }
+
 }
 

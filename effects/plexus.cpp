@@ -446,10 +446,8 @@ bool Plexus::Update(const UpdateState& state)
     vec2(state.localTime.TotalSecondsAsFloat(), state.globalTime.TotalSecondsAsFloat());
 
   float globalTime = state.globalTime.TotalSecondsAsFloat();
-  g_Blackboard->ClearNamespace();
   float lo = g_Blackboard->GetFloatVar("Beat-Lo", globalTime);
 
-  g_Blackboard->SetNamespace("plexus");
   float base = g_Blackboard->GetFloatVar("plexus.base");
   float scale = g_Blackboard->GetFloatVar("plexus.scale");
 
@@ -475,11 +473,9 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
 
   float dt = state.delta.TotalSecondsAsFloat();
 
-  g_Blackboard->SetNamespace("plexus");
-
   {
-    _plexusCamera._pos = g_Blackboard->GetVec3Var("plexusCamPos");
-    _plexusCamera._target = g_Blackboard->GetVec3Var("plexusCamLookAt");
+    _plexusCamera._pos = g_Blackboard->GetVec3Var("plexus.plexusCamPos");
+    _plexusCamera._target = g_Blackboard->GetVec3Var("plexus.plexusCamLookAt");
     _plexusCamera.Update(dt);
 
     // plexus
@@ -487,8 +483,8 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
     Matrix proj = _plexusCamera._proj;
     Matrix viewProj = view * proj;
 
-    float rotXDiv = g_Blackboard->GetFloatVar("rotXDivisor");
-    float rotYDiv = g_Blackboard->GetFloatVar("rotYDivisor");
+    float rotXDiv = g_Blackboard->GetFloatVar("plexus.rotXDivisor");
+    float rotYDiv = g_Blackboard->GetFloatVar("plexus.rotYDivisor");
     static float angle = 0;
     angle += state.delta.TotalMilliseconds();
     Matrix mtx = Matrix::CreateRotationX(angle / rotXDiv) * Matrix::CreateRotationY(angle / rotYDiv);
@@ -498,8 +494,8 @@ void Plexus::UpdateCameraMatrix(const UpdateState& state)
   }
 
   {
-    _greetsCamera._pos = g_Blackboard->GetVec3Var("greetsCamPos");
-    _greetsCamera._target = g_Blackboard->GetVec3Var("greetsCamLookAt");
+    _greetsCamera._pos = g_Blackboard->GetVec3Var("plexus.greetsCamPos");
+    _greetsCamera._target = g_Blackboard->GetVec3Var("plexus.greetsCamLookAt");
     _greetsCamera.Update(dt);
 
     // greets

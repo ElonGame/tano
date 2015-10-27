@@ -50,7 +50,6 @@ namespace tano
 
   extern KeyUpTrigger g_KeyUpTrigger;
 
-
   class App
   {
   public:
@@ -67,6 +66,8 @@ namespace tano
 
     typedef function<void()> fnPerfCallback;
     void AddPerfCallback(const fnPerfCallback& cb);
+
+    string GetAppRoot() const { return _appRoot; }
 
   private:
     App();

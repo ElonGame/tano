@@ -369,20 +369,19 @@ void Tubes::UpdateCameraMatrix(const UpdateState& state)
 
   float tt = state.localTime.TotalSecondsAsFloat();
 
-  g_Blackboard->SetNamespace("split");
-  _camera._pos.y =
-      g_Blackboard->GetFloatVar("camOffsetY") - tt * g_Blackboard->GetFloatVar("camSpeedY");
+  _camera._pos.y = g_Blackboard->GetFloatVar("split.camOffsetY")
+                   - tt * g_Blackboard->GetFloatVar("split.camSpeedY");
 
-  float r = lerp(g_Blackboard->GetFloatVar("camStartRadius"),
-      g_Blackboard->GetFloatVar("camEndRadius"),
-      SmoothStep(0, 1, tt / g_Blackboard->GetFloatVar("camRotTime")));
+  float r = lerp(g_Blackboard->GetFloatVar("split.camStartRadius"),
+      g_Blackboard->GetFloatVar("split.camEndRadius"),
+      SmoothStep(0, 1, tt / g_Blackboard->GetFloatVar("split.camRotTime")));
 
-  _camera._pos.x = r * sinf(tt * g_Blackboard->GetFloatVar("camRotSpeed"));
-  _camera._pos.z = r * cosf(tt * g_Blackboard->GetFloatVar("camRotSpeed"));
+  _camera._pos.x = r * sinf(tt * g_Blackboard->GetFloatVar("split.camRotSpeed"));
+  _camera._pos.z = r * cosf(tt * g_Blackboard->GetFloatVar("split.camRotSpeed"));
   _camera._target = vec3{0,
       _camera._pos.y
-          + g_Blackboard->GetFloatVar("camTargetJitter")
-                * sinf(tt * g_Blackboard->GetFloatVar("camTargetJitterSpeed")),
+          + g_Blackboard->GetFloatVar("split.camTargetJitter")
+                * sinf(tt * g_Blackboard->GetFloatVar("split.camTargetJitterSpeed")),
       0};
   _camera.Update(state.delta.TotalSecondsAsFloat());
 
@@ -582,9 +581,7 @@ bool Tubes::Render()
         g_Graphics->GetBackBufferDesc(),
         g_Graphics->GetDepthStencil(),
         _compositeBundle.objects._ps,
-        false,
-        true,
-        &Color(0.1f, 0.1f, 0.1f, 0));
+        false);
   }
 
   return true;

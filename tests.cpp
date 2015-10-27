@@ -4,6 +4,7 @@
 #include "fixed_deque.hpp"
 
 using namespace tano;
+using namespace bristol;
 
 #include <assert.h>
 
@@ -11,11 +12,13 @@ using namespace tano;
 bool EvalTest()
 {
   eval::Environment env;
-  env.functions["test"] = eval::UserFunction{2, [](eval::Evaluator* eval) {
-    float b = eval->PopValue();
-    float a = eval->PopValue();
-    eval->PushValue(a + b);
-  }};
+  env.functions["test"] = eval::UserFunction{2,
+      [](eval::Evaluator* eval)
+      {
+        float b = eval->PopValue();
+        float a = eval->PopValue();
+        eval->PushValue(a + b);
+      }};
 
   env.constants["a"] = 10;
 
@@ -101,8 +104,40 @@ bool DequeTest()
 }
 
 //------------------------------------------------------------------------------
+bool StringTest()
+{
+  {
+    vector<string> res = StringSplit("a.b", '.');
+    assert(res == vector<string>({"a", "b"}));
+  }
+
+  {
+    vector<string> res = StringSplit("a.", '.');
+    assert(res == vector<string>({"a"}));
+  }
+
+  {
+    vector<string> res = StringSplit("a", '.');
+    assert(res == vector<string>({"a"}));
+  }
+
+  {
+    vector<string> res = StringSplit("", '.');
+    assert(res == vector<string>());
+  }
+
+  {
+    vector<string> res = StringSplit("aa.bb.cc", '.');
+    assert(res == vector<string>({"aa", "bb", "cc"}));
+  }
+
+  return true;
+}
+
+//------------------------------------------------------------------------------
 static bool bufferTestPassed = BufferTest();
 static bool dequeTest1Passed = DequeTest();
 static bool evalTestPassed = EvalTest();
+static bool stringTestPassed = StringTest();
 
 #endif

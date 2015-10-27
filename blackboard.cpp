@@ -1,6 +1,7 @@
 #include "blackboard.hpp"
 #include "resource_manager.hpp"
 #include "init_sequence.hpp"
+#include "tano.hpp"
 #if WITH_IMGUI
 #include "imgui/imgui_internal.h"
 #include "imgui_helpers.hpp"
@@ -56,6 +57,7 @@ bool Blackboard::Init(const char* filename, const char* datafile)
             LoadData();
             _triggeredIds.clear();
           }
+          SaveStaticBlackboard();
           _curExpr = min(_curExpr, (int)_expressionNames.size());
           return res;
         }
@@ -117,6 +119,69 @@ void Blackboard::SaveData()
 }
 #endif
 
+template <typename T>
+string StaticVarsToString(const unordered_map<string, Keyframes<T>*>& keys,
+    const char* type,
+    const function<string(const T&)>& prettyPrint)
+{
+  string res;
+
+  for (const auto& kv : keys)
+  {
+    const string& name = kv.first;
+    const Keyframes<T>* keys = kv.second;
+    if (keys->values.empty())
+    {
+      vector<string> n = StringSplit(name, '.');
+      string nn = StringJoin(n, "_");
+
+      res += ToString("    static %s %s = %s;\n", type, nn.c_str(), prettyPrint(keys->firstValue).c_str());
+    }
+  }
+
+  return res;
+}
+
+//------------------------------------------------------------------------------
+void Blackboard::SaveStaticBlackboard()
+{
+  string res;
+  res += "#pragma once\n\nnamespace tano\n{\n  struct StaticBlackboard\n  {\n";
+
+  res += StaticVarsToString<int>(_intVars, "int",
+      [](int v)
+      {
+        return ToString("%d", v);
+      });
+  res += StaticVarsToString<float>(_floatVars, "float",
+      [](float v)
+      {
+        return ToString("%ff", v);
+      });
+  res += StaticVarsToString<vec2>(_vec2Vars, "vec2", 
+      [](vec2 v)
+      {
+        return ToString("vec2{ %ff, %ff }", v.x, v.y);
+      });
+  res += StaticVarsToString<vec3>(_vec3Vars, "vec3", 
+      [](vec3 v)
+      {
+        return ToString("vec3{ %ff, %ff, %ff }", v.x, v.y, v.z);
+      });
+  res += StaticVarsToString<vec4>(_vec4Vars, "vec4",
+      [](vec4 v)
+      {
+        return ToString("vec4{ %ff, %ff, %ff, %ff }", v.x, v.y, v.z, v.w);
+      });
+
+  res += "  };\n}\n";
+
+  SaveFile(ToString("%s//generated//blackboard_static.hpp", TANO.GetAppRoot().c_str()).c_str(),
+    res.data(), (int)res.size());
+
+  int a = 10;
+}
+
 //------------------------------------------------------------------------------
 void Blackboard::LoadData()
 {
@@ -125,18 +190,6 @@ void Blackboard::LoadData()
     return;
 
   ProcessAnimationBuffer(buf.data(), (int)buf.size());
-}
-
-//------------------------------------------------------------------------------
-void Blackboard::SetNamespace(const string& ns)
-{
-  _curNamespace = ns;
-}
-
-//------------------------------------------------------------------------------
-void Blackboard::ClearNamespace()
-{
-  _curNamespace.clear();
 }
 
 //------------------------------------------------------------------------------
@@ -200,27 +253,13 @@ vec4 Blackboard::GetVec4Var(const string& name)
 }
 
 //------------------------------------------------------------------------------
-string Blackboard::GetFullName(const string& name)
-{
-  if (name.find('.') != string::npos)
-  {
-    // if the name contains a '.', assume it's a fully qualified name, and reset the
-    // current namespace
-    _curNamespace.clear();
-  }
-
-  return _curNamespace.empty() ? name : _curNamespace + "." + name;
-}
-
-//------------------------------------------------------------------------------
 template <typename T>
 T Blackboard::GetVar(const string& name, float t, unordered_map<string, Keyframes<T>*>& vars)
 {
-  string fullname = GetFullName(name);
-  auto it = vars.find(fullname);
+  auto it = vars.find(name);
   if (it == vars.end())
   {
-    LOG_ERROR("Unknown variable: ", fullname);
+    LOG_ERROR("Unknown variable: ", name);
     return T();
   }
 
@@ -429,16 +468,23 @@ vec3 Blackboard::GetVec3Var(const string& name, float t)
 //------------------------------------------------------------------------------
 float Blackboard::GetExpr(const string& name, eval::Environment* env)
 {
-  string fullname = GetFullName(name);
-  auto it = _expressions.find(fullname);
+  auto it = _expressions.find(name);
   if (it == _expressions.end())
   {
-    LOG_ERROR("Unknown expression: ", fullname);
+    LOG_ERROR("Unknown expression: ", name);
     return 0;
   }
 
   eval::Evaluator e;
   return e.Evaluate(it->second.tokens, env);
+}
+
+//------------------------------------------------------------------------------
+float Blackboard::GetExpr(const string& name, float t)
+{
+  eval::Environment env;
+  env.constants["t"] = t;
+  return GetExpr(name, &env);
 }
 
 //------------------------------------------------------------------------------

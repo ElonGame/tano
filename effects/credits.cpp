@@ -123,7 +123,7 @@ bool Credits::Init()
 //------------------------------------------------------------------------------
 void Credits::ResetParticleSpline()
 {
-  int num = g_Blackboard->GetIntVar("credits.numParticles");
+  int num = SCRATCH_GET_INT(credits, numParticles);
   vector<int> tmp(num);
   for (int i = 0; i < num; ++i)
     tmp[i] = i;
@@ -502,9 +502,7 @@ void Credits::ResetParticles()
 //------------------------------------------------------------------------------
 void Credits::InitParticleSpline(const vector<int>& indices)
 {
-  g_Blackboard->SetNamespace("credits");
-
-  _numParticles = g_Blackboard->GetIntVar("numParticles");
+  _numParticles = SCRATCH_GET_INT(credits, numParticles);
 
   // if # particles have changes, just redo everything..
   if (_numParticles != (int)_particles.size())
@@ -513,21 +511,21 @@ void Credits::InitParticleSpline(const vector<int>& indices)
     _particleState.resize(_numParticles);
   }
 
-  float speed = g_Blackboard->GetFloatVar("particleSpeed");
-  float speedVar = g_Blackboard->GetFloatVar("particleSpeedVar");
+  float speed = SCRATCH_GET_FLOAT(credits, particleSpeed);
+  float speedVar = SCRATCH_GET_FLOAT(credits, particleSpeedVar);
 
-  float angleSpeed = g_Blackboard->GetFloatVar("particleAngleSpeed");
-  float angleSpeedVar = g_Blackboard->GetFloatVar("particleAngleSpeedVar");
+  float angleSpeed = SCRATCH_GET_FLOAT(credits, particleAngleSpeed);
+  float angleSpeedVar = SCRATCH_GET_FLOAT(credits, particleAngleSpeedVar);
 
-  float fadeSpeed = g_Blackboard->GetFloatVar("particleFadeSpeed");
-  float fadeSpeedVar = g_Blackboard->GetFloatVar("particleFadeSpeedVar");
+  float fadeSpeed = SCRATCH_GET_FLOAT(credits, particleFadeSpeed);
+  float fadeSpeedVar = SCRATCH_GET_FLOAT(credits, particleFadeSpeedVar);
 
-  float angleVar = g_Blackboard->GetFloatVar("angleVar");
+  float angleVar = SCRATCH_GET_FLOAT(credits, angleVar);
 
-  float height = g_Blackboard->GetFloatVar("particleHeight");
-  float heightVar = g_Blackboard->GetFloatVar("particleHeightVar");
+  float height = SCRATCH_GET_FLOAT(credits, particleHeight);
+  float heightVar = SCRATCH_GET_FLOAT(credits, particleHeightVar);
 
-  float width = g_Blackboard->GetFloatVar("waveWidth");
+  float width = SCRATCH_GET_FLOAT(credits, waveWidth);
 
   for (int i : indices)
   {
@@ -544,8 +542,6 @@ void Credits::InitParticleSpline(const vector<int>& indices)
       0,
       RANDOM_150.Next(fadeSpeed, fadeSpeedVar)};
   }
-
-  g_Blackboard->ClearNamespace();
 }
 
 //------------------------------------------------------------------------------
@@ -556,8 +552,7 @@ void Credits::UpdateParticleSpline(float dt)
     ResetParticleSpline();
   }
 
-  g_Blackboard->SetNamespace("credits");
-  float width = g_Blackboard->GetFloatVar("waveWidth");
+  float width = SCRATCH_GET_FLOAT(credits, waveWidth);
 
   vector<int> deadParticles;
 
@@ -578,8 +573,6 @@ void Credits::UpdateParticleSpline(float dt)
   {
     InitParticleSpline(deadParticles);
   }
-
-  g_Blackboard->ClearNamespace();
 }
 
 //------------------------------------------------------------------------------
@@ -644,11 +637,11 @@ bool Credits::Render()
   _ctx->SetRenderTarget(rtText, g_Graphics->GetDepthStencil(), &black);
   {
     // text
-    float right = g_Blackboard->GetFloatVar("credits.textRight");
-    float left = g_Blackboard->GetFloatVar("credits.textLeft");
-    float s = g_Blackboard->GetFloatVar("credits.textSize");
-    float y0 = g_Blackboard->GetFloatVar("credits.textPos0");
-    float y1 = g_Blackboard->GetFloatVar("credits.textPos1");
+    float right = SCRATCH_GET_FLOAT(credits, textRight);
+    float left = SCRATCH_GET_FLOAT(credits, textLeft);
+    float s = SCRATCH_GET_FLOAT(credits, textSize);
+    float y0 = SCRATCH_GET_FLOAT(credits, textPos0);
+    float y1 = SCRATCH_GET_FLOAT(credits, textPos1);
 
     float ar0 = _creditsTexture[0].info.Width / (float)_creditsTexture[0].info.Height;
     float ar1 = _creditsTexture[1].info.Width / (float)_creditsTexture[1].info.Height;

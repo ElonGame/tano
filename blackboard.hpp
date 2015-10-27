@@ -1,6 +1,11 @@
 #pragma once
 #include "tano_math.hpp"
 
+#define WITH_STATIC_BLACKBOARD 0
+#if WITH_STATIC_BLACKBOARD
+#include "generated/blackboard_static.hpp"
+#endif
+
 namespace parser
 {
   struct InputBuffer;
@@ -8,18 +13,22 @@ namespace parser
 
 namespace tano
 {
+  template <typename T>
+  struct Keyframes
+  {
+    Keyframes() {}
+    Keyframes(const T& v) : firstValue(v), lastValue(v) {}
+    T firstValue;
+    T lastValue;
+    float firstTime = 0;
+    float lastTime = 0;
+    float sampleStep = 1;
+    vector<T> values;
+  };
+
   class Blackboard
   {
   public:
-    void SetNamespace(const string& ns);
-    void ClearNamespace();
-
-    void AddIntVar(const string& name, int value);
-    void AddFloatVar(const string& name, float value);
-    void AddVec2Var(const string& name, const vec2& value);
-    void AddVec3Var(const string& name, const vec3& value);
-    void AddVec4Var(const string& name, const vec4& value);
-
     int GetIntVar(const string& name);
     float GetFloatVar(const string& name);
     vec2 GetVec2Var(const string& name);
@@ -30,10 +39,9 @@ namespace tano
     vec2 GetVec2Var(const string& name, float t);
     vec3 GetVec3Var(const string& name, float t);
 
+    float GetExpr(const string& name, float t);
     float GetExpr(const string& name, eval::Environment* env);
 
-    template <typename T>
-    struct Keyframes;
     template <typename T>
     T GetVar(const string& name, float t, unordered_map<string, Keyframes<T>*>& vars);
 
@@ -57,6 +65,7 @@ namespace tano
 
     ~Blackboard();
 
+    void SaveStaticBlackboard();
     bool Init(const char* filename, const char* datafile);
     bool ParseBlackboard(parser::InputBuffer& buf, deque<string>& namespaceStack);
     void Reset();
@@ -66,23 +75,13 @@ namespace tano
 #endif
     void LoadData();
 
+    void AddIntVar(const string& name, int value);
+    void AddFloatVar(const string& name, float value);
+    void AddVec2Var(const string& name, const vec2& value);
+    void AddVec3Var(const string& name, const vec3& value);
+    void AddVec4Var(const string& name, const vec4& value);
+
     void ProcessAnimationBuffer(const char* buf, int bufSize);
-    string GetFullName(const string& name);
-
-    string _curNamespace;
-
-    template <typename T>
-    struct Keyframes
-    {
-      Keyframes() {}
-      Keyframes(const T& v) : firstValue(v), lastValue(v) {}
-      T firstValue;
-      T lastValue;
-      float firstTime = 0;
-      float lastTime = 0;
-      float sampleStep = 1;
-      vector<T> values;
-    };
 
     template <typename T>
     int LoadKeyframes(const char* buf, const string& name, unordered_map<string, Keyframes<T>*>* res);
@@ -163,4 +162,13 @@ namespace tano
   };
 
   extern Blackboard* g_Blackboard;
+
+#if WITH_STATIC_BLACKBOARD
+#define SCRATCH_GET_INT(namespace, var) blackboard::namespace ## _ ## var
+#define SCRATCH_GET_FLOAT(namespace, var) blackboard::namespace ## _ ## var
+#else
+#define SCRATCH_GET_INT(namespace, var) g_Blackboard->GetIntVar(#namespace "." #var)
+#define SCRATCH_GET_FLOAT(namespace, var) g_Blackboard->GetFloatVar(#namespace "." #var)
+#endif
+
 }
